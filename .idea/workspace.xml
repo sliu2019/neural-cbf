@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectId" id="1xuEZv5V6ieApOBM9xaPimFTtQF" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showExcludedFiles" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="true" />
+    <property name="settings.editor.selected.configurable" value="web.server" />
+  </component>
+  <component name="ServiceViewManager">
+    <option name="viewStates">
+      <list>
+        <serviceView>
+          <treeState>
+            <expand />
+            <select />
+          </treeState>
+        </serviceView>
+      </list>
+    </option>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="" />
+      <created>1631196631573</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1631196631573</updated>
+      <workItem from="1631196657722" duration="21238000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="320" y="102" key="#Python" timestamp="1631225630939">
+      <screen x="0" y="23" width="1440" height="828" />
+    </state>
+    <state x="320" y="102" key="#Python/0.23.1440.828/1440.23.1920.1057@0.23.1440.828" timestamp="1631225630939" />
+    <state x="417" y="135" key="SettingsEditor" timestamp="1631209950156">
+      <screen x="0" y="23" width="1920" height="1007" />
+    </state>
+    <state x="417" y="135" key="SettingsEditor/0.23.1920.1007@0.23.1920.1007" timestamp="1631209950156" />
+    <state x="2159" y="43" width="1645" height="987" key="dock-window-1" timestamp="1631302082244">
+      <screen x="1920" y="23" width="1920" height="1057" />
+    </state>
+    <state x="2159" y="43" width="1645" height="987" key="dock-window-1/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631302082244" />
+    <state x="385" y="174" width="670" height="676" key="search.everywhere.popup" timestamp="1631212770359">
+      <screen x="0" y="23" width="1440" height="827" />
+    </state>
+    <state x="385" y="174" width="670" height="676" key="search.everywhere.popup/0.23.1440.827@0.23.1440.827" timestamp="1631212770359" />
+  </component>
+</project>

@@ -1,0 +1,82 @@
+
+class Trainer:
+	init():
+		In:
+			Attack class object
+			(Later) optimization parameters
+
+	train():
+		In:
+			phi_i (model)
+			x_dot
+			X_limit, objective function (U_limit implicitly)
+		Fn:
+			<Anything meta-training, mostly boilerplate:
+				1. Training loop: bi-step (inner and outer)
+				2. Saving model, computing and logging progress (call test)
+
+	test():
+		# Either GD until (near) conv or MCMC
+
+
+class Attack:
+	Implement as class because abstraction and also has memory (for warmstart, etc.)
+
+	init():
+		In:
+			(Later) optimization parameters: stop condition, etc.
+			X_limit
+
+	project():
+		In:
+		Fn:
+			project X to a point on the manifold, hopefully near, in the fewest steps possible
+			*line search? or gradient descent? because the first does not play nicely with X_limit, but it can be made to
+
+    step():
+        In:
+        Fn: takes one optimization step
+
+	opt():
+		In:
+			phi: defines optimization object and manifold constraint
+			maybe all phi_i?
+			objective: to maximize
+		Fn:
+			implements manifold optimization of objective wrt X
+			(note: this may not converge, but the projection operation should)
+			initialize with noise
+			reject if not argmax(phi_i) = last i
+			# Basically, does what the trainer does but on a smaller scale
+
+def main():
+	1. Define state space: define as state name - index in vector dict? Want to avoid indexing mistakes
+	2. Create phi function (as a model? Whatever that means); or better yet, create and return all phi_i?
+		Given h, for HO h, use finite differencing? or torch in-built iterated gradient?
+	3. Create x_dot(x, u) from torch functions
+	4. objective function: given U_limit, iterated grad
+	5. define x_limit
+
+	7. Also create a inner maximizer ("attack")
+
+	6. Pass everything to trainer
+
+*Optional
+First draft is hard-coding, but for next drafts, implement argparser
+
+if __name__ == "__main__":
+	pass
+
+TODO, Questions:
+1. How to implement phi as a model? Easy, custom Torch module. Important note: to load a saved model, you have to instantiate a Torch module of exactly the same class spec as when it was saved.
+2. Can the in-built Torch optimizers do PGD? No, you have to do that yourself. Note: you can also use Adam with it.
+3. Check out MCMC for objective evaluation: wikipedia was useful. MCMC includes Metropolis-Hastings and the more sophisticated HMC.
+I think it can be made to work for constrained setting: i.e. sample points on manifold nearby.
+For example, sample according to Gaussian in 2D/(N-1)D tangent plane and do the reprojection.
+
+
+# TODO list:
+# 1. After psuedo-code draft 1, check Huan suggestions
+# 1.5. Answer questions above.
+# 2. TODO: do first-draft of code with hardcoding.
+# 3. TODO: find a sensible toy problem.
