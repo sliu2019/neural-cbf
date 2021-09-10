@@ -115,6 +115,8 @@ def main():
 	# Create attacker
 	attacker = BasicAttacker(x_lim)
 
+	# Pass everything to Trainer 
+
 
 if __name__ == "__main__":
 	main()

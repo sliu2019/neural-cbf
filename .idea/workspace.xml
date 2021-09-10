@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="" />
+    <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/attacks/basic.py" beforeDir="false" afterPath="$PROJECT_DIR$/attacks/basic.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -14,7 +19,11 @@
       </list>
     </option>
   </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
   <component name="ProjectId" id="1xuEZv5V6ieApOBM9xaPimFTtQF" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showExcludedFiles" value="true" />
@@ -22,6 +31,7 @@
   </component>
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="true" />
     <property name="settings.editor.selected.configurable" value="web.server" />
   </component>
@@ -47,7 +57,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1631196631573</updated>
-      <workItem from="1631196657722" duration="21238000" />
+      <workItem from="1631196657722" duration="27173000" />
     </task>
     <servers />
   </component>
@@ -63,10 +73,11 @@
       <screen x="0" y="23" width="1920" height="1007" />
     </state>
     <state x="417" y="135" key="SettingsEditor/0.23.1920.1007@0.23.1920.1007" timestamp="1631209950156" />
-    <state x="2159" y="43" width="1645" height="987" key="dock-window-1" timestamp="1631302082244">
-      <screen x="1920" y="23" width="1920" height="1057" />
+    <state x="313" y="123" width="1440" height="827" key="dock-window-1" timestamp="1631310908723">
+      <screen x="0" y="23" width="1440" height="829" />
     </state>
-    <state x="2159" y="43" width="1645" height="987" key="dock-window-1/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631302082244" />
+    <state x="313" y="123" width="1440" height="827" key="dock-window-1/0.23.1440.829@0.23.1440.829" timestamp="1631310908723" />
+    <state x="2159" y="43" width="1645" height="987" key="dock-window-1/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631306391989" />
     <state x="385" y="174" width="670" height="676" key="search.everywhere.popup" timestamp="1631212770359">
       <screen x="0" y="23" width="1440" height="827" />
     </state>
