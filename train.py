@@ -5,6 +5,9 @@ import numpy as np
 from torch import nn
 from torch.autograd import grad
 from attacks.basic import BasicAttacker
+from trainer import Trainer
+from utils import *
+
 
 class Phi(nn.Module):
 	# TODO: get phi_i for all i from here. Use forward hooks
@@ -19,6 +22,8 @@ class Phi(nn.Module):
 
 		assert r>=0
 		self.ci = nn.Parameter(torch.randint(100, r)) # int from 0-100
+		# TODO: check if this works
+		super().register_parameter("ci_tensor", self.ci)
 
 		self.beta_net = nn.Sequential(
 			nn.Linear(x_dim, 2*x_dim),
@@ -94,6 +99,7 @@ class Objective(nn.Module):
 		return result
 
 def main():
+	# TODO: arg parser
 	# Define some parameters
 	# TODO (toy): implement
 	r = 2
@@ -115,8 +121,16 @@ def main():
 	# Create attacker
 	attacker = BasicAttacker(x_lim)
 
-	# Pass everything to Trainer 
+	# Create test attacker
+	test_attacker = BasicAttacker(x_lim) # TODO: but train to convergence
 
+	# Pass everything to Trainer
+	save_folder = '%s_%s' % (args.dataset, args.affix)
+	log_folder = os.path.join(args.log_root, save_folder)
+	logger = create_logger(log_folder, 'train', 'info')
+
+	trainer = Trainer(args, logger, attacker, test_attacker)
+	trainer.train(objective_fn, phi_fn, xdot_fn)
 
 if __name__ == "__main__":
 	main()
