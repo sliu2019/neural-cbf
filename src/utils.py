@@ -3,8 +3,9 @@ import json
 import logging
 
 import numpy as np
-
 import torch
+
+from src.argument import parser, print_args
 
 def create_logger(save_path='', file_type='', level='debug'):
 
@@ -32,3 +33,16 @@ def create_logger(save_path='', file_type='', level='debug'):
 
 def save_model(model, file_name):
     torch.save(model.state_dict(), file_name)
+
+def makedirs(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+def save_args(args, file_name):
+    with open(file_name, 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
+
+def load_args(file_name):
+    args = parser.parse_args()
+    with open(file_name, 'r') as f:
+        args.__dict__ = json.load(f)

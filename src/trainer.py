@@ -1,13 +1,8 @@
 import torch
-import IPython
-import numpy as np
 
-from torch import nn
-from torch.autograd import grad
-from attacks.basic import BasicAttacker
 import torch.optim as optim
-from utils import save_model
-import os, sys
+from src.utils import save_model
+import os
 import time
 
 """class Trainer:
@@ -30,6 +25,11 @@ import time
 		Either GD until (near) conv or MCMC"""
 
 
+"""
+Things to add to args:
+ci_lr
+"""
+
 class Trainer():
 	def __init__(self, args, logger, attacker, test_attacker):
 		vars = locals()  # dict of local names
@@ -48,7 +48,9 @@ class Trainer():
 
 		optimizer = optim.Adam(params_no_ci)
 		_iter = 0
-		while True:
+		prev_test_loss = float("inf")
+		test_loss = 999
+		while abs(prev_test_loss-test_loss) <= self.args.stop_threshold:
 			# Inner min
 			x = self.attacker.opt(self, objective_fn, phi_fn)
 
@@ -60,7 +62,6 @@ class Trainer():
 			objective_value.backwards()
 
 			optimizer.step()
-
 			ci = ci + (1e-3)*ci.grad # hardcoded LR
 			ci = torch.clamp(ci, min=torch.zeros_like(ci)) # Project
 
@@ -69,6 +70,7 @@ class Trainer():
 			test_loss = self.test(phi_fn, objective_fn)
 			t2 = time.perf_counter()
 
+			prev_test_loss = test_loss
 			self.logger.info('\n' + '=' * 20 + f' evaluation at iteration: {_iter} ' \
 			            + '=' * 20)
 			self.logger.info(f'test loss: {test_loss:.3f}%, spent: {t2 - t1:.3f} s')
