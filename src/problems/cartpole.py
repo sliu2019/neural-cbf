@@ -1,0 +1,64 @@
+import torch
+import numpy as np
+
+from torch import nn
+import os, sys
+import IPython
+import math
+
+g = 9.81
+class H(nn.Module):
+	def __init__(self, param_dict):
+		super().__init__()
+		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes
+
+	def forward(self, x):
+		# TODO (toy): implement
+		# The way these are implemented should be batch compliant
+		rv = torch.abs(x[:, 1]) - self.max_theta
+		return rv
+
+class XDot(nn.Module):
+	def __init__(self, param_dict):
+		super().__init__()
+		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes
+		# IPython.embed()
+
+	def forward(self, x, u):
+		# x: bs x 4, u: bs x 1
+		# TODO (toy): implement
+		# The way these are implemented should be batch compliant
+		theta = x[:, 1]
+		thetadot = x[:, 3]
+
+		xddot_num = (self.I +self.m*self.l**2)*(self.m*self.l*(thetadot**2)*torch.sin(theta)) - g*(self.m**2)*(self.l**2)*torch.sin(theta)*torch.cos(theta) + (self.I + self.m*(self.l**2))*u
+		denom = self.I*(self.m + self.M) + self.m*(self.l**2)*(self.M + self.m*(torch.sin(theta)**2))
+		thetaddot_num = self.m*self.l*(-self.m*self.l*(thetadot**2)*torch.sin(theta)*torch.cos(theta) + (self.M + self.m)*g*torch.sin(theta)) - self.m*self.l*torch.cos(theta)*u
+
+		rv = torch.cat((xddot_num/denom, thetaddot_num/denom, x[:, [2]], x[:, [3]]), dim=1)
+		return rv
+
+class ULimitSetVertices(nn.Module):
+	def __init__(self, param_dict):
+		super().__init__()
+		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes
+
+	def forward(self, x):
+		# TODO (toy): implement
+		# The way these are implemented should be batch compliant
+		# rv is [2, 1]
+		rv = torch.array([[self.max_force], [-self.max_force]])
+		return rv
+
+if __name__ == "__main__":
+	# Params from p. 19 of http://ethesis.nitrkl.ac.in/6302/1/E-64.pdf
+	param_dict = {
+		"I": 0.099,
+		"m": 0.2,
+		"M": 2,
+		"l": 0.5,
+		"max_theta": math.pi/10.0,
+		"max_force": 1.0
+	}
+
+	xdot_fn = XDot(param_dict)

@@ -9,6 +9,7 @@ from src.utils import *
 from scipy.linalg import pascal
 from src.argument import parser, print_args
 import os, sys
+import math
 
 class Phi(nn.Module):
 	# TODO: get phi_i for all i from here. Use forward hooks
@@ -72,32 +73,32 @@ class Phi(nn.Module):
 
 		return result
 
-class H(nn.Module):
-	def __init__(self):
-		super().__init__()
-
-	def forward(self, x):
-		# TODO (toy): implement
-		# The way these are implemented should be batch compliant
-		return None
-
-class XDot(nn.Module):
-	def __init__(self):
-		super().__init__()
-
-	def forward(self, x, u):
-		# TODO (toy): implement
-		# The way these are implemented should be batch compliant
-		return None
-
-class ULimitSetVertices(nn.Module):
-	def __init__(self):
-		super().__init__()
-
-	def forward(self, x):
-		# TODO (toy): implement
-		# The way these are implemented should be batch compliant
-		return None
+# class H(nn.Module):
+# 	def __init__(self):
+# 		super().__init__()
+#
+# 	def forward(self, x):
+# 		# TODO (toy): implement
+# 		# The way these are implemented should be batch compliant
+# 		return None
+#
+# class XDot(nn.Module):
+# 	def __init__(self):
+# 		super().__init__()
+#
+# 	def forward(self, x, u):
+# 		# TODO (toy): implement
+# 		# The way these are implemented should be batch compliant
+# 		return None
+#
+# class ULimitSetVertices(nn.Module):
+# 	def __init__(self):
+# 		super().__init__()
+#
+# 	def forward(self, x):
+# 		# TODO (toy): implement
+# 		# The way these are implemented should be batch compliant
+# 		return None
 
 class Objective(nn.Module):
 	def __init__(self, phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim):
@@ -148,16 +149,26 @@ def main(args):
 	save_args(args, args_savepth)
 
 	# Selecting problem
-	if args.problem == "toy":
+	if args.problem == "cartpole":
 		r = 2
-		x_dim = 14
-		u_dim = 4
+		x_dim = 4
+		u_dim = 1
 		x_lim = np.zeros((x_dim, 2))
 
 		# Create phi
-		h_fn = H()
-		xdot_fn = XDot()
-		uvertices_fn = ULimitSetVertices()
+		from src.problems.cartpole import H, XDot, ULimitSetVertices
+		param_dict = {
+			"I": 0.099,
+			"m": 0.2,
+			"M": 2,
+			"l": 0.5,
+			"max_theta": math.pi / 10.0,
+			"max_force": 1.0
+		}
+
+		h_fn = H(param_dict)
+		xdot_fn = XDot(param_dict)
+		uvertices_fn = ULimitSetVertices(param_dict)
 	else:
 		raise NotImplementedError
 

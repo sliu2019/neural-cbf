@@ -3,7 +3,7 @@ import argparse
 
 def parser():
 	parser = argparse.ArgumentParser(description='CBF synthesis')
-	parser.add_argument('--problem', default='toy', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["toy", "challenge"])
+	parser.add_argument('--problem', default='cartpole', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "challenge"])
 
 	# Phi
 	parser.add_argument('--phi_eps', type=float, default=1e-3, help='Epsilon for finite differencing, which is used to compute higher order derivatives of h')
