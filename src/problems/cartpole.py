@@ -15,7 +15,7 @@ class H(nn.Module):
 	def forward(self, x):
 		# TODO (toy): implement
 		# The way these are implemented should be batch compliant
-		rv = torch.abs(x[:, 1]) - self.max_theta
+		rv = torch.abs(x[:, [1]]) - self.max_theta # bs x 1
 		return rv
 
 class XDot(nn.Module):
@@ -28,14 +28,18 @@ class XDot(nn.Module):
 		# x: bs x 4, u: bs x 1
 		# TODO (toy): implement
 		# The way these are implemented should be batch compliant
-		theta = x[:, 1]
-		thetadot = x[:, 3]
+		theta = x[:, [1]]
+		thetadot = x[:, [3]]
 
-		xddot_num = (self.I +self.m*self.l**2)*(self.m*self.l*(thetadot**2)*torch.sin(theta)) - g*(self.m**2)*(self.l**2)*torch.sin(theta)*torch.cos(theta) + (self.I + self.m*(self.l**2))*u
+		xddot_num = (self.I +self.m*(self.l**2))*(self.m*self.l*(thetadot**2)*torch.sin(theta)) - g*(self.m**2)*(self.l**2)*torch.sin(theta)*torch.cos(theta) + (self.I + self.m*(self.l**2))*u
 		denom = self.I*(self.m + self.M) + self.m*(self.l**2)*(self.M + self.m*(torch.sin(theta)**2))
 		thetaddot_num = self.m*self.l*(-self.m*self.l*(thetadot**2)*torch.sin(theta)*torch.cos(theta) + (self.M + self.m)*g*torch.sin(theta)) - self.m*self.l*torch.cos(theta)*u
 
-		rv = torch.cat((xddot_num/denom, thetaddot_num/denom, x[:, [2]], x[:, [3]]), dim=1)
+		# print(xddot_num.size(), denom.size())
+		xddot = xddot_num/denom
+		thetaddot = thetaddot_num/denom
+		# print(xddot.size(), thetaddot.size())
+		rv = torch.cat((x[:, [2]], x[:, [3]], xddot, thetaddot), dim=1)
 		return rv
 
 class ULimitSetVertices(nn.Module):
@@ -47,7 +51,10 @@ class ULimitSetVertices(nn.Module):
 		# TODO (toy): implement
 		# The way these are implemented should be batch compliant
 		# rv is [2, 1]
-		rv = torch.array([[self.max_force], [-self.max_force]])
+		# (bs, n_vertices, u_dim) or (bs, 2, 1)
+		rv = torch.tensor([[self.max_force], [-self.max_force]])
+		rv = rv.unsqueeze(dim=0)
+		rv = rv.expand(x.size()[0], -1, -1)
 		return rv
 
 if __name__ == "__main__":

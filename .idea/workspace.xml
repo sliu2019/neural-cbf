@@ -2,10 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/argument.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/argument.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/problems/cartpole.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/problems/cartpole.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -65,7 +65,8 @@
       <option name="presentableId" value="Default" />
       <updated>1631196631573</updated>
       <workItem from="1631196657722" duration="52008000" />
-      <workItem from="1631628541958" duration="3224000" />
+      <workItem from="1631628541958" duration="12210000" />
+      <workItem from="1632102927249" duration="4240000" />
     </task>
     <servers />
   </component>
@@ -82,11 +83,16 @@
     </state>
     <state x="417" y="135" key="SettingsEditor/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631649732397" />
     <state x="417" y="135" key="SettingsEditor/0.23.1920.1007@0.23.1920.1007" timestamp="1631209950156" />
-    <state x="313" y="123" width="1440" height="827" key="dock-window-1" timestamp="1631310908723">
-      <screen x="0" y="23" width="1440" height="829" />
+    <state x="399" y="450" key="com.intellij.ide.util.TipDialog" timestamp="1632161322528">
+      <screen x="0" y="23" width="1920" height="1001" />
+    </state>
+    <state x="399" y="450" key="com.intellij.ide.util.TipDialog/0.23.1920.1001/1920.23.1920.1057@0.23.1920.1001" timestamp="1632161322528" />
+    <state x="2081" y="60" width="1640" height="939" key="dock-window-1" timestamp="1631670542474">
+      <screen x="1920" y="23" width="1920" height="1057" />
     </state>
     <state x="313" y="123" width="1440" height="827" key="dock-window-1/0.23.1440.829@0.23.1440.829" timestamp="1631310908723" />
     <state x="2159" y="43" width="1645" height="987" key="dock-window-1/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631306391989" />
+    <state x="2081" y="60" width="1640" height="939" key="dock-window-1/0.23.1920.997/1920.23.1920.1057@0.23.1920.997" timestamp="1631670542474" />
     <state x="20" y="23" width="1900" height="999" maximized="true" key="dock-window-2" timestamp="1631587243891">
       <screen x="0" y="23" width="1440" height="827" />
     </state>
@@ -97,10 +103,11 @@
       <screen x="0" y="23" width="1920" height="1007" />
     </state>
     <state x="1036" y="87" width="667" height="476" key="find.popup/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631548591106" />
-    <state x="513" y="207" width="894" height="824" key="search.everywhere.popup" timestamp="1631650326955">
-      <screen x="0" y="23" width="1920" height="1007" />
+    <state x="513" y="216" width="894" height="865" key="search.everywhere.popup" timestamp="1631671062831">
+      <screen x="0" y="23" width="1920" height="1057" />
     </state>
     <state x="385" y="174" width="670" height="676" key="search.everywhere.popup/0.23.1440.827@0.23.1440.827" timestamp="1631212770359" />
     <state x="513" y="207" width="894" height="824" key="search.everywhere.popup/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631650326955" />
+    <state x="513" y="216" width="894" height="865" key="search.everywhere.popup/0.23.1920.1057/1920.23.1920.997@0.23.1920.1057" timestamp="1631671062831" />
   </component>
 </project>

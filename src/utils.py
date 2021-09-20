@@ -43,6 +43,7 @@ def save_args(args, file_name):
         json.dump(args.__dict__, f, indent=2)
 
 def load_args(file_name):
-    args = parser.parse_args()
+    args = parser()
     with open(file_name, 'r') as f:
         args.__dict__ = json.load(f)
+    return args

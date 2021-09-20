@@ -3,13 +3,14 @@ import numpy as np
 
 from torch import nn
 from torch.autograd import grad
-from attacks.basic import BasicAttacker
+from src.attacks.basic_attacker import BasicAttacker
 from src.trainer import Trainer
 from src.utils import *
 from scipy.linalg import pascal
 from src.argument import parser, print_args
 import os, sys
 import math
+import IPython
 
 class Phi(nn.Module):
 	# TODO: get phi_i for all i from here. Use forward hooks
@@ -23,9 +24,9 @@ class Phi(nn.Module):
 		del self.__dict__["self"]  # don't need `self`
 
 		assert r>=0
-		self.eps = self.args.phi_eps
+		# self.eps = self.args.phi_eps
 
-		self.ci = nn.Parameter(torch.randint(100, r)) # int from 0-100
+		self.ci = nn.Parameter(torch.randint(100, (r-1, 1))) # int from 0-100
 		self.register_parameter("ci_tensor", self.ci)
 
 		self.beta_net = nn.Sequential(
@@ -41,12 +42,13 @@ class Phi(nn.Module):
 
 		# Convert ci to ki
 		ki = torch.tensor([[1]])
-		for i in range(self.r): # A is current coeffs
+		for i in range(self.r-1): # A is current coeffs
 			A = torch.zeros(torch.numel(ki)+1, 2)
 			A[:-1, 0] = ki # copy?
 			A[1:, 1] = ki
 
 			ki = A.mm(torch.tensor([[1], [self.ci[i]]]))
+		# Ultimately, ki is a r-length vector
 
 		# Compute higher-order derivatives of h via finite differencing (sp. forward difference formulation)
 		pasc = pascal(self.r+1, kind='lower') # r+1 because of 0 term
@@ -131,7 +133,7 @@ class Objective(nn.Module):
 
 def main(args):
 	# Boilerplate for saving
-	save_folder = '%s_%s' % (args.dataset, args.affix)
+	save_folder = '%s_%s' % (args.problem, args.affix)
 
 	log_folder = os.path.join(args.log_root, save_folder)
 	model_folder = os.path.join(args.model_root, save_folder)
@@ -145,15 +147,18 @@ def main(args):
 	logger = create_logger(log_folder, 'train', 'info')
 	print_args(args, logger)
 
-	args_savepth = os.join(log_folder, "args.txt")
+	args_savepth = os.path.join(log_folder, "args.txt")
 	save_args(args, args_savepth)
+
+	# print("Parsed and saved args")
+	# IPython.embed()
 
 	# Selecting problem
 	if args.problem == "cartpole":
 		r = 2
 		x_dim = 4
 		u_dim = 1
-		x_lim = np.zeros((x_dim, 2))
+		x_lim = np.array([[-5, 5], [-math.pi/2.0, math.pi/2.0], [-10, 10], [-5, 5]]) # TODO
 
 		# Create phi
 		from src.problems.cartpole import H, XDot, ULimitSetVertices
@@ -169,6 +174,16 @@ def main(args):
 		h_fn = H(param_dict)
 		xdot_fn = XDot(param_dict)
 		uvertices_fn = ULimitSetVertices(param_dict)
+
+		# print("after initializing problem")
+		# bs = 5
+		# x = torch.ones((bs, x_dim))
+		# u = torch.ones((bs, u_dim))
+		# h = h_fn(x)
+		# xdot = xdot_fn(x, u)
+		# uvertices = uvertices_fn(x)
+		# print(h.size(), xdot.size(),uvertices.size())
+		# IPython.embed()
 	else:
 		raise NotImplementedError
 
@@ -177,6 +192,9 @@ def main(args):
 
 	# Create objective function
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim)
+
+	print("Created CBF and training objective")
+	IPython.embed()
 
 	# Create attacker
 	attacker = BasicAttacker(x_lim)
