@@ -43,8 +43,8 @@ class Trainer():
 		#   optimize phi parameters
 
 		# TODO: c_i require projected GD, so you'll need to modify Adam
-		params_no_ci = [tup[1] for tup in phi_fn.named_parameters() if tup[0] != "ci_tensor"]
-		ci = phi_fn.get_parameter("ci_tensor")
+		params_no_ci = [tup[1] for tup in phi_fn.named_parameters() if tup[0] != "ci"]
+		ci = phi_fn.get_parameter("ci")
 
 		optimizer = optim.Adam(params_no_ci)
 		_iter = 0
