@@ -4,8 +4,6 @@
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/problems/cartpole.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/problems/cartpole.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -66,7 +64,7 @@
       <updated>1631196631573</updated>
       <workItem from="1631196657722" duration="52008000" />
       <workItem from="1631628541958" duration="12210000" />
-      <workItem from="1632102927249" duration="4240000" />
+      <workItem from="1632102927249" duration="10080000" />
     </task>
     <servers />
   </component>
@@ -99,10 +97,11 @@
     <state x="20" y="23" width="1900" height="999" maximized="true" key="dock-window-2/0.23.1440.827@0.23.1440.827" timestamp="1631587243891" />
     <state x="1940" y="38" width="1900" height="999" maximized="true" key="dock-window-2/0.23.1440.830@0.23.1440.830" timestamp="1631494526012" />
     <state x="2104" y="69" width="1905" height="1055" key="dock-window-2/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631548808608" />
-    <state x="1036" y="87" width="667" height="476" key="find.popup" timestamp="1631548591106">
-      <screen x="0" y="23" width="1920" height="1007" />
+    <state x="1036" y="86" width="667" height="476" key="find.popup" timestamp="1632169345064">
+      <screen x="0" y="23" width="1920" height="994" />
     </state>
     <state x="1036" y="87" width="667" height="476" key="find.popup/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631548591106" />
+    <state x="1036" y="86" width="667" height="476" key="find.popup/0.23.1920.994/1920.23.1920.1057@0.23.1920.994" timestamp="1632169345064" />
     <state x="513" y="216" width="894" height="865" key="search.everywhere.popup" timestamp="1631671062831">
       <screen x="0" y="23" width="1920" height="1057" />
     </state>

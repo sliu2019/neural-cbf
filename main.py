@@ -16,7 +16,7 @@ class Phi(nn.Module):
 	# TODO: get phi_i for all i from here. Use forward hooks
 	# Note: currently, we have a implementation which is generic to any r. May be slow
 
-	def __init__(self, h_fn, xdot_fn, r, x_dim, args):
+	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, args):
 		# Later: args specifying how beta is parametrized
 		super().__init__()
 		vars = locals()  # dict of local names
@@ -48,30 +48,31 @@ class Phi(nn.Module):
 			A[1:, 1] = ki
 
 			ki = A.mm(torch.tensor([[1], [self.ci[i]]]))
-		# Ultimately, ki is a r-length vector
+		# Ultimately, ki should be r x 1
+		print("ci: ", self.ci)
+		print("ki: ", ki)
 
-		# Compute higher-order derivatives of h via finite differencing (sp. forward difference formulation)
-		pasc = pascal(self.r+1, kind='lower') # r+1 because of 0 term
-		alt_sign_vec = np.power(-np.ones_like(np.arange(self.r+1)), np.arange(self.r+1))[:, None]
-		alt_sign_matrix = alt_sign_vec@alt_sign_vec
-		coeff_matrix = pasc*alt_sign_matrix # rxr
-		coeff_matrix = np.diag(np.power((1/self.eps)*self.ones(self.r+1), self.arange(self.r+1)))@coeff_matrix
-		coeff_matrix = torch.tensor(coeff_matrix)
+		# Compute higher-order Lie derivatives
+		bs = x.size()[0]
 
-		# print("forward of phi in main.py")
-		# print("check out coeff_matrix")
-		# print(coeff_matrix)
-		# IPython.embed()
+		# TODO: is this the right way to compute a gradient within a forward function?
+		# TODO: This does forward computation correctly; how does it affect the backwards pass?
+		x.requires_grad = True
+		h_ith_deriv = self.h_fn(x) # bs x 1, the zeroth derivative
+		h_derivs = h_ith_deriv # bs x 1
+		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim)) # bs x x_dim
 
-		# Batched x?
-		inputs = torch.tile(x.unsqueeze(1), (1, self.r+1, 1)) + (self.eps*torch.arange(self.r+1)).unsqueeze(0).unsqueeze(2) # (r, x_dim)
-		inputs = torch.reshape(inputs, (-1, self.x_dim))
-		outputs = self.h_fn(inputs)
-		outputs = torch.reshape(outputs, (-1, 1, self.r+1))
+		print(h_ith_deriv)
+		for i in range(self.r-1):
+			grad_h_ith = grad([h_ith_deriv], x, create_graph=True)[0] # bs x x_dim; create_graph ensures gradient is computed through the gradient operation
+			h_ith_deriv = (grad_h_ith.unsqueeze(dim=1)).mm(f_val.unsqueeze(dim=2)) # bs x 1 x 1
+			h_ith_deriv = h_ith_deriv[:, :, 0] # bs x 1
 
-		h_derivs = outputs.mm(coeff_matrix.t())
+			print(h_ith_deriv)
+			h_derivs = torch.cat((h_derivs, h_ith_deriv), dim=1)
 
-		result = beta_value + (h_derivs.mm(ki)).squeeze()
+		x.requires_grad = False # TODO: was it initially False?
+		result = beta_value + h_derivs.mm(ki) # bs x 1
 
 		return result
 
@@ -112,23 +113,36 @@ class Objective(nn.Module):
 	def forward(self, x):
 		# The way these are implemented should be batch compliant
 		u_lim_set_vertices = self.uvertices_fn(x) # (bs, n_vertices, u_dim), can be a function of x_batch
+		print("Inside objective's forward function")
+		print(u_lim_set_vertices.size(), u_lim_set_vertices)
+
 		n_vertices = u_lim_set_vertices.size()[1]
 
+		# Evaluate every X against multiple U
 		U = torch.reshape(u_lim_set_vertices, (-1, self.u_dim)) # (bs x n_vertices, u_dim)
 		X = torch.tile(x.unsqueeze(1), (1, n_vertices, 1)) # (bs, n_vertices, x_dim)
 		X = torch.reshape(X, (-1, self.x_dim)) # (bs x n_vertices, x_dim)
 
 		xdot = self.xdot_fn(X, U)
 
-		grad_phi = grad([self.phi_fn], x, create_graph=True)[0] # check
+		# TODO: does the backwards pass work on here if taking gradient wrt x?
+		# TODO: this is needed for adversarial training
+		x.requires_grad = True
+		phi_value = self.phi_fn(x)
+		grad_phi = grad([phi_value], x, create_graph=True)[0] # check
+		x.requires_grad = False
+
 		grad_phi = torch.tile(grad_phi.unsqueeze(1), (1, n_vertices, 1))
 		grad_phi = torch.reshape(grad_phi, (-1, self.x_dim))
+		print(grad_phi.size(), xdot.size())
 
+		# Dot product
 		phidot_cand = xdot.unsqueeze(1).mm(grad_phi.unsqueeze(2))
-		phidot_cand = torch.reshape(phidot_cand, (-1, n_vertices))
+		phidot_cand = torch.reshape(phidot_cand, (-1, n_vertices)) # bs x n_vertices
 
 		phidot = torch.min(phidot_cand, 1)
 		result = nn.ReLU(phidot)
+		result = result.view(-1, 1) # ensures bs x 1
 		return result
 
 def main(args):
@@ -188,12 +202,29 @@ def main(args):
 		raise NotImplementedError
 
 
-	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, args)
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, args)
+
+	# TODO
+	print("Created CBF function")
+	print("Check on phi that I registered named parameters")
+	for name, param in phi_fn.named_parameters():
+		print(name, param.size())
+	print("Check that forward pass compiles")
+	print("Also check that forward pass is correct: c-k conversion and H0 derivs are nonzero")
+	x = torch.tensor(np.random.rand(10, x_dim))
+	phi_values = phi_fn(x)
+	print(phi_values.size())
+	IPython.embed()
 
 	# Create objective function
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim)
 
-	print("Created CBF and training objective")
+	# TODO
+	print("Created objective function")
+	print("Check that forward pass compiles")
+	print("Also check that objective value is >> 0, otherwise there's no point in optimizing")
+	obj_values = objective_fn(x)
+	print(obj_values.size())
 	IPython.embed()
 
 	# Create attacker
