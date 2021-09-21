@@ -79,33 +79,6 @@ class Phi(nn.Module):
 
 		return result
 
-# class H(nn.Module):
-# 	def __init__(self):
-# 		super().__init__()
-#
-# 	def forward(self, x):
-# 		# TODO (toy): implement
-# 		# The way these are implemented should be batch compliant
-# 		return None
-#
-# class XDot(nn.Module):
-# 	def __init__(self):
-# 		super().__init__()
-#
-# 	def forward(self, x, u):
-# 		# TODO (toy): implement
-# 		# The way these are implemented should be batch compliant
-# 		return None
-#
-# class ULimitSetVertices(nn.Module):
-# 	def __init__(self):
-# 		super().__init__()
-#
-# 	def forward(self, x):
-# 		# TODO (toy): implement
-# 		# The way these are implemented should be batch compliant
-# 		return None
-
 class Objective(nn.Module):
 	def __init__(self, phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim):
 		super().__init__()
@@ -123,7 +96,6 @@ class Objective(nn.Module):
 
 		# Evaluate every X against multiple U
 		U = torch.reshape(u_lim_set_vertices, (-1, self.u_dim)) # (bs x n_vertices, u_dim)
-		# X = torch.tile(x.unsqueeze(1), (1, n_vertices, 1)) # (bs, n_vertices, x_dim)
 		X = (x.unsqueeze(1)).repeat(1, n_vertices, 1) # (bs, n_vertices, x_dim)
 		X = torch.reshape(X, (-1, self.x_dim)) # (bs x n_vertices, x_dim)
 
@@ -136,12 +108,8 @@ class Objective(nn.Module):
 		grad_phi = grad([torch.sum(phi_value)], x, create_graph=True)[0] # check
 		# x.requires_grad = False
 
-		# IPython.embed()
-		# grad_phi = torch.tile(grad_phi.unsqueeze(1), (1, n_vertices, 1))
 		grad_phi = (grad_phi.unsqueeze(1)).repeat(1, n_vertices, 1)
-
 		grad_phi = torch.reshape(grad_phi, (-1, self.x_dim))
-		# print(grad_phi.size(), xdot.size())
 
 		# Dot product
 		phidot_cand = xdot.unsqueeze(1).bmm(grad_phi.unsqueeze(2))
@@ -151,7 +119,6 @@ class Objective(nn.Module):
 		result = nn.functional.relu(phidot)
 		result = result.view(-1, 1) # ensures bs x 1
 
-		# IPython.embed()
 		return result
 
 def main(args):
@@ -178,7 +145,7 @@ def main(args):
 
 	# Selecting problem
 	if args.problem == "cartpole":
-		r = 2 # TODO
+		r = 2
 		x_dim = 4
 		u_dim = 1
 		x_lim = np.array([[-5, 5], [-math.pi/2.0, math.pi/2.0], [-10, 10], [-5, 5]]) # TODO
@@ -213,7 +180,7 @@ def main(args):
 
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, args)
 
-	# Tests: tests
+	# TODO: tests
 	# print("Created CBF function")
 	# print("Check on phi that I registered named parameters")
 	# for name, param in phi_fn.named_parameters():
