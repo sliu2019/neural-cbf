@@ -105,6 +105,7 @@ class BasicAttacker():
 		x = self.project(phi_fn, x)
 
 		# print("ln 85")
+		# print(self.__dict__)
 		# IPython.embed()
 
 		should_stop = False
@@ -114,13 +115,17 @@ class BasicAttacker():
 		while not should_stop:
 			x = self.step(objective_fn, phi_fn, x)
 
-			if self.stopping_condition == "steps": # TODO: in the first run, optimize inner to convergence
+			if self.stopping_condition == "steps":
+				# TODO: in the first run, optimize inner to convergence
 				should_stop = (i > self.max_n_steps)
 				i += 1
-			elif self.stopping_conditon == "stop_threshold":
+			elif self.stopping_condition == "stop_threshold":
 				# objective_fn.eval() # ?
-				objective = objective_fn(x)
+				# IPython.embed()
+				objective = objective_fn(x.view(1, -1))[0, 0]
 				# objective_fn.train() # ?
+				# TODO: there should be a more sophisticated way to detect convergenc
+				# TODO: think - Anusha's code
 				should_stop = abs(prev_objective-objective) < self.stop_threshold
 				prev_objective = objective
 

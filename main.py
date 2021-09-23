@@ -211,6 +211,8 @@ def main(args):
 
 	# Create test attacker
 	test_attacker = BasicAttacker(x_lim, stopping_condition="stop_threshold")
+	# print(test_attacker.stopping_condition)
+	# IPython.embed()
 
 	# TODO: tests
 	# x = attacker.opt(objective_fn, phi_fn)
