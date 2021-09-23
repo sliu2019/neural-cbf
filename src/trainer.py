@@ -4,7 +4,7 @@ import torch.optim as optim
 from src.utils import save_model
 import os
 import time
-
+import IPython
 """class Trainer:
 	init():
 		In:
@@ -42,35 +42,51 @@ class Trainer():
 		#   call self.attacker
 		#   optimize phi parameters
 
-		# TODO: c_i require projected GD, so you'll need to modify Adam
-		params_no_ci = [tup[1] for tup in phi_fn.named_parameters() if tup[0] != "ci"]
-		ci = phi_fn.get_parameter("ci")
 
+		# TODO: c_i require projected GD, so you'll need to modify Adam
+		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
+		params_no_ci = [tup[1] for tup in phi_fn.named_parameters() if tup[0] != "ci"]
+		ci = p_dict["ci"]
+		# IPython.embed()
+
+		# print("check params_no_ci")
+
+		# TODO
 		optimizer = optim.Adam(params_no_ci)
+		# optimizer = optim.Adam(list(phi_fn.parameters()))
 		_iter = 0
 		prev_test_loss = float("inf")
 		test_loss = 999
-		while abs(prev_test_loss-test_loss) <= self.args.stop_threshold:
+		# while abs(prev_test_loss-test_loss) <= self.args.stop_threshold: # TODO: put this back
+		while _iter < 3:
+			print("inside loop")
+			IPython.embed()
+
 			# Inner min
-			x = self.attacker.opt(self, objective_fn, phi_fn)
+			x = self.attacker.opt(objective_fn, phi_fn)
 
 			# Outer max
 			optimizer.zero_grad()
 			ci.grad = None
 
-			objective_value = objective_fn(x)
-			objective_value.backwards()
+			x_batch = x.view(1, -1)
+			objective_value = objective_fn(x_batch)
+			objective_value.backward()
 
+			print("ci grad: ", ci.grad)
 			optimizer.step()
 			ci = ci + (1e-3)*ci.grad # hardcoded LR
-			ci = torch.clamp(ci, min=torch.zeros_like(ci)) # Project
+			# ci = torch.clamp(ci, min=torch.zeros_like(ci)) # Project
+			# No torch.clamp in torch 1.7.1
+			ci = torch.maximum(ci, torch.zeros_like(ci)) # Project
 
 			# Testing and logging at every iteration
+			prev_test_loss = test_loss
+
 			t1 = time.perf_counter()
 			test_loss = self.test(phi_fn, objective_fn)
 			t2 = time.perf_counter()
 
-			prev_test_loss = test_loss
 			self.logger.info('\n' + '=' * 20 + f' evaluation at iteration: {_iter} ' \
 			            + '=' * 20)
 			self.logger.info(f'test loss: {test_loss:.3f}%, spent: {t2 - t1:.3f} s')

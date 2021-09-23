@@ -44,8 +44,10 @@ class Phi(nn.Module):
 			A[:-1, [0]] = ki
 			A[1:, [1]] = ki
 
-			ki = A.mm(torch.tensor([[1], [self.ci[i]]]))
-
+			# Note: to preserve gradient flow, have to assign to ci not create with ci (i.e. torch.tensor([ci[0]]))
+			binomial = torch.ones((2, 1))
+			binomial[1] = self.ci[i]
+			ki = A.mm(binomial)
 		# Ultimately, ki should be r x 1
 		# print("ci: ", self.ci)
 		# print("ki: ", ki)
@@ -89,8 +91,8 @@ class Objective(nn.Module):
 	def forward(self, x):
 		# The way these are implemented should be batch compliant
 		u_lim_set_vertices = self.uvertices_fn(x) # (bs, n_vertices, u_dim), can be a function of x_batch
-		print("Inside objective's forward function")
-		print(u_lim_set_vertices.size(), u_lim_set_vertices)
+		# print("Inside objective's forward function")
+		# print(u_lim_set_vertices.size(), u_lim_set_vertices)
 
 		n_vertices = u_lim_set_vertices.size()[1]
 
@@ -148,7 +150,7 @@ def main(args):
 		r = 2
 		x_dim = 4
 		u_dim = 1
-		x_lim = np.array([[-5, 5], [-math.pi/2.0, math.pi/2.0], [-10, 10], [-5, 5]]) # TODO
+		x_lim = np.array([[-5, 5], [-math.pi/2.0, math.pi/2.0], [-10, 10], [-5, 5]], dtype=np.float32) # TODO
 
 		# Create phi
 		from src.problems.cartpole import H, XDot, ULimitSetVertices
@@ -208,8 +210,25 @@ def main(args):
 	attacker = BasicAttacker(x_lim)
 
 	# Create test attacker
-	test_attacker = BasicAttacker(x_lim, stop_condition="threshold")
+	test_attacker = BasicAttacker(x_lim, stopping_condition="stop_threshold")
 
+	# TODO: tests
+	# x = attacker.opt(objective_fn, phi_fn)
+	# print(x)
+	# IPython.embed()
+
+
+	# TODO: tests
+	# p_dict = {p[0]: p[1] for p in phi_fn.named_parameters()}
+	# ci = p_dict["ci"]
+	#
+	# x = torch.rand(1, x_dim)
+	# obj_value = objective_fn(x)
+	# ci_grad = grad([obj_value], ci)[0]
+	# print(ci_grad)
+	# IPython.embed()
+
+	# return
 	# Pass everything to Trainer
 	trainer = Trainer(args, logger, attacker, test_attacker)
 	trainer.train(objective_fn, phi_fn, xdot_fn)

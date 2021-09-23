@@ -5,6 +5,7 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/attacks/basic_attacker.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/attacks/basic_attacker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trainer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -65,7 +66,7 @@
       <updated>1631196631573</updated>
       <workItem from="1631196657722" duration="52008000" />
       <workItem from="1631628541958" duration="12210000" />
-      <workItem from="1632102927249" duration="19236000" />
+      <workItem from="1632102927249" duration="31243000" />
     </task>
     <servers />
   </component>
@@ -98,16 +99,18 @@
     <state x="20" y="23" width="1900" height="999" maximized="true" key="dock-window-2/0.23.1440.827@0.23.1440.827" timestamp="1631587243891" />
     <state x="1940" y="38" width="1900" height="999" maximized="true" key="dock-window-2/0.23.1440.830@0.23.1440.830" timestamp="1631494526012" />
     <state x="2104" y="69" width="1905" height="1055" key="dock-window-2/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631548808608" />
-    <state x="1036" y="86" width="667" height="477" key="find.popup" timestamp="1632249517102">
-      <screen x="0" y="23" width="1920" height="995" />
+    <state x="1036" y="86" width="667" height="478" key="find.popup" timestamp="1632256402247">
+      <screen x="0" y="23" width="1920" height="997" />
     </state>
     <state x="1036" y="87" width="667" height="476" key="find.popup/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631548591106" />
     <state x="1036" y="86" width="667" height="476" key="find.popup/0.23.1920.994/1920.23.1920.1057@0.23.1920.994" timestamp="1632169345064" />
     <state x="1036" y="86" width="667" height="477" key="find.popup/0.23.1920.995/1920.23.1920.1057@0.23.1920.995" timestamp="1632249517102" />
-    <state x="513" y="216" width="894" height="865" key="search.everywhere.popup" timestamp="1631671062831">
-      <screen x="0" y="23" width="1920" height="1057" />
+    <state x="1036" y="86" width="667" height="478" key="find.popup/0.23.1920.997/1920.23.1920.1057@0.23.1920.997" timestamp="1632256402247" />
+    <state x="513" y="206" width="894" height="821" key="search.everywhere.popup" timestamp="1632337933885">
+      <screen x="0" y="23" width="1920" height="1003" />
     </state>
     <state x="385" y="174" width="670" height="676" key="search.everywhere.popup/0.23.1440.827@0.23.1440.827" timestamp="1631212770359" />
+    <state x="513" y="206" width="894" height="821" key="search.everywhere.popup/0.23.1920.1003/1920.23.1920.1057@0.23.1920.1003" timestamp="1632337933885" />
     <state x="513" y="207" width="894" height="824" key="search.everywhere.popup/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631650326955" />
     <state x="513" y="216" width="894" height="865" key="search.everywhere.popup/0.23.1920.1057/1920.23.1920.997@0.23.1920.1057" timestamp="1631671062831" />
   </component>

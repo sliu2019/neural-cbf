@@ -28,63 +28,84 @@ class BasicAttacker():
 	# Want to use Adam, because we want this to converge quickly
 	# How many steps does this take?? If too many, it's going to be an issue.
 	def project(self, phi_fn, x):
-		requires_grad_before = x.requires_grad
-		x.requires_grad = True
+		# requires_grad_before = x.requires_grad
+		# x.requires_grad = True
 
 		# optimizer = optim.Adam([x])
 
+		# TODO: what happens if you can't converge?
 		# Until convergence
-		prev_loss = float("inf")
-		loss = 0
-		while abs(prev_loss - loss) > self.projection_stop_threshold:
-			prev_loss = loss
+		loss = float("inf")
+		while abs(loss) > self.projection_stop_threshold:
+			# IPython.embed()
+			# prev_loss = loss
 
-			# x.grad = None
-			# optimizer.zero_grad()
-			# loss = phi_fn(x)**2
-			# loss.backward()
-			# optimizer.step()
-			# x = x - self.projection_lr*x.grad # should be another lr
-			loss = phi_fn(x)**2
-			grad_to_zero_level = grad([loss], x)[0]
+			x_batch = x.view(1, -1)
+			x_batch.requires_grad = True
+			loss = phi_fn(x_batch)**2
+			grad_to_zero_level = grad([loss], x_batch)[0].squeeze()
+			x_batch.requires_grad = False
+
+			# IPython.embed()
+			# print(grad_to_zero_level)
 			x = x - self.projection_lr*grad_to_zero_level
+			# print(x)
+			# IPython.embed()
 
 			# Clip to bounding box
-			x = torch.clamp(x, min=self.x_lim[:, 0], max=self.x_lim[:, 1])
+			# No torch.clamp in torch 1.7.1
+			x = torch.minimum(torch.maximum(x, torch.tensor(self.x_lim[:, 0])), torch.tensor(self.x_lim[:, 1]))
 
-		x.requires_grad = requires_grad_before
+			# print(grad_to_zero_level)
+			# print(loss)
+			# print(abs(prev_loss - loss))
+
+		# x.requires_grad = requires_grad_before
 		return x
 
 	def step(self, objective_fn, phi_fn, x):
 		# It makes less sense to use an adaptive LR method here, if you think about it
-		requires_grad_before = x.requires_grad
-		x.requires_grad = True
+		# requires_grad_before = x.requires_grad
 
-		obj_grad = grad([-objective_fn(x)], x)[0]
-		normal_to_manifold = grad([phi_fn(x)], x)[0]
+		# IPython.embed()
+		x_batch = x.view(1, -1)
+		x_batch.requires_grad = True
+		obj_val = -objective_fn(x_batch)
+		print(obj_val)
+		phi_val = phi_fn(x_batch)
+		obj_grad = grad([obj_val], x_batch)[0].squeeze()
+		normal_to_manifold = grad([phi_val], x_batch)[0].squeeze()
+		x_batch.requires_grad = False
 
 		proj_obj_grad = obj_grad - torch.dot(obj_grad, normal_to_manifold)*normal_to_manifold
+		# IPython.embed()
 		# Take a step
 		x = x - self.lr*proj_obj_grad
 
 		# Clip to bounding box
 		# Rationale for this step: everytime you take a step on x, clip to box
-		x = torch.clamp(x, min=self.x_lim[:, 0], max=self.x_lim[:, 1])
+
+		# No torch.clamp in torch 1.7.1
+		x = torch.minimum(torch.maximum(x, torch.tensor(self.x_lim[:, 0])), torch.tensor(self.x_lim[:, 1]))
 
 		# Project to surface
 		x = self.project(phi_fn, x)
-		x.requires_grad = requires_grad_before
+
+		# x.requires_grad = requires_grad_before
 		return x
 
 	def opt(self, objective_fn, phi_fn):
 		# Sample 1 point well within box
-		x = torch.rand(self.x_dim)*(self.x_lim[:, 1] - self.x_lim[:, 0]) - self.x_lim[:, 0]
+		x = torch.rand(self.x_dim)*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
 
-		print("This is initial x; is it inside bounds?")
-		print(x, self.x_lim)
+		# print("This is initial x; is it inside bounds?")
+		# print(x, self.x_lim)
 
 		# Project to manifold
 		x = self.project(phi_fn, x)
+
+		# print("ln 85")
+		# IPython.embed()
 
 		should_stop = False
 		# x.requires_grad = True
@@ -103,6 +124,7 @@ class BasicAttacker():
 				should_stop = abs(prev_objective-objective) < self.stop_threshold
 				prev_objective = objective
 
+		# IPython.embed()
 		return x
 
 # TODO: how should .requires_grad be set here?
