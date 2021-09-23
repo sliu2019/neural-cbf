@@ -71,7 +71,7 @@ class BasicAttacker():
 		x_batch = x.view(1, -1)
 		x_batch.requires_grad = True
 		obj_val = -objective_fn(x_batch)
-		print(obj_val)
+		# print(obj_val)
 		phi_val = phi_fn(x_batch)
 		obj_grad = grad([obj_val], x_batch)[0].squeeze()
 		normal_to_manifold = grad([phi_val], x_batch)[0].squeeze()
