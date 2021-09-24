@@ -6,6 +6,8 @@ import os
 import time
 import IPython
 from torch.autograd import grad
+from src.utils import *
+import datetime
 
 """class Trainer:
 	init():
@@ -46,10 +48,11 @@ class Trainer():
 
 		optimizer = optim.Adam(params_no_ci)
 		_iter = 0
-		prev_test_loss = float("inf")
-		test_loss = 999
-		# while abs(prev_test_loss-test_loss) <= self.args.stop_threshold: # TODO: put this back
-		while _iter < 3:
+		t0 = time.perf_counter()
+
+		early_stopping = EarlyStopping()
+		while True:
+		# while _iter < 1:
 			# Inner min
 			x = self.attacker.opt(objective_fn, phi_fn)
 
@@ -68,7 +71,7 @@ class Trainer():
 				ci.copy_(new_ci) # proper way to update
 
 			# Testing and logging at every iteration
-			prev_test_loss = test_loss
+			# prev_test_loss = test_loss
 
 			t1 = time.perf_counter()
 			test_loss = self.test(phi_fn, objective_fn)
@@ -76,13 +79,21 @@ class Trainer():
 
 			self.logger.info('\n' + '=' * 20 + f' evaluation at iteration: {_iter} ' \
 			            + '=' * 20)
-			self.logger.info(f'test loss: {test_loss:.3f}%, spent: {t2 - t1:.3f} s')
+			self.logger.info(f'test loss: {test_loss:.3f}%, time spent testing: {t2 - t1:.3f} s')
+
+			# Time spent training so far?
+			t_so_far = str(datetime.timedelta(seconds=(t2-t0)))
+			self.logger.info('time spent training so far: %s' % t_so_far)
 			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')
 
 			# Saving at every _ iterations
 			if _iter % self.args.n_checkpoint_step == 0:
 				file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 				save_model(phi_fn, file_name)
+
+			early_stopping(test_loss)
+			if early_stopping.early_stop:
+				break
 
 			_iter += 1
 
