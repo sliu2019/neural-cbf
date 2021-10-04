@@ -34,7 +34,7 @@ class BasicAttacker():
 		while abs(loss) > self.projection_stop_threshold:
 			x_batch = x.view(1, -1)
 			x_batch.requires_grad = True
-			loss = phi_fn(x_batch)**2
+			loss = (phi_fn(x_batch)[:, -1])**2
 			grad_to_zero_level = grad([loss], x_batch)[0].squeeze()
 			x_batch.requires_grad = False
 
@@ -55,7 +55,7 @@ class BasicAttacker():
 		# print(obj_val)
 		phi_val = phi_fn(x_batch)
 		obj_grad = grad([obj_val], x_batch)[0].squeeze()
-		normal_to_manifold = grad([phi_val], x_batch)[0].squeeze()
+		normal_to_manifold = grad([phi_val[:, -1]], x_batch)[0].squeeze()
 		x_batch.requires_grad = False
 
 		proj_obj_grad = obj_grad - torch.dot(obj_grad, normal_to_manifold)*normal_to_manifold

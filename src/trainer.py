@@ -50,9 +50,9 @@ class Trainer():
 		_iter = 0
 		t0 = time.perf_counter()
 
-		early_stopping = EarlyStopping()
-		while True:
-		# while _iter < 1:
+		early_stopping = EarlyStopping(patience=50)
+		# while True:
+		while _iter < 1500:
 			# Inner min
 			x = self.attacker.opt(objective_fn, phi_fn)
 
@@ -91,9 +91,9 @@ class Trainer():
 				file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 				save_model(phi_fn, file_name)
 
-			early_stopping(test_loss)
-			if early_stopping.early_stop:
-				break
+			# early_stopping(test_loss)
+			# if early_stopping.early_stop:
+			# 	break
 
 			_iter += 1
 

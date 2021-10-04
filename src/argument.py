@@ -10,12 +10,14 @@ def parser():
 	# TODO: NN parametrization
 	# TODO: ci initialization?
 
+
+	parser.add_argument('--objective_volume_weight', default=0.0, type=float, help='the weight on the volume term')
 	###################################################################################################################################
 	# Attacker: train
 	parser.add_argument('--train_attacker', default='gradient_batch', choices=['basic', 'gradient_batch'])
 
 	# Gradient batch attacker
-	parser.add_argument('--train_attacker_n_samples', default=20)
+	parser.add_argument('--train_attacker_n_samples', default=20, type=int)
 	parser.add_argument('--train_attacker_stopping_condition', default='early_stopping', choices=['n_steps', 'early_stopping'])
 
 	############################################################################
@@ -23,7 +25,7 @@ def parser():
 	parser.add_argument('--test_attacker', default='gradient_batch', choices=['basic', 'gradient_batch'])
 
 	# Gradient batch attacker
-	parser.add_argument('--test_attacker_n_samples', default=30)
+	parser.add_argument('--test_attacker_n_samples', default=30, type=int)
 	parser.add_argument('--test_attacker_stopping_condition', default='early_stopping', choices=['n_steps', 'early_stopping'])
 	###################################################################################################################################
 
