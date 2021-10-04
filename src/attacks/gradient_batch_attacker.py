@@ -16,7 +16,7 @@ class GradientBatchAttacker():
 	# TODO: enforce argmax(phi_i) = r constraint (project to this subset of the manifold)
 	# Note: this is not batch compliant.
 
-	def __init__(self, x_lim, n_samples=20, \
+	def __init__(self, x_lim, device, n_samples=20, \
 	             stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-2, early_stopping_patience=3,\
 	             lr=1e-3, \
 	             projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=60):
@@ -33,7 +33,9 @@ class GradientBatchAttacker():
 		i = 0
 		t1 = time.perf_counter()
 
+		print(self.projection_stop_threshold)
 		while True:
+			print(i)
 			x_batch = x.view(-1, self.x_dim)
 			x_batch.requires_grad = True
 			loss = (phi_fn(x_batch)[:, -1])**2
@@ -44,10 +46,11 @@ class GradientBatchAttacker():
 			x = x - grad_to_zero_level
 			# Clip to bounding box
 			# No torch.clamp in torch 1.7.1
-			x = torch.minimum(torch.maximum(x, torch.tensor(self.x_lim[:, 0])), torch.tensor(self.x_lim[:, 1]))
+			x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
 
 			i += 1
 
+			print(torch.min(loss), torch.mean(loss), torch.max(loss))
 			if torch.max(loss) < self.projection_stop_threshold:
 				break
 			elif (time.perf_counter() - t1) > self.projection_time_limit and (torch.min(loss) < self.projection_stop_threshold):
@@ -91,7 +94,7 @@ class GradientBatchAttacker():
 		# Rationale for this step: everytime you take a step on x, clip to box
 
 		# No torch.clamp in torch 1.7.1
-		x = torch.minimum(torch.maximum(x, torch.tensor(self.x_lim[:, 0])), torch.tensor(self.x_lim[:, 1]))
+		x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
 
 		# Project to surface
 		x = self.project(phi_fn, x)
@@ -105,7 +108,9 @@ class GradientBatchAttacker():
 
 	def opt(self, objective_fn, phi_fn):
 		# Sample 1 point well within box
-		X = torch.rand(self.n_samples, self.x_dim)*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
+		random = torch.rand(self.n_samples, self.x_dim).to(self.device)
+		X = random*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
+		# X = X.to(self.device)
 		# print(X)
 
 		# Project to manifold

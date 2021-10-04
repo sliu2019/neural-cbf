@@ -14,7 +14,7 @@ class BasicAttacker():
 	# TODO: enforce argmax(phi_i) = r constraint (project to this subset of the manifold)
 	# Note: this is not batch compliant.
 
-	def __init__(self, x_lim, stopping_condition="n_steps", max_n_steps=10, early_stopping=1e-2, lr=1e-3, projection_stop_threshold=1e-3, projection_lr=1e-3):
+	def __init__(self, x_lim, device, stopping_condition="n_steps", max_n_steps=10, early_stopping=1e-2, lr=1e-3, projection_stop_threshold=1e-3, projection_lr=1e-3):
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
@@ -41,7 +41,7 @@ class BasicAttacker():
 			x = x - self.projection_lr*grad_to_zero_level
 			# Clip to bounding box
 			# No torch.clamp in torch 1.7.1
-			x = torch.minimum(torch.maximum(x, torch.tensor(self.x_lim[:, 0])), torch.tensor(self.x_lim[:, 1]))
+			x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
 		return x
 
 	def step(self, objective_fn, phi_fn, x):
@@ -67,7 +67,7 @@ class BasicAttacker():
 		# Rationale for this step: everytime you take a step on x, clip to box
 
 		# No torch.clamp in torch 1.7.1
-		x = torch.minimum(torch.maximum(x, torch.tensor(self.x_lim[:, 0])), torch.tensor(self.x_lim[:, 1]))
+		x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
 
 		# Project to surface
 		x = self.project(phi_fn, x)
@@ -77,7 +77,9 @@ class BasicAttacker():
 
 	def opt(self, objective_fn, phi_fn):
 		# Sample 1 point well within box
-		x = torch.rand(self.x_dim)*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
+		random = torch.rand(self.x_dim).to(self.device)
+		x = random*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
+		# x = x.to(self.device)
 
 		# Project to manifold
 		x = self.project(phi_fn, x)

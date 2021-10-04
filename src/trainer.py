@@ -54,7 +54,9 @@ class Trainer():
 		# while True:
 		while _iter < 2000:
 			# Inner min
+			print("Computing attacker")
 			x = self.attacker.opt(objective_fn, phi_fn)
+			print("Found attacker")
 
 			# Outer max
 			optimizer.zero_grad()

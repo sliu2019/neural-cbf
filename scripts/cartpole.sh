@@ -7,3 +7,5 @@ nohup python -u main.py --problem cartpole_reduced --physical_difficulty hard --
 #- Exp 1a: 2 vars, weight = 0, easy physical parameters
 #- Exp 1b: 2 vars, weight = 0.025, easy physical parameters
 #- Exp 1c: 2 vars, weight = 0, hard physical parameters
+
+# python -u main.py --problem cartpole_reduced --affix debug

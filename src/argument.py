@@ -41,7 +41,7 @@ def parser():
 	# TODO: add lr for ci
 
 	# Misc
-	parser.add_argument('--gpu', '-g', default='0', help='which gpu to use')
+	parser.add_argument('--gpu', '-g', default=0, help='which gpu to use')
 
 	return parser.parse_args()
 

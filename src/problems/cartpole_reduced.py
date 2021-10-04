@@ -32,6 +32,7 @@ class XDot(nn.Module):
 
 		# xddot_num = (self.I +self.m*(self.l**2))*(self.m*self.l*(thetadot**2)*torch.sin(theta)) - g*(self.m**2)*(self.l**2)*torch.sin(theta)*torch.cos(theta) + (self.I + self.m*(self.l**2))*u
 		denom = self.I*(self.m + self.M) + self.m*(self.l**2)*(self.M + self.m*(torch.sin(theta)**2))
+		# IPython.embed()
 		thetaddot_num = self.m*self.l*(-self.m*self.l*(thetadot**2)*torch.sin(theta)*torch.cos(theta) + (self.M + self.m)*g*torch.sin(theta)) - self.m*self.l*torch.cos(theta)*u
 
 		# print(xddot_num.size(), denom.size())

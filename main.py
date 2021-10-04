@@ -19,7 +19,7 @@ torch.manual_seed(1)
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
 
-	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, x_e=None):
+	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, x_e=None):
 		# Later: args specifying how beta is parametrized
 		super().__init__()
 		vars = locals()  # dict of local names
@@ -53,7 +53,7 @@ class Phi(nn.Module):
 
 		# Convert ci to ki
 		ki = torch.tensor([[1.0]])
-		ki_all = torch.zeros(self.r, self.r) # phi_i coefficients are in row i
+		ki_all = torch.zeros(self.r, self.r).to(self.device) # phi_i coefficients are in row i
 		ki_all[0, 0:ki.numel()] = ki
 		for i in range(self.r-1): # A is current coeffs
 			A = torch.zeros(torch.numel(ki)+1, 2)
@@ -75,7 +75,7 @@ class Phi(nn.Module):
 
 		h_ith_deriv = self.h_fn(x) # bs x 1, the zeroth derivative
 		h_derivs = h_ith_deriv # bs x 1
-		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim)) # bs x x_dim
+		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device)) # bs x x_dim
 
 		for i in range(self.r-1):
 			# print(h_ith_deriv.size())
@@ -99,7 +99,7 @@ class Phi(nn.Module):
 		return result
 
 class Objective(nn.Module):
-	def __init__(self, phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, volume_term_weight=0.0, A_samples=None):
+	def __init__(self, phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, volume_term_weight=0.0, A_samples=None):
 		super().__init__()
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
@@ -176,6 +176,15 @@ def main(args):
 	# print("Parsed and saved args")
 	# IPython.embed()
 
+	# Device
+	if torch.cuda.is_available():
+		os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
+		dev = "cuda:%i" % (args.gpu)
+		print("Using GPU device: %s" % dev)
+	else:
+		dev = "cpu"
+	device = torch.device(dev)
+
 	# Selecting problem
 	if args.problem == "cartpole":
 		r = 2
@@ -206,7 +215,7 @@ def main(args):
 		# A_samples = torch.rand(10, x_dim)
 
 		A_samples = None
-		phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, x_e=torch.zeros(1, x_dim))
+		x_e = torch.zeros(1, x_dim)
 	elif args.problem == "cartpole_reduced":
 		r = 2
 		x_dim = 2
@@ -235,45 +244,47 @@ def main(args):
 				"max_force": 5.0
 			}
 
-		# param_dict = {
-		# 	"I": 0.099,
-		# 	"m": 0.2,
-		# 	"M": 2,
-		# 	"l": 0.5,
-		# 	"max_theta": math.pi / 10.0,
-		# 	"max_force": 1.0
-		# }
-
 		h_fn = H(param_dict)
 		xdot_fn = XDot(param_dict)
 		uvertices_fn = ULimitSetVertices(param_dict)
 
-		# IPython.embed()
 		n_samples = 50
 		rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 1]])
 		A_samples = torch.rand(n_samples, x_dim)*(2*rnge) - rnge # (n_samples, x_dim)
-
-		phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, x_e=torch.zeros(1, x_dim))
+		x_e = torch.zeros(1, x_dim)
 	else:
 		A_samples = None
-		phi_fn = None
+		x_e = None
 		raise NotImplementedError
 
+	# Send all modules to the correct device
+	h_fn = h_fn.to(device)
+	xdot_fn = xdot_fn.to(device)
+	uvertices_fn = uvertices_fn.to(device)
+	x_e = x_e.to(device)
+	A_samples = A_samples.to(device)
+	x_lim = torch.tensor(x_lim).to(device)
 
+	# Create CBF
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, x_e=x_e)
 	# Create objective function
-	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, args.objective_volume_weight, A_samples)
+	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, volume_term_weight=args.objective_volume_weight, A_samples=A_samples)
+
+	# Send remaining modules to the correct device
+	phi_fn = phi_fn.to(device)
+	objective_fn = objective_fn.to(device)
 
 	# Create attacker
 	if args.train_attacker == "basic":
-		attacker = BasicAttacker(x_lim, stopping_condition="early_stopping")
+		attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.train_attacker == "gradient_batch":
-		attacker = GradientBatchAttacker(x_lim, stopping_condition=args.train_attacker_stopping_condition, n_samples=args.train_attacker_n_samples)
+		attacker = GradientBatchAttacker(x_lim, device, stopping_condition=args.train_attacker_stopping_condition, n_samples=args.train_attacker_n_samples)
 
 	# Create test attacker
 	if args.test_attacker == "basic":
-		test_attacker = BasicAttacker(x_lim, stopping_condition="early_stopping")
+		test_attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.test_attacker == "gradient_batch":
-		test_attacker = GradientBatchAttacker(x_lim, stopping_condition=args.test_attacker_stopping_condition, n_samples=args.test_attacker_n_samples)
+		test_attacker = GradientBatchAttacker(x_lim, device,stopping_condition=args.test_attacker_stopping_condition, n_samples=args.test_attacker_n_samples)
 
 	# Test:
 	# t0 = time.perf_counter()
@@ -331,8 +342,8 @@ def main(args):
 	# 	print(param.grad)
 
 	# Check magnitude of volume regularization term
-	x = torch.rand(10, x_dim)
-	obj_value = objective_fn(x)
+	# x = torch.rand(10, x_dim)
+	# obj_value = objective_fn(x)
 
 	# Timing the projection
 
@@ -340,9 +351,6 @@ def main(args):
 
 if __name__ == "__main__":
 	args = parser()
-
-	os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-
 	main(args)
 
 
