@@ -29,10 +29,13 @@ class Phi(nn.Module):
 		assert r>=0
 		# Note: by default, it registers parameters by their variable name
 		self.ci = nn.Parameter(5*torch.rand(r-1, 1)) # int from 0-5 (if ci in small range, ki will be much larger) # TODO: param
+		hidden_dim = 100
 		self.beta_net = nn.Sequential(
-			nn.Linear(x_dim, 25*x_dim),
+			nn.Linear(x_dim, hidden_dim),
 			nn.ReLU(),
-			nn.Linear(25*x_dim, 1)
+			nn.Linear(hidden_dim, hidden_dim),
+			nn.ReLU(),
+			nn.Linear(hidden_dim, 1)
 		) # TODO: param
 
 		self.x_e = self.x_e.view(1, -1)
@@ -146,6 +149,7 @@ class Objective(nn.Module):
 			volume_term = torch.sum(phi_value_pos)
 
 			# print(result)
+			print(volume_term)
 			result = result + self.volume_term_weight*volume_term
 			# print(result)
 		return result
@@ -203,6 +207,53 @@ def main(args):
 
 		A_samples = None
 		phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, x_e=torch.zeros(1, x_dim))
+	elif args.problem == "cartpole_reduced":
+		r = 2
+		x_dim = 2
+		u_dim = 1
+		x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+
+		# Create phi
+		from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
+
+		if args.physical_difficulty == 'easy':
+			param_dict = {
+				"I": 0.021,
+				"m": 0.25,
+				"M": 1.00,
+				"l": 0.5,
+				"max_theta": math.pi / 2.0,
+				"max_force": 15.0
+			}
+		elif args.physical_difficulty == 'hard':
+			param_dict = {
+				"I": 0.021,
+				"m": 0.25,
+				"M": 1.00,
+				"l": 0.5,
+				"max_theta": math.pi / 4.0,
+				"max_force": 5.0
+			}
+
+		# param_dict = {
+		# 	"I": 0.099,
+		# 	"m": 0.2,
+		# 	"M": 2,
+		# 	"l": 0.5,
+		# 	"max_theta": math.pi / 10.0,
+		# 	"max_force": 1.0
+		# }
+
+		h_fn = H(param_dict)
+		xdot_fn = XDot(param_dict)
+		uvertices_fn = ULimitSetVertices(param_dict)
+
+		# IPython.embed()
+		n_samples = 50
+		rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 1]])
+		A_samples = torch.rand(n_samples, x_dim)*(2*rnge) - rnge # (n_samples, x_dim)
+
+		phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, x_e=torch.zeros(1, x_dim))
 	else:
 		A_samples = None
 		phi_fn = None
@@ -233,8 +284,8 @@ def main(args):
 	# test_attacker.opt(objective_fn, phi_fn)
 
 	# Pass everything to Trainer
-	# trainer = Trainer(args, logger, attacker, test_attacker)
-	# trainer.train(objective_fn, phi_fn, xdot_fn)
+	trainer = Trainer(args, logger, attacker, test_attacker)
+	trainer.train(objective_fn, phi_fn, xdot_fn)
 
 	# Test load model
 	# print(list(phi_fn.parameters()))
@@ -278,6 +329,10 @@ def main(args):
 	# for name, param in phi_fn.named_parameters():
 	# 	print(name)
 	# 	print(param.grad)
+
+	# Check magnitude of volume regularization term
+	x = torch.rand(10, x_dim)
+	obj_value = objective_fn(x)
 
 	# Timing the projection
 

@@ -4,13 +4,13 @@ import argparse
 def parser():
 	# Problem
 	parser = argparse.ArgumentParser(description='CBF synthesis')
-	parser.add_argument('--problem', default='cartpole', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "challenge"])
+	parser.add_argument('--problem', default='cartpole', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "challenge", "cartpole_reduced"])
 
 	# Phi
 	# TODO: NN parametrization
 	# TODO: ci initialization?
 
-
+	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'])
 	parser.add_argument('--objective_volume_weight', default=0.0, type=float, help='the weight on the volume term')
 	###################################################################################################################################
 	# Attacker: train

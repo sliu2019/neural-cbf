@@ -52,7 +52,7 @@ class Trainer():
 
 		early_stopping = EarlyStopping(patience=50)
 		# while True:
-		while _iter < 1500:
+		while _iter < 2000:
 			# Inner min
 			x = self.attacker.opt(objective_fn, phi_fn)
 
