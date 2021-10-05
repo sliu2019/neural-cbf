@@ -4,11 +4,11 @@ import argparse
 def parser():
 	# Problem
 	parser = argparse.ArgumentParser(description='CBF synthesis')
-	parser.add_argument('--problem', default='cartpole', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "challenge", "cartpole_reduced"])
+	parser.add_argument('--problem', default='cartpole_reduced', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "challenge", "cartpole_reduced"])
 
 	# Phi
-	# TODO: NN parametrization
-	# TODO: ci initialization?
+	parser.add_argument('--phi_nn_dimension', default=6, type=int, help='specify the hidden dimension')
+	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
 
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'])
 	parser.add_argument('--objective_volume_weight', default=0.0, type=float, help='the weight on the volume term')
@@ -19,7 +19,8 @@ def parser():
 	# Gradient batch attacker
 	parser.add_argument('--train_attacker_n_samples', default=20, type=int)
 	parser.add_argument('--train_attacker_stopping_condition', default='early_stopping', choices=['n_steps', 'early_stopping'])
-
+	parser.add_argument('--train_attacker_projection_stop_threshold', default=1e-3, type=float, help='when to consider a point "projected"')
+	parser.add_argument('--train_attacker_projection_lr', default=1e-3, type=float)
 	############################################################################
 	# Attacker: test
 	parser.add_argument('--test_attacker', default='gradient_batch', choices=['basic', 'gradient_batch'])
@@ -27,9 +28,15 @@ def parser():
 	# Gradient batch attacker
 	parser.add_argument('--test_attacker_n_samples', default=30, type=int)
 	parser.add_argument('--test_attacker_stopping_condition', default='early_stopping', choices=['n_steps', 'early_stopping'])
+	parser.add_argument('--test_attacker_projection_stop_threshold', default=1e-3, type=float, help='when to consider a point "projected"')
+	parser.add_argument('--test_attacker_projection_lr', default=1e-3, type=float)
 	###################################################################################################################################
 
 	# Trainer
+	parser.add_argument('--trainer_stopping_condition', default=['early_stopping'], choices=['n_steps', 'early_stopping'])
+	parser.add_argument('--trainer_early_stopping_patience', default=100, type=int)
+	parser.add_argument('--trainer_n_steps', default=1500, type=int, help='if stopping condition is n_steps, specify the number here')
+
 	# Saving/logging
 	parser.add_argument('--affix', default='default', help='the affix for the save folder')
 	parser.add_argument('--log_root', default='log',
@@ -38,10 +45,10 @@ def parser():
 	parser.add_argument('--n_checkpoint_step', type=int, default=10,
 	                    help='number of iterations to save a checkpoint')
 
-	# TODO: add lr for ci
+	# TODO: add lr for ci or Adam option; also for projection, etc.
 
 	# Misc
-	parser.add_argument('--gpu', '-g', default=0, help='which gpu to use')
+	parser.add_argument('--gpu', '-g', default=0, type=int, help='which gpu to use')
 
 	return parser.parse_args()
 

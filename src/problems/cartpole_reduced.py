@@ -44,16 +44,17 @@ class XDot(nn.Module):
 		return rv
 
 class ULimitSetVertices(nn.Module):
-	def __init__(self, param_dict):
+	def __init__(self, param_dict, device):
 		super().__init__()
 		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes
+		self.device = device
 
 	def forward(self, x):
 		# TODO (toy): implement
 		# The way these are implemented should be batch compliant
 		# rv is [2, 1]
 		# (bs, n_vertices, u_dim) or (bs, 2, 1)
-		rv = torch.tensor([[self.max_force], [-self.max_force]])
+		rv = torch.tensor([[self.max_force], [-self.max_force]]).to(self.device)
 		rv = rv.unsqueeze(dim=0)
 		rv = rv.expand(x.size()[0], -1, -1)
 		return rv

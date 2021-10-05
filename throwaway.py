@@ -10,12 +10,14 @@ from main import Phi, Objective
 from src.argument import parser, print_args
 from src.utils import *
 import torch
+import pickle
 
 def parse_log_file():
 	"""
 	Neglected to write test loss out to .npy file
 	"""
-	fpth = "./log/cartpole_default/train_log.txt"
+	exp_name = "cartpole_reduced_exp1a"
+	fpth = "./log/%s/train_log.txt" % exp_name
 	with open(fpth) as file:
 		lines = file.readlines()
 
@@ -40,24 +42,44 @@ def parse_log_file():
 				# print(time_str, h_frac)
 				times.append(h_frac)
 
-		# IPython.embed()
+		IPython.embed()
 		log_array = np.concatenate((np.array(test_losses)[None], np.array(times)[None]), axis=0)
-		np.save("./log/cartpole_default/train_log.npy", log_array)
+		np.save("./log/%s/train_log.npy" % exp_name, log_array)
 
 def graph_log_file():
 	"""
 	Corresponds to above
 	"""
-	log_array = np.load("./log/cartpole_default/train_log.npy")
+	exp_name = "cartpole_reduced_exp1a"
+	log_array = np.load("./log/%s/train_log.npy" % exp_name)
 	plt.plot(log_array[0], linewidth=0.5, label="Test loss")
 	plt.plot(log_array[1], color='red', label="Runtime (hours)")
 	plt.xlabel("Optimization steps")
 	plt.legend(loc="upper right")
 	plt.title("Statistics throughout training")
 
-	plt.savefig("./log/cartpole_default/test_loss.png")
+	plt.savefig("./log/%s/test_loss.png" % exp_name)
 
 	# plt.ylabel("Test loss")
+
+def graph_log_file_2():
+	"""
+	Corresponds to above
+	"""
+	exp_name = "cartpole_reduced_exp1a"
+	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+		data = pickle.load(handle)
+		timings = data["timings"]
+		test_losses = data["test_losses"]
+
+		plt.plot(test_losses, linewidth=0.5, label="Test loss")
+	# plt.plot(timings, color='red', label="Runtime (hours)")
+	plt.xlabel("Optimization steps")
+	plt.legend(loc="upper right")
+	plt.title("Statistics throughout training")
+
+	plt.savefig("./log/%s/test_loss.png" % exp_name)
+
 
 def plot_phi_2d_level_curve(phi_fn, phi_load_fpth, checkpoint_number, x_lim, which_2_state_vars):
 	"""
@@ -132,8 +154,93 @@ def plot_phi_2d_level_curve_over_training():
 		plot_phi_2d_level_curve(phi_fn, phi_load_fpth, checkpoint_number, x_lim, which_2_state_vars)
 
 
+args = parser()
+
+# if torch.cuda.is_available():
+# 	os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
+# 	dev = "cuda:%i" % (args.gpu)
+# 	print("Using GPU device: %s" % dev)
+# else:
+# 	dev = "cpu"
+dev = "cpu"
+device = torch.device(dev)
+
+r = 2
+x_dim = 2
+u_dim = 1
+x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+
+# Create phi
+from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
+
+param_dict = {
+	"I": 0.021,
+	"m": 0.25,
+	"M": 1.00,
+	"l": 0.5,
+	"max_theta": math.pi / 2.0,
+	"max_force": 15.0
+}
+
+h_fn = H(param_dict)
+xdot_fn = XDot(param_dict)
+uvertices_fn = ULimitSetVertices(param_dict, device)
+
+# n_samples = 50
+# rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 1]])
+# A_samples = torch.rand(n_samples, x_dim) * (2 * rnge) - rnge  # (n_samples, x_dim)
+x_e = torch.zeros(1, x_dim)
+
+phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+# phi_fn.to(device)
+
+def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
+	"""
+	Plots binary +/- of CBF value
+	Also plots training attacks
+	"""
+	# IPython.embed()
+	delta = 0.05
+	x = np.arange(-math.pi, math.pi, delta)
+	y = np.arange(-5, 5, delta)
+	X, Y = np.meshgrid(x, y)
+
+	# phi_load_fpth = "./checkpoint/cartpole_reduced_exp1a/checkpoint_69.pth"
+	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+	load_model(phi_fn, phi_load_fpth)
+
+	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
+	input = torch.from_numpy(input)
+	phi_vals = phi_fn(input)[:, -1]
+	phi_signs = torch.sign(phi_vals).detach().cpu().numpy()
+	phi_signs = np.reshape(phi_signs, X.shape)
+
+	fig, ax = plt.subplots()
+	ax.imshow(phi_signs, extent=[-math.pi, math.pi, -5.0, 5.0])
+	ax.set_aspect("equal")
+
+	# Get attacks
+	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+		data = pickle.load(handle)
+		train_attacks = data["train_attacks"]
+		# IPython.embed()
+		test_losses = data["test_losses"]
+		for j in range(checkpoint_number):
+			if test_losses[j] > 0:
+				plt.scatter(train_attacks[j][0], train_attacks[j][1], c="white", s=0.2)
+
+	plt.savefig("./log/cartpole_reduced_exp1a/%s" % save_fnm)
+
 if __name__=="__main__":
 	# parse_log_file()
 	# graph_log_file()
 
-	plot_phi_2d_level_curve_over_training()
+	# graph_log_file_2()
+
+	# plot_phi_2d_level_curve_over_training()
+
+	for i in np.arange(0, 69, 6):
+		# phi_load_fpth = "cartpole_reduced_exp1a/checkpoint_%i.pth" % i
+		save_fnm = "2d_binary_%i.png" % i
+		exp_name = "cartpole_reduced_exp1a"
+		plot_2d_binary(i, save_fnm, exp_name)

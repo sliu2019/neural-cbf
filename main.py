@@ -19,26 +19,25 @@ torch.manual_seed(1)
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
 
-	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, x_e=None):
+	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=None):
 		# Later: args specifying how beta is parametrized
 		super().__init__()
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
-
 		assert r>=0
+
 		# Note: by default, it registers parameters by their variable name
-		self.ci = nn.Parameter(5*torch.rand(r-1, 1)) # int from 0-5 (if ci in small range, ki will be much larger) # TODO: param
-		hidden_dim = 100
+		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much largers
+		hidden_dim = args.phi_nn_dimension
 		self.beta_net = nn.Sequential(
 			nn.Linear(x_dim, hidden_dim),
-			nn.ReLU(),
-			nn.Linear(hidden_dim, hidden_dim),
-			nn.ReLU(),
+			nn.Tanh(),
 			nn.Linear(hidden_dim, 1)
-		) # TODO: param
+		)
 
-		self.x_e = self.x_e.view(1, -1)
+		if self.x_e is not None:
+			self.x_e = self.x_e.view(1, -1)
 
 	def forward(self, x):
 		# The way these are implemented should be batch compliant
@@ -205,7 +204,7 @@ def main(args):
 
 		h_fn = H(param_dict)
 		xdot_fn = XDot(param_dict)
-		uvertices_fn = ULimitSetVertices(param_dict)
+		uvertices_fn = ULimitSetVertices(param_dict, device)
 
 		# print("ln 167, main, check A sample creation")
 		# IPython.embed()
@@ -241,32 +240,34 @@ def main(args):
 				"M": 1.00,
 				"l": 0.5,
 				"max_theta": math.pi / 4.0,
-				"max_force": 5.0
+				"max_force": 1.0
 			}
 
 		h_fn = H(param_dict)
 		xdot_fn = XDot(param_dict)
-		uvertices_fn = ULimitSetVertices(param_dict)
+		uvertices_fn = ULimitSetVertices(param_dict, device)
 
 		n_samples = 50
 		rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 1]])
 		A_samples = torch.rand(n_samples, x_dim)*(2*rnge) - rnge # (n_samples, x_dim)
 		x_e = torch.zeros(1, x_dim)
 	else:
+		raise NotImplementedError
 		A_samples = None
 		x_e = None
-		raise NotImplementedError
 
 	# Send all modules to the correct device
 	h_fn = h_fn.to(device)
 	xdot_fn = xdot_fn.to(device)
 	uvertices_fn = uvertices_fn.to(device)
-	x_e = x_e.to(device)
-	A_samples = A_samples.to(device)
+	if x_e is not None:
+		x_e = x_e.to(device)
+	if A_samples is not None:
+		A_samples = A_samples.to(device)
 	x_lim = torch.tensor(x_lim).to(device)
 
 	# Create CBF
-	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, x_e=x_e)
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
 	# Create objective function
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, volume_term_weight=args.objective_volume_weight, A_samples=A_samples)
 
@@ -278,14 +279,20 @@ def main(args):
 	if args.train_attacker == "basic":
 		attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.train_attacker == "gradient_batch":
-		attacker = GradientBatchAttacker(x_lim, device, stopping_condition=args.train_attacker_stopping_condition, n_samples=args.train_attacker_n_samples)
+		attacker = GradientBatchAttacker(x_lim, device, stopping_condition=args.train_attacker_stopping_condition, n_samples=args.train_attacker_n_samples, projection_stop_threshold=args.train_attacker_projection_stop_threshold, projection_lr=args.train_attacker_projection_lr)
 
 	# Create test attacker
 	if args.test_attacker == "basic":
 		test_attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.test_attacker == "gradient_batch":
-		test_attacker = GradientBatchAttacker(x_lim, device,stopping_condition=args.test_attacker_stopping_condition, n_samples=args.test_attacker_n_samples)
+		test_attacker = GradientBatchAttacker(x_lim, device, stopping_condition=args.test_attacker_stopping_condition, n_samples=args.test_attacker_n_samples, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
 
+	# Pass everything to Trainer
+	trainer = Trainer(args, logger, attacker, test_attacker)
+	trainer.train(objective_fn, phi_fn, xdot_fn)
+
+	##############################################################
+	#####################      Testing      ######################
 	# Test:
 	# t0 = time.perf_counter()
 	# test_attacker.opt(objective_fn, phi_fn)
@@ -294,16 +301,13 @@ def main(args):
 	#
 	# test_attacker.opt(objective_fn, phi_fn)
 
-	# Pass everything to Trainer
-	trainer = Trainer(args, logger, attacker, test_attacker)
-	trainer.train(objective_fn, phi_fn, xdot_fn)
-
 	# Test load model
+	"""load_model(phi_fn, "./checkpoint/cartpole_reduced_exp1a/checkpoint_60.pth")
+	for name, param in phi_fn.named_parameters():
+		print(name, param)
 	# print(list(phi_fn.parameters()))
-	# load_model(phi_fn, "./checkpoint/cartpole_default/checkpoint_1490.pth")
-	# print(list(phi_fn.parameters()))
-	# # IPython.embed()
-	#
+	IPython.embed()"""
+
 	# # Strong attack against model
 	# test_attacker = GradientBatchAttacker(x_lim, stopping_condition=args.test_attacker_stopping_condition, n_samples=200)
 	# t0 = time.perf_counter()

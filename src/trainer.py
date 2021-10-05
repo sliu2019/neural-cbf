@@ -8,37 +8,17 @@ import IPython
 from torch.autograd import grad
 from src.utils import *
 import datetime
-
-"""class Trainer:
-	init():
-		In:
-			Attack class object
-			(Later) optimization parameters
-
-	train():
-		In:
-			phi_i (model)
-			x_dot
-			X_limit, objective function (U_limit implicitly)
-		Fn:
-			<Anything meta-training, mostly boilerplate:
-				1. Training loop: bi-step (inner and outer)
-				2. Saving model, computing and logging progress (call test)
-
-	test():
-		Either GD until (near) conv or MCMC"""
-
-
-"""
-Things to add to args:
-ci_lr
-"""
+import pickle
 
 class Trainer():
 	def __init__(self, args, logger, attacker, test_attacker):
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
+
+		self.save_folder = '%s_%s' % (self.args.problem, self.args.affix)
+		self.log_folder = os.path.join(self.args.log_root, self.save_folder)
+		self.data_save_fpth = os.path.join(self.log_folder, "data.pkl")
 
 	def train(self, objective_fn, phi_fn, xdot_fn):
 		# TODO: c_i require projected GD, so you'll need to modify Adam
@@ -50,13 +30,17 @@ class Trainer():
 		_iter = 0
 		t0 = time.perf_counter()
 
-		early_stopping = EarlyStopping(patience=50)
-		# while True:
-		while _iter < 2000:
+		# Set up saving
+		# All these lists should be the same length
+		test_losses = []
+		timings = [] # in seconds
+		train_attacks = [] # lists of 1D numpy tensors
+		# test_attacks = []
+
+		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
+		while True:
 			# Inner min
-			print("Computing attacker")
 			x = self.attacker.opt(objective_fn, phi_fn)
-			print("Found attacker")
 
 			# Outer max
 			optimizer.zero_grad()
@@ -73,8 +57,6 @@ class Trainer():
 				ci.copy_(new_ci) # proper way to update
 
 			# Testing and logging at every iteration
-			# prev_test_loss = test_loss
-
 			t1 = time.perf_counter()
 			test_loss = self.test(phi_fn, objective_fn)
 			t2 = time.perf_counter()
@@ -88,14 +70,31 @@ class Trainer():
 			self.logger.info('time spent training so far: %s' % t_so_far)
 			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')
 
+			# Update save data
+			test_losses.append(test_loss)
+			timings.append(t_so_far)
+			train_attack_numpy = x.detach().cpu().numpy()
+			train_attacks.append(train_attack_numpy)
+
 			# Saving at every _ iterations
 			if _iter % self.args.n_checkpoint_step == 0:
 				file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 				save_model(phi_fn, file_name)
 
-			# early_stopping(test_loss)
-			# if early_stopping.early_stop:
-			# 	break
+				# save data too
+				save_dict = {"test_losses": test_losses, "timings": timings, "train_attacks": train_attacks}
+				print("Saving at: ", self.data_save_fpth)
+				with open(self.data_save_fpth, 'wb') as handle:
+					pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+			# Check for stopping
+			if self.args.trainer_stopping_condition == "early_stopping":
+				early_stopping(test_loss)
+				if early_stopping.early_stop:
+					break
+			elif self.args.trainer_stopping_condition == "n_steps":
+				if _iter > self.args.trainer_n_steps:
+					break
 
 			_iter += 1
 
