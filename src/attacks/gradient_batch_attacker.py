@@ -65,6 +65,7 @@ class GradientBatchAttacker():
 				print("loss: ", loss)
 				print("min loss: ", torch.min(loss))
 				raise ValueError('Timed out because of non-convergence of projection')
+			# print(torch.min(loss))
 
 		# print("projected: ", x)
 		# print("%i steps for projection" % i)
