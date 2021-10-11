@@ -200,9 +200,9 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	Also plots training attacks
 	"""
 	# IPython.embed()
-	delta = 0.05
+	delta = 0.01
 	x = np.arange(-math.pi, math.pi, delta)
-	y = np.arange(-5, 5, delta)
+	y = np.arange(-5, 5, delta)[::-1] # need to reverse it
 	X, Y = np.meshgrid(x, y)
 
 	# phi_load_fpth = "./checkpoint/cartpole_reduced_exp1a/checkpoint_69.pth"
@@ -211,25 +211,36 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 
 	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
 	input = torch.from_numpy(input)
-	phi_vals = phi_fn(input)[:, -1]
-	phi_signs = torch.sign(phi_vals).detach().cpu().numpy()
+	phi_vals = phi_fn(input)
+	# IPython.embed()
+	S_vals = torch.max(phi_vals, dim=1)[0] # S = all phi_i <= 0
+	phi_signs = torch.sign(S_vals).detach().cpu().numpy()
 	phi_signs = np.reshape(phi_signs, X.shape)
+
 
 	fig, ax = plt.subplots()
 	ax.imshow(phi_signs, extent=[-math.pi, math.pi, -5.0, 5.0])
 	ax.set_aspect("equal")
 
-	# Get attacks
-	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
-		data = pickle.load(handle)
-		train_attacks = data["train_attacks"]
-		# IPython.embed()
-		test_losses = data["test_losses"]
-		for j in range(checkpoint_number):
-			if test_losses[j] > 0:
-				plt.scatter(train_attacks[j][0], train_attacks[j][1], c="white", s=0.2)
+	phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+	ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
+	                 colors=('k',), linewidths=(2,))
 
-	plt.savefig("./log/cartpole_reduced_exp1a/%s" % save_fnm)
+	# Get attacks
+	# with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+	# 	data = pickle.load(handle)
+	# 	train_attacks = data["train_attacks"]
+	# 	# IPython.embed()
+	# 	test_losses = data["test_losses"]
+	# 	for j in range(checkpoint_number):
+	# 		if test_losses[j] > 0:
+	# 			plt.scatter(train_attacks[j][0], train_attacks[j][1], c="white", s=0.2)
+
+	# attacks = np.load("./log/cartpole_reduced_debug/boundary_samples_post_opt.npy")
+	# plt.scatter(attacks[:, 0], attacks[:, 1], c="white", marker="x")
+
+	# print(attacks)
+	plt.savefig("./log/%s/%s" % (exp_name, save_fnm))
 
 if __name__=="__main__":
 	# parse_log_file()
@@ -239,8 +250,12 @@ if __name__=="__main__":
 
 	# plot_phi_2d_level_curve_over_training()
 
-	for i in np.arange(0, 69, 6):
-		# phi_load_fpth = "cartpole_reduced_exp1a/checkpoint_%i.pth" % i
-		save_fnm = "2d_binary_%i.png" % i
-		exp_name = "cartpole_reduced_exp1a"
-		plot_2d_binary(i, save_fnm, exp_name)
+	# for i in np.arange(0, 69, 6):
+	# 	# phi_load_fpth = "cartpole_reduced_exp1a/checkpoint_%i.pth" % i
+	# 	save_fnm = "2d_binary_%i.png" % i
+	# 	exp_name = "cartpole_reduced_exp1a"
+	# 	plot_2d_binary(i, save_fnm, exp_name)
+
+
+	######
+	plot_2d_binary(0, "new_cbf_format_4.png", "cartpole_reduced_debug")

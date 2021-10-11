@@ -27,6 +27,20 @@ class GradientBatchAttacker():
 
 		self.x_dim = self.x_lim.shape[0]
 
+		# print("Initializing GradientBatchAttacker")
+		# IPython.embed()
+		# Compute 2n facets volume of n-dim hypercube (actually n facets because they come in pairs)
+		x_lim_interval_sizes = self.x_lim[:, 1] - self.x_lim[:, 0]
+		x_lim_interval_sizes = x_lim_interval_sizes.view(1, -1)
+		tiled = x_lim_interval_sizes.repeat(self.x_dim, 1)
+		# print(tiled.shape)
+		tiled = tiled - torch.eye(self.x_dim).to(self.device)*x_lim_interval_sizes + torch.eye(self.x_dim).to(device)
+		# print(tiled)
+		vols = torch.prod(tiled, axis=1)
+		vols = vols/torch.sum(vols)
+		self.vols = vols.detach().cpu().numpy() # numpy
+		self.hypercube_vol = torch.prod(x_lim_interval_sizes) # tensor const
+
 	def project(self, phi_fn, x):
 		# Until convergence
 		i = 0
@@ -106,20 +120,137 @@ class GradientBatchAttacker():
 		# print("Project: %f s" % (t2 -t1))
 		return x
 
+	def sample_in_cube(self):
+		"""
+		Samples uniformly in state space hypercube
+		Returns 1 sample
+		"""
+		# samples = np.random.uniform(low=self.x_lim[:, 0], high=self.x_lim[:, 1])
+		unif = torch.rand(self.x_dim).to(self.device)
+		sample = unif*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
+		return sample
+
+	def sample_on_cube(self):
+		"""
+		Samples uniformly on state space hypercube
+		Returns 1 sample
+		"""
+		# https://math.stackexchange.com/questions/2687807/uniquely-identify-hypercube-faces
+		which_facet_pair = np.random.choice(np.arange(self.x_dim), p=self.vols)
+		which_facet = np.random.choice([0, 1])
+
+		# samples = np.random.uniform(low=self.x_lim[:, 0], high=self.x_lim[:, 1])
+		unif = torch.rand(self.x_dim).to(self.device)
+		sample = unif*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
+		sample[which_facet_pair] = self.x_lim[which_facet_pair, which_facet]
+		return sample
+
+	def intersect_segment_with_manifold(self, p1, p2, phi_fn, rtol=1e-5, atol=1e-3):
+		"""
+		Atol? Reltol?
+		"""
+		# TODO: is the stopping condition correct?
+		# print("Inside intersect_segment_withmanifold")
+		# IPython.embed()
+		diff = p2-p1
+
+		left_weight = 0.0
+		right_weight = 1.0
+		left_val = phi_fn(p1.view(1, -1))[0, -1]
+		right_val = phi_fn(p2.view(1, -1))[0, -1]
+		left_sign = torch.sign(left_val)
+		right_sign = torch.sign(right_val)
+
+		if left_sign*right_sign > 0:
+			return None
+
+		# print("This segment intersects the surface")
+		# IPython.embed()
+		while True:
+			mid_weight = (left_weight + right_weight)/2.0
+			mid_point = p1 + mid_weight*diff
+
+			mid_val = phi_fn(mid_point.view(1, -1))[0, -1]
+			mid_sign = torch.sign(mid_val)
+			if mid_sign*left_sign < 0:
+				# go to the left side
+				right_weight = mid_weight
+				right_val = mid_val
+			elif mid_sign*right_sign < 0:
+				left_weight = mid_weight
+				left_val = mid_val
+
+			# CGAL uses something different: np.dist(left_point, right_point) < rtol*self.hypercube_vol
+			"""left_point = p1 + left_weight*diff
+			right_point = p1 + right_weight*diff
+
+			norm_diff = torch.norm(left_point-right_point)
+			print(norm_diff, rtol*self.hypercube_vol)
+			if norm_diff < rtol*self.hypercube_vol:
+				intersection_point = p1 + left_weight*diff
+				break"""
+
+			# print(torch.abs(left_val - right_val))
+			# print(left_val, right_val)
+			# print(left_weight, right_weight)
+			# intersection_point = p1 + left_weight * diff
+			# print(intersection_point)
+			if torch.abs(left_val - right_val) <= atol:
+				intersection_point = p1 + left_weight*diff # arbitrary choice of left point
+				break
+
+			# IPython.embed()
+		return intersection_point
+
+	def sample_points_on_boundary(self, phi_fn):
+		"""
+		Returns torch array of size (self.n_samples, self.x_dim)
+		"""
+		# Everything done in torch
+		# IPython.embed()
+		samples = []
+		n_remaining_to_sample = self.n_samples
+		# n_remaining_to_sample = 1 # TODO
+
+		center = self.sample_in_cube()
+		n_segments_sampled = 0
+
+		# print(center)
+		while n_remaining_to_sample > 0:
+			# print(n_segments_sampled)
+			outer = self.sample_on_cube()
+
+			intersection = self.intersect_segment_with_manifold(center, outer, phi_fn)
+			if intersection is not None:
+				samples.append(intersection.view(1, -1))
+				n_remaining_to_sample -= 1
+			else:
+				center = self.sample_in_cube()
+			n_segments_sampled += 1
+
+		# samples = np.array(samples)
+		# samples = torch.from_numpy(samples)
+		samples = torch.cat(samples, dim=0)
+		return samples
+
 	def opt(self, objective_fn, phi_fn):
 		# Sample 1 point well within box
-		random = torch.rand(self.n_samples, self.x_dim).to(self.device)
-		X = random*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
+		# random = torch.rand(self.n_samples, self.x_dim).to(self.device)
+		# X = random*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
 
 		# Project to manifold
-		t0 = time.perf_counter()
-		X = self.project(phi_fn, X)
-		t1 = time.perf_counter()
+		# t0 = time.perf_counter()
+		# X = self.project(phi_fn, X)
+		# t1 = time.perf_counter()
 		# print("Time for initial projection: %f" % (t1-t0))
+
+		# TODO
+		X = self.sample_points_on_boundary(phi_fn)
 
 		i = 0
 		early_stopping = EarlyStopping(patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta)
 		while True:
+			print(i)
 			X = self.step(objective_fn, phi_fn, X)
 
 			if self.stopping_condition == "n_steps":
@@ -138,9 +269,10 @@ class GradientBatchAttacker():
 		obj_vals = objective_fn(X)
 		max_ind = torch.argmax(obj_vals)
 
-		x = X[max_ind]
-		return x
-
+		# TODO: return this
+		# x = X[max_ind]
+		# return x
+		return X
 # TODO: for PGD x Adam, should I manually feed the clipped gradient to Adam?
 # Workaround: custom backwards hook for the projection objective function. In this hook, clip gradient before returning
 # Want to use Adam, because we want this to converge quickly

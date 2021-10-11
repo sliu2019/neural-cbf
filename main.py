@@ -13,8 +13,7 @@ import os, sys
 import math
 import IPython
 import time
-# TODO: THIS MAKES PYTORCH DETERMINISTIC!! IF THAT ISN'T WHAT YOU WANT, remove it
-torch.manual_seed(1)
+from global_settings import *
 
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
@@ -30,24 +29,53 @@ class Phi(nn.Module):
 		# Note: by default, it registers parameters by their variable name
 		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much largers
 		hidden_dim = args.phi_nn_dimension
+		# self.beta_net = nn.Sequential(
+		# 	nn.Linear(x_dim, hidden_dim),
+		# 	nn.Tanh(),
+		# 	nn.Linear(hidden_dim, 1)
+		# )
+
 		self.beta_net = nn.Sequential(
 			nn.Linear(x_dim, hidden_dim),
-			nn.Tanh(),
+			nn.ReLU(),
 			nn.Linear(hidden_dim, 1)
 		)
 
+		# def init_weights(m):
+		# 	if isinstance(m, nn.Linear):
+		# 		torch.nn.init.normal_(m.weight, std=1e-3)
+		# 		m.bias.data.fill_(1e-5)
+		# self.beta_net.apply(init_weights)
+
+		# IPython.embed()
+		state_dict = self.beta_net.state_dict() # 0.weight/bias and 2.weight/bias
+		state_dict['2.weight'] = torch.rand((1, 6))*(-100.0)
+		# torch.Size([1, 6])
+		# model.load_state_dict(state_dict)
+		IPython.embed()
+
 		if self.x_e is not None:
 			self.x_e = self.x_e.view(1, -1)
+
+			# print("Computing c: viz on Wolfram")
+			# IPython.embed()
+			h_xe = self.h_fn(self.x_e)
+			self.c = -np.log(2.0)/h_xe
+			# self.c = np.log(1/(-np.log(2.0) + 0.5) - 1.0)*(-1/h_xe)
 
 	def forward(self, x):
 		# The way these are implemented should be batch compliant
 		# Assume x is (bs, x_dim)
 		h_val = self.h_fn(x)
 		if self.x_e is None:
-			beta_value = nn.functional.softplus(self.beta_net(x)) + nn.functional.relu(h_val + torch.sign(h_val)) - 1.0
+			# beta_value = nn.functional.softplus(self.beta_net(x)) + nn.functional.relu(h_val + torch.sign(h_val)) - 1.0
+			beta_value = nn.functional.softplus(self.beta_net(x)) + nn.functional.softplus(h_val) - np.log(2)
 		else:
-			beta_value = nn.functional.softplus(self.beta_net(x) - self.beta_net(self.x_e)) + nn.functional.relu(h_val + torch.sign(h_val)) - 1.0
-
+			# beta_value = nn.functional.softplus(self.beta_net(x) - self.beta_net(self.x_e)) + nn.functional.relu(h_val + torch.sign(h_val)) - 1.0
+			# alpha_value = 1.0/(1.0 + torch.exp(-self.c*x)) - (1.0/2)
+			alpha_value = self.c*h_val
+			beta_value = nn.functional.softplus(self.beta_net(x) - self.beta_net(self.x_e)) + alpha_value
+			# beta_value = self.c*h_val
 		# IPython.embed()
 
 		# Convert ci to ki
@@ -288,11 +316,52 @@ def main(args):
 		test_attacker = GradientBatchAttacker(x_lim, device, stopping_condition=args.test_attacker_stopping_condition, n_samples=args.test_attacker_n_samples, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
 
 	# Pass everything to Trainer
-	trainer = Trainer(args, logger, attacker, test_attacker)
-	trainer.train(objective_fn, phi_fn, xdot_fn)
+	# trainer = Trainer(args, logger, attacker, test_attacker)
+	# trainer.train(objective_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
+	# TODO: Simin, on Sat you are here!
+	# Testing newly design CBF
+	# print("Debug cbf further")
+	# IPython.embed()
+	# phi_fn(x_e) # is 0?
+	# Draw 2D plot
+	# file_name = os.path.join(args.model_folder, f'checkpoint_0.pth')
+	# save_model(phi_fn, file_name)
+
+	# Test: initialization of attacks on manifold
+	# IPython.embed()
+	# X = test_attacker.sample_points_on_boundary(phi_fn)
+	# X = X.detach().cpu().numpy()
+	# save_pth = os.path.join(log_folder, "boundary_samples.npy")
+	# np.save(save_pth, X)
+	# print("Check points and saved correctly")
+	# IPython.embed()
+
+	# run this and viz
+	# X = test_attacker.opt(objective_fn, phi_fn)
+	# X = X.detach().cpu().numpy()
+	# save_pth = os.path.join(log_folder, "boundary_samples_post_opt.npy")
+	# np.save(save_pth, X)
+	# print("Saved")
+	# # print("Check points and saved correctly")
+	# IPython.embed()
+
+	# Test
+	# IPython.embed()
+	# X = torch.tensor([0, -5.0])
+	# X = X.view(1, -1).to(device)
+	# print(phi_fn(X))
+	# print(phi_fn(-X))
+
+	# Test: different phi init gives different plot
+	for name, param in phi_fn.named_parameters():
+		print(name, param)
+
+	file_name = os.path.join(args.model_folder, f'checkpoint_0.pth')
+	save_model(phi_fn, file_name)
+
 	# Test:
 	# t0 = time.perf_counter()
 	# test_attacker.opt(objective_fn, phi_fn)

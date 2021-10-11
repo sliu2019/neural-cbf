@@ -3,9 +3,9 @@
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/cartpole.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/cartpole.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/attacks/gradient_batch_attacker.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/attacks/gradient_batch_attacker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/problems/cartpole_reduced.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/problems/cartpole_reduced.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/throwaway.py" beforeDir="false" afterPath="$PROJECT_DIR$/throwaway.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -66,7 +66,7 @@
       <updated>1631196631573</updated>
       <workItem from="1631196657722" duration="52008000" />
       <workItem from="1631628541958" duration="12210000" />
-      <workItem from="1632102927249" duration="130080000" />
+      <workItem from="1632102927249" duration="158078000" />
     </task>
     <servers />
   </component>
@@ -82,15 +82,20 @@
       <screen x="0" y="23" width="1440" height="836" />
     </state>
     <state x="184" y="92" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.23.1440.836@0.23.1440.836" timestamp="1632512287538" />
-    <state x="100" y="123" width="1240" height="614" key="DirDiffDialog" timestamp="1633467685193">
+    <state x="374" y="244" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1633813312744">
       <screen x="0" y="23" width="1440" height="834" />
     </state>
-    <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.834@0.23.1440.834" timestamp="1633467685193" />
-    <state x="100" y="124" width="1240" height="614" key="DirDiffDialog/0.23.1440.835@0.23.1440.835" timestamp="1633459943433" />
-    <state x="100" y="124" width="1240" height="614" key="DirDiffDialog/0.23.1440.836@0.23.1440.836" timestamp="1632710345850" />
-    <state x="417" y="135" key="SettingsEditor" timestamp="1631649732397">
-      <screen x="0" y="23" width="1920" height="1007" />
+    <state x="374" y="244" key="#com.intellij.fileTypes.FileTypeChooser/0.23.1440.834@0.23.1440.834" timestamp="1633813312744" />
+    <state x="99" y="123" width="1240" height="614" key="DirDiffDialog" timestamp="1633893314067">
+      <screen x="0" y="23" width="1440" height="835" />
     </state>
+    <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.834@0.23.1440.834" timestamp="1633889550615" />
+    <state x="99" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.835@0.23.1440.835" timestamp="1633893314067" />
+    <state x="100" y="124" width="1240" height="614" key="DirDiffDialog/0.23.1440.836@0.23.1440.836" timestamp="1632710345850" />
+    <state x="313" y="116" key="SettingsEditor" timestamp="1633811432094">
+      <screen x="0" y="23" width="1440" height="834" />
+    </state>
+    <state x="313" y="116" key="SettingsEditor/0.23.1440.834@0.23.1440.834" timestamp="1633811432094" />
     <state x="417" y="135" key="SettingsEditor/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631649732397" />
     <state x="417" y="135" key="SettingsEditor/0.23.1920.1007@0.23.1920.1007" timestamp="1631209950156" />
     <state x="399" y="450" key="com.intellij.ide.util.TipDialog" timestamp="1632161322528">
@@ -112,11 +117,11 @@
     <state x="136" y="173" width="1440" height="824" key="dock-window-2/0.23.1440.835@0.23.1440.835" timestamp="1632515885228" />
     <state x="1979" y="23" width="1638" height="974" key="dock-window-2/0.23.1920.1005/1920.23.1920.1057@0.23.1920.1005" timestamp="1632514001830" />
     <state x="2104" y="69" width="1905" height="1055" key="dock-window-2/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631548808608" />
-    <state x="559" y="76" width="720" height="603" key="find.popup" timestamp="1633460342644">
+    <state x="559" y="76" width="720" height="603" key="find.popup" timestamp="1633889439189">
       <screen x="0" y="23" width="1440" height="834" />
     </state>
     <state x="559" y="76" width="720" height="602" key="find.popup/0.23.1440.833@0.23.1440.833" timestamp="1633231397662" />
-    <state x="559" y="76" width="720" height="603" key="find.popup/0.23.1440.834@0.23.1440.834" timestamp="1633460342644" />
+    <state x="559" y="76" width="720" height="603" key="find.popup/0.23.1440.834@0.23.1440.834" timestamp="1633889439189" />
     <state x="559" y="76" width="720" height="604" key="find.popup/0.23.1440.835@0.23.1440.835" timestamp="1633459235252" />
     <state x="745" y="87" width="960" height="724" key="find.popup/0.23.1920.1001/1920.23.1920.1057@0.23.1920.1001" timestamp="1632438214361" />
     <state x="745" y="87" width="960" height="725" key="find.popup/0.23.1920.1002/1920.23.1920.1057@0.23.1920.1002" timestamp="1632501797792" />
@@ -125,10 +130,11 @@
     <state x="1036" y="86" width="667" height="476" key="find.popup/0.23.1920.994/1920.23.1920.1057@0.23.1920.994" timestamp="1632169345064" />
     <state x="1036" y="86" width="667" height="477" key="find.popup/0.23.1920.995/1920.23.1920.1057@0.23.1920.995" timestamp="1632249517102" />
     <state x="1036" y="86" width="667" height="478" key="find.popup/0.23.1920.997/1920.23.1920.1057@0.23.1920.997" timestamp="1632256402247" />
-    <state x="513" y="207" width="894" height="825" key="search.everywhere.popup" timestamp="1632769484289">
-      <screen x="0" y="23" width="1920" height="1006" />
+    <state x="385" y="176" width="671" height="686" key="search.everywhere.popup" timestamp="1633914688187">
+      <screen x="0" y="23" width="1440" height="836" />
     </state>
     <state x="385" y="174" width="670" height="676" key="search.everywhere.popup/0.23.1440.827@0.23.1440.827" timestamp="1631212770359" />
+    <state x="385" y="176" width="671" height="686" key="search.everywhere.popup/0.23.1440.836@0.23.1440.836" timestamp="1633914688187" />
     <state x="513" y="206" width="894" height="821" key="search.everywhere.popup/0.23.1920.1003/1920.23.1920.1057@0.23.1920.1003" timestamp="1632337933885" />
     <state x="513" y="207" width="894" height="825" key="search.everywhere.popup/0.23.1920.1006/1920.23.1920.1057@0.23.1920.1006" timestamp="1632769484289" />
     <state x="513" y="207" width="894" height="824" key="search.everywhere.popup/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631650326955" />
