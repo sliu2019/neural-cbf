@@ -57,29 +57,32 @@ def graph_log_file():
 	plt.xlabel("Optimization steps")
 	plt.legend(loc="upper right")
 	plt.title("Statistics throughout training")
-
 	plt.savefig("./log/%s/test_loss.png" % exp_name)
 
 	# plt.ylabel("Test loss")
 
-def graph_log_file_2():
+def graph_log_file_2(exp_name):
 	"""
 	Corresponds to above
 	"""
-	exp_name = "cartpole_reduced_exp1a"
+	# exp_name = "cartpole_reduced_exp1a"
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
 		timings = data["timings"]
-		test_losses = data["test_losses"]
-
-		plt.plot(test_losses, linewidth=0.5, label="Test loss")
+		# test_losses = data["test_losses"]
+		test_attack_losses = data["test_attack_losses"]
+		test_reg_losses = data["test_reg_losses"]
+		plt.plot(test_attack_losses, linewidth=0.5, label="Test attack loss")
+		plt.plot(test_reg_losses, linewidth=0.5, label="Test reg loss")
+		# plt.plot(test_losses, linewidth=0.5, label="Test loss")
 	# plt.plot(timings, color='red', label="Runtime (hours)")
 	plt.xlabel("Optimization steps")
 	plt.legend(loc="upper right")
 	plt.title("Statistics throughout training")
 
 	plt.savefig("./log/%s/test_loss.png" % exp_name)
-
+	plt.clf()
+	plt.cla()
 
 def plot_phi_2d_level_curve(phi_fn, phi_load_fpth, checkpoint_number, x_lim, which_2_state_vars):
 	"""
@@ -154,51 +157,45 @@ def plot_phi_2d_level_curve_over_training():
 		plot_phi_2d_level_curve(phi_fn, phi_load_fpth, checkpoint_number, x_lim, which_2_state_vars)
 
 
-args = parser()
 
-# if torch.cuda.is_available():
-# 	os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
-# 	dev = "cuda:%i" % (args.gpu)
-# 	print("Using GPU device: %s" % dev)
-# else:
-# 	dev = "cpu"
-dev = "cpu"
-device = torch.device(dev)
-
-r = 2
-x_dim = 2
-u_dim = 1
-x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
-
-# Create phi
-from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
-
-param_dict = {
-	"I": 0.021,
-	"m": 0.25,
-	"M": 1.00,
-	"l": 0.5,
-	"max_theta": math.pi / 2.0,
-	"max_force": 15.0
-}
-
-h_fn = H(param_dict)
-xdot_fn = XDot(param_dict)
-uvertices_fn = ULimitSetVertices(param_dict, device)
-
-# n_samples = 50
-# rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 1]])
-# A_samples = torch.rand(n_samples, x_dim) * (2 * rnge) - rnge  # (n_samples, x_dim)
-x_e = torch.zeros(1, x_dim)
-
-phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
-# phi_fn.to(device)
 
 def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	"""
 	Plots binary +/- of CBF value
 	Also plots training attacks
 	"""
+	args = load_args("./log/%s/args.txt" % exp_name)
+	dev = "cpu"
+	device = torch.device(dev)
+
+	r = 2
+	x_dim = 2
+	u_dim = 1
+	x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+
+	# Create phi
+	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
+
+	param_dict = {
+		"I": 0.021,
+		"m": 0.25,
+		"M": 1.00,
+		"l": 0.5,
+		"max_theta": math.pi / 2.0,
+		"max_force": 15.0
+	}
+
+	h_fn = H(param_dict)
+	xdot_fn = XDot(param_dict)
+	uvertices_fn = ULimitSetVertices(param_dict, device)
+
+	# n_samples = 50
+	# rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 1]])
+	# A_samples = torch.rand(n_samples, x_dim) * (2 * rnge) - rnge  # (n_samples, x_dim)
+	x_e = torch.zeros(1, x_dim)
+
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+	###################################
 	# IPython.embed()
 	delta = 0.01
 	x = np.arange(-math.pi, math.pi, delta)
@@ -208,6 +205,14 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	# phi_load_fpth = "./checkpoint/cartpole_reduced_exp1a/checkpoint_69.pth"
 	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
 	load_model(phi_fn, phi_load_fpth)
+
+
+	##### Testing ######
+	# state_dict = phi_fn.beta_net.state_dict()  # 0.weight/bias and 2.weight/bias
+	# # print(torch.mean(state_dict["4.weight"]))
+	# print(state_dict["2.weight"])
+	# # print(state_dict)
+	######
 
 	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
 	input = torch.from_numpy(input)
@@ -227,14 +232,15 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	                 colors=('k',), linewidths=(2,))
 
 	# Get attacks
-	# with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
-	# 	data = pickle.load(handle)
-	# 	train_attacks = data["train_attacks"]
-	# 	# IPython.embed()
-	# 	test_losses = data["test_losses"]
-	# 	for j in range(checkpoint_number):
-	# 		if test_losses[j] > 0:
-	# 			plt.scatter(train_attacks[j][0], train_attacks[j][1], c="white", s=0.2)
+	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+		data = pickle.load(handle)
+		train_attacks = data["train_attacks"]
+		# IPython.embed()
+		test_losses = data["test_losses"]
+		plt.scatter(train_attacks[checkpoint_number][0], train_attacks[checkpoint_number][1], c="white", marker="x")
+		# for j in range(checkpoint_number):
+		# 	if test_losses[j] > 0:
+		# 		plt.scatter(train_attacks[j][0], train_attacks[j][1], c="white", s=0.2)
 
 	# attacks = np.load("./log/cartpole_reduced_debug/boundary_samples_post_opt.npy")
 	# plt.scatter(attacks[:, 0], attacks[:, 1], c="white", marker="x")
@@ -243,19 +249,17 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	plt.savefig("./log/%s/%s" % (exp_name, save_fnm))
 
 if __name__=="__main__":
-	# parse_log_file()
-	# graph_log_file()
+	# for checkpoint_number in np.arange(0, 30, 10):
+	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
+	# 	plot_2d_binary(checkpoint_number, save_fnm, "cartpole_reduced_devel")
 
-	# graph_log_file_2()
+	# graph_log_file_2("cartpole_reduced_devel")
 
-	# plot_phi_2d_level_curve_over_training()
+	# graph_log_file_2("cartpole_reduced_l_50_w_5e_4")
+	# graph_log_file_2("cartpole_reduced_l_50_w_1")
+	# graph_log_file_2("cartpole_reduced_l_50_w_5e_1")
 
-	# for i in np.arange(0, 69, 6):
-	# 	# phi_load_fpth = "cartpole_reduced_exp1a/checkpoint_%i.pth" % i
-	# 	save_fnm = "2d_binary_%i.png" % i
-	# 	exp_name = "cartpole_reduced_exp1a"
-	# 	plot_2d_binary(i, save_fnm, exp_name)
-
-
-	######
-	plot_2d_binary(0, "new_cbf_format_4.png", "cartpole_reduced_debug")
+	# graph_log_file_2("cartpole_reduced_l_50_w_1e_1")
+	for checkpoint_number in np.arange(0, 410, 10):
+		save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
+		plot_2d_binary(checkpoint_number, save_fnm, "cartpole_reduced_l_50_w_5e_1")

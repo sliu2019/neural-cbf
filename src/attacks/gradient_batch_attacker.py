@@ -15,7 +15,7 @@ class GradientBatchAttacker():
 	# TODO: enforce argmax(phi_i) = r constraint (project to this subset of the manifold)
 	# Note: this is not batch compliant.
 
-	def __init__(self, x_lim, device, n_samples=20, \
+	def __init__(self, x_lim, device, logger, n_samples=20, \
 	             stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-2, early_stopping_patience=3,\
 	             lr=1e-3, \
 	             projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=3):
@@ -150,6 +150,7 @@ class GradientBatchAttacker():
 		Atol? Reltol?
 		"""
 		# TODO: is the stopping condition correct?
+		# self.logger.info("Intersecting segment with manifold")
 		# print("Inside intersect_segment_withmanifold")
 		# IPython.embed()
 		diff = p2-p1
@@ -166,6 +167,7 @@ class GradientBatchAttacker():
 
 		# print("This segment intersects the surface")
 		# IPython.embed()
+		t0 = time.perf_counter()
 		while True:
 			mid_weight = (left_weight + right_weight)/2.0
 			mid_point = p1 + mid_weight*diff
@@ -180,26 +182,53 @@ class GradientBatchAttacker():
 				left_weight = mid_weight
 				left_val = mid_val
 
-			# CGAL uses something different: np.dist(left_point, right_point) < rtol*self.hypercube_vol
-			"""left_point = p1 + left_weight*diff
+			# Use this approach or the one below to prevent infinite loops
+			# Approach #1
+			if np.abs(left_weight - right_weight) < 1e-3:
+				intersection_point = p1 + left_weight*diff
+				break
+			t1 = time.perf_counter()
+			if (t1-t0)>100:
+				# This clause is necessary for non-differentiable, continuous points (abrupt change)
+				print("Something is wrong in projection")
+				print(torch.abs(left_val - right_val))
+				print(left_weight, right_weight)
+				left_point = p1 + left_weight * diff
+				right_point = p1 + right_weight * diff
+				print(left_point, right_point)
+				# IPython.embed()
+				return None
+
+			"""# Approach #2: CGAL uses this
+			left_point = p1 + left_weight*diff
 			right_point = p1 + right_weight*diff
 
 			norm_diff = torch.norm(left_point-right_point)
 			print(norm_diff, rtol*self.hypercube_vol)
 			if norm_diff < rtol*self.hypercube_vol:
 				intersection_point = p1 + left_weight*diff
-				break"""
+				break
+			"""
 
-			# print(torch.abs(left_val - right_val))
-			# print(left_val, right_val)
-			# print(left_weight, right_weight)
-			# intersection_point = p1 + left_weight * diff
-			# print(intersection_point)
+			"""
+			# Approach #3
+			t1 = time.perf_counter()
+			if (t1-t0)>100:
+				# This clause is necessary for non-differentiable, continuous points (abrupt change)
+				print("Something is wrong in projection")
+				print(torch.abs(left_val - right_val))
+				print(left_weight, right_weight)
+				left_point = p1 + left_weight * diff
+				right_point = p1 + right_weight * diff
+				print(left_point, right_point)
+				return None
 			if torch.abs(left_val - right_val) <= atol:
 				intersection_point = p1 + left_weight*diff # arbitrary choice of left point
 				break
+			"""
 
 			# IPython.embed()
+		# self.logger.info("done")
 		return intersection_point
 
 	def sample_points_on_boundary(self, phi_fn):
@@ -207,17 +236,14 @@ class GradientBatchAttacker():
 		Returns torch array of size (self.n_samples, self.x_dim)
 		"""
 		# Everything done in torch
-		# IPython.embed()
+		# self.logger.info("sampling points on the boundary")
 		samples = []
 		n_remaining_to_sample = self.n_samples
-		# n_remaining_to_sample = 1 # TODO
 
 		center = self.sample_in_cube()
 		n_segments_sampled = 0
 
-		# print(center)
 		while n_remaining_to_sample > 0:
-			# print(n_segments_sampled)
 			outer = self.sample_on_cube()
 
 			intersection = self.intersect_segment_with_manifold(center, outer, phi_fn)
@@ -227,30 +253,20 @@ class GradientBatchAttacker():
 			else:
 				center = self.sample_in_cube()
 			n_segments_sampled += 1
+			# self.logger.info("%i segments" % n_segments_sampled)
 
-		# samples = np.array(samples)
-		# samples = torch.from_numpy(samples)
 		samples = torch.cat(samples, dim=0)
+		# self.logger.info("Done with sampling points on the boundary...")
 		return samples
 
 	def opt(self, objective_fn, phi_fn):
-		# Sample 1 point well within box
-		# random = torch.rand(self.n_samples, self.x_dim).to(self.device)
-		# X = random*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
 
-		# Project to manifold
-		# t0 = time.perf_counter()
-		# X = self.project(phi_fn, X)
-		# t1 = time.perf_counter()
-		# print("Time for initial projection: %f" % (t1-t0))
-
-		# TODO
 		X = self.sample_points_on_boundary(phi_fn)
 
 		i = 0
 		early_stopping = EarlyStopping(patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta)
 		while True:
-			print(i)
+			# print(i)
 			X = self.step(objective_fn, phi_fn, X)
 
 			if self.stopping_condition == "n_steps":
@@ -269,10 +285,10 @@ class GradientBatchAttacker():
 		obj_vals = objective_fn(X)
 		max_ind = torch.argmax(obj_vals)
 
-		# TODO: return this
-		# x = X[max_ind]
-		# return x
-		return X
+		x = X[max_ind]
+		return x
+
+
 # TODO: for PGD x Adam, should I manually feed the clipped gradient to Adam?
 # Workaround: custom backwards hook for the projection objective function. In this hook, clip gradient before returning
 # Want to use Adam, because we want this to converge quickly

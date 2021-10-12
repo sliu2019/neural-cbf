@@ -20,7 +20,7 @@ class Trainer():
 		self.log_folder = os.path.join(self.args.log_root, self.save_folder)
 		self.data_save_fpth = os.path.join(self.log_folder, "data.pkl")
 
-	def train(self, objective_fn, phi_fn, xdot_fn):
+	def train(self, objective_fn, reg_fn, phi_fn, xdot_fn):
 		# TODO: c_i require projected GD, so you'll need to modify Adam
 		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
 		params_no_ci = [tup[1] for tup in phi_fn.named_parameters() if tup[0] != "ci"]
@@ -32,6 +32,8 @@ class Trainer():
 
 		# Set up saving
 		# All these lists should be the same length
+		test_attack_losses = []
+		test_reg_losses = []
 		test_losses = []
 		timings = [] # in seconds
 		train_attacks = [] # lists of 1D numpy tensors
@@ -42,13 +44,17 @@ class Trainer():
 			# Inner min
 			x = self.attacker.opt(objective_fn, phi_fn)
 
-			# Outer max
+			# Outer ma
 			optimizer.zero_grad()
 			ci.grad = None
 
 			x_batch = x.view(1, -1)
-			objective_value = objective_fn(x_batch)
+			# IPython.embed()
+			objective_value = objective_fn(x_batch) + reg_fn()
 			objective_value.backward()
+
+			if torch.any(torch.isnan(phi_fn.ci.grad)):
+				IPython.embed()
 
 			optimizer.step()
 			with torch.no_grad():
@@ -58,12 +64,15 @@ class Trainer():
 
 			# Testing and logging at every iteration
 			t1 = time.perf_counter()
-			test_loss = self.test(phi_fn, objective_fn)
+			test_attack_loss = self.test(phi_fn, objective_fn)
+			test_reg_loss = reg_fn()
+			test_loss = test_attack_loss + test_reg_loss
 			t2 = time.perf_counter()
 
 			self.logger.info('\n' + '=' * 20 + f' evaluation at iteration: {_iter} ' \
 			            + '=' * 20)
 			self.logger.info(f'test loss: {test_loss:.3f}%, time spent testing: {t2 - t1:.3f} s')
+			self.logger.info(f'test attack loss: {test_attack_loss:.3f}%, reg loss: {test_reg_loss:.3f}%')
 
 			# Time spent training so far?
 			t_so_far = str(datetime.timedelta(seconds=(t2-t0)))
@@ -71,7 +80,10 @@ class Trainer():
 			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')
 
 			# Update save data
+			test_attack_losses.append(test_attack_loss)
+			test_reg_losses.append(test_reg_loss)
 			test_losses.append(test_loss)
+
 			timings.append(t_so_far)
 			train_attack_numpy = x.detach().cpu().numpy()
 			train_attacks.append(train_attack_numpy)
@@ -82,7 +94,7 @@ class Trainer():
 				save_model(phi_fn, file_name)
 
 				# save data too
-				save_dict = {"test_losses": test_losses, "timings": timings, "train_attacks": train_attacks}
+				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "timings": timings, "train_attacks": train_attacks}
 				print("Saving at: ", self.data_save_fpth)
 				with open(self.data_save_fpth, 'wb') as handle:
 					pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)

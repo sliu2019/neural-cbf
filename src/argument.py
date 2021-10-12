@@ -7,7 +7,7 @@ def parser():
 	parser.add_argument('--problem', default='cartpole_reduced', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "challenge", "cartpole_reduced"])
 
 	# Phi
-	parser.add_argument('--phi_nn_dimension', default=6, type=int, help='specify the hidden dimension')
+	parser.add_argument('--phi_nn_dimension', default="6", type=str, help='specify the hidden dimension')
 	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
 
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'])

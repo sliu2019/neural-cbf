@@ -32,12 +32,15 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.lines as lines
 
-g = 9.81
 dt = 0.01
+
+g = 9.81
 I= 0.099
 m= 0.2
 M= 2
 l= 0.5
+
+# TODO
 max_theta= math.pi / 10.0
 max_force= 1.0
 

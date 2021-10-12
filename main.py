@@ -28,18 +28,38 @@ class Phi(nn.Module):
 
 		# Note: by default, it registers parameters by their variable name
 		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much largers
-		hidden_dim = args.phi_nn_dimension
+
+		hidden_dims = args.phi_nn_dimension.split("-")
+		hidden_dims = [int(h) for h in hidden_dims]
+
+		net_layers = []
+		prev_dim = self.x_dim
+		for hidden_dim in hidden_dims:
+			net_layers.append(nn.Linear(prev_dim, hidden_dim))
+			net_layers.append(nn.ReLU())
+			prev_dim = hidden_dim
+		net_layers.append(nn.Linear(prev_dim, 1))
+		self.beta_net = nn.Sequential(*net_layers)
+
+		# IPython.embed()
 		# self.beta_net = nn.Sequential(
 		# 	nn.Linear(x_dim, hidden_dim),
-		# 	nn.Tanh(),
+		# 	nn.ReLU(),
 		# 	nn.Linear(hidden_dim, 1)
 		# )
 
-		self.beta_net = nn.Sequential(
-			nn.Linear(x_dim, hidden_dim),
-			nn.ReLU(),
-			nn.Linear(hidden_dim, 1)
-		)
+		# hidden_dim = 100
+		# self.beta_net = nn.Sequential(
+		# 	nn.Linear(x_dim, hidden_dim),
+		# 	nn.ReLU(),
+		# 	nn.Linear(hidden_dim, hidden_dim),
+		# 	nn.ReLU(),
+		# 	nn.Linear(hidden_dim, 1)
+		# )
+		#
+		# state_dict = self.beta_net.state_dict() # 0.weight/bias and 2.weight/bias
+		# state_dict['4.weight'] = torch.rand(state_dict['4.weight'].shape)*(-100.0)
+		# self.beta_net.load_state_dict(state_dict)
 
 		# def init_weights(m):
 		# 	if isinstance(m, nn.Linear):
@@ -47,21 +67,21 @@ class Phi(nn.Module):
 		# 		m.bias.data.fill_(1e-5)
 		# self.beta_net.apply(init_weights)
 
-		# IPython.embed()
-		state_dict = self.beta_net.state_dict() # 0.weight/bias and 2.weight/bias
-		state_dict['2.weight'] = torch.rand((1, 6))*(-100.0)
-		# torch.Size([1, 6])
-		# model.load_state_dict(state_dict)
-		IPython.embed()
+		# self.beta_net = nn.Sequential(
+		# 	nn.Linear(x_dim, hidden_dim),
+		# 	nn.ReLU(),
+		# 	nn.Linear(hidden_dim, 1)
+		# )
+
+		# state_dict = self.beta_net.state_dict() # 0.weight/bias and 2.weight/bias
+		# state_dict['2.weight'] = torch.rand(state_dict['2.weight'].shape)*(-50.0)
+		# self.beta_net.load_state_dict(state_dict)
 
 		if self.x_e is not None:
 			self.x_e = self.x_e.view(1, -1)
 
-			# print("Computing c: viz on Wolfram")
-			# IPython.embed()
 			h_xe = self.h_fn(self.x_e)
 			self.c = -np.log(2.0)/h_xe
-			# self.c = np.log(1/(-np.log(2.0) + 0.5) - 1.0)*(-1/h_xe)
 
 	def forward(self, x):
 		# The way these are implemented should be batch compliant
@@ -126,15 +146,11 @@ class Phi(nn.Module):
 		return result
 
 class Objective(nn.Module):
-	def __init__(self, phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, volume_term_weight=0.0, A_samples=None):
+	def __init__(self, phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger):
 		super().__init__()
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
-
-		assert volume_term_weight >= 0.0
-		if volume_term_weight:
-			assert A_samples is not None
 
 	def forward(self, x):
 		# The way these are implemented should be batch compliant
@@ -146,6 +162,7 @@ class Objective(nn.Module):
 		X = (x.unsqueeze(1)).repeat(1, n_vertices, 1) # (bs, n_vertices, x_dim)
 		X = torch.reshape(X, (-1, self.x_dim)) # (bs x n_vertices, x_dim)
 
+		# IPython.embed()
 		xdot = self.xdot_fn(X, U)
 
 		orig_req_grad_setting = x.requires_grad
@@ -165,21 +182,43 @@ class Objective(nn.Module):
 		result = nn.functional.relu(phidot)
 		result = result.view(-1, 1) # ensures bs x 1
 
-		# Add volume term
-		# Calculate the percentage of points in A which are not in S
+		return result
+
+class Regularizer(nn.Module):
+	def __init__(self, phi_fn, device, volume_term_weight=0.0,
+	             A_samples=None):
+		super().__init__()
+		vars = locals()  # dict of local names
+		self.__dict__.update(vars)  # __dict__ holds and object's attributes
+		del self.__dict__["self"]  # don't need `self`
+
+		assert volume_term_weight >= 0.0
+		if volume_term_weight:
+			assert A_samples is not None
+
+	def forward(self):
+		reg = torch.zeros(1, 1).to(self.device)
 		if self.volume_term_weight:
-			# IPython.embed()
 			phi_value_A_samples = self.phi_fn(self.A_samples)
 
-			phi_value_pos_bool = torch.where(phi_value_A_samples >= 0.0, 1.0, 0.0)
-			phi_value_pos = phi_value_A_samples*phi_value_pos_bool
-			volume_term = torch.sum(phi_value_pos)
+			# phi_value_pos_bool = torch.where(phi_value_A_samples >= 0.0, 1.0, 0.0)
+			# phi_value_pos = phi_value_A_samples * phi_value_pos_bool
+			# volume_term = torch.sum(phi_value_pos)
 
-			# print(result)
-			print(volume_term)
-			result = result + self.volume_term_weight*volume_term
-			# print(result)
-		return result
+			phi_value_pos_bool = torch.where(phi_value_A_samples >= 0.0, 1.0, 0.0)
+			phi_value_pos = phi_value_A_samples * phi_value_pos_bool
+			num_pos_per_sample = torch.sum(phi_value_pos_bool, dim=1)
+			numerator = torch.sum(phi_value_pos, dim=1)
+			num_pos_per_sample = torch.clamp(num_pos_per_sample, min=1e-5)
+			# avg_pos_phi_per_sample = num_pos_per_sample/denom
+			avg_pos_phi_per_sample = numerator/num_pos_per_sample
+
+			# fix divide by zeros
+			# avg_pos_phi_per_sample[avg_pos_phi_per_sample != avg_pos_phi_per_sample] = 0.0
+			volume_term = torch.mean(avg_pos_phi_per_sample)
+
+			reg = self.volume_term_weight * volume_term
+		return reg
 
 def main(args):
 	# Boilerplate for saving
@@ -278,6 +317,7 @@ def main(args):
 		n_samples = 50
 		rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 1]])
 		A_samples = torch.rand(n_samples, x_dim)*(2*rnge) - rnge # (n_samples, x_dim)
+		print(A_samples)
 		x_e = torch.zeros(1, x_dim)
 	else:
 		raise NotImplementedError
@@ -297,27 +337,29 @@ def main(args):
 	# Create CBF
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
 	# Create objective function
-	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, volume_term_weight=args.objective_volume_weight, A_samples=A_samples)
+	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
+	reg_fn = Regularizer(phi_fn, device, volume_term_weight=args.objective_volume_weight, A_samples=A_samples)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)
 	objective_fn = objective_fn.to(device)
+	reg_fn = reg_fn.to(device)
 
 	# Create attacker
 	if args.train_attacker == "basic":
 		attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.train_attacker == "gradient_batch":
-		attacker = GradientBatchAttacker(x_lim, device, stopping_condition=args.train_attacker_stopping_condition, n_samples=args.train_attacker_n_samples, projection_stop_threshold=args.train_attacker_projection_stop_threshold, projection_lr=args.train_attacker_projection_lr)
+		attacker = GradientBatchAttacker(x_lim, device, logger, stopping_condition=args.train_attacker_stopping_condition, n_samples=args.train_attacker_n_samples, projection_stop_threshold=args.train_attacker_projection_stop_threshold, projection_lr=args.train_attacker_projection_lr)
 
 	# Create test attacker
 	if args.test_attacker == "basic":
 		test_attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.test_attacker == "gradient_batch":
-		test_attacker = GradientBatchAttacker(x_lim, device, stopping_condition=args.test_attacker_stopping_condition, n_samples=args.test_attacker_n_samples, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
+		test_attacker = GradientBatchAttacker(x_lim, device, logger, stopping_condition=args.test_attacker_stopping_condition, n_samples=args.test_attacker_n_samples, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
 
 	# Pass everything to Trainer
-	# trainer = Trainer(args, logger, attacker, test_attacker)
-	# trainer.train(objective_fn, phi_fn, xdot_fn)
+	trainer = Trainer(args, logger, attacker, test_attacker)
+	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
@@ -356,11 +398,11 @@ def main(args):
 	# print(phi_fn(-X))
 
 	# Test: different phi init gives different plot
-	for name, param in phi_fn.named_parameters():
-		print(name, param)
+	# for name, param in phi_fn.named_parameters():
+	# 	print(name, param)
 
-	file_name = os.path.join(args.model_folder, f'checkpoint_0.pth')
-	save_model(phi_fn, file_name)
+	# file_name = os.path.join(args.model_folder, f'checkpoint_0.pth')
+	# save_model(phi_fn, file_name)
 
 	# Test:
 	# t0 = time.perf_counter()
