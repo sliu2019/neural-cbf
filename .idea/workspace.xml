@@ -3,7 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/simulators/cartpole_simulator.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/simulators/cartpole_simulator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/simulators/cartpole_simulator.py" beforeDir="false" afterPath="$PROJECT_DIR$/cartpole_simulator.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,6 +37,7 @@
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/src" />
     </key>
   </component>
@@ -64,7 +65,8 @@
       <updated>1631196631573</updated>
       <workItem from="1631196657722" duration="52008000" />
       <workItem from="1631628541958" duration="12210000" />
-      <workItem from="1632102927249" duration="194902000" />
+      <workItem from="1632102927249" duration="201945000" />
+      <workItem from="1634332522330" duration="4892000" />
     </task>
     <servers />
   </component>
@@ -80,19 +82,21 @@
       <screen x="0" y="23" width="1440" height="836" />
     </state>
     <state x="184" y="92" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.23.1440.836@0.23.1440.836" timestamp="1632512287538" />
-    <state x="374" y="244" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1633813312744">
-      <screen x="0" y="23" width="1440" height="834" />
+    <state x="499" y="291" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1634415116182">
+      <screen x="0" y="23" width="1920" height="1013" />
     </state>
     <state x="374" y="244" key="#com.intellij.fileTypes.FileTypeChooser/0.23.1440.834@0.23.1440.834" timestamp="1633813312744" />
-    <state x="100" y="303" width="1240" height="614" key="DirDiffDialog" timestamp="1634069249844">
+    <state x="499" y="291" key="#com.intellij.fileTypes.FileTypeChooser/0.23.1920.1013@0.23.1920.1013" timestamp="1634415116182" />
+    <state x="133" y="144" width="1654" height="744" key="DirDiffDialog" timestamp="1634415111888">
       <screen x="0" y="23" width="1920" height="1013" />
     </state>
     <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.834@0.23.1440.834" timestamp="1634066715644" />
     <state x="99" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.835@0.23.1440.835" timestamp="1633893314067" />
     <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.836@0.23.1440.836" timestamp="1633965603401" />
-    <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.837@0.23.1440.837" timestamp="1634011532848" />
+    <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.837@0.23.1440.837" timestamp="1634134046591" />
     <state x="100" y="123" width="1240" height="615" key="DirDiffDialog/0.23.1440.838@0.23.1440.838" timestamp="1633967137867" />
     <state x="100" y="303" width="1240" height="614" key="DirDiffDialog/0.23.1920.1013/1920.23.1920.1013@0.23.1920.1013" timestamp="1634069249844" />
+    <state x="133" y="144" width="1654" height="744" key="DirDiffDialog/0.23.1920.1013@0.23.1920.1013" timestamp="1634415111888" />
     <state x="313" y="116" key="SettingsEditor" timestamp="1634065459313">
       <screen x="0" y="23" width="1440" height="834" />
     </state>

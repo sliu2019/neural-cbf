@@ -23,8 +23,9 @@ import torch
 from torch.autograd import grad
 import IPython
 import math
-from main import Phi
 from src.argument import parser
+from src.utils import *
+from main import Phi
 import pickle
 
 import matplotlib.animation as animation
@@ -32,7 +33,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.lines as lines
 
-from src.utils import *
 
 dt = 0.01
 g = 9.81
@@ -76,13 +76,15 @@ class XDot_numpy():
 		return x_dot
 
 class Cartpole_Simulator():
-	def __init__(self, xdot_fn_numpy, max_time=1.0):
+	def __init__(self, xdot_fn_numpy, param_dict, max_time=1.0):
 		"""
 		Simulates + animates
 		"""
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
+
+		self.l = self.param_dict["l"]
 
 	def step(self, x, u):
 		x_dot = self.xdot_fn_numpy(x, u)
@@ -98,13 +100,17 @@ class Cartpole_Simulator():
 
 		x_all = [np.reshape(x0, (1, x_dim))]
 		u_all = []
+		u_preclip_all = []
 		i = 0
 		while True:
 			u = controller(x)
-			x = self.step(x, u)
+			u_feas = np.clip(u, -self.param_dict["max_force"], self.param_dict["max_force"])
+
+			x = self.step(x, u_feas)
 
 			x_all.append(np.reshape(x, (1, x_dim)))
-			u_all.append(np.reshape(u, (1, u_dim)))
+			u_preclip_all.append(np.reshape(u, (1, u_dim)))
+			u_all.append(np.reshape(u_feas, (1, u_dim)))
 
 			if dt*i > self.max_time:
 				print("Timeout, terminating rollout")
@@ -114,8 +120,9 @@ class Cartpole_Simulator():
 			i += 1
 
 		x_all = np.concatenate(x_all, axis=0)
+		u_preclip_all = np.concatenate(u_preclip_all, axis=0)
 		u_all = np.concatenate(u_all, axis=0)
-		return x_all, u_all
+		return x_all, u_all, u_preclip_all
 
 	def animate_rollout(self, x_rollout, save_fpth):
 		# Animation utilities
@@ -140,7 +147,7 @@ class Cartpole_Simulator():
 			xPos = x_rollout[i, 0]
 			theta = x_rollout[i, 1]
 			x = [origin[0] + xPos, origin[0] + xPos + self.l * np.sin(theta)]
-			y = [origin[1], origin[1] - self.l * np.cos(theta)]
+			y = [origin[1], origin[1] + self.l * np.cos(theta)]
 			pendulumArm.set_xdata(x)
 			pendulumArm.set_ydata(y)
 
@@ -151,8 +158,8 @@ class Cartpole_Simulator():
 		anim = animation.FuncAnimation(fig, animate, init_func=init, interval=1000 * anim_dt,
 		                               blit=True)  # interval: real time, interval between frames in ms
 		# plt.show()
-		FFwriter = animation.FFMpegWriter()
-		anim.save(save_fpth, writer=FFwriter, fps=10)
+		FFwriter = animation.FFMpegWriter(fps=10)
+		anim.save(save_fpth, writer=FFwriter)
 
 ####################################################################################################################
 
@@ -200,45 +207,67 @@ def load_trained_cbf(exp_name, checkpoint_number):
 	return phi_fn, param_dict
 
 class CBF_controller():
-	def __init__(self, phi_fn, xdot_fn_numpy, param_dict):
+	def __init__(self, phi_fn, xdot_fn_numpy, param_dict, eps=1.0):
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
+
+	def convert_angle_to_negpi_pi_interval(self, angle):
+		new_angle = np.arctan2(np.sin(angle), np.cos(angle))
+		return new_angle
 
 	def __call__(self, x):
 		"""
 		x is (4) vec
 		RV u is numpy (1) vec
 		"""
-		# Phi grad
-		x_input = torch.from_numpy(x.astype("float32")).view(-1, x_dim)
+		# Prepare first
+		theta = self.convert_angle_to_negpi_pi_interval(x[1]) # Note: mod theta first, before applying cbf. Also, truncate the state.
+		print("Check that this angle is in [-pi, pi] range: %f" % theta)
+		x_trunc = np.array([theta, x[3]])
+		x_input = torch.from_numpy(x_trunc.astype("float32")).view(-1, 2)
 		x_input.requires_grad = True
-		phi_val = self.phi_fn(x_input)
+
+		# Compute phi grad
+		phi_output = self.phi_fn(x_input)
+		phi_val = phi_output[0, -1]
 		phi_grad = grad([phi_val], x_input)[0]
+
+		# Post op
 		x_input.requires_grad = False
-
 		phi_grad = phi_grad.detach().cpu().numpy()
-		print("Phi_grad is numpy?")
-		IPython.embed()
+		phi_grad = np.array([0, phi_grad[0, 0], 0, phi_grad[0, 1]])[None]
+		# IPython.embed()
 
+		# Get eps
+		# TODO: sketchy way to convert DT to CT
+		if phi_val > 0:
+			eps = self.eps
+		elif phi_val < 0 and phi_val > -1e-3:
+			eps = 0
+		else:
+			return np.zeros(1)
+
+		# Compute the control constraints
 		# Get f(x), g(x)
 		# honestly, this is a hacky way
 		f_x = self.xdot_fn_numpy(x, np.zeros(1)) # xdot defined globally
-		g_x = self.xdot_fn_numpy(x_input, np.ones(1)) - f_x
+		g_x = self.xdot_fn_numpy(x, np.ones(1)) - f_x
 
 		lhs = phi_grad@g_x.T
-		rhs = -phi_grad@f_x.T
+		rhs = -phi_grad@f_x.T - eps
 
 		# Done computing CBF constraint
 		u_nom = np.zeros(1)
 		u_safe = u_nom
-		u_safe = np.clip(u_safe, -self.param_dict["max_force"], self.param_dict["max_force"])
+		# u_safe = np.clip(u_safe, -self.param_dict["max_force"], self.param_dict["max_force"])
 
 		# Cbf constraint
 		if lhs >= 0:
 			u_safe = np.clip(u_safe, None, rhs / lhs)
 		else:
 			u_safe = np.clip(u_safe, rhs / lhs, None)
+		# u_safe = np.clip(u_safe, -self.param_dict["max_force"], self.param_dict["max_force"])
 		return u_safe
 
 # def run_experiment(controller_type, save_fpth):
@@ -339,18 +368,32 @@ class CBF_controller():
 if __name__ == "__main__":
 	checkpoint_number = 50
 	phi_fn, param_dict = load_trained_cbf("cartpole_reduced_l_50_w_1e_1", checkpoint_number)
-	IPython.embed()
+	# param_dict = {
+	# 	"I": 0.021,
+	# 	"m": 0.25,
+	# 	"M": 1.00,
+	# 	"l": 0.5,
+	# 	"max_theta": math.pi / 2.0,
+	# 	"max_force": 15.0
+	# }
+	# IPython.embed()
 
 	xdot_fn_numpy = XDot_numpy(param_dict)
-	cartpole_simulator = Cartpole_Simulator(xdot_fn_numpy)
+	cartpole_simulator = Cartpole_Simulator(xdot_fn_numpy, param_dict)
 
-	x0 = np.array([0.0, math.pi/2, 0, 0])
-	# controller = CBF_controller(phi_fn, xdot_fn_numpy, param_dict)
-	controller = lambda x: np.zeros(1)
+	x0 = np.array([0.0, math.pi/4, 0, 0])
+	controller = CBF_controller(phi_fn, xdot_fn_numpy, param_dict)
+	# controller = lambda x: np.zeros(1)
 
-	x_rollout, u_rollout = cartpole_simulator.simulate_rollout(x0, controller)
-	cartpole_simulator.animate_rollout(x_rollout, "test_cartpole_animation.mv")
+	x_rollout, u_rollout, u_preclip_rollout = cartpole_simulator.simulate_rollout(x0, controller)
+	# print("rollout ended")
+	# IPython.embed()
+	# cartpole_simulator.animate_rollout(x_rollout, "./animations/test_cartpole_animation.mp4")
+	cartpole_simulator.animate_rollout(x_rollout, "./animations/our_cbf_cartpole_animation.mp4")
 
+# TODO: mod theta before applying controller
+# TODO: CBF controller: needs to be different when applying controller at boundary vs on unsafe (eps >0)
+# TODO (later): consider terminating when angle too large (would go through cart)
 
 # TODO: run with nohup writing out to file! The printout will be really informative.
 # X_experiment, U_experiment, terminate_reasons = run_experiment("my_cbf", "./log/cartpole_default/simulations/debug.pkl")
