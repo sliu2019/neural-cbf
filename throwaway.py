@@ -238,26 +238,28 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 		test_losses = data["test_losses"]
 		plt.scatter(train_attacks[checkpoint_number][0], train_attacks[checkpoint_number][1], c="white", marker="x")
 
-	# attacks = np.load("./log/cartpole_reduced_debug/boundary_samples_post_opt.npy")
-	# plt.scatter(attacks[:, 0], attacks[:, 1], c="white", marker="x")
+	# TODO: remove, test dS/dG options on batch attacker
+	# logger = create_logger("log/discard", 'train', 'info')
+	# x_lim_pole = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+	# x_lim_pole = torch.tensor(x_lim_pole).to(device)
+	# from src.attacks.gradient_batch_attacker import GradientBatchAttacker
+	# attacker = GradientBatchAttacker(x_lim_pole, device, logger, n_samples=2)
+	#
+	# dG_dS = attacker.sample_points_on_boundary(phi_fn, mode="dG+dS").detach().cpu().numpy()
+	# plt.scatter(dG_dS[:, 0], dG_dS[:, 1], c="white", marker="x")
+	# print("done")
+	# dG_not_dS = attacker.sample_points_on_boundary(phi_fn, mode="dG/dS").detach().cpu().numpy()
+	# plt.scatter(dG_not_dS[:, 0], dG_not_dS[:, 1], c="red", marker="x")
 
 	# print(attacks)
 	plt.savefig("./log/%s/%s" % (exp_name, save_fnm))
 
 if __name__=="__main__":
-	# for checkpoint_number in np.arange(0, 30, 10):
-	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
-	# 	plot_2d_binary(checkpoint_number, save_fnm, "cartpole_reduced_devel")
-
-	# graph_log_file_2("cartpole_reduced_devel")
-
-	# graph_log_file_2("cartpole_reduced_l_50_w_5e_4")
-	# graph_log_file_2("cartpole_reduced_l_50_w_1")
-	# graph_log_file_2("cartpole_reduced_l_50_w_5e_1")
-
 	# graph_log_file_2("cartpole_reduced_l_50_w_1e_1")
-	for checkpoint_number in np.arange(500, 700, 10):
-		print(checkpoint_number)
-		save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
-		plot_2d_binary(checkpoint_number, save_fnm, "cartpole_reduced_l_50_w_1e_1")
+	# for checkpoint_number in np.arange(500, 700, 10):
+	# 	print(checkpoint_number)
+	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
+	# 	plot_2d_binary(checkpoint_number, save_fnm, "cartpole_reduced_l_50_w_1e_1")
+
+	plot_2d_binary(160, "debug_dS_dG_options.png", "cartpole_reduced_l_50_w_1e_1")
 

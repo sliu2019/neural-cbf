@@ -530,7 +530,7 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr):
 
 if __name__ == "__main__":
 	# TODO: which checkpoint number?
-	checkpoint_number = 340
+	checkpoint_number = 160 # TODO: 340
 	exp_name = "cartpole_reduced_l_50_w_1e_1"
 	phi_fn = load_trained_cbf(exp_name, checkpoint_number)
 	save_fldrnm = "%s_%i" % (exp_name, checkpoint_number)
@@ -544,8 +544,8 @@ if __name__ == "__main__":
 	beta = param_dict["max_theta"] - 0.1 # TODO
 	other_phi_fn = PhiBaseline(h_fn, ci, beta, xdot_fn, r, x_dim, u_dim, device)
 
-	print("make sure phi works!")
-	IPython.embed()
+	# print("make sure phi works!")
+	# IPython.embed()
 	run_benchmark(phi_fn, other_phi_fn, save_fldrnm)
 
 

@@ -245,6 +245,7 @@ class GradientBatchAttacker():
 		n_segments_sampled = 0
 
 		while n_remaining_to_sample > 0:
+			print(n_remaining_to_sample)
 			outer = self.sample_on_cube()
 
 			intersection = self.intersect_segment_with_manifold(center, outer, phi_fn)
@@ -254,11 +255,14 @@ class GradientBatchAttacker():
 					n_remaining_to_sample -= 1
 				else:
 					phi_val = phi_fn(intersection.view(1, -1))
-					on_dS = torch.all(phi_val <= 1e-3).item()
+					on_dS = torch.all(phi_val[0, :-1] <= 1e-6).item()
+					# if mode == "dG/dS":
+					# 	print(intersection, phi_val)
+					# 	print(on_dS)
 					if on_dS and mode=="dG+dS":
 						samples.append(intersection.view(1, -1))
 						n_remaining_to_sample -= 1
-					elif not on_dS and mode=="dG/dS":
+					elif (not on_dS) and mode=="dG/dS":
 						samples.append(intersection.view(1, -1))
 						n_remaining_to_sample -= 1
 			else:
