@@ -231,9 +231,10 @@ class GradientBatchAttacker():
 		# self.logger.info("done")
 		return intersection_point
 
-	def sample_points_on_boundary(self, phi_fn):
+	def sample_points_on_boundary(self, phi_fn, mode="dG"):
 		"""
 		Returns torch array of size (self.n_samples, self.x_dim)
+		Mode between "dG", "dG+dS", "dG/dS"
 		"""
 		# Everything done in torch
 		# self.logger.info("sampling points on the boundary")
@@ -248,8 +249,18 @@ class GradientBatchAttacker():
 
 			intersection = self.intersect_segment_with_manifold(center, outer, phi_fn)
 			if intersection is not None:
-				samples.append(intersection.view(1, -1))
-				n_remaining_to_sample -= 1
+				if mode == "dG":
+					samples.append(intersection.view(1, -1))
+					n_remaining_to_sample -= 1
+				else:
+					phi_val = phi_fn(intersection.view(1, -1))
+					on_dS = torch.all(phi_val <= 1e-3).item()
+					if on_dS and mode=="dG+dS":
+						samples.append(intersection.view(1, -1))
+						n_remaining_to_sample -= 1
+					elif not on_dS and mode=="dG/dS":
+						samples.append(intersection.view(1, -1))
+						n_remaining_to_sample -= 1
 			else:
 				center = self.sample_in_cube()
 			n_segments_sampled += 1
