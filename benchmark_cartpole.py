@@ -1,0 +1,491 @@
+"""
+Simulates the cartpole (inverted pendulum on cart) dynamical system.
+"""
+
+"""
+Code structure:
+controller function
+step function for dynamics with dt argument
+
+dynamics simulation loop
+outputs array of states 
+
+function that runs experiments, calling the simulation loop many times with different parameters 
+
+animator: pass in array and save output 
+
+use the visualizer to debug 
+and create illustrations of good samples
+"""
+
+import numpy as np
+import torch
+from torch.autograd import grad
+import IPython
+import math
+from src.argument import parser
+from src.utils import *
+from main import Phi
+import pickle
+
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import matplotlib.lines as lines
+
+from src.attacks.gradient_batch_attacker import GradientBatchAttacker
+from src.utils import *
+
+dt = 0.01
+g = 9.81
+
+dev = "cpu"
+device = torch.device(dev)
+
+# Note: everything for 4D cartpole, not 2D pole
+r = 2
+x_dim = 4
+u_dim = 1
+# x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+x_lim = np.array([[-5, 5], [-math.pi, math.pi], [-10, 10], [-5, 5]], dtype=np.float32)
+
+mode = 'easy'
+if mode == 'easy':
+	param_dict = {
+		"I": 0.021,
+		"m": 0.25,
+		"M": 1.00,
+		"l": 0.5,
+		"max_theta": math.pi / 2.0,
+		"max_force": 15.0
+	}
+
+elif mode == 'hard':
+	param_dict = {
+		"I": 0.021,
+		"m": 0.25,
+		"M": 1.00,
+		"l": 0.5,
+		"max_theta": math.pi / 4.0,
+		"max_force": 1.0
+	}
+####################################################################################################################
+class XDot_numpy():
+	def __init__(self, param_dict):
+		vars = locals()  # dict of local names
+		self.__dict__.update(vars)  # __dict__ holds and object's attributes
+		del self.__dict__["self"]  # don't need `self`
+
+		self.I = param_dict["I"]
+		self.M = param_dict["M"]
+		self.m = param_dict["m"]
+		self.l = param_dict["l"]
+
+	def __call__(self, x, u):
+		x_dot = np.zeros(4)
+
+		x_dot[0] = x[2]
+		x_dot[1] = x[3]
+
+		theta = x[1]
+		theta_dot = x[3]
+		denom = self.I*(self.M + self.m) + self.m*(self.l**2)*(self.M + self.m*(math.sin(theta)**2))
+		x_dot[2] = (self.I + self.m*(self.l**2))*(self.m*self.l*theta_dot**2*math.sin(theta)) - g*(self.m**2)*(self.l**2)*math.sin(theta)*math.cos(theta) + (self.I + self.m*self.l**2)*u
+		x_dot[3] = self.m*self.l*(-self.m*self.l*theta_dot**2*math.sin(theta)*math.cos(theta) + (self.M+self.m)*g*math.sin(theta)) + (-self.m*self.l*math.cos(theta))*u
+
+		x_dot[2] = x_dot[2]/denom
+		x_dot[3] = x_dot[3]/denom
+		return x_dot
+
+class Cartpole_Simulator():
+	def __init__(self, xdot_fn_numpy, param_dict, max_time=1.0):
+		"""
+		Simulates + animates
+		"""
+		vars = locals()  # dict of local names
+		self.__dict__.update(vars)  # __dict__ holds and object's attributes
+		del self.__dict__["self"]  # don't need `self`
+
+		self.l = self.param_dict["l"]
+
+	def step(self, x, u):
+		x_dot = self.xdot_fn_numpy(x, u)
+		x_next = x + dt*x_dot
+		return x_next
+
+	def simulate_rollout(self, x0, controller): # max_time relative to dt
+		"""
+		x0: (4) vector
+		Simulate one rollout and return data
+		"""
+		x = x0.copy()
+
+		x_all = [np.reshape(x0, (1, x_dim))]
+		u_all = []
+		u_preclip_all = []
+		i = 0
+		while True:
+			u = controller(x)
+			u_feas = np.clip(u, -self.param_dict["max_force"], self.param_dict["max_force"])
+
+			x = self.step(x, u_feas)
+
+			x_all.append(np.reshape(x, (1, x_dim)))
+			u_preclip_all.append(np.reshape(u, (1, u_dim)))
+			u_all.append(np.reshape(u_feas, (1, u_dim)))
+
+			if dt*i > self.max_time:
+				print("Timeout, terminating rollout")
+				rollout_terminate_reason = "time"
+				break
+
+			i += 1
+
+		x_all = np.concatenate(x_all, axis=0)
+		u_preclip_all = np.concatenate(u_preclip_all, axis=0)
+		u_all = np.concatenate(u_all, axis=0)
+		return x_all, u_all, u_preclip_all
+
+def animate_rollout(x_rollout, save_fpth):
+	l = param_dict["l"]
+
+	# Animation utilities
+	fig = plt.figure()
+	ax = fig.add_subplot(111, aspect='equal', xlim=(x_lim[0, 0], x_lim[0, 1]), ylim=(-1, 1),
+	                     title="Inverted Pendulum Simulation")
+	ax.grid()
+
+	# animation parameters
+	origin = [0.0, 0.0]
+	anim_dt = 0.02
+
+	pendulumArm = lines.Line2D(origin, origin, color='r')
+	cart = patches.Rectangle(origin, 0.5, 0.15, color='b')
+
+	def init():
+		ax.add_patch(cart)
+		ax.add_line(pendulumArm)
+		return pendulumArm, cart
+
+	def animate(i):
+		xPos = x_rollout[i, 0]
+		theta = x_rollout[i, 1]
+		x = [origin[0] + xPos, origin[0] + xPos + l * np.sin(theta)]
+		y = [origin[1], origin[1] + l * np.cos(theta)]
+		pendulumArm.set_xdata(x)
+		pendulumArm.set_ydata(y)
+
+		cartPos = [origin[0] + xPos - cart.get_width() / 2, origin[1] - cart.get_height()]
+		cart.set_xy(cartPos)
+		return pendulumArm, cart
+
+	anim = animation.FuncAnimation(fig, animate, init_func=init, interval=1000 * anim_dt,
+	                               blit=True)  # interval: real time, interval between frames in ms
+	# plt.show()
+	FFwriter = animation.FFMpegWriter(fps=10)
+	anim.save(save_fpth, writer=FFwriter)
+
+####################################################################################################################
+class CBF_controller():
+	def __init__(self, phi_fn, xdot_fn_numpy, param_dict, eps=1.0):
+		vars = locals()  # dict of local names
+		self.__dict__.update(vars)  # __dict__ holds and object's attributes
+		del self.__dict__["self"]  # don't need `self`
+
+	def convert_angle_to_negpi_pi_interval(self, angle):
+		new_angle = np.arctan2(np.sin(angle), np.cos(angle))
+		return new_angle
+
+	def __call__(self, x):
+		"""
+		x is (4) vec
+		RV u is numpy (1) vec
+		"""
+		# Prepare first
+		theta = self.convert_angle_to_negpi_pi_interval(x[1]) # Note: mod theta first, before applying cbf. Also, truncate the state.
+		# print("Check that this angle is in [-pi, pi] range: %f" % theta)
+		assert theta < math.pi and theta > -math.pi
+		x_trunc = np.array([theta, x[3]])
+		x_input = torch.from_numpy(x_trunc.astype("float32")).view(-1, 2)
+		x_input.requires_grad = True
+
+		# Compute phi grad
+		phi_output = self.phi_fn(x_input)
+		phi_val = phi_output[0, -1]
+		phi_grad = grad([phi_val], x_input)[0]
+
+		# Post op
+		x_input.requires_grad = False
+		phi_grad = phi_grad.detach().cpu().numpy()
+		phi_grad = np.array([0, phi_grad[0, 0], 0, phi_grad[0, 1]])[None]
+		# IPython.embed()
+
+		# Get eps
+		# TODO: sketchy way to convert DT to CT
+		if phi_val > 0:
+			eps = self.eps
+		elif phi_val < 0 and phi_val > -1e-3:
+			eps = 0
+		else:
+			return np.zeros(1)
+
+		# Compute the control constraints
+		# Get f(x), g(x)
+		# honestly, this is a hacky way
+		f_x = self.xdot_fn_numpy(x, np.zeros(1)) # xdot defined globally
+		g_x = self.xdot_fn_numpy(x, np.ones(1)) - f_x
+
+		lhs = phi_grad@g_x.T
+		rhs = -phi_grad@f_x.T - eps
+
+		# Done computing CBF constraint
+		u_nom = np.zeros(1)
+		u_safe = u_nom
+		# u_safe = np.clip(u_safe, -self.param_dict["max_force"], self.param_dict["max_force"])
+
+		# Cbf constraint
+		if lhs >= 0:
+			u_safe = np.clip(u_safe, None, rhs / lhs)
+		else:
+			u_safe = np.clip(u_safe, rhs / lhs, None)
+		# u_safe = np.clip(u_safe, -self.param_dict["max_force"], self.param_dict["max_force"])
+		return u_safe
+
+def load_trained_cbf(exp_name, checkpoint_number):
+	r = 2
+	x_dim = 2
+	u_dim = 1
+	x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+
+	args = load_args("./log/%s/args.txt" % exp_name)
+
+	# Create phi
+	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
+
+	# if args.physical_difficulty == 'easy':
+	# 	param_dict = {
+	# 		"I": 0.021,
+	# 		"m": 0.25,
+	# 		"M": 1.00,
+	# 		"l": 0.5,
+	# 		"max_theta": math.pi / 2.0,
+	# 		"max_force": 15.0
+	# 	}
+	# elif args.physical_difficulty == 'hard':
+	# 	param_dict = {
+	# 		"I": 0.021,
+	# 		"m": 0.25,
+	# 		"M": 1.00,
+	# 		"l": 0.5,
+	# 		"max_theta": math.pi / 4.0,
+	# 		"max_force": 1.0
+	# 	}
+
+	h_fn = H(param_dict)
+	xdot_fn = XDot(param_dict)
+	uvertices_fn = ULimitSetVertices(param_dict, device)
+
+	x_e = torch.zeros(1, x_dim)
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+
+	###################################
+	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+	load_model(phi_fn, phi_load_fpth)
+
+	return phi_fn
+
+####################################################################################################################
+
+def run_experiment(x0_list, simulator, controller, save_fpth):
+	"""
+	Launches multiple experiments
+	Calculates metrics across them
+
+	Saves experimental data + computed metrics
+	"""
+
+	x_experiment = [] # n_rollouts, n_rollout_steps (may differ across rollouts), x_dim=4
+	u_experiment = [] # n_rollouts, n_rollout_steps, 1
+	u_preclip_experiment = []
+
+	for x0 in x0_list:
+		x_rollout, u_rollout, u_preclip_rollout = simulator.simulate_rollout(x0, controller)
+
+		x_experiment.append(x_rollout)
+		u_experiment.append(u_rollout)
+		u_preclip_experiment.append(u_preclip_rollout)
+
+	# Compute metrics
+	compute_metrics(x_experiment, u_experiment, u_preclip_experiment)
+
+	# Save
+	save_dict = {"x_experiment": x_experiment, "u_experiment": u_experiment, "u_preclip_experiment": u_preclip_experiment, "x0_list": x0_list}
+	with open(save_fpth, 'wb') as handle:
+		pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+	return x_experiment, u_experiment, u_preclip_experiment
+
+def compute_metrics(x_experiment, u_experiment, u_preclip_experiment):
+	max_theta = param_dict["max_theta"]
+	max_force = param_dict["max_force"]
+
+	# Number of rollouts with safety violation
+	# Max angle across rollouts
+	safety_violation_experiment = [] # list of bools
+	max_abs_angle_experiment = []
+	control_saturated_experiment = [] # list of counts
+	for i in range(len(x_experiment)):
+		x_rollout = x_experiment[i]
+		u_rollout = u_experiment[i]
+
+		safety_violation_experiment.append(np.sum(np.abs(x_rollout[:, 1]) > max_theta)) # TODO: sum to mean?
+		max_abs_angle_experiment.append(np.max(np.abs(x_rollout[:, 1])))
+		control_saturated_experiment.append(np.sum(np.abs(u_rollout) > max_force))
+
+	print("Average number of violation: %f" % (np.mean(safety_violation_experiment)))
+	print("Average maximum (absolute) angle: %f" % (np.mean(max_abs_angle_experiment)))
+	print("Average number of times control exceeded threshold, and was saturated: %f" % (np.mean(control_saturated_experiment)))
+
+def load_experiment(load_fpth):
+	with open(load_fpth, 'rb') as handle:
+		save_dict = pickle.load(handle)
+
+	return save_dict
+
+####################################################################################################################
+def run_benchmark(exp_name, checkpoint_number):
+	phi_fn = load_trained_cbf(exp_name, checkpoint_number)
+
+	xdot_fn_numpy = XDot_numpy(param_dict)
+	simulator = Cartpole_Simulator(xdot_fn_numpy, param_dict)
+
+	controller = CBF_controller(phi_fn, xdot_fn_numpy, param_dict)
+
+	# Compute optimization objective
+	"""
+	Create obj fn instance
+	Compute best attack
+	Eval obj function
+	"""
+	n_x0 = 50
+	logger = create_logger("log/discard", 'train', 'info')
+	x_lim_pole = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+	x_lim_pole = torch.tensor(x_lim_pole).to(device)
+	attacker = GradientBatchAttacker(x_lim_pole, device, logger, n_samples=n_x0)
+	bdry_points = attacker.sample_points_on_boundary(phi_fn)
+
+	# Computing x0_list
+	# x0_list = [np.array([0.0, math.pi/4, 0, 0])]
+	n_x0 = 15
+	logger = create_logger("log/discard", 'train', 'info')
+	x_lim_pole = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+	x_lim_pole = torch.tensor(x_lim_pole).to(device)
+	attacker = GradientBatchAttacker(x_lim_pole, device, logger, n_samples=n_x0)
+	bdry_points = attacker.sample_points_on_boundary(phi_fn)
+	x0_pole = bdry_points.detach().cpu().numpy()
+	x0_array = np.zeros((n_x0, 4))
+	x0_array[:, 1] = x0_pole[:, 0]
+	x0_array[:, 3] = x0_pole[:, 1]
+	x0_list = x0_array.tolist()
+	# IPython.embed()
+
+	# Compute FI performance
+	"""
+	Add options to attacker to sample n points on dG and dS or dG and not dS
+	Let x0 be n points in dG and dS
+	Implement metrics here + delete the function: 
+	1. % rollouts: 0/1 stay in S the whole rollout?
+	2. amount of safe set violation, measured 2 ways
+		a. number of timesteps outside of S over the rollout 
+		b. max(phi_i) over the rollout
+	3. amount of control limit violation, measured 2 ways
+		a. max violation over rollout
+		b. avg + std violation over rollout
+		c. number of violations over rollout 
+	"""
+
+	# Compute FTC performance
+	"""
+	Part 1 
+	Let x0 be n points in dG and not dS 
+	Implement metrics
+	1-3. same but for G
+	
+	Part 2 
+	Let x0 be n points that are outside of G for both phi1 and phi2
+		You can just sample a grid with density on binary search and evaluate with phi; count number of points for which phi1>0, phi2>0 
+	Make the rollouts longer 
+	Implement metrics
+	1. # steps to S
+	2. amount of control limit violation 
+	2. Check: is the performance monotonic along a rollout?
+	"""
+
+	# Compute S volume
+	"""
+	Eval on grid and count % in S
+	"""
+
+	save_fpth = "./simulations/test.pkl"
+	x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth)
+
+
+if __name__ == "__main__":
+	"""checkpoint_number = 340 # TODO
+	phi_fn = load_trained_cbf("cartpole_reduced_l_50_w_1e_1", checkpoint_number)
+
+	xdot_fn_numpy = XDot_numpy(param_dict)
+	simulator = Cartpole_Simulator(xdot_fn_numpy, param_dict)
+
+	controller = CBF_controller(phi_fn, xdot_fn_numpy, param_dict)
+
+	# x0 = np.array([0.0, math.pi/4, 0, 0])
+	# x_rollout, u_rollout, u_preclip_rollout = simulator.simulate_rollout(x0, controller)
+	# simulator.animate_rollout(x_rollout, "./animations/our_cbf_cartpole_animation.mp4")
+
+	# Computing x0_list
+	# x0_list = [np.array([0.0, math.pi/4, 0, 0])]
+	n_x0 = 15
+	logger = create_logger("log/discard", 'train', 'info')
+	x_lim_pole = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+	x_lim_pole = torch.tensor(x_lim_pole).to(device)
+	attacker = GradientBatchAttacker(x_lim_pole, device, logger, n_samples=n_x0)
+	bdry_points = attacker.sample_points_on_boundary(phi_fn)
+	x0_pole = bdry_points.detach().cpu().numpy()
+	x0_array = np.zeros((n_x0, 4))
+	x0_array[:, 1] = x0_pole[:, 0]
+	x0_array[:, 3] = x0_pole[:, 1]
+	x0_list = x0_array.tolist()
+	# IPython.embed()
+
+	save_fpth = "./simulations/test.pkl"
+	x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth)"""
+
+	pass
+	# d = load_experiment("./simulations/test.pkl")
+	# IPython.embed()
+
+
+"""
+To-do list:
+1. Modify experiment running code to fit this 
+2. Move animator to be it's own function
+3. Debug: read through and run through 
+
+4. Launch experiment [TODO: SIMIN you are here]
+
+*(Later) Ask Changliu and John what other controllers they want to see?
+"""
+
+
+# TODO: mod theta before applying controller
+# TODO: CBF controller: needs to be different when applying controller at boundary vs on unsafe (eps >0)
+# TODO (later): consider terminating when angle too large (would go through cart)
+
+# TODO: run with nohup writing out to file! The printout will be really informative.
+# x_experiment, u_experiment, u_preclip_experiment = run_experiment("my_cbf", "./log/cartpole_default/simulations/debug.pkl")
+# animate_rollout(x_experiment[0], u_experiment[0], u_preclip_experiment[0], "./log/cartpole_default/simulations/debug.mp4")
+
+
+
+
