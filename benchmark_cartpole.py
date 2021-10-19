@@ -410,24 +410,24 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr):
 	# Compute phi_vals
 	phi_experiment = []
 	for rl in x_experiment:
-		pole_rl = np.concatenate((rl[:, [1]], rl[:, [3]]), axis=1)
+		pole_rl = np.concatenate((rl[:, [1]], rl[:, [3]]), axis=1).astype(np.float32)
 		pole_rl = torch.from_numpy(pole_rl)
 		phi_vals = phi_fn(pole_rl)
 		phi_experiment.append(phi_vals.detach().numpy())
 
 	############## Metrics ################
-	in_S_always = [torch.all(rl_phi <= 0) for rl_phi in phi_experiment]
-	in_S_always = torch.mean(in_S_always).item()
+	in_S_always = [np.all(rl_phi <= 0) for rl_phi in phi_experiment]
+	in_S_always = np.mean(in_S_always)
 
-	n_tsteps_outside_S = [torch.sum(torch.any(rl_phi > 0, dim=1)) for rl_phi in phi_experiment]
-	n_tsteps_outside_S =  torch.mean(n_tsteps_outside_S).item()
+	n_tsteps_outside_S = [np.sum(np.any(rl_phi > 0, axis=1)) for rl_phi in phi_experiment]
+	n_tsteps_outside_S = np.mean(n_tsteps_outside_S)
 
-	max_phii = torch.tensor([torch.max(rl_phi) for rl_phi in phi_experiment])
-	max_phii = torch.mean(torch.where(max_phii > 0, max_phii, 0)).item()
+	max_phii = np.array([np.max(rl_phi) for rl_phi in phi_experiment])
+	max_phii = np.mean(np.where(max_phii > 0, max_phii, 0))
 
-	violations = [torch.clip(torch.abs(rl_u_preclip) - max_force, min=0) for rl_u_preclip in u_preclip_experiment]
-	avg_control_violations = torch.mean([torch.mean(x) for x in violations])
-	number_control_violations = torch.mean([torch.sum(x > 0) for x in violations])
+	violations = [np.clip(np.abs(rl_u_preclip) - max_force, 0, None) for rl_u_preclip in u_preclip_experiment]
+	avg_control_violations = np.mean([np.mean(x) for x in violations])
+	number_control_violations = np.mean([np.sum(x > 0) for x in violations])
 	############################################################################################
 	print("Before FTC G")
 	IPython.embed()
@@ -466,18 +466,18 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr):
 		phi_experiment.append(phi_vals.detach().numpy())
 
 	############## Metrics ################
-	in_G_always = [torch.all(rl_phi[:, -1] <= 0) for rl_phi in phi_experiment] # TODO
-	in_G_always = torch.mean(in_G_always).item()
+	in_G_always = [np.all(rl_phi[:, -1] <= 0) for rl_phi in phi_experiment] # TODO
+	in_G_always = np.mean(in_G_always)
 
-	n_tsteps_outside_G = [torch.sum(torch.any(rl_phi[:, -1] > 0, dim=1)) for rl_phi in phi_experiment] # TODO
-	n_tsteps_outside_G =  torch.mean(n_tsteps_outside_G).item()
+	n_tsteps_outside_G = [np.sum(np.any(rl_phi[:, -1] > 0, axis=1)) for rl_phi in phi_experiment] # TODO
+	n_tsteps_outside_G =  np.mean(n_tsteps_outside_G)
 
-	max_phii = torch.tensor([torch.max(rl_phi[:, -1]) for rl_phi in phi_experiment])
-	max_phii = torch.mean(torch.where(max_phii > 0, max_phii, 0))
+	max_phii = np.array([np.max(rl_phi[:, -1]) for rl_phi in phi_experiment])
+	max_phii = np.mean(np.where(max_phii > 0, max_phii, 0))
 
-	violations = [torch.clip(torch.abs(rl_u_preclip) - max_force, min=0) for rl_u_preclip in u_preclip_experiment]
-	avg_control_violations = torch.mean([torch.mean(x) for x in violations])
-	number_control_violations = torch.mean([torch.sum(torch.nonzero(x)) for x in violations])
+	violations = [np.clip(np.abs(rl_u_preclip) - max_force, 0, None) for rl_u_preclip in u_preclip_experiment]
+	avg_control_violations = np.mean([np.mean(x) for x in violations])
+	number_control_violations = np.mean([np.sum(x != 0) for x in violations])
 	############################################################################################
 	print("Before FTC F")
 	IPython.embed()
@@ -505,11 +505,11 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr):
 		phi_experiment.append(phi_vals.detach().numpy())
 
 	############## Metrics ################
-	steps_to_S = [torch.nonzero(torch.all(rl_phi < 0, dim=1), as_tuple=True)[0] for rl_phi in phi_experiment]
-	steps_to_S = torch.mean(steps_to_S).item()
-	violations = [torch.clip(torch.abs(rl_u_preclip) - max_force, min=0) for rl_u_preclip in u_preclip_experiment]
-	avg_control_violations = torch.mean([torch.mean(x) for x in violations])
-	number_control_violations = torch.mean([torch.sum(torch.nonzero(x)) for x in violations])
+	steps_to_S = [np.transpose(np.nonzero(np.all(rl_phi < 0, axis=1))) for rl_phi in phi_experiment]
+	steps_to_S = np.mean(steps_to_S)
+	violations = [np.clip(np.abs(rl_u_preclip) - max_force, 0, None) for rl_u_preclip in u_preclip_experiment]
+	avg_control_violations = np.mean([np.mean(x) for x in violations])
+	number_control_violations = np.mean([np.sum(x != 0) for x in violations])
 	############################################################################################
 	print("Computing S volume")
 	IPython.embed()
@@ -525,7 +525,7 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr):
 	input = torch.from_numpy(input)
 	phi_vals = phi_fn(input)
 
-	vol_S = torch.mean(torch.all(phi_vals > 0, dim=1))
+	vol_S = np.mean(np.all(phi_vals > 0, axis=1))
 	############################################################################################
 
 if __name__ == "__main__":
