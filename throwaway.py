@@ -235,12 +235,8 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
 		train_attacks = data["train_attacks"]
-		# IPython.embed()
 		test_losses = data["test_losses"]
 		plt.scatter(train_attacks[checkpoint_number][0], train_attacks[checkpoint_number][1], c="white", marker="x")
-		# for j in range(checkpoint_number):
-		# 	if test_losses[j] > 0:
-		# 		plt.scatter(train_attacks[j][0], train_attacks[j][1], c="white", s=0.2)
 
 	# attacks = np.load("./log/cartpole_reduced_debug/boundary_samples_post_opt.npy")
 	# plt.scatter(attacks[:, 0], attacks[:, 1], c="white", marker="x")
@@ -260,6 +256,8 @@ if __name__=="__main__":
 	# graph_log_file_2("cartpole_reduced_l_50_w_5e_1")
 
 	# graph_log_file_2("cartpole_reduced_l_50_w_1e_1")
-	for checkpoint_number in np.arange(0, 410, 10):
+	for checkpoint_number in np.arange(500, 700, 10):
+		print(checkpoint_number)
 		save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
-		plot_2d_binary(checkpoint_number, save_fnm, "cartpole_reduced_l_50_w_5e_1")
+		plot_2d_binary(checkpoint_number, save_fnm, "cartpole_reduced_l_50_w_1e_1")
+

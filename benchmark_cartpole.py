@@ -50,7 +50,7 @@ u_dim = 1
 # x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
 x_lim = np.array([[-5, 5], [-math.pi, math.pi], [-10, 10], [-5, 5]], dtype=np.float32)
 
-mode = 'easy'
+mode = 'easy' # TODO
 if mode == 'easy':
 	param_dict = {
 		"I": 0.021,
@@ -114,10 +114,11 @@ class Cartpole_Simulator():
 		x_next = x + dt*x_dot
 		return x_next
 
-	def simulate_rollout(self, x0, controller): # max_time relative to dt
+	def simulate_rollout(self, x0, controller, stop_criterion="max_time"): # max_time relative to dt
 		"""
 		x0: (4) vector
 		Simulate one rollout and return data
+		Stop criteria: max_time or in_S
 		"""
 		x = x0.copy()
 
@@ -135,9 +136,12 @@ class Cartpole_Simulator():
 			u_preclip_all.append(np.reshape(u, (1, u_dim)))
 			u_all.append(np.reshape(u_feas, (1, u_dim)))
 
-			if dt*i > self.max_time:
+			if stop_criterion == "max_time" and dt*i > self.max_time:
 				print("Timeout, terminating rollout")
 				rollout_terminate_reason = "time"
+				break
+			elif stop_criterion == "in_S" and u == 0: # TODO: hacky
+				print("In S, terminating rollout")
 				break
 
 			i += 1
@@ -297,7 +301,7 @@ def load_trained_cbf(exp_name, checkpoint_number):
 
 ####################################################################################################################
 
-def run_experiment(x0_list, simulator, controller, save_fpth):
+def run_experiment(x0_list, simulator, controller, save_fpth, stop_criterion="max_time"):
 	"""
 	Launches multiple experiments
 	Calculates metrics across them
@@ -310,7 +314,7 @@ def run_experiment(x0_list, simulator, controller, save_fpth):
 	u_preclip_experiment = []
 
 	for x0 in x0_list:
-		x_rollout, u_rollout, u_preclip_rollout = simulator.simulate_rollout(x0, controller)
+		x_rollout, u_rollout, u_preclip_rollout = simulator.simulate_rollout(x0, controller, stop_criterion)
 
 		x_experiment.append(x_rollout)
 		u_experiment.append(u_rollout)
@@ -326,26 +330,26 @@ def run_experiment(x0_list, simulator, controller, save_fpth):
 
 	return x_experiment, u_experiment, u_preclip_experiment
 
-def compute_metrics(x_experiment, u_experiment, u_preclip_experiment):
-	max_theta = param_dict["max_theta"]
-	max_force = param_dict["max_force"]
-
-	# Number of rollouts with safety violation
-	# Max angle across rollouts
-	safety_violation_experiment = [] # list of bools
-	max_abs_angle_experiment = []
-	control_saturated_experiment = [] # list of counts
-	for i in range(len(x_experiment)):
-		x_rollout = x_experiment[i]
-		u_rollout = u_experiment[i]
-
-		safety_violation_experiment.append(np.sum(np.abs(x_rollout[:, 1]) > max_theta)) # TODO: sum to mean?
-		max_abs_angle_experiment.append(np.max(np.abs(x_rollout[:, 1])))
-		control_saturated_experiment.append(np.sum(np.abs(u_rollout) > max_force))
-
-	print("Average number of violation: %f" % (np.mean(safety_violation_experiment)))
-	print("Average maximum (absolute) angle: %f" % (np.mean(max_abs_angle_experiment)))
-	print("Average number of times control exceeded threshold, and was saturated: %f" % (np.mean(control_saturated_experiment)))
+# def compute_metrics(x_experiment, u_experiment, u_preclip_experiment):
+# 	max_theta = param_dict["max_theta"]
+# 	max_force = param_dict["max_force"]
+#
+# 	# Number of rollouts with safety violation
+# 	# Max angle across rollouts
+# 	safety_violation_experiment = [] # list of bools
+# 	max_abs_angle_experiment = []
+# 	control_saturated_experiment = [] # list of counts
+# 	for i in range(len(x_experiment)):
+# 		x_rollout = x_experiment[i]
+# 		u_rollout = u_experiment[i]
+#
+# 		safety_violation_experiment.append(np.sum(np.abs(x_rollout[:, 1]) > max_theta)) # TODO: sum to mean?
+# 		max_abs_angle_experiment.append(np.max(np.abs(x_rollout[:, 1])))
+# 		control_saturated_experiment.append(np.sum(np.abs(u_rollout) > max_force))
+#
+# 	print("Average number of violation: %f" % (np.mean(safety_violation_experiment)))
+# 	print("Average maximum (absolute) angle: %f" % (np.mean(max_abs_angle_experiment)))
+# 	print("Average number of times control exceeded threshold, and was saturated: %f" % (np.mean(control_saturated_experiment)))
 
 def load_experiment(load_fpth):
 	with open(load_fpth, 'rb') as handle:
@@ -354,14 +358,13 @@ def load_experiment(load_fpth):
 	return save_dict
 
 ####################################################################################################################
-def run_benchmark(exp_name, checkpoint_number, other_exp_name, other_checkpoint_number):
+def run_benchmark(phi_fn, other_phi_fn, save_fldr):
 	xdot_fn_numpy = XDot_numpy(param_dict)
 	simulator = Cartpole_Simulator(xdot_fn_numpy, param_dict)
 
-	phi_fn = load_trained_cbf(exp_name, checkpoint_number)
 	controller = CBF_controller(phi_fn, xdot_fn_numpy, param_dict)
 
-	other_phi_fn = load_trained_cbf(other_exp_name, other_checkpoint_number)
+	# other_phi_fn = load_trained_cbf(other_exp_name, other_checkpoint_number)
 
 	# Defining vars
 	max_theta = param_dict["max_theta"]
@@ -493,7 +496,7 @@ def run_benchmark(exp_name, checkpoint_number, other_exp_name, other_checkpoint_
 	x0_list = input[ind[:, 0], ind[:, 1]].tolist()
 
 	save_fpth = "./simulations/%s_(%i)_FTC_F.pkl" % (exp_name, checkpoint_number)
-	x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth) # TODO: make run longer
+	x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth, stop_criterion="in_S") # TODO: make run longer
 	phi_experiment = []
 	for rl in x_experiment:
 		pole_rl = np.concatenate((rl[:, [1]], rl[:, [3]]), axis=1)
@@ -526,60 +529,24 @@ def run_benchmark(exp_name, checkpoint_number, other_exp_name, other_checkpoint_
 	############################################################################################
 
 if __name__ == "__main__":
-	"""checkpoint_number = 340 # TODO
-	phi_fn = load_trained_cbf("cartpole_reduced_l_50_w_1e_1", checkpoint_number)
+	# TODO: which checkpoint number?
+	checkpoint_number = 340
+	exp_name = "cartpole_reduced_l_50_w_1e_1"
+	phi_fn = load_trained_cbf(exp_name, checkpoint_number)
+	save_fldrnm = "%s_%i" % (exp_name, checkpoint_number)
 
-	xdot_fn_numpy = XDot_numpy(param_dict)
-	simulator = Cartpole_Simulator(xdot_fn_numpy, param_dict)
+	from src.problems.cartpole_reduced import H, XDot
+	from phi_baseline import PhiBaseline
 
-	controller = CBF_controller(phi_fn, xdot_fn_numpy, param_dict)
+	h_fn = H(param_dict)
+	xdot_fn = XDot(param_dict)
+	ci = [2.0] # TODO
+	beta = param_dict["max_theta"] - 0.1 # TODO
+	other_phi_fn = PhiBaseline(h_fn, ci, beta, xdot_fn, r, x_dim, u_dim, device)
 
-	# x0 = np.array([0.0, math.pi/4, 0, 0])
-	# x_rollout, u_rollout, u_preclip_rollout = simulator.simulate_rollout(x0, controller)
-	# simulator.animate_rollout(x_rollout, "./animations/our_cbf_cartpole_animation.mp4")
-
-	# Computing x0_list
-	# x0_list = [np.array([0.0, math.pi/4, 0, 0])]
-	n_x0 = 15
-	logger = create_logger("log/discard", 'train', 'info')
-	x_lim_pole = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
-	x_lim_pole = torch.tensor(x_lim_pole).to(device)
-	attacker = GradientBatchAttacker(x_lim_pole, device, logger, n_samples=n_x0)
-	bdry_points = attacker.sample_points_on_boundary(phi_fn)
-	x0_pole = bdry_points.detach().cpu().numpy()
-	x0_array = np.zeros((n_x0, 4))
-	x0_array[:, 1] = x0_pole[:, 0]
-	x0_array[:, 3] = x0_pole[:, 1]
-	x0_list = x0_array.tolist()
-	# IPython.embed()
-
-	save_fpth = "./simulations/test.pkl"
-	x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth)"""
-
-	pass
-	# d = load_experiment("./simulations/test.pkl")
-	# IPython.embed()
-
-
-"""
-To-do list:
-1. Modify experiment running code to fit this 
-2. Move animator to be it's own function
-3. Debug: read through and run through 
-
-4. Launch experiment [TODO: SIMIN you are here]
-
-*(Later) Ask Changliu and John what other controllers they want to see?
-"""
-
-
-# TODO: mod theta before applying controller
-# TODO: CBF controller: needs to be different when applying controller at boundary vs on unsafe (eps >0)
-# TODO (later): consider terminating when angle too large (would go through cart)
-
-# TODO: run with nohup writing out to file! The printout will be really informative.
-# x_experiment, u_experiment, u_preclip_experiment = run_experiment("my_cbf", "./log/cartpole_default/simulations/debug.pkl")
-# animate_rollout(x_experiment[0], u_experiment[0], u_preclip_experiment[0], "./log/cartpole_default/simulations/debug.mp4")
+	print("make sure phi works!")
+	IPython.embed()
+	run_benchmark(phi_fn, other_phi_fn, save_fldrnm)
 
 
 

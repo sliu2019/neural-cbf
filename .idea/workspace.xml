@@ -4,7 +4,8 @@
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/benchmark_cartpole.py" beforeDir="false" afterPath="$PROJECT_DIR$/benchmark_cartpole.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/attacks/gradient_batch_attacker.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/attacks/gradient_batch_attacker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/cartpole_reduced_l_50_w_1e_1/2d_checkpoint_340.png" beforeDir="false" afterPath="$PROJECT_DIR$/log/cartpole_reduced_l_50_w_1e_1/2d_checkpoint_340.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/throwaway.py" beforeDir="false" afterPath="$PROJECT_DIR$/throwaway.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -67,7 +68,7 @@
       <workItem from="1631196657722" duration="52008000" />
       <workItem from="1631628541958" duration="12210000" />
       <workItem from="1632102927249" duration="201945000" />
-      <workItem from="1634332522330" duration="23137000" />
+      <workItem from="1634332522330" duration="26507000" />
     </task>
     <servers />
   </component>
@@ -88,9 +89,10 @@
     </state>
     <state x="374" y="244" key="#com.intellij.fileTypes.FileTypeChooser/0.23.1440.834@0.23.1440.834" timestamp="1633813312744" />
     <state x="499" y="291" key="#com.intellij.fileTypes.FileTypeChooser/0.23.1920.1013@0.23.1920.1013" timestamp="1634415116182" />
-    <state x="133" y="144" width="1654" height="744" key="DirDiffDialog" timestamp="1634415111888">
-      <screen x="0" y="23" width="1920" height="1013" />
+    <state x="100" y="123" width="1240" height="614" key="DirDiffDialog" timestamp="1634673143560">
+      <screen x="0" y="23" width="1440" height="833" />
     </state>
+    <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.833@0.23.1440.833" timestamp="1634673143560" />
     <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.834@0.23.1440.834" timestamp="1634066715644" />
     <state x="99" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.835@0.23.1440.835" timestamp="1633893314067" />
     <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.836@0.23.1440.836" timestamp="1633965603401" />
