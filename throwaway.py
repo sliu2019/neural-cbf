@@ -5,12 +5,14 @@ import numpy as np
 import IPython
 import re
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
 import math
 from main import Phi, Objective
 from src.argument import parser, print_args
 from src.utils import *
 import torch
 import pickle
+from phi_baseline import PhiBaseline
 
 def parse_log_file():
 	"""
@@ -165,6 +167,7 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	Also plots training attacks
 	"""
 	args = load_args("./log/%s/args.txt" % exp_name)
+	# args = parser()
 	dev = "cpu"
 	device = torch.device(dev)
 
@@ -254,6 +257,85 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	# print(attacks)
 	plt.savefig("./log/%s/%s" % (exp_name, save_fnm))
 
+def plot_3d(checkpoint_number, save_fnm, exp_name):
+	args = load_args("./log/%s/args.txt" % exp_name)
+	dev = "cpu"
+	device = torch.device(dev)
+
+	r = 2
+	x_dim = 2
+	u_dim = 1
+	x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+
+	# Create phi
+	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
+
+	param_dict = {
+		"I": 0.021,
+		"m": 0.25,
+		"M": 1.00,
+		"l": 0.5,
+		"max_theta": math.pi / 2.0,
+		"max_force": 15.0
+	}
+
+	h_fn = H(param_dict)
+	xdot_fn = XDot(param_dict)
+	uvertices_fn = ULimitSetVertices(param_dict, device)
+
+	x_e = torch.zeros(1, x_dim)
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+	###################################
+	# IPython.embed()
+	delta = 0.1
+	x = np.arange(-math.pi, math.pi, delta)
+	y = np.arange(-5, 5, delta)[::-1] # need to reverse it
+	X, Y = np.meshgrid(x, y)
+
+	# phi_load_fpth = "./checkpoint/cartpole_reduced_exp1a/checkpoint_69.pth"
+	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+	load_model(phi_fn, phi_load_fpth)
+
+
+	##### Testing ######
+	# state_dict = phi_fn.beta_net.state_dict()  # 0.weight/bias and 2.weight/bias
+	# # print(torch.mean(state_dict["4.weight"]))
+	# print(state_dict["2.weight"])
+	# # print(state_dict)
+	######
+
+	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
+	input = torch.from_numpy(input)
+	phi_i_vals = phi_fn(input)
+	phi_vals = phi_i_vals[:, -1].detach().cpu().numpy()
+	Z = np.reshape(phi_vals, X.shape)
+
+	# IPython.embed()
+	# S_vals = torch.max(phi_vals, dim=1)[0] # S = all phi_i <= 0
+	# phi_signs = torch.sign(S_vals).detach().cpu().numpy()
+	# phi_signs = np.reshape(phi_signs, X.shape)
+
+	fig = plt.figure()
+	ax = fig.add_subplot(111, projection="3d")
+	# fig, ax = plt.subplots(projection="3d")
+	# ax.imshow(phi_signs, extent=[-math.pi, math.pi, -5.0, 5.0])
+	# IPython.embed()
+	ax.set_ylim(-5.0, 5.0)
+	ax.set_xlim(-math.pi, math.pi)
+	ax.plot_surface(X, Y, Z, cmap="autumn_r", lw=0.5, rstride=1, cstride=1, alpha=0.75)
+	# ax.contour(X, Y, Z, 10, lw=3, cmap="autumn_r", linestyles="solid", offset=-1)
+	ax.contour(X, Y, Z, 10, lw=3, colors="k", linestyles="solid")
+	# ax.set_aspect("equal")
+
+	# ax.set_aspect("equal")
+
+	# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+	# ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
+	#                  colors=('k',), linewidths=(2,))
+	plt.savefig("./log/%s/%s" % (exp_name, save_fnm))
+
+	plt.show()
+
 if __name__=="__main__":
 	# graph_log_file_2("cartpole_reduced_l_50_w_1e_1")
 	# for checkpoint_number in np.arange(500, 700, 10):
@@ -261,5 +343,7 @@ if __name__=="__main__":
 	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
 	# 	plot_2d_binary(checkpoint_number, save_fnm, "cartpole_reduced_l_50_w_1e_1")
 
-	plot_2d_binary(160, "debug_dS_dG_options.png", "cartpole_reduced_l_50_w_1e_1")
+	# plot_2d_binary(160, "debug_dS_dG_options.png", "cartpole_reduced_l_50_w_1e_1")
+	# plot_2d_binary(0, "2d_checkpoint_0.png", "cartpole_baseline_cbf")
 
+	plot_3d(340, "3d_checkpoint_340.png", "cartpole_reduced_l_50_w_1e_1")

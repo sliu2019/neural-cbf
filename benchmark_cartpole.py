@@ -143,6 +143,8 @@ class Cartpole_Simulator():
 			elif stop_criterion == "in_S" and u == 0: # TODO: hacky
 				print("In S, terminating rollout")
 				break
+			# print(x)
+			# print(u)
 
 			i += 1
 
@@ -358,7 +360,7 @@ def load_experiment(load_fpth):
 	return save_dict
 
 ####################################################################################################################
-def run_benchmark(phi_fn, other_phi_fn, save_fldr):
+def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "FTC_F", "S_vol"]):
 	xdot_fn_numpy = XDot_numpy(param_dict)
 	simulator = Cartpole_Simulator(xdot_fn_numpy, param_dict)
 
@@ -380,8 +382,8 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr):
 	x_lim_pole = torch.tensor(x_lim_pole).to(device)
 	attacker = GradientBatchAttacker(x_lim_pole, device, logger, n_samples=n_x0)
 
-	print("Before FI")
-	IPython.embed()
+	# print("Before FI")
+	# IPython.embed()
 	############################################################################################
 	# Compute FI performance
 	"""
@@ -397,40 +399,52 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr):
 		b. avg + std violation over rollout
 		c. number of violations over rollout 
 	"""
-	bdry_points = attacker.sample_points_on_boundary(phi_fn, mode="dG+dS")
-	x0_pole = bdry_points.detach().cpu().numpy()
-	x0_array = np.zeros((n_x0, 4))
-	x0_array[:, 1] = x0_pole[:, 0]
-	x0_array[:, 3] = x0_pole[:, 1]
-	x0_list = x0_array.tolist()
+	if "FI" in which_tests:
+		bdry_points = attacker.sample_points_on_boundary(phi_fn, mode="dG+dS")
+		x0_pole = bdry_points.detach().cpu().numpy()
+		x0_array = np.zeros((n_x0, 4))
+		x0_array[:, 1] = x0_pole[:, 0]
+		x0_array[:, 3] = x0_pole[:, 1]
+		x0_list = x0_array.tolist()
 
-	save_fpth = "./simulations/%s_(%i)_FI.pkl" % (exp_name, checkpoint_number)
-	x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth)
+		save_fpth = "./simulations/%s_(%i)_FI.pkl" % (exp_name, checkpoint_number)
+		x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth)
 
-	# Compute phi_vals
-	phi_experiment = []
-	for rl in x_experiment:
-		pole_rl = np.concatenate((rl[:, [1]], rl[:, [3]]), axis=1).astype(np.float32)
-		pole_rl = torch.from_numpy(pole_rl)
-		phi_vals = phi_fn(pole_rl)
-		phi_experiment.append(phi_vals.detach().numpy())
+		# Compute phi_vals
+		phi_experiment = []
+		for rl in x_experiment:
+			pole_rl = np.concatenate((rl[:, [1]], rl[:, [3]]), axis=1).astype(np.float32)
+			pole_rl = torch.from_numpy(pole_rl)
+			phi_vals = phi_fn(pole_rl)
+			phi_experiment.append(phi_vals.detach().numpy())
 
-	############## Metrics ################
-	in_S_always = [np.all(rl_phi <= 0) for rl_phi in phi_experiment]
-	in_S_always = np.mean(in_S_always)
+		############## Metrics ################
+		in_S_always = [np.all(rl_phi <= 0) for rl_phi in phi_experiment]
+		print("in_S_always", in_S_always)
+		in_S_always = np.mean(in_S_always)
+		print("Should be 1: ", in_S_always)
 
-	n_tsteps_outside_S = [np.sum(np.any(rl_phi > 0, axis=1)) for rl_phi in phi_experiment]
-	n_tsteps_outside_S = np.mean(n_tsteps_outside_S)
+		n_tsteps_outside_S = [np.sum(np.any(rl_phi > 0, axis=1)) for rl_phi in phi_experiment]
+		print("n_tsteps_outside_S", n_tsteps_outside_S)
+		n_tsteps_outside_S = np.mean(n_tsteps_outside_S)
+		print("Should be 0: ", n_tsteps_outside_S)
 
-	max_phii = np.array([np.max(rl_phi) for rl_phi in phi_experiment])
-	max_phii = np.mean(np.where(max_phii > 0, max_phii, 0))
+		max_phii = np.array([np.max(rl_phi) for rl_phi in phi_experiment])
+		max_phii = np.mean(np.where(max_phii > 0, max_phii, 0))
 
-	violations = [np.clip(np.abs(rl_u_preclip) - max_force, 0, None) for rl_u_preclip in u_preclip_experiment]
-	avg_control_violations = np.mean([np.mean(x) for x in violations])
-	number_control_violations = np.mean([np.sum(x > 0) for x in violations])
+		violations = [np.clip(np.abs(rl_u_preclip) - max_force, 0, None) for rl_u_preclip in u_preclip_experiment]
+		avg_control_violations = np.mean([np.mean(x) for x in violations])
+		number_control_violations = np.mean([np.sum(x > 0) for x in violations])
+		print(avg_control_violations, number_control_violations)
+
+		animate_rollout(x_experiment[0], "./animations/debug_cbf_0.mp4")
+		animate_rollout(x_experiment[1], "./animations/debug_cbf_1.mp4")
+		animate_rollout(x_experiment[2], "./animations/debug_cbf_2.mp4")
+
+		IPython.embed()
 	############################################################################################
-	print("Before FTC G")
-	IPython.embed()
+	# print("Before FTC G")
+	# IPython.embed()
 	# Compute FTC performance
 	"""
 	Part 1 
@@ -447,90 +461,99 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr):
 	2. amount of control limit violation 
 	2. Check: is the performance monotonic along a rollout?
 	"""
-	bdry_points = attacker.sample_points_on_boundary(phi_fn, mode="dG/dS") # TODO
-	x0_pole = bdry_points.detach().cpu().numpy()
-	x0_array = np.zeros((n_x0, 4))
-	x0_array[:, 1] = x0_pole[:, 0]
-	x0_array[:, 3] = x0_pole[:, 1]
-	x0_list = x0_array.tolist()
+	if "FTC_G" in which_tests:
+		bdry_points = attacker.sample_points_on_boundary(phi_fn, mode="dG/dS") # TODO
+		x0_pole = bdry_points.detach().cpu().numpy()
+		x0_array = np.zeros((n_x0, 4))
+		x0_array[:, 1] = x0_pole[:, 0]
+		x0_array[:, 3] = x0_pole[:, 1]
+		x0_list = x0_array.tolist()
 
-	save_fpth = "./simulations/%s_(%i)_FTC_G.pkl" % (exp_name, checkpoint_number) # TODO
-	x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth)
+		save_fpth = "./simulations/%s_(%i)_FTC_G.pkl" % (exp_name, checkpoint_number) # TODO
+		x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth)
 
-	# Compute phi_vals
-	phi_experiment = []
-	for rl in x_experiment:
-		pole_rl = np.concatenate((rl[:, [1]], rl[:, [3]]), axis=1)
-		pole_rl = torch.from_numpy(pole_rl)
-		phi_vals = phi_fn(pole_rl)
-		phi_experiment.append(phi_vals.detach().numpy())
+		# Compute phi_vals
+		phi_experiment = []
+		for rl in x_experiment:
+			pole_rl = np.concatenate((rl[:, [1]], rl[:, [3]]), axis=1).astype(np.float32)
+			pole_rl = torch.from_numpy(pole_rl)
+			phi_vals = phi_fn(pole_rl)
+			phi_experiment.append(phi_vals.detach().numpy())
 
-	############## Metrics ################
-	in_G_always = [np.all(rl_phi[:, -1] <= 0) for rl_phi in phi_experiment] # TODO
-	in_G_always = np.mean(in_G_always)
+		############## Metrics ################
+		in_G_always = [np.all(rl_phi[:, -1] <= 0) for rl_phi in phi_experiment] # TODO
+		in_G_always = np.mean(in_G_always)
 
-	n_tsteps_outside_G = [np.sum(np.any(rl_phi[:, -1] > 0, axis=1)) for rl_phi in phi_experiment] # TODO
-	n_tsteps_outside_G =  np.mean(n_tsteps_outside_G)
+		n_tsteps_outside_G = [np.sum(rl_phi[:, -1] > 0) for rl_phi in phi_experiment] # TODO
+		n_tsteps_outside_G = np.mean(n_tsteps_outside_G)
 
-	max_phii = np.array([np.max(rl_phi[:, -1]) for rl_phi in phi_experiment])
-	max_phii = np.mean(np.where(max_phii > 0, max_phii, 0))
+		max_phii = np.array([np.max(rl_phi[:, -1]) for rl_phi in phi_experiment])
+		max_phii = np.mean(np.where(max_phii > 0, max_phii, 0))
 
-	violations = [np.clip(np.abs(rl_u_preclip) - max_force, 0, None) for rl_u_preclip in u_preclip_experiment]
-	avg_control_violations = np.mean([np.mean(x) for x in violations])
-	number_control_violations = np.mean([np.sum(x != 0) for x in violations])
+		violations = [np.clip(np.abs(rl_u_preclip) - max_force, 0, None) for rl_u_preclip in u_preclip_experiment]
+		avg_control_violations = np.mean([np.mean(x) for x in violations])
+		number_control_violations = np.mean([np.sum(x != 0) for x in violations])
+
 	############################################################################################
-	print("Before FTC F")
-	IPython.embed()
+	# print("Before FTC F")
+	# IPython.embed()
 	# Compute x0
-	delta = 0.1
-	x = np.arange(x_lim[1, 0], x_lim[1, 1], delta)
-	y = np.arange(x_lim[3, 0], x_lim[3, 1], delta)[::-1] # need to reverse it
-	X, Y = np.meshgrid(x, y)
-	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
-	input = torch.from_numpy(input)
-	phi_vals = phi_fn(input)
-	other_phi_vals = other_phi_fn(input)
+	if "FTC_F" in which_tests:
+		delta = 0.75
+		x = np.arange(x_lim[1, 0], x_lim[1, 1], delta)
+		y = np.arange(x_lim[3, 0], x_lim[3, 1], delta)[::-1] # need to reverse it
+		X, Y = np.meshgrid(x, y)
+		input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
+		input = torch.from_numpy(input)
+		phi_vals = phi_fn(input)
+		other_phi_vals = other_phi_fn(input)
 
-	ind = (phi_vals[:, -1] > 0 and other_phi_vals[:, -1] > 0).nonzero(as_tuple=True)
-	ind = ind.detach().numpy()
-	x0_list = input[ind[:, 0], ind[:, 1]].tolist()
+		F_both = (phi_vals[:, -1] > 0)*(other_phi_vals[:, -1] > 0)
+		ind = np.transpose(np.nonzero(F_both))
+		ind = ind.detach().numpy()
+		x0_pole = input[ind[0, :], :]
+		x0_array = np.zeros((x0_pole.shape[0], 4))
+		x0_array[:, 1] = x0_pole[:, 0]
+		x0_array[:, 3] = x0_pole[:, 1]
+		x0_list = x0_array.tolist()
 
-	save_fpth = "./simulations/%s_(%i)_FTC_F.pkl" % (exp_name, checkpoint_number)
-	x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth, stop_criterion="in_S") # TODO: make run longer
-	phi_experiment = []
-	for rl in x_experiment:
-		pole_rl = np.concatenate((rl[:, [1]], rl[:, [3]]), axis=1)
-		pole_rl = torch.from_numpy(pole_rl)
-		phi_vals = phi_fn(pole_rl)
-		phi_experiment.append(phi_vals.detach().numpy())
+		save_fpth = "./simulations/%s_(%i)_FTC_F.pkl" % (exp_name, checkpoint_number)
+		x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth, stop_criterion="in_S") # TODO: make run longer
+		phi_experiment = []
+		for rl in x_experiment:
+			pole_rl = np.concatenate((rl[:, [1]], rl[:, [3]]), axis=1).astype(np.float32)
+			pole_rl = torch.from_numpy(pole_rl)
+			phi_vals = phi_fn(pole_rl)
+			phi_experiment.append(phi_vals.detach().numpy())
 
-	############## Metrics ################
-	steps_to_S = [np.transpose(np.nonzero(np.all(rl_phi < 0, axis=1))) for rl_phi in phi_experiment]
-	steps_to_S = np.mean(steps_to_S)
-	violations = [np.clip(np.abs(rl_u_preclip) - max_force, 0, None) for rl_u_preclip in u_preclip_experiment]
-	avg_control_violations = np.mean([np.mean(x) for x in violations])
-	number_control_violations = np.mean([np.sum(x != 0) for x in violations])
+		############## Metrics ################
+		steps_to_S = [np.transpose(np.nonzero(np.all(rl_phi < 0, axis=1))) for rl_phi in phi_experiment]
+		steps_to_S = np.mean(steps_to_S)
+		violations = [np.clip(np.abs(rl_u_preclip) - max_force, 0, None) for rl_u_preclip in u_preclip_experiment]
+		avg_control_violations = np.mean([np.mean(x) for x in violations])
+		number_control_violations = np.mean([np.sum(x != 0) for x in violations])
 	############################################################################################
-	print("Computing S volume")
-	IPython.embed()
+	# print("Computing S volume")
+	# IPython.embed()
 	# Compute S volume
 	"""
 	Eval on grid and count % in S
 	"""
-	delta = 0.01
-	x = np.arange(x_lim[1, 0], x_lim[1, 1], delta)
-	y = np.arange(x_lim[3, 0], x_lim[3, 1], delta)[::-1] # need to reverse it
-	X, Y = np.meshgrid(x, y)
-	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
-	input = torch.from_numpy(input)
-	phi_vals = phi_fn(input)
+	if "S_vol" in which_tests:
+		delta = 0.01
+		x = np.arange(x_lim[1, 0], x_lim[1, 1], delta)
+		y = np.arange(x_lim[3, 0], x_lim[3, 1], delta)[::-1] # need to reverse it
+		X, Y = np.meshgrid(x, y)
+		input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
+		input = torch.from_numpy(input)
+		phi_vals = phi_fn(input)
 
-	vol_S = np.mean(np.all(phi_vals > 0, axis=1))
+		vol_S = np.mean(np.all(phi_vals > 0, axis=1))
 	############################################################################################
 
 if __name__ == "__main__":
 	# TODO: which checkpoint number?
-	checkpoint_number = 160 # TODO: 340
+	checkpoint_number = 340 # TODO: 340
 	exp_name = "cartpole_reduced_l_50_w_1e_1"
 	phi_fn = load_trained_cbf(exp_name, checkpoint_number)
 	save_fldrnm = "%s_%i" % (exp_name, checkpoint_number)
@@ -546,7 +569,9 @@ if __name__ == "__main__":
 
 	# print("make sure phi works!")
 	# IPython.embed()
-	run_benchmark(phi_fn, other_phi_fn, save_fldrnm)
+	run_benchmark(phi_fn, other_phi_fn, save_fldrnm, ["FI"])
+
+	# TODO: SIMIN YOU ARE HERE! AT THE POINT OF RUNNING THE CODE
 
 
 
