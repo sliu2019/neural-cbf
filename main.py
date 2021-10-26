@@ -17,7 +17,6 @@ from global_settings import *
 
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
-
 	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=None):
 		# Later: args specifying how beta is parametrized
 		super().__init__()
@@ -28,6 +27,9 @@ class Phi(nn.Module):
 
 		# Note: by default, it registers parameters by their variable name
 		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much largers
+		print("################################################################")
+		print("Initial ci: ", self.ci)
+		print("################################################################")
 
 		hidden_dims = args.phi_nn_dimension.split("-")
 		hidden_dims = [int(h) for h in hidden_dims]
@@ -125,19 +127,15 @@ class Phi(nn.Module):
 		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device)) # bs x x_dim
 
 		for i in range(self.r-1):
-			# print(h_ith_deriv.size())
 			grad_h_ith = grad([torch.sum(h_ith_deriv)], x, create_graph=True)[0] # bs x x_dim; create_graph ensures gradient is computed through the gradient operation
+			# grad_h_ith = grad([torch.sum(h_ith_deriv)], x, retain_graph=True)[0] # TODO: for debugging only
 
-			# IPython.embed()
 			h_ith_deriv = (grad_h_ith.unsqueeze(dim=1)).bmm(f_val.unsqueeze(dim=2)) # bs x 1 x 1
 			h_ith_deriv = h_ith_deriv[:, :, 0] # bs x 1
 
-			# print(h_ith_deriv)
 			h_derivs = torch.cat((h_derivs, h_ith_deriv), dim=1)
 
 		x.requires_grad = orig_req_grad_setting
-		# Old:
-		# result = beta_value + h_derivs.mm(ki) # bs x 1
 		# New: (bs, r+1)
 		result = h_derivs.mm(ki_all.t())
 		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + beta_value
@@ -153,6 +151,7 @@ class Objective(nn.Module):
 		del self.__dict__["self"]  # don't need `self`
 
 	def forward(self, x):
+		# IPython.embed()
 		# The way these are implemented should be batch compliant
 		u_lim_set_vertices = self.uvertices_fn(x) # (bs, n_vertices, u_dim), can be a function of x_batch
 		n_vertices = u_lim_set_vertices.size()[1]
@@ -178,10 +177,13 @@ class Objective(nn.Module):
 		phidot_cand = xdot.unsqueeze(1).bmm(grad_phi.unsqueeze(2))
 		phidot_cand = torch.reshape(phidot_cand, (-1, n_vertices)) # bs x n_vertices
 
+		# print(phidot_cand)
 		phidot, _ = torch.min(phidot_cand, 1)
-		result = nn.functional.relu(phidot)
+		result = phidot
+		# result = nn.functional.relu(phidot) # TODO
 		result = result.view(-1, 1) # ensures bs x 1
 
+		# IPython.embed()
 		return result
 
 class Regularizer(nn.Module):
@@ -197,7 +199,7 @@ class Regularizer(nn.Module):
 			assert A_samples is not None
 
 	def forward(self):
-		reg = torch.zeros(1, 1).to(self.device)
+		reg = torch.tensor(0).to(self.device)
 		if self.volume_term_weight:
 			phi_value_A_samples = self.phi_fn(self.A_samples)
 
@@ -283,7 +285,7 @@ def main(args):
 		A_samples = None
 		x_e = torch.zeros(1, x_dim)
 	elif args.problem == "cartpole_reduced":
-		r = 2
+		r = 3
 		x_dim = 2
 		u_dim = 1
 		x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
@@ -460,9 +462,27 @@ def main(args):
 	# x = torch.rand(10, x_dim)
 	# obj_value = objective_fn(x)
 
-	# Timing the projection
+	# Debugging: whether gradients of the objective (wrt x) are calculated properly
+	# Run: python main.py --affix debug --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 0.0
+	# Check that reshaping in objective function is proper
+	# x = torch.rand(10, x_dim).to(device)
+	# obj_val = objective_fn(x)
+	# print(obj_val)
+	# IPython.embed()
 
+	# Check that gradient flows through iterated gradients over x
+	# Computing phi(x) is complex
+	# Computing grad phi(x) is complex
+	# x.requires_grad = True
+	# phi_value = phi_fn(x)
+	# grad_phi = grad([torch.sum(phi_value[:, -1])], x)[0]
+	# print(grad_phi)
 
+	# Computing grad f(grad phi(x)) is complex
+	# x.requires_grad = True
+	# obj_val = objective_fn(x)
+	# grad_obj = grad([torch.sum(obj_val)], x)[0]
+	# print(grad_obj)
 
 if __name__ == "__main__":
 	args = parser()

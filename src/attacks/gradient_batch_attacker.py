@@ -18,7 +18,7 @@ class GradientBatchAttacker():
 	def __init__(self, x_lim, device, logger, n_samples=20, \
 	             stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-2, early_stopping_patience=3,\
 	             lr=1e-3, \
-	             projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=3):
+	             projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=False):
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
@@ -63,6 +63,7 @@ class GradientBatchAttacker():
 			i += 1
 
 			if torch.max(loss) < self.projection_stop_threshold:
+				print("reprojection was successful")
 				break
 			elif (time.perf_counter() - t1) > self.projection_time_limit and (torch.min(loss) <= self.projection_stop_threshold):
 				# In case projection fails or takes too long on some samples
@@ -72,6 +73,7 @@ class GradientBatchAttacker():
 				mask = loss > self.projection_stop_threshold
 				mask = mask.type(torch.float32).view(x.shape[0], 1)
 				inv_mask = (1-mask)
+				print(inv_mask)
 				x = inv_mask*x + mask.mm(projected_x.unsqueeze(0))
 				break
 			elif (time.perf_counter() - t1) > self.projection_time_limit and (torch.min(loss) > self.projection_stop_threshold):
@@ -92,14 +94,23 @@ class GradientBatchAttacker():
 		t0 = time.perf_counter()
 		x_batch = x.view(-1, self.x_dim)
 		x_batch.requires_grad = True
+
 		obj_val = -objective_fn(x_batch)
-		phi_val = phi_fn(x_batch)
 		obj_grad = grad([torch.sum(obj_val)], x_batch)[0]
+
+		phi_val = phi_fn(x_batch)
 		normal_to_manifold = grad([torch.sum(phi_val[:, -1])], x_batch)[0]
+		normal_to_manifold = normal_to_manifold/torch.norm(normal_to_manifold, dim=1) # normalize
+
 		x_batch.requires_grad = False
 
 		weights = obj_grad.unsqueeze(1).bmm(normal_to_manifold.unsqueeze(2))[:, 0]
 		proj_obj_grad = obj_grad - weights*normal_to_manifold
+
+		# IPython.embed()
+		if self.verbose:
+			print("unprojected grad:", obj_grad)
+			print("projected grad: ", proj_obj_grad)
 
 		# Take a step
 		x = x - self.lr*proj_obj_grad
@@ -111,8 +122,12 @@ class GradientBatchAttacker():
 		# No torch.clamp in torch 1.7.1
 		x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
 
+		if self.verbose:
+			print("After step:", x)
 		# Project to surface
 		x = self.project(phi_fn, x)
+		if self.verbose:
+			print("After reprojection", x)
 
 		t2 = time.perf_counter()
 
@@ -245,7 +260,7 @@ class GradientBatchAttacker():
 		n_segments_sampled = 0
 
 		while n_remaining_to_sample > 0:
-			print(n_remaining_to_sample)
+			# print(n_remaining_to_sample)
 			outer = self.sample_on_cube()
 
 			intersection = self.intersect_segment_with_manifold(center, outer, phi_fn)
@@ -274,10 +289,10 @@ class GradientBatchAttacker():
 		# self.logger.info("Done with sampling points on the boundary...")
 		return samples
 
-	def opt(self, objective_fn, phi_fn):
+	def opt(self, objective_fn, phi_fn, test=False):
 
-		X = self.sample_points_on_boundary(phi_fn)
-
+		X_init = self.sample_points_on_boundary(phi_fn)
+		X = X_init.clone()
 		i = 0
 		early_stopping = EarlyStopping(patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta)
 		while True:
@@ -300,9 +315,12 @@ class GradientBatchAttacker():
 		obj_vals = objective_fn(X)
 		max_ind = torch.argmax(obj_vals)
 
-		x = X[max_ind]
-		return x
-
+		if not test:
+			x = X[max_ind]
+			return x
+		else: # TODO: this is terrible coding practice!!!??
+			x = X[max_ind]
+			return X_init, X, x, obj_vals
 
 # TODO: for PGD x Adam, should I manually feed the clipped gradient to Adam?
 # Workaround: custom backwards hook for the projection objective function. In this hook, clip gradient before returning

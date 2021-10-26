@@ -71,6 +71,7 @@ class Trainer():
 
 			self.logger.info('\n' + '=' * 20 + f' evaluation at iteration: {_iter} ' \
 			            + '=' * 20)
+			# IPython.embed()
 			self.logger.info(f'test loss: {test_loss:.3f}%, time spent testing: {t2 - t1:.3f} s')
 			self.logger.info(f'test attack loss: {test_attack_loss:.3f}%, reg loss: {test_reg_loss:.3f}%')
 

@@ -16,7 +16,7 @@ class H(nn.Module):
 		# TODO (toy): implement
 		# The way these are implemented should be batch compliant
 		# rv = torch.abs(x[:, [0]]) - self.max_theta # bs x 1
-		rv = x[:, [0]]**2 - self.max_theta
+		rv = x[:, [0]]**2 - self.max_theta**2
 		return rv
 
 class XDot(nn.Module):

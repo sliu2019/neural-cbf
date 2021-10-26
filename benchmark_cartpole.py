@@ -127,7 +127,7 @@ class Cartpole_Simulator():
 		u_preclip_all = []
 		i = 0
 		while True:
-			u = controller(x)
+			u = controller(x, self.xdot_fn_numpy)
 			u_feas = np.clip(u, -self.param_dict["max_force"], self.param_dict["max_force"])
 
 			x = self.step(x, u_feas)
@@ -203,7 +203,7 @@ class CBF_controller():
 		new_angle = np.arctan2(np.sin(angle), np.cos(angle))
 		return new_angle
 
-	def __call__(self, x):
+	def __call__(self, x, xdot_fn_numpy):
 		"""
 		x is (4) vec
 		RV u is numpy (1) vec
@@ -228,10 +228,16 @@ class CBF_controller():
 		# IPython.embed()
 
 		# Get eps
-		# TODO: sketchy way to convert DT to CT
+		x_dot = xdot_fn_numpy(x, 0.0)
+		x_next = x + dt*x_dot
+		x_next_trunc = np.array([x_next[1], x_next[3]])
+		x_next_torch = torch.from_numpy(x_next_trunc.astype("float32")).view(-1, 2)
+		next_phi = self.phi_fn(x_next_torch)[0, -1].item()
+
+		# IPython.embed()
 		if phi_val > 0:
 			eps = self.eps
-		elif phi_val < 0 and phi_val > -1e-3:
+		elif phi_val < 0 and next_phi >= 0: # TODO: cheating way to convert DT to CT
 			eps = 0
 		else:
 			return np.zeros(1)
@@ -360,11 +366,11 @@ def load_experiment(load_fpth):
 	return save_dict
 
 ####################################################################################################################
-def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "FTC_F", "S_vol"]):
+def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "FTC_F", "S_vol"], n_x0=30):
 	xdot_fn_numpy = XDot_numpy(param_dict)
 	simulator = Cartpole_Simulator(xdot_fn_numpy, param_dict)
 
-	controller = CBF_controller(phi_fn, xdot_fn_numpy, param_dict)
+	controller = CBF_controller(phi_fn, xdot_fn_numpy, param_dict, eps=10.0) # TODO: eps
 
 	# other_phi_fn = load_trained_cbf(other_exp_name, other_checkpoint_number)
 
@@ -376,7 +382,6 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "
 	# TODO: actually, do this in main.py
 
 	# Create attacker
-	n_x0 = 30 # TODO
 	logger = create_logger("log/discard", 'train', 'info')
 	x_lim_pole = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
 	x_lim_pole = torch.tensor(x_lim_pole).to(device)
@@ -431,16 +436,25 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "
 
 		max_phii = np.array([np.max(rl_phi) for rl_phi in phi_experiment])
 		max_phii = np.mean(np.where(max_phii > 0, max_phii, 0))
+		print("Max phi: ", max_phii)
 
 		violations = [np.clip(np.abs(rl_u_preclip) - max_force, 0, None) for rl_u_preclip in u_preclip_experiment]
 		avg_control_violations = np.mean([np.mean(x) for x in violations])
 		number_control_violations = np.mean([np.sum(x > 0) for x in violations])
 		print(avg_control_violations, number_control_violations)
 
-		animate_rollout(x_experiment[0], "./animations/debug_cbf_0.mp4")
-		animate_rollout(x_experiment[1], "./animations/debug_cbf_1.mp4")
-		animate_rollout(x_experiment[2], "./animations/debug_cbf_2.mp4")
+		# animate_rollout(x_experiment[0], "./animations/debug_cbf_0.mp4")
+		# animate_rollout(x_experiment[1], "./animations/debug_cbf_1.mp4")
+		# animate_rollout(x_experiment[2], "./animations/debug_cbf_2.mp4")
 
+		which_rl_to_animate = [26, 20, 22, 13, 28]
+		for i in which_rl_to_animate:
+			animate_rollout(x_experiment[i], "./animations/debug_cbf_%i.mp4" % i)
+
+		# array([ 0, 29, 21, 11, 12,  2,  6, 10,  4, 23, 24,  1, 25, 18,  8, 19, 14,
+		#         5,  3,  7, 15, 16, 27, 17,  9, 28, 13, 22, 20, 26])
+
+		print(np.argsort(max_phii)[::-1])
 		IPython.embed()
 	############################################################################################
 	# print("Before FTC G")
@@ -552,9 +566,8 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "
 	############################################################################################
 
 if __name__ == "__main__":
-	# TODO: which checkpoint number?
-	checkpoint_number = 340 # TODO: 340
-	exp_name = "cartpole_reduced_l_50_w_1e_1"
+	checkpoint_number = 320 # TODO
+	exp_name = "cartpole_reduced_new_h_l_50_w_1"
 	phi_fn = load_trained_cbf(exp_name, checkpoint_number)
 	save_fldrnm = "%s_%i" % (exp_name, checkpoint_number)
 
@@ -569,9 +582,7 @@ if __name__ == "__main__":
 
 	# print("make sure phi works!")
 	# IPython.embed()
-	run_benchmark(phi_fn, other_phi_fn, save_fldrnm, ["FI"])
-
-	# TODO: SIMIN YOU ARE HERE! AT THE POINT OF RUNNING THE CODE
+	run_benchmark(phi_fn, other_phi_fn, save_fldrnm, ["FI"], n_x0=30)
 
 
 

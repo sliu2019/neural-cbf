@@ -28,7 +28,20 @@
 #nohup python main.py --affix l_50_w_5e_1 --gpu 2 --phi_nn_dimension 50 --objective_volume_weight 0.5 &> l_50_w_5e_1.out &
 #nohup python main.py --affix l_50_w_1e_1 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 0.1 &> l_50_w_1e_1.out &
 
-python main.py --affix l_50_50_w_1e_2 --gpu 2 --phi_nn_dimension 50-50
+#python main.py --affix l_50_50_w_1e_2 --gpu 2 --phi_nn_dimension 50-50
 #nohup python main.py --affix l_50_50_w_1e_2 --gpu 2 --phi_nn_dimension 50-50 --objective_volume_weight 1e-2 &> l_50_50_w_1e_2.out &
 #nohup python main.py --affix l_50_50_w_1e_4 --gpu 3 --phi_nn_dimension 50-50 --objective_volume_weight 1e-4 &> l_50_50_w_1e_4 &
 #nohup python main.py --affix l_50_50_w_5e_4 --gpu 1 --phi_nn_dimension 50-50 --objective_volume_weight 5e-4 &> l_50_50_w_5e_4.out &
+
+
+# Rerun with different h(x)
+# --phi_ci_init_range 1.0
+
+nohup python main.py --affix new_h_l_50_w_1 --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 1.0 --trainer_early_stopping_patience 40 &> new_h_l_50_w_1.out &
+nohup python main.py --affix new_h_l_50_w_10 --gpu 2 --phi_nn_dimension 50 --objective_volume_weight 10.0 --trainer_early_stopping_patience 40 &> new_h_l_50_w_10.out &
+
+
+nohup python main.py --affix new_h_l_50_w_0 --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 0.0 --trainer_early_stopping_patience 40 &> new_h_l_50_w_0.out &
+
+
+python main.py --affix debug --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 0.0
