@@ -14,6 +14,7 @@ import torch
 import pickle
 from phi_baseline import PhiBaseline
 from src.attacks.gradient_batch_attacker import GradientBatchAttacker
+from torch.autograd import grad
 
 def parse_log_file():
 	"""
@@ -161,8 +162,6 @@ def plot_phi_2d_level_curve_over_training():
 		plot_phi_2d_level_curve(phi_fn, phi_load_fpth, checkpoint_number, x_lim, which_2_state_vars)
 
 
-
-
 def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	"""
 	Plots binary +/- of CBF value
@@ -202,11 +201,13 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
 
+	plot_range_x = [-0.5, 0.5] # TODO [-math.pi, math.pi]
+	plot_range_y = [-5, -1] # TODO: [-5, 5]
 	###################################
 	# IPython.embed()
 	delta = 0.01
-	x = np.arange(-math.pi, math.pi, delta)
-	y = np.arange(-5, 5, delta)[::-1] # need to reverse it
+	x = np.arange(plot_range_x[0], plot_range_x[1], delta)
+	y = np.arange(plot_range_y[0], plot_range_y[1], delta)[::-1] # need to reverse it
 	X, Y = np.meshgrid(x, y)
 
 	# phi_load_fpth = "./checkpoint/cartpole_reduced_exp1a/checkpoint_69.pth"
@@ -233,19 +234,39 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 
 
 	fig, ax = plt.subplots()
-	ax.imshow(phi_signs, extent=[-math.pi, math.pi, -5.0, 5.0])
+	ax.imshow(phi_signs, extent=[plot_range_x[0], plot_range_x[1], plot_range_y[0], plot_range_y[1]])
 	ax.set_aspect("equal")
 
 	phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
-	ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
-	                 colors=('k',), linewidths=(2,))
+	# ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
+	#                  colors=('k',), linewidths=(2,))
+	ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape))
+
+	# Sanity check projection: plot vector field of gradients
+	# IPython.embed()
+	delta = 0.1
+	# x = np.arange(-math.pi, math.pi, delta)
+	# y = np.arange(-5, 5, delta)[::-1] # need to reverse it
+	x = np.arange(plot_range_x[0], plot_range_x[1], delta)
+	y = np.arange(plot_range_y[0], plot_range_y[1], delta)[::-1] # need to reverse it
+	X, Y = np.meshgrid(x, y)
+	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
+	input = torch.from_numpy(input)
+	input.requires_grad = True
+	loss = torch.abs(phi_fn(input)[:, -1])
+	grad_to_zero_level = grad([torch.sum(loss)], input)[0]
+	input.requires_grad = False
+	grad_to_zero_level = grad_to_zero_level.detach().cpu().numpy()
+
+	plt.quiver(X.flatten(), Y.flatten(), grad_to_zero_level[:, 0], grad_to_zero_level[:, 1], color='w')
 
 	# Get attacks
-	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
-		data = pickle.load(handle)
-		train_attacks = data["train_attacks"]
-		test_losses = data["test_losses"]
-		plt.scatter(train_attacks[checkpoint_number][0], train_attacks[checkpoint_number][1], c="white", marker="x")
+	# TODO: remove, plot recorded attack points
+	# with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+	# 	data = pickle.load(handle)
+	# 	train_attacks = data["train_attacks"]
+	# 	test_losses = data["test_losses"]
+	# 	plt.scatter(train_attacks[checkpoint_number][0], train_attacks[checkpoint_number][1], c="tab:orange", marker="x")
 
 	# TODO: remove, test dS/dG options on batch attacker
 	# logger = create_logger("log/discard", 'train', 'info')
@@ -255,13 +276,13 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	# attacker = GradientBatchAttacker(x_lim_pole, device, logger, n_samples=2)
 	#
 	# dG_dS = attacker.sample_points_on_boundary(phi_fn, mode="dG+dS").detach().cpu().numpy()
-	# plt.scatter(dG_dS[:, 0], dG_dS[:, 1], c="white", marker="x")
+	# plt.scatter(dG_dS[:, 0], dG_dS[:, 1], c="tab:orange", marker="x")
 	# print("done")
 	# dG_not_dS = attacker.sample_points_on_boundary(phi_fn, mode="dG/dS").detach().cpu().numpy()
 	# plt.scatter(dG_not_dS[:, 0], dG_not_dS[:, 1], c="red", marker="x")
 
 	# print(attacks)
-	plt.savefig("./log/%s/%s" % (exp_name, save_fnm))
+	plt.savefig("./log/%s/%s" % (exp_name, save_fnm), dpi=600)
 
 def plot_3d(checkpoint_number, save_fnm, exp_name):
 	args = load_args("./log/%s/args.txt" % exp_name)
@@ -377,7 +398,7 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 
 	log_folder = "./log/discard"
 	logger = create_logger(log_folder, 'train', 'info') # doesn't matter, isn't used
-	n_attacks = 50 # TODO
+	# n_attacks = 50 # TODO
 	x_lim_torch = torch.tensor(x_lim).to(device)
 	# IPython.embed()
 	# test_attacker = GradientBatchAttacker(x_lim_torch, device, logger,
@@ -388,11 +409,11 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	test_attacker = GradientBatchAttacker(x_lim_torch, device, logger,
 	                                      stopping_condition=args.test_attacker_stopping_condition,
 	                                      n_samples=10,
-	                                      projection_stop_threshold=args.test_attacker_projection_stop_threshold,
-	                                      projection_lr=args.test_attacker_projection_lr,
+	                                      projection_stop_threshold=1e-1, #=args.test_attacker_projection_stop_threshold,
+	                                      projection_lr=1e-4, #args.test_attacker_projection_lr,
 	                                      early_stopping_min_delta=1e-7,
 	                                      early_stopping_patience=50,
-	                                      lr=1e-2)
+	                                      lr=1e-4)
 	###################################
 	# IPython.embed()
 	delta = 0.01
@@ -440,13 +461,27 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	obj_vals = obj_vals.detach().cpu().numpy()
 
 	inds = np.argsort(attacks[:, 0])
-	print(obj_vals[inds])
+	# print(obj_vals[inds])
 
 	# IPython.embed()
 	obj_vals_init = objective_fn(attacks_init)
 	obj_vals_init = obj_vals_init.detach().cpu().numpy()
-	print("Has objective value been maximized? final - init > 0")
-	print(obj_vals - obj_vals_init)
+	improvement = obj_vals - obj_vals_init
+	if np.any(improvement < 0):
+		print("Manifold optimization does not yield strict improvement")
+		print(improvement)
+
+		neg_inds = np.where(improvement < 0)[0]
+		print("Negative improvement at these init attacks")
+		print(attacks_init[neg_inds])
+		print("Corr. ultimate attacks")
+		print(attacks[neg_inds])
+		# IPython.embed()
+
+	best_attack_improvement = np.max(obj_vals) - np.max(obj_vals_init)
+	print("%f (+ %f)" % (np.max(obj_vals), best_attack_improvement))
+	# print("Has objective value been maximized? final - init > 0")
+	# print(obj_vals - obj_vals_init)
 
 	# ids = np.nonzero(obj_vals)[0]
 	# print(attacks[ids])
@@ -454,20 +489,19 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	attacks_init = attacks_init.detach().cpu().numpy()
 	attacks = attacks.detach().cpu().numpy()
 	best_attack = best_attack.detach().cpu().numpy()
-	print(best_attack)
+	# print(best_attack)
 
-	axes[0].scatter(attacks_init[:, 0], attacks_init[:, 1], c="white", marker="x")
-	axes[1].scatter(attacks[:, 0], attacks[:, 1], c="white", marker="x")
-	axes[1].scatter(best_attack[0], best_attack[1], marker="o")
+	axes[0].scatter(attacks_init[:, 0], attacks_init[:, 1], c="tab:orange", marker="x")
+	axes[1].scatter(attacks[:, 0], attacks[:, 1], c="tab:orange", marker="x")
+	axes[1].scatter(best_attack[0], best_attack[1], marker="D", c="c")
 
 	plt.savefig("./log/%s/%s" % (exp_name, "2d_attacks_checkpoint_%i.png" % checkpoint_number))
-
 
 	# objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
 	# test_attack = torch.tensor([-2.4602,  0.1066]).view(1, -1)
 	# all_phi = objective_fn(test_attack)
 	# print(all_phi)
-	IPython.embed()
+	# IPython.embed()
 
 def debug_manifold_optimization(checkpoint_number, exp_name):
 	args = load_args("./log/%s/args.txt" % exp_name)
@@ -503,28 +537,38 @@ def debug_manifold_optimization(checkpoint_number, exp_name):
 	log_folder = "./log/discard"
 	logger = create_logger(log_folder, 'train', 'info') # doesn't matter, isn't used
 	x_lim_torch = torch.tensor(x_lim).to(device)
+	# attacker = GradientBatchAttacker(x_lim_torch, device, logger,
+	#                                       stopping_condition=args.test_attacker_stopping_condition,
+	#                                       n_samples=10,
+	#                                       projection_stop_threshold=args.test_attacker_projection_stop_threshold,
+	#                                       projection_lr=args.test_attacker_projection_lr,
+	#                                       early_stopping_min_delta=1e-7,
+	#                                       early_stopping_patience=50,
+	#                                       lr=2e-3, # TODO
+	#                                       verbose=True,
+	#                                       projection_time_limit=10000)
 	attacker = GradientBatchAttacker(x_lim_torch, device, logger,
 	                                      stopping_condition=args.test_attacker_stopping_condition,
 	                                      n_samples=10,
-	                                      projection_stop_threshold=args.test_attacker_projection_stop_threshold,
-	                                      projection_lr=args.test_attacker_projection_lr,
+	                                      projection_stop_threshold=1e-1, #=args.test_attacker_projection_stop_threshold,
+	                                      projection_lr=1e-4, #args.test_attacker_projection_lr,
 	                                      early_stopping_min_delta=1e-7,
 	                                      early_stopping_patience=50,
-	                                      lr=1e-2,
+	                                      lr=1e-4, # TODO: 2e-3
 	                                      verbose=True)
-
 
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
 
-	attack_init = torch.tensor([-0.1175,  4.9992])
-	for i in range(10):
+	# attack_init = torch.tensor([-2.5102,  0.1582])
+	# attack_init = torch.tensor([-0.0098, -2.9405])
+	attack_init = torch.tensor([[-1.9145,  0.0835]])
+	for i in range(250):
 		attack_init = attacker.step(objective_fn, phi_fn, attack_init)
 
 
 if __name__=="__main__":
 	# graph_log_file_2("cartpole_reduced_new_h_l_50_w_0")
 	# for checkpoint_number in np.arange(0, 350, 50):
-	# 	# print(checkpoint_number)
 	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
 	# 	plot_3d(checkpoint_number, save_fnm, "cartpole_reduced_new_h_l_50_w_0")
 	# 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
@@ -534,10 +578,39 @@ if __name__=="__main__":
 	# for checkpoint_number in [100, 200, 250]:
 	# for checkpoint_number in range(0, 60, 10):
 
-	# for checkpoint_number in [10]:
+	# for checkpoint_number in np.arange(0, 320, 50):
+	# 	print("Checkpoint number: %i" % checkpoint_number)
 	# 	exp_name = "cartpole_reduced_new_h_l_50_w_1"
 	# 	plot_2d_attacks(checkpoint_number, exp_name)
 
-	checkpoint_number = 10
-	exp_name = "cartpole_reduced_new_h_l_50_w_1"
-	debug_manifold_optimization(checkpoint_number, exp_name)
+	# checkpoint_number = 100
+	# exp_name = "cartpole_reduced_new_h_l_50_w_1"
+	# plot_2d_attacks(checkpoint_number, exp_name)
+
+	"""
+	Checkpoint 100
+	Gives the following faulty points:
+	tensor([[-0.0098, -2.9405],
+        [-0.0085, -3.4178]])
+	"""
+
+	# checkpoint_number = 100
+	# exp_name = "cartpole_reduced_new_h_l_50_w_1"
+	# debug_manifold_optimization(checkpoint_number, exp_name)
+
+	# Checking out reprojection errors via vector field plot
+	# checkpoint_number = 100
+	# exp_name = "cartpole_reduced_new_h_l_50_w_1"
+	# save_fnm = "2d_checkpoint_%i_vector_field.png" % checkpoint_number
+	# plot_2d_binary(checkpoint_number, save_fnm, exp_name)
+
+	"""
+	Checkpoint 100
+	Gives the following faulty points:
+	tensor([[-1.9145,  0.0835]])
+	"""
+
+	# checkpoint_number = 100
+	# exp_name = "cartpole_reduced_new_h_l_50_w_1"
+	# debug_manifold_optimization(checkpoint_number, exp_name)
+

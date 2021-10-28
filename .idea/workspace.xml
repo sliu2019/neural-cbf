@@ -3,15 +3,15 @@
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/animations/debug_cbf_0.mp4" beforeDir="false" afterPath="$PROJECT_DIR$/animations/debug_cbf_0.mp4" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/animations/debug_cbf_1.mp4" beforeDir="false" afterPath="$PROJECT_DIR$/animations/debug_cbf_1.mp4" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/animations/debug_cbf_2.mp4" beforeDir="false" afterPath="$PROJECT_DIR$/animations/debug_cbf_2.mp4" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/benchmark_cartpole.py" beforeDir="false" afterPath="$PROJECT_DIR$/benchmark_cartpole.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/cartpole_devel.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/cartpole_devel.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_0.png" beforeDir="false" afterPath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_0.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_10.png" beforeDir="false" afterPath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_10.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_100.png" beforeDir="false" afterPath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_100.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_200.png" beforeDir="false" afterPath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_200.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_250.png" beforeDir="false" afterPath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_250.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_50.png" beforeDir="false" afterPath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_attacks_checkpoint_50.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_checkpoint_100.png" beforeDir="false" afterPath="$PROJECT_DIR$/log/cartpole_reduced_new_h_l_50_w_1/2d_checkpoint_100.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/argument.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/argument.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/attacks/gradient_batch_attacker.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/attacks/gradient_batch_attacker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/problems/cartpole_reduced.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/problems/cartpole_reduced.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trainer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/throwaway.py" beforeDir="false" afterPath="$PROJECT_DIR$/throwaway.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -75,7 +75,7 @@
       <workItem from="1631196657722" duration="52008000" />
       <workItem from="1631628541958" duration="12210000" />
       <workItem from="1632102927249" duration="201945000" />
-      <workItem from="1634332522330" duration="74907000" />
+      <workItem from="1634332522330" duration="91225000" />
     </task>
     <servers />
   </component>
@@ -96,7 +96,7 @@
     </state>
     <state x="374" y="244" key="#com.intellij.fileTypes.FileTypeChooser/0.23.1440.834@0.23.1440.834" timestamp="1633813312744" />
     <state x="499" y="291" key="#com.intellij.fileTypes.FileTypeChooser/0.23.1920.1013@0.23.1920.1013" timestamp="1634415116182" />
-    <state x="100" y="129" width="1241" height="648" key="DirDiffDialog" timestamp="1635215069439">
+    <state x="100" y="129" width="1241" height="648" key="DirDiffDialog" timestamp="1635452612163">
       <screen x="0" y="23" width="1440" height="877" />
     </state>
     <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.831@0.23.1440.831" timestamp="1634679149898" />
@@ -107,7 +107,7 @@
     <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.836@0.23.1440.836" timestamp="1633965603401" />
     <state x="100" y="123" width="1240" height="614" key="DirDiffDialog/0.23.1440.837@0.23.1440.837" timestamp="1634134046591" />
     <state x="100" y="123" width="1240" height="615" key="DirDiffDialog/0.23.1440.838@0.23.1440.838" timestamp="1633967137867" />
-    <state x="100" y="129" width="1241" height="648" key="DirDiffDialog/0.23.1440.877@0.23.1440.877" timestamp="1635215069439" />
+    <state x="100" y="129" width="1241" height="648" key="DirDiffDialog/0.23.1440.877@0.23.1440.877" timestamp="1635452612163" />
     <state x="133" y="145" width="1654" height="747" key="DirDiffDialog/0.23.1920.1011/1920.23.1920.1011@0.23.1920.1011" timestamp="1634855622785" />
     <state x="133" y="145" width="1654" height="747" key="DirDiffDialog/0.23.1920.1011@0.23.1920.1011" timestamp="1634700128214" />
     <state x="100" y="303" width="1240" height="614" key="DirDiffDialog/0.23.1920.1013/1920.23.1920.1013@0.23.1920.1013" timestamp="1634069249844" />
@@ -137,7 +137,7 @@
     <state x="136" y="173" width="1440" height="824" key="dock-window-2/0.23.1440.835@0.23.1440.835" timestamp="1632515885228" />
     <state x="1979" y="23" width="1638" height="974" key="dock-window-2/0.23.1920.1005/1920.23.1920.1057@0.23.1920.1005" timestamp="1632514001830" />
     <state x="2104" y="69" width="1905" height="1055" key="dock-window-2/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631548808608" />
-    <state x="559" y="79" width="720" height="635" key="find.popup" timestamp="1635129431869">
+    <state x="559" y="79" width="720" height="635" key="find.popup" timestamp="1635449999240">
       <screen x="0" y="23" width="1440" height="877" />
     </state>
     <state x="559" y="76" width="720" height="602" key="find.popup/0.23.1440.832@0.23.1440.832" timestamp="1634676598091" />
@@ -146,7 +146,7 @@
     <state x="559" y="76" width="720" height="604" key="find.popup/0.23.1440.835@0.23.1440.835" timestamp="1633459235252" />
     <state x="559" y="76" width="720" height="606" key="find.popup/0.23.1440.836@0.23.1440.836" timestamp="1634013619785" />
     <state x="559" y="76" width="720" height="606" key="find.popup/0.23.1440.837@0.23.1440.837" timestamp="1634072802927" />
-    <state x="559" y="79" width="720" height="635" key="find.popup/0.23.1440.877@0.23.1440.877" timestamp="1635129431869" />
+    <state x="559" y="79" width="720" height="635" key="find.popup/0.23.1440.877@0.23.1440.877" timestamp="1635449999240" />
     <state x="745" y="87" width="960" height="724" key="find.popup/0.23.1920.1001/1920.23.1920.1057@0.23.1920.1001" timestamp="1632438214361" />
     <state x="745" y="87" width="960" height="725" key="find.popup/0.23.1920.1002/1920.23.1920.1057@0.23.1920.1002" timestamp="1632501797792" />
     <state x="745" y="87" width="960" height="728" key="find.popup/0.23.1920.1006/1920.23.1920.1057@0.23.1920.1006" timestamp="1632509100856" />
@@ -156,12 +156,13 @@
     <state x="1036" y="86" width="667" height="476" key="find.popup/0.23.1920.994/1920.23.1920.1057@0.23.1920.994" timestamp="1632169345064" />
     <state x="1036" y="86" width="667" height="477" key="find.popup/0.23.1920.995/1920.23.1920.1057@0.23.1920.995" timestamp="1632249517102" />
     <state x="1036" y="86" width="667" height="478" key="find.popup/0.23.1920.997/1920.23.1920.1057@0.23.1920.997" timestamp="1632256402247" />
-    <state x="513" y="208" width="895" height="830" key="search.everywhere.popup" timestamp="1634699787083">
-      <screen x="0" y="23" width="1920" height="1011" />
+    <state x="385" y="183" width="672" height="720" key="search.everywhere.popup" timestamp="1635286978318">
+      <screen x="0" y="23" width="1440" height="877" />
     </state>
     <state x="385" y="174" width="670" height="676" key="search.everywhere.popup/0.23.1440.827@0.23.1440.827" timestamp="1631212770359" />
     <state x="385" y="176" width="671" height="686" key="search.everywhere.popup/0.23.1440.836@0.23.1440.836" timestamp="1633914688187" />
     <state x="385" y="176" width="671" height="687" key="search.everywhere.popup/0.23.1440.837@0.23.1440.837" timestamp="1634090971130" />
+    <state x="385" y="183" width="672" height="720" key="search.everywhere.popup/0.23.1440.877@0.23.1440.877" timestamp="1635286978318" />
     <state x="513" y="206" width="894" height="821" key="search.everywhere.popup/0.23.1920.1003/1920.23.1920.1057@0.23.1920.1003" timestamp="1632337933885" />
     <state x="513" y="207" width="894" height="825" key="search.everywhere.popup/0.23.1920.1006/1920.23.1920.1057@0.23.1920.1006" timestamp="1632769484289" />
     <state x="513" y="207" width="894" height="824" key="search.everywhere.popup/0.23.1920.1007/1920.23.1920.1057@0.23.1920.1007" timestamp="1631650326955" />

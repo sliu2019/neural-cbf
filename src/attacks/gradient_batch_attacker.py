@@ -46,11 +46,15 @@ class GradientBatchAttacker():
 		i = 0
 		t1 = time.perf_counter()
 
+		# issue = False
+		# if x[:, 1] == -5.0:
+		# 	# issue = True # TODO
+		# 	issue = False
 		while True:
 			# print(i)
 			x_batch = x.view(-1, self.x_dim)
 			x_batch.requires_grad = True
-			loss = (phi_fn(x_batch)[:, -1])**2
+			loss = torch.abs(phi_fn(x_batch)[:, -1])
 			grad_to_zero_level = grad([torch.sum(loss)], x_batch)[0]
 			x_batch.requires_grad = False
 
@@ -58,12 +62,24 @@ class GradientBatchAttacker():
 			x = x - self.projection_lr*grad_to_zero_level
 			# x = x - grad_to_zero_level
 			# Clip to bounding box; no torch.clamp in torch 1.7.1
+			# TODO: REMOVE THIS FOR PROBLEMS THAT ARE NOT REDUCED CARTPOLE!
+			# Mod on angle before clipping (clipping angle will be redundant)
+			# print(x[:, 0])
+			x[:, 0] = torch.atan2(torch.sin(x[:, 0]), torch.cos(x[:, 0]))
+			# print(x[:, 0])
 			x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
+			# print(x[:, 0])
 
 			i += 1
 
+			# if issue:
+			# 	# print(grad_to_zero_level)
+			# 	print(x, grad_to_zero_level)
+			# print(loss)
+			# print(torch.max(loss), self.projection_stop_threshold)
 			if torch.max(loss) < self.projection_stop_threshold:
-				print("reprojection was successful")
+				if self.verbose:
+					print("reprojection was successful")
 				break
 			elif (time.perf_counter() - t1) > self.projection_time_limit and (torch.min(loss) <= self.projection_stop_threshold):
 				# In case projection fails or takes too long on some samples
@@ -73,6 +89,7 @@ class GradientBatchAttacker():
 				mask = loss > self.projection_stop_threshold
 				mask = mask.type(torch.float32).view(x.shape[0], 1)
 				inv_mask = (1-mask)
+				print("inv_mask")
 				print(inv_mask)
 				x = inv_mask*x + mask.mm(projected_x.unsqueeze(0))
 				break
@@ -80,6 +97,8 @@ class GradientBatchAttacker():
 				print("projected: ", x)
 				print("loss: ", loss)
 				print("min loss: ", torch.min(loss))
+				print(self.projection_stop_threshold)
+				IPython.embed() # TODO: for an actual run
 				raise ValueError('Timed out because of non-convergence of projection')
 			# print(torch.min(loss))
 
@@ -100,7 +119,8 @@ class GradientBatchAttacker():
 
 		phi_val = phi_fn(x_batch)
 		normal_to_manifold = grad([torch.sum(phi_val[:, -1])], x_batch)[0]
-		normal_to_manifold = normal_to_manifold/torch.norm(normal_to_manifold, dim=1) # normalize
+		# IPython.embed()
+		normal_to_manifold = normal_to_manifold/torch.norm(normal_to_manifold, dim=1)[:, None] # normalize
 
 		x_batch.requires_grad = False
 
@@ -120,7 +140,13 @@ class GradientBatchAttacker():
 		# Rationale for this step: everytime you take a step on x, clip to box
 
 		# No torch.clamp in torch 1.7.1
+		# TODO: REMOVE THIS FOR PROBLEMS THAT ARE NOT REDUCED CARTPOLE!
+		# Mod on angle before clipping (clipping angle will be redundant)
+		# print(x[:, 0])
+		x[:, 0] = torch.atan2(torch.sin(x[:, 0]), torch.cos(x[:, 0]))
+		# print(x[:, 0])
 		x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
+		# print(x[:, 0])
 
 		if self.verbose:
 			print("After step:", x)
