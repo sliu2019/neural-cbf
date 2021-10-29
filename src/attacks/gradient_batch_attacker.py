@@ -50,6 +50,7 @@ class GradientBatchAttacker():
 		# if x[:, 1] == -5.0:
 		# 	# issue = True # TODO
 		# 	issue = False
+
 		while True:
 			# print(i)
 			x_batch = x.view(-1, self.x_dim)
@@ -70,13 +71,18 @@ class GradientBatchAttacker():
 			x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
 			# print(x[:, 0])
 
-			i += 1
-
 			# if issue:
 			# 	# print(grad_to_zero_level)
 			# 	print(x, grad_to_zero_level)
 			# print(loss)
 			# print(torch.max(loss), self.projection_stop_threshold)
+			if self.verbose:
+				if i==0:
+					losses = loss.view(1, -1)
+				else:
+					losses = torch.cat((losses, loss.view(1, -1)), dim=0)
+
+			i += 1
 			if torch.max(loss) < self.projection_stop_threshold:
 				if self.verbose:
 					print("reprojection was successful")
@@ -85,6 +91,7 @@ class GradientBatchAttacker():
 				# In case projection fails or takes too long on some samples
 				# Keeps the same size X
 				# Replace unprojected x with a projected x
+				IPython.embed()
 				projected_x = x[torch.argmin(loss)]
 				mask = loss > self.projection_stop_threshold
 				mask = mask.type(torch.float32).view(x.shape[0], 1)

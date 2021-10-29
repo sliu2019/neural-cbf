@@ -502,6 +502,7 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	# all_phi = objective_fn(test_attack)
 	# print(all_phi)
 	# IPython.embed()
+	# print(attacks_init)
 
 def debug_manifold_optimization(checkpoint_number, exp_name):
 	args = load_args("./log/%s/args.txt" % exp_name)
@@ -561,7 +562,19 @@ def debug_manifold_optimization(checkpoint_number, exp_name):
 
 	# attack_init = torch.tensor([-2.5102,  0.1582])
 	# attack_init = torch.tensor([-0.0098, -2.9405])
-	attack_init = torch.tensor([[-1.9145,  0.0835]])
+	# attack_init = torch.tensor([[-1.9145,  0.0835]])
+	attack_init = torch.tensor([[ 2.3073244,  -0.0525682 ],
+	 [-0.01610494,  0.8488691 ],
+	 [-2.4602551,   0.10585514],
+	 [-2.040555,    0.09395972],
+	 [-1.9131223,   0.08874053],
+	 [-0.00627327, -2.945012  ],
+	 [-2.139115,    0.09696132],
+	 [-0.0051744,  -1.7907563 ],
+	 [-0.00549197, -3.4223876 ],
+	 [-2.1760027,   0.09719858]]
+	)
+
 	for i in range(250):
 		attack_init = attacker.step(objective_fn, phi_fn, attack_init)
 
@@ -583,20 +596,28 @@ if __name__=="__main__":
 	# 	exp_name = "cartpole_reduced_new_h_l_50_w_1"
 	# 	plot_2d_attacks(checkpoint_number, exp_name)
 
-	# checkpoint_number = 100
+	# checkpoint_number = 250
 	# exp_name = "cartpole_reduced_new_h_l_50_w_1"
 	# plot_2d_attacks(checkpoint_number, exp_name)
 
 	"""
-	Checkpoint 100
-	Gives the following faulty points:
-	tensor([[-0.0098, -2.9405],
-        [-0.0085, -3.4178]])
+	Checkpoint 250 gives reprojection failure
+	Init points 
+	[[ 2.3073244  -0.0525682 ]
+	 [-0.01610494  0.8488691 ]
+	 [-2.4602551   0.10585514]
+	 [-2.040555    0.09395972]
+	 [-1.9131223   0.08874053]
+	 [-0.00627327 -2.945012  ]
+	 [-2.139115    0.09696132]
+	 [-0.0051744  -1.7907563 ]
+	 [-0.00549197 -3.4223876 ]
+	 [-2.1760027   0.09719858]]
 	"""
 
-	# checkpoint_number = 100
-	# exp_name = "cartpole_reduced_new_h_l_50_w_1"
-	# debug_manifold_optimization(checkpoint_number, exp_name)
+	checkpoint_number = 250
+	exp_name = "cartpole_reduced_new_h_l_50_w_1"
+	debug_manifold_optimization(checkpoint_number, exp_name)
 
 	# Checking out reprojection errors via vector field plot
 	# checkpoint_number = 100
@@ -604,13 +625,5 @@ if __name__=="__main__":
 	# save_fnm = "2d_checkpoint_%i_vector_field.png" % checkpoint_number
 	# plot_2d_binary(checkpoint_number, save_fnm, exp_name)
 
-	"""
-	Checkpoint 100
-	Gives the following faulty points:
-	tensor([[-1.9145,  0.0835]])
-	"""
 
-	# checkpoint_number = 100
-	# exp_name = "cartpole_reduced_new_h_l_50_w_1"
-	# debug_manifold_optimization(checkpoint_number, exp_name)
 
