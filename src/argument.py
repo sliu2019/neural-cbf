@@ -21,6 +21,8 @@ def parser():
 	parser.add_argument('--train_attacker_stopping_condition', default='early_stopping', choices=['n_steps', 'early_stopping'])
 	parser.add_argument('--train_attacker_projection_stop_threshold', default=5e-2, type=float, help='when to consider a point "projected"')
 	parser.add_argument('--train_attacker_projection_lr', default=1e-3, type=float)
+	parser.add_argument('--train_attacker_lr', default=1e-3, type=float)
+	parser.add_argument('--train_attacker_adaptive_lr', action='store_true')
 	############################################################################
 	# Attacker: test
 	parser.add_argument('--test_attacker', default='gradient_batch', choices=['basic', 'gradient_batch'])
@@ -30,6 +32,8 @@ def parser():
 	parser.add_argument('--test_attacker_stopping_condition', default='early_stopping', choices=['n_steps', 'early_stopping'])
 	parser.add_argument('--test_attacker_projection_stop_threshold', default=5e-2, type=float, help='when to consider a point "projected"')
 	parser.add_argument('--test_attacker_projection_lr', default=1e-3, type=float)
+	parser.add_argument('--test_attacker_lr', default=1e-3, type=float)
+	parser.add_argument('--test_attacker_adaptive_lr', action='store_true')
 	###################################################################################################################################
 
 	# Trainer

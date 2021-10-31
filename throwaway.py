@@ -398,9 +398,7 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 
 	log_folder = "./log/discard"
 	logger = create_logger(log_folder, 'train', 'info') # doesn't matter, isn't used
-	# n_attacks = 50 # TODO
 	x_lim_torch = torch.tensor(x_lim).to(device)
-	# IPython.embed()
 	# test_attacker = GradientBatchAttacker(x_lim_torch, device, logger,
 	#                                       stopping_condition=args.test_attacker_stopping_condition,
 	#                                       n_samples=n_attacks,
@@ -413,7 +411,8 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	                                      projection_lr=1e-4, #args.test_attacker_projection_lr,
 	                                      early_stopping_min_delta=1e-7,
 	                                      early_stopping_patience=50,
-	                                      lr=1e-4)
+	                                      lr=1e-3
+	                                      )
 	###################################
 	# IPython.embed()
 	delta = 0.01
@@ -421,24 +420,13 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	y = np.arange(-5, 5, delta)[::-1] # need to reverse it
 	X, Y = np.meshgrid(x, y)
 
-	# phi_load_fpth = "./checkpoint/cartpole_reduced_exp1a/checkpoint_69.pth"
 	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
 	load_model(phi_fn, phi_load_fpth)
 
-	# print(phi_fn.ci)
-	# IPython.embed()
-
-	##### Testing ######
-	# state_dict = phi_fn.beta_net.state_dict()  # 0.weight/bias and 2.weight/bias
-	# # print(torch.mean(state_dict["4.weight"]))
-	# print(state_dict["2.weight"])
-	# # print(state_dict)
-	######
-
+	##### Plotting ######
 	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
 	input = torch.from_numpy(input)
 	phi_vals = phi_fn(input)
-	# IPython.embed()
 	S_vals = torch.max(phi_vals, dim=1)[0] # S = all phi_i <= 0
 	phi_signs = torch.sign(S_vals).detach().cpu().numpy()
 	phi_signs = np.reshape(phi_signs, X.shape)
@@ -454,14 +442,12 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 		ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
 		                 colors=('k',), linewidths=(2,))
 
-	# IPython.embed()
 	# Plot attacks
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
 	attacks_init, attacks, best_attack, obj_vals = test_attacker.opt(objective_fn, phi_fn, test=True)
 	obj_vals = obj_vals.detach().cpu().numpy()
 
 	inds = np.argsort(attacks[:, 0])
-	# print(obj_vals[inds])
 
 	# IPython.embed()
 	obj_vals_init = objective_fn(attacks_init)
@@ -476,7 +462,7 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 		print(attacks_init[neg_inds])
 		print("Corr. ultimate attacks")
 		print(attacks[neg_inds])
-		# IPython.embed()
+		IPython.embed()
 
 	best_attack_improvement = np.max(obj_vals) - np.max(obj_vals_init)
 	print("%f (+ %f)" % (np.max(obj_vals), best_attack_improvement))
@@ -501,7 +487,7 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	# test_attack = torch.tensor([-2.4602,  0.1066]).view(1, -1)
 	# all_phi = objective_fn(test_attack)
 	# print(all_phi)
-	# IPython.embed()
+	IPython.embed()
 	# print(attacks_init)
 
 def debug_manifold_optimization(checkpoint_number, exp_name):
@@ -560,24 +546,11 @@ def debug_manifold_optimization(checkpoint_number, exp_name):
 
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
 
-	# attack_init = torch.tensor([-2.5102,  0.1582])
-	# attack_init = torch.tensor([-0.0098, -2.9405])
-	# attack_init = torch.tensor([[-1.9145,  0.0835]])
-	attack_init = torch.tensor([[ 2.3073244,  -0.0525682 ],
-	 [-0.01610494,  0.8488691 ],
-	 [-2.4602551,   0.10585514],
-	 [-2.040555,    0.09395972],
-	 [-1.9131223,   0.08874053],
-	 [-0.00627327, -2.945012  ],
-	 [-2.139115,    0.09696132],
-	 [-0.0051744,  -1.7907563 ],
-	 [-0.00549197, -3.4223876 ],
-	 [-2.1760027,   0.09719858]]
-	)
-
-	for i in range(250):
+	attack_init = torch.tensor([[-2.0407, 0.0992],
+	        [-1.9117, 0.0940]])
+	for i in range(200):
 		attack_init = attacker.step(objective_fn, phi_fn, attack_init)
-
+	IPython.embed()
 
 if __name__=="__main__":
 	# graph_log_file_2("cartpole_reduced_new_h_l_50_w_0")
@@ -596,34 +569,12 @@ if __name__=="__main__":
 	# 	exp_name = "cartpole_reduced_new_h_l_50_w_1"
 	# 	plot_2d_attacks(checkpoint_number, exp_name)
 
-	# checkpoint_number = 250
-	# exp_name = "cartpole_reduced_new_h_l_50_w_1"
-	# plot_2d_attacks(checkpoint_number, exp_name)
-
-	"""
-	Checkpoint 250 gives reprojection failure
-	Init points 
-	[[ 2.3073244  -0.0525682 ]
-	 [-0.01610494  0.8488691 ]
-	 [-2.4602551   0.10585514]
-	 [-2.040555    0.09395972]
-	 [-1.9131223   0.08874053]
-	 [-0.00627327 -2.945012  ]
-	 [-2.139115    0.09696132]
-	 [-0.0051744  -1.7907563 ]
-	 [-0.00549197 -3.4223876 ]
-	 [-2.1760027   0.09719858]]
-	"""
-
-	checkpoint_number = 250
+	checkpoint_number = 300
 	exp_name = "cartpole_reduced_new_h_l_50_w_1"
 	debug_manifold_optimization(checkpoint_number, exp_name)
+	# plot_2d_attacks(checkpoint_number, exp_name)
 
-	# Checking out reprojection errors via vector field plot
-	# checkpoint_number = 100
-	# exp_name = "cartpole_reduced_new_h_l_50_w_1"
-	# save_fnm = "2d_checkpoint_%i_vector_field.png" % checkpoint_number
-	# plot_2d_binary(checkpoint_number, save_fnm, exp_name)
+
 
 
 

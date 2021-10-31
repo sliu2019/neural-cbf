@@ -85,7 +85,7 @@ class Phi(nn.Module):
 			h_xe = self.h_fn(self.x_e)
 			self.c = -np.log(2.0)/h_xe
 
-	def forward(self, x):
+	def forward(self, x, grad_x=False):
 		# The way these are implemented should be batch compliant
 		# Assume x is (bs, x_dim)
 		h_val = self.h_fn(x)
@@ -119,8 +119,9 @@ class Phi(nn.Module):
 
 		# Compute higher-order Lie derivatives
 		bs = x.size()[0]
-		orig_req_grad_setting = x.requires_grad # Basically only useful if x.requires_grad was False before
-		x.requires_grad = True
+		if grad_x == False:
+			orig_req_grad_setting = x.requires_grad # Basically only useful if x.requires_grad was False before
+			x.requires_grad = True
 
 		h_ith_deriv = self.h_fn(x) # bs x 1, the zeroth derivative
 		h_derivs = h_ith_deriv # bs x 1
@@ -135,7 +136,8 @@ class Phi(nn.Module):
 
 			h_derivs = torch.cat((h_derivs, h_ith_deriv), dim=1)
 
-		x.requires_grad = orig_req_grad_setting
+		if grad_x == False:
+			x.requires_grad = orig_req_grad_setting
 		# New: (bs, r+1)
 		result = h_derivs.mm(ki_all.t())
 		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + beta_value
@@ -351,13 +353,13 @@ def main(args):
 	if args.train_attacker == "basic":
 		attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.train_attacker == "gradient_batch":
-		attacker = GradientBatchAttacker(x_lim, device, logger, stopping_condition=args.train_attacker_stopping_condition, n_samples=args.train_attacker_n_samples, projection_stop_threshold=args.train_attacker_projection_stop_threshold, projection_lr=args.train_attacker_projection_lr)
+		attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, adaptive_lr=args.train_attacker_adaptive_lr, projection_stop_threshold=args.train_attacker_projection_stop_threshold, projection_lr=args.train_attacker_projection_lr)
 
 	# Create test attacker
 	if args.test_attacker == "basic":
 		test_attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.test_attacker == "gradient_batch":
-		test_attacker = GradientBatchAttacker(x_lim, device, logger, stopping_condition=args.test_attacker_stopping_condition, n_samples=args.test_attacker_n_samples, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
+		test_attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, lr=args.test_attacker_lr, adaptive_lr=args.test_attacker_adaptive_lr, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
 
 	# Pass everything to Trainer
 	trainer = Trainer(args, logger, attacker, test_attacker)

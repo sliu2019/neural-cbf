@@ -17,7 +17,7 @@ class GradientBatchAttacker():
 
 	def __init__(self, x_lim, device, logger, n_samples=20, \
 	             stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-2, early_stopping_patience=3,\
-	             lr=1e-3, \
+	             lr=1e-3, adaptive_lr=False,\
 	             projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=False):
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
@@ -29,13 +29,12 @@ class GradientBatchAttacker():
 
 		# print("Initializing GradientBatchAttacker")
 		# IPython.embed()
+
 		# Compute 2n facets volume of n-dim hypercube (actually n facets because they come in pairs)
 		x_lim_interval_sizes = self.x_lim[:, 1] - self.x_lim[:, 0]
 		x_lim_interval_sizes = x_lim_interval_sizes.view(1, -1)
 		tiled = x_lim_interval_sizes.repeat(self.x_dim, 1)
-		# print(tiled.shape)
 		tiled = tiled - torch.eye(self.x_dim).to(self.device)*x_lim_interval_sizes + torch.eye(self.x_dim).to(device)
-		# print(tiled)
 		vols = torch.prod(tiled, axis=1)
 		vols = vols/torch.sum(vols)
 		self.vols = vols.detach().cpu().numpy() # numpy
@@ -45,49 +44,46 @@ class GradientBatchAttacker():
 		# Until convergence
 		i = 0
 		t1 = time.perf_counter()
+		# x_batch = x.view(-1, self.x_dim)
+		# x_batch.requires_grad = True
+		# opt = optim.Adam([x_batch], lr=self.projection_lr)
 
-		# issue = False
-		# if x[:, 1] == -5.0:
-		# 	# issue = True # TODO
-		# 	issue = False
+		# IPython.embed()
+		x_list = list(x)
+		x_list = [x_mem.view(-1, self.x_dim) for x_mem in x_list]
+		for x_mem in x_list:
+			x_mem.requires_grad = True
+		proj_opt = optim.Adam(x_list, lr=self.projection_lr)
 
 		while True:
-			# print(i)
-			x_batch = x.view(-1, self.x_dim)
-			x_batch.requires_grad = True
-			loss = torch.abs(phi_fn(x_batch)[:, -1])
-			grad_to_zero_level = grad([torch.sum(loss)], x_batch)[0]
-			x_batch.requires_grad = False
+			proj_opt.zero_grad()
+			loss = torch.sum(torch.abs(phi_fn(torch.cat(x_list), grad_x=True)[:, -1]))
+			loss.backward()
+			proj_opt.step()
 
-			# IPython.embed()
-			x = x - self.projection_lr*grad_to_zero_level
-			# x = x - grad_to_zero_level
-			# Clip to bounding box; no torch.clamp in torch 1.7.1
-			# TODO: REMOVE THIS FOR PROBLEMS THAT ARE NOT REDUCED CARTPOLE!
-			# Mod on angle before clipping (clipping angle will be redundant)
-			# print(x[:, 0])
-			x[:, 0] = torch.atan2(torch.sin(x[:, 0]), torch.cos(x[:, 0]))
-			# print(x[:, 0])
-			x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
-			# print(x[:, 0])
-
-			# if issue:
-			# 	# print(grad_to_zero_level)
-			# 	print(x, grad_to_zero_level)
-			# print(loss)
-			# print(torch.max(loss), self.projection_stop_threshold)
-			if self.verbose:
-				if i==0:
-					losses = loss.view(1, -1)
-				else:
-					losses = torch.cat((losses, loss.view(1, -1)), dim=0)
+			# TODO: comment out when not debugging
+			# if i==0:
+			# 	losses = loss.view(1, -1)
+			# else:
+			# 	losses = torch.cat((losses, loss.view(1, -1)), dim=0)
 
 			i += 1
+			t_now = time.perf_counter()
 			if torch.max(loss) < self.projection_stop_threshold:
-				if self.verbose:
-					print("reprojection was successful")
+				# if self.verbose:
+				# 	print(torch.min(loss), torch.max(loss))
+				# 	print("reprojection exited before timeout in %i steps" % i)
+				print("reprojection exited before timeout in %i steps" % i)
 				break
-			elif (time.perf_counter() - t1) > self.projection_time_limit and (torch.min(loss) <= self.projection_stop_threshold):
+			elif (t_now - t1) > self.projection_time_limit:
+				# if self.verbose:
+				# 	print("reprojection exited on timeout")
+				# 	print(torch.min(loss), torch.max(loss))
+				# 	IPython.embed()
+				print("reprojection exited on timeout")
+				break
+
+			"""elif (time.perf_counter() - t1) > self.projection_time_limit and (torch.min(loss) <= self.projection_stop_threshold):
 				# In case projection fails or takes too long on some samples
 				# Keeps the same size X
 				# Replace unprojected x with a projected x
@@ -106,16 +102,26 @@ class GradientBatchAttacker():
 				print("min loss: ", torch.min(loss))
 				print(self.projection_stop_threshold)
 				IPython.embed() # TODO: for an actual run
-				raise ValueError('Timed out because of non-convergence of projection')
-			# print(torch.min(loss))
+				raise ValueError('Timed out because of non-convergence of projection')"""
 
 		# print("projected: ", x)
 		# print("%i steps for projection" % i)
-		t2 = time.perf_counter()
 		# print("Done projecting in %f seconds" % (t2-t1))
-		return x
 
-	def step(self, objective_fn, phi_fn, x):
+		# x_batch.requires_grad = False
+		# t2 = time.perf_counter()
+		# return x_batch
+
+		# TODO: comment out when not debugging; Check for monotonic improvement
+		# diff_in_loss = losses[-1] - losses[0]
+		# print(torch.all(diff_in_loss < 0))
+
+		for x_mem in x_list:
+			x_mem.requires_grad = False
+		rv_x = torch.cat(x_list)
+		return rv_x
+
+	def step(self, objective_fn, phi_fn, x, optimizer=None):
 		# It makes less sense to use an adaptive LR method here, if you think about it
 		t0 = time.perf_counter()
 		x_batch = x.view(-1, self.x_dim)
@@ -126,7 +132,6 @@ class GradientBatchAttacker():
 
 		phi_val = phi_fn(x_batch)
 		normal_to_manifold = grad([torch.sum(phi_val[:, -1])], x_batch)[0]
-		# IPython.embed()
 		normal_to_manifold = normal_to_manifold/torch.norm(normal_to_manifold, dim=1)[:, None] # normalize
 
 		x_batch.requires_grad = False
@@ -134,7 +139,6 @@ class GradientBatchAttacker():
 		weights = obj_grad.unsqueeze(1).bmm(normal_to_manifold.unsqueeze(2))[:, 0]
 		proj_obj_grad = obj_grad - weights*normal_to_manifold
 
-		# IPython.embed()
 		if self.verbose:
 			print("unprojected grad:", obj_grad)
 			print("projected grad: ", proj_obj_grad)
@@ -145,22 +149,19 @@ class GradientBatchAttacker():
 		t1 = time.perf_counter()
 		# Clip to bounding box
 		# Rationale for this step: everytime you take a step on x, clip to box
-
-		# No torch.clamp in torch 1.7.1
-		# TODO: REMOVE THIS FOR PROBLEMS THAT ARE NOT REDUCED CARTPOLE!
-		# Mod on angle before clipping (clipping angle will be redundant)
-		# print(x[:, 0])
-		x[:, 0] = torch.atan2(torch.sin(x[:, 0]), torch.cos(x[:, 0]))
-		# print(x[:, 0])
-		x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
-		# print(x[:, 0])
-
+		#
 		if self.verbose:
 			print("After step:", x)
 		# Project to surface
 		x = self.project(phi_fn, x)
 		if self.verbose:
 			print("After reprojection", x)
+
+		# No torch.clamp in torch 1.7.1
+		# TODO: REMOVE THIS FOR PROBLEMS THAT ARE NOT REDUCED CARTPOLE!
+		# Mod on angle before clipping (clipping angle will be redundant)
+		x[:, 0] = torch.atan2(torch.sin(x[:, 0]), torch.cos(x[:, 0]))
+		x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
 
 		t2 = time.perf_counter()
 
@@ -328,6 +329,10 @@ class GradientBatchAttacker():
 		X = X_init.clone()
 		i = 0
 		early_stopping = EarlyStopping(patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta)
+
+		# if self.adaptive_lr:
+		# 	optimizer = optim.Adam(X, lr=self.lr)
+
 		while True:
 			# print(i)
 			X = self.step(objective_fn, phi_fn, X)
