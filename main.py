@@ -27,9 +27,9 @@ class Phi(nn.Module):
 
 		# Note: by default, it registers parameters by their variable name
 		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much largers
-		print("################################################################")
-		print("Initial ci: ", self.ci)
-		print("################################################################")
+		# print("################################################################")
+		# print("Initial ci: ", self.ci)
+		# print("################################################################")
 
 		hidden_dims = args.phi_nn_dimension.split("-")
 		hidden_dims = [int(h) for h in hidden_dims]
@@ -203,13 +203,18 @@ class Regularizer(nn.Module):
 	def forward(self):
 		reg = torch.tensor(0).to(self.device)
 		if self.volume_term_weight:
+			# IPython.embed()
 			phi_value_A_samples = self.phi_fn(self.A_samples)
 
-			# phi_value_pos_bool = torch.where(phi_value_A_samples >= 0.0, 1.0, 0.0)
-			# phi_value_pos = phi_value_A_samples * phi_value_pos_bool
-			# volume_term = torch.sum(phi_value_pos)
-
-			phi_value_pos_bool = torch.where(phi_value_A_samples >= 0.0, 1.0, 0.0)
+			max_phi_values = torch.max(phi_value_A_samples, dim=1)[0]
+			# -(sigmoid(x) + 0.001 * relu(x)) + 1
+			sharp_sigmoid = 1.0/(1.0 + torch.exp(-10*max_phi_values))
+			# step_on_max = -(nn.functional.sigmoid(max_phi_values) + 0.001*nn.functional.relu(max_phi_values)) + 1.0
+			step_on_max = -(sharp_sigmoid + 0.001*nn.functional.relu(max_phi_values)) + 1.0
+			# print(max_phi_values)
+			# print(step_on_max)
+			reg = -self.volume_term_weight*torch.mean(step_on_max)
+			"""phi_value_pos_bool = torch.where(phi_value_A_samples >= 0.0, 1.0, 0.0)
 			phi_value_pos = phi_value_A_samples * phi_value_pos_bool
 			num_pos_per_sample = torch.sum(phi_value_pos_bool, dim=1)
 			numerator = torch.sum(phi_value_pos, dim=1)
@@ -221,7 +226,7 @@ class Regularizer(nn.Module):
 			# avg_pos_phi_per_sample[avg_pos_phi_per_sample != avg_pos_phi_per_sample] = 0.0
 			volume_term = torch.mean(avg_pos_phi_per_sample)
 
-			reg = self.volume_term_weight * volume_term
+			reg = self.volume_term_weight * volume_term"""
 		return reg
 
 def main(args):
@@ -318,10 +323,12 @@ def main(args):
 		xdot_fn = XDot(param_dict)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
-		n_samples = 50
-		rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 1]])
-		A_samples = torch.rand(n_samples, x_dim)*(2*rnge) - rnge # (n_samples, x_dim)
-		print(A_samples)
+
+		n_mesh_grain = 0.75 # TODO: increase or decrease?
+		XXX = np.meshgrid(*[np.arange(r[0], r[1], n_mesh_grain) for r in x_lim])
+		A_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
+		A_samples = torch.from_numpy(A_samples.astype(np.float32))
+
 		x_e = torch.zeros(1, x_dim)
 	else:
 		raise NotImplementedError

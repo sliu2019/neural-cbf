@@ -7,7 +7,7 @@ import re
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
 import math
-from main import Phi, Objective
+from main import Phi, Objective, Regularizer
 from src.argument import parser, print_args
 from src.utils import *
 import torch
@@ -552,6 +552,53 @@ def debug_manifold_optimization(checkpoint_number, exp_name):
 		attack_init = attacker.step(objective_fn, phi_fn, attack_init)
 	IPython.embed()
 
+def test_reg_term(checkpoint_number, exp_name):
+	args = load_args("./log/%s/args.txt" % exp_name)
+	dev = "cpu"
+	device = torch.device(dev)
+
+	r = 2
+	x_dim = 2
+	u_dim = 1
+	x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+
+	# Create phi
+	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
+
+	param_dict = {
+		"I": 0.021,
+		"m": 0.25,
+		"M": 1.00,
+		"l": 0.5,
+		"max_theta": math.pi / 2.0,
+		"max_force": 15.0
+	}
+
+	h_fn = H(param_dict)
+	xdot_fn = XDot(param_dict)
+	# uvertices_fn = ULimitSetVertices(param_dict, device)
+	# n_samples = 50
+	# rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 1]])
+	# A_samples = torch.rand(n_samples, x_dim) * (2 * rnge) - rnge  # (n_samples, x_dim) # TODO: not torch rand, but a grid
+
+	# TODO: replace A_samples
+	n_mesh_grain = 0.75
+	XXX = np.meshgrid(*[np.arange(r[0], r[1], n_mesh_grain) for r in x_lim])
+	A_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
+	A_samples = torch.from_numpy(A_samples.astype(np.float32)).to(device)
+	# print("Num samples for A_samples: %i" % (A_samples.shape[0])) # TODO: uncomment
+
+	x_e = torch.zeros(1, x_dim)
+
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+	load_model(phi_fn, phi_load_fpth)
+	reg_fn = Regularizer(phi_fn, device, volume_term_weight=1.0, A_samples=A_samples)
+
+	reg_value = reg_fn()
+	return reg_value
+
+
 if __name__=="__main__":
 	# graph_log_file_2("cartpole_reduced_new_h_l_50_w_0")
 	# for checkpoint_number in np.arange(0, 350, 50):
@@ -569,11 +616,19 @@ if __name__=="__main__":
 	# 	exp_name = "cartpole_reduced_new_h_l_50_w_1"
 	# 	plot_2d_attacks(checkpoint_number, exp_name)
 
-	checkpoint_number = 300
-	exp_name = "cartpole_reduced_new_h_l_50_w_1"
-	debug_manifold_optimization(checkpoint_number, exp_name)
+	# checkpoint_number = 300
+	# exp_name = "cartpole_reduced_new_h_l_50_w_1"
+	# debug_manifold_optimization(checkpoint_number, exp_name)
 	# plot_2d_attacks(checkpoint_number, exp_name)
 
+	for checkpoint_number in np.arange(0, 320, 50):
+	# for checkpoint_number in [0, 50]:
+		exp_name = "cartpole_reduced_new_h_l_50_w_1"
+		rv = test_reg_term(checkpoint_number, exp_name)
+		print("Checkpoint number %i: %f" % (checkpoint_number, rv))
+
+		# print(rv)
+		# plot_2d_attacks(checkpoint_number, exp_name)
 
 
 
