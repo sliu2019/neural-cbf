@@ -38,13 +38,14 @@ class Trainer():
 		timings = [] # in seconds
 		train_attacks = [] # lists of 1D numpy tensors
 		# test_attacks = []
+		ci_lr = 1e-4
 
 		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
 		while True:
 			# Inner min
 			x = self.attacker.opt(objective_fn, phi_fn)
 
-			# Outer ma
+			# Outer max
 			optimizer.zero_grad()
 			ci.grad = None
 
@@ -57,8 +58,9 @@ class Trainer():
 				IPython.embed()
 
 			optimizer.step()
+
 			with torch.no_grad():
-				new_ci = ci + (1e-3)*ci.grad
+				new_ci = ci - ci_lr*ci.grad
 				new_ci = torch.maximum(new_ci, torch.zeros_like(new_ci)) # Project to all positive
 				ci.copy_(new_ci) # proper way to update
 

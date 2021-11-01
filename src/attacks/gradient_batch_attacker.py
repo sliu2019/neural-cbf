@@ -70,17 +70,10 @@ class GradientBatchAttacker():
 			i += 1
 			t_now = time.perf_counter()
 			if torch.max(loss) < self.projection_stop_threshold:
-				# if self.verbose:
-				# 	print(torch.min(loss), torch.max(loss))
-				# 	print("reprojection exited before timeout in %i steps" % i)
-				print("reprojection exited before timeout in %i steps" % i)
+				# print("reprojection exited before timeout in %i steps" % i)
 				break
 			elif (t_now - t1) > self.projection_time_limit:
-				# if self.verbose:
-				# 	print("reprojection exited on timeout")
-				# 	print(torch.min(loss), torch.max(loss))
-				# 	IPython.embed()
-				print("reprojection exited on timeout")
+				# print("reprojection exited on timeout")
 				break
 
 			"""elif (time.perf_counter() - t1) > self.projection_time_limit and (torch.min(loss) <= self.projection_stop_threshold):

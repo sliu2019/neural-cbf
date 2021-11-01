@@ -48,5 +48,8 @@
 
 # After fixing a bunch of stuff with the attacks
 
-nohup python main.py --affix fixed_attacks_1 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 1.0 &> fixed_attacks_1.out &
-nohup python main.py --affix fixed_attacks_10 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 10.0 &> fixed_attacks_10.out &
+
+nohup python main.py --affix fixed_attacks_1 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 1.0 --trainer_stopping_condition n_steps --trainer_n_steps 50 --n_checkpoint_step 1 &> fixed_attacks_1.out &
+nohup python main.py --affix fixed_attacks_10 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 10.0 --trainer_stopping_condition n_steps --trainer_n_steps 50 --n_checkpoint_step 1 &> fixed_attacks_10.out &
+
+python main.py --affix debug --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 1.0 --trainer_stopping_condition n_steps --trainer_n_steps 50 --n_checkpoint_step 50

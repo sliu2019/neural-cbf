@@ -203,8 +203,10 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
 
-	plot_range_x = [-0.5, 0.5] # TODO [-math.pi, math.pi]
-	plot_range_y = [-5, -1] # TODO: [-5, 5]
+	# plot_range_x = [-0.5, 0.5] # TODO [-math.pi, math.pi]
+	# plot_range_y = [-5, -1] # TODO: [-5, 5]
+	plot_range_x = [-math.pi, math.pi]
+	plot_range_y = [-5, 5]
 	###################################
 	# IPython.embed()
 	delta = 0.01
@@ -264,11 +266,11 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 
 	# Get attacks
 	# TODO: remove, plot recorded attack points
-	# with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
-	# 	data = pickle.load(handle)
-	# 	train_attacks = data["train_attacks"]
-	# 	test_losses = data["test_losses"]
-	# 	plt.scatter(train_attacks[checkpoint_number][0], train_attacks[checkpoint_number][1], c="tab:orange", marker="x")
+	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+		data = pickle.load(handle)
+		train_attacks = data["train_attacks"]
+		test_losses = data["test_losses"]
+		plt.scatter(train_attacks[checkpoint_number][0], train_attacks[checkpoint_number][1], c="tab:orange", marker="x")
 
 	# TODO: remove, test dS/dG options on batch attacker
 	# logger = create_logger("log/discard", 'train', 'info')
@@ -314,7 +316,7 @@ def plot_3d(checkpoint_number, save_fnm, exp_name):
 
 	x_e = torch.zeros(1, x_dim)
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
-	IPython.embed()
+	# IPython.embed()
 	###################################
 	# IPython.embed()
 	delta = 0.1
@@ -638,6 +640,9 @@ if __name__=="__main__":
 	# graph_log_file_2("cartpole_reduced_fixed_attacks_10")
 
 	exp_name = "cartpole_reduced_fixed_attacks_1"
-	for checkpoint_number in np.arange(0, 60, 10):
-		save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
-		plot_3d(checkpoint_number, save_fnm, exp_name)
+	for checkpoint_number in np.arange(0, 50):
+		# save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
+		# plot_3d(checkpoint_number, save_fnm, exp_name)
+
+		save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
+		plot_2d_binary(checkpoint_number, save_fnm, exp_name)
