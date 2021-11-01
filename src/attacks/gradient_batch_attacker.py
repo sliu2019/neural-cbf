@@ -16,7 +16,7 @@ class GradientBatchAttacker():
 	# Note: this is not batch compliant.
 
 	def __init__(self, x_lim, device, logger, n_samples=20, \
-	             stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-2, early_stopping_patience=3,\
+	             stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-2, early_stopping_patience=10,\
 	             lr=1e-3, adaptive_lr=False,\
 	             projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=False):
 		vars = locals()  # dict of local names
@@ -158,7 +158,7 @@ class GradientBatchAttacker():
 			print("After reprojection", x)
 
 		# No torch.clamp in torch 1.7.1
-		# TODO: REMOVE THIS FOR PROBLEMS THAT ARE NOT REDUCED CARTPOLE!
+		# TODO: hard-coded for reduced cartpole; if it's a different problem, comment this out
 		# Mod on angle before clipping (clipping angle will be redundant)
 		x[:, 0] = torch.atan2(torch.sin(x[:, 0]), torch.cos(x[:, 0]))
 		x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])

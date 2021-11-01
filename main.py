@@ -43,42 +43,6 @@ class Phi(nn.Module):
 		net_layers.append(nn.Linear(prev_dim, 1))
 		self.beta_net = nn.Sequential(*net_layers)
 
-		# IPython.embed()
-		# self.beta_net = nn.Sequential(
-		# 	nn.Linear(x_dim, hidden_dim),
-		# 	nn.ReLU(),
-		# 	nn.Linear(hidden_dim, 1)
-		# )
-
-		# hidden_dim = 100
-		# self.beta_net = nn.Sequential(
-		# 	nn.Linear(x_dim, hidden_dim),
-		# 	nn.ReLU(),
-		# 	nn.Linear(hidden_dim, hidden_dim),
-		# 	nn.ReLU(),
-		# 	nn.Linear(hidden_dim, 1)
-		# )
-		#
-		# state_dict = self.beta_net.state_dict() # 0.weight/bias and 2.weight/bias
-		# state_dict['4.weight'] = torch.rand(state_dict['4.weight'].shape)*(-100.0)
-		# self.beta_net.load_state_dict(state_dict)
-
-		# def init_weights(m):
-		# 	if isinstance(m, nn.Linear):
-		# 		torch.nn.init.normal_(m.weight, std=1e-3)
-		# 		m.bias.data.fill_(1e-5)
-		# self.beta_net.apply(init_weights)
-
-		# self.beta_net = nn.Sequential(
-		# 	nn.Linear(x_dim, hidden_dim),
-		# 	nn.ReLU(),
-		# 	nn.Linear(hidden_dim, 1)
-		# )
-
-		# state_dict = self.beta_net.state_dict() # 0.weight/bias and 2.weight/bias
-		# state_dict['2.weight'] = torch.rand(state_dict['2.weight'].shape)*(-50.0)
-		# self.beta_net.load_state_dict(state_dict)
-
 		if self.x_e is not None:
 			self.x_e = self.x_e.view(1, -1)
 
@@ -90,15 +54,10 @@ class Phi(nn.Module):
 		# Assume x is (bs, x_dim)
 		h_val = self.h_fn(x)
 		if self.x_e is None:
-			# beta_value = nn.functional.softplus(self.beta_net(x)) + nn.functional.relu(h_val + torch.sign(h_val)) - 1.0
 			beta_value = nn.functional.softplus(self.beta_net(x)) + nn.functional.softplus(h_val) - np.log(2)
 		else:
-			# beta_value = nn.functional.softplus(self.beta_net(x) - self.beta_net(self.x_e)) + nn.functional.relu(h_val + torch.sign(h_val)) - 1.0
-			# alpha_value = 1.0/(1.0 + torch.exp(-self.c*x)) - (1.0/2)
 			alpha_value = self.c*h_val
 			beta_value = nn.functional.softplus(self.beta_net(x) - self.beta_net(self.x_e)) + alpha_value
-			# beta_value = self.c*h_val
-		# IPython.embed()
 
 		# Convert ci to ki
 		ki = torch.tensor([[1.0]])
@@ -185,7 +144,6 @@ class Objective(nn.Module):
 		# result = nn.functional.relu(phidot) # TODO
 		result = result.view(-1, 1) # ensures bs x 1
 
-		# IPython.embed()
 		return result
 
 class Regularizer(nn.Module):
@@ -205,28 +163,12 @@ class Regularizer(nn.Module):
 		if self.volume_term_weight:
 			# IPython.embed()
 			phi_value_A_samples = self.phi_fn(self.A_samples)
-
 			max_phi_values = torch.max(phi_value_A_samples, dim=1)[0]
-			# -(sigmoid(x) + 0.001 * relu(x)) + 1
-			sharp_sigmoid = 1.0/(1.0 + torch.exp(-10*max_phi_values))
-			# step_on_max = -(nn.functional.sigmoid(max_phi_values) + 0.001*nn.functional.relu(max_phi_values)) + 1.0
+
+			sharp_sigmoid = 1.0/(1.0 + torch.exp(-10*max_phi_values)) # alpha = 10.0, instead of 1.0 as usual
 			step_on_max = -(sharp_sigmoid + 0.001*nn.functional.relu(max_phi_values)) + 1.0
-			# print(max_phi_values)
-			# print(step_on_max)
+
 			reg = -self.volume_term_weight*torch.mean(step_on_max)
-			"""phi_value_pos_bool = torch.where(phi_value_A_samples >= 0.0, 1.0, 0.0)
-			phi_value_pos = phi_value_A_samples * phi_value_pos_bool
-			num_pos_per_sample = torch.sum(phi_value_pos_bool, dim=1)
-			numerator = torch.sum(phi_value_pos, dim=1)
-			num_pos_per_sample = torch.clamp(num_pos_per_sample, min=1e-5)
-			# avg_pos_phi_per_sample = num_pos_per_sample/denom
-			avg_pos_phi_per_sample = numerator/num_pos_per_sample
-
-			# fix divide by zeros
-			# avg_pos_phi_per_sample[avg_pos_phi_per_sample != avg_pos_phi_per_sample] = 0.0
-			volume_term = torch.mean(avg_pos_phi_per_sample)
-
-			reg = self.volume_term_weight * volume_term"""
 		return reg
 
 def main(args):
@@ -292,7 +234,7 @@ def main(args):
 		A_samples = None
 		x_e = torch.zeros(1, x_dim)
 	elif args.problem == "cartpole_reduced":
-		r = 3
+		r = 2
 		x_dim = 2
 		u_dim = 1
 		x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)

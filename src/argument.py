@@ -19,8 +19,8 @@ def parser():
 	# Gradient batch attacker
 	parser.add_argument('--train_attacker_n_samples', default=20, type=int)
 	parser.add_argument('--train_attacker_stopping_condition', default='early_stopping', choices=['n_steps', 'early_stopping'])
-	parser.add_argument('--train_attacker_projection_stop_threshold', default=5e-2, type=float, help='when to consider a point "projected"')
-	parser.add_argument('--train_attacker_projection_lr', default=1e-3, type=float)
+	parser.add_argument('--train_attacker_projection_stop_threshold', default=1e-1, type=float, help='when to consider a point "projected"')
+	parser.add_argument('--train_attacker_projection_lr', default=1e-4, type=float)
 	parser.add_argument('--train_attacker_lr', default=1e-3, type=float)
 	parser.add_argument('--train_attacker_adaptive_lr', action='store_true')
 	############################################################################
@@ -30,8 +30,8 @@ def parser():
 	# Gradient batch attacker
 	parser.add_argument('--test_attacker_n_samples', default=30, type=int)
 	parser.add_argument('--test_attacker_stopping_condition', default='early_stopping', choices=['n_steps', 'early_stopping'])
-	parser.add_argument('--test_attacker_projection_stop_threshold', default=5e-2, type=float, help='when to consider a point "projected"')
-	parser.add_argument('--test_attacker_projection_lr', default=1e-3, type=float)
+	parser.add_argument('--test_attacker_projection_stop_threshold', default=1e-1, type=float, help='when to consider a point "projected"')
+	parser.add_argument('--test_attacker_projection_lr', default=1e-4, type=float)
 	parser.add_argument('--test_attacker_lr', default=1e-3, type=float)
 	parser.add_argument('--test_attacker_adaptive_lr', action='store_true')
 	###################################################################################################################################

@@ -37,11 +37,16 @@
 # Rerun with different h(x)
 # --phi_ci_init_range 1.0
 
-nohup python main.py --affix new_h_l_50_w_1 --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 1.0 --trainer_early_stopping_patience 40 &> new_h_l_50_w_1.out &
-nohup python main.py --affix new_h_l_50_w_10 --gpu 2 --phi_nn_dimension 50 --objective_volume_weight 10.0 --trainer_early_stopping_patience 40 &> new_h_l_50_w_10.out &
+#nohup python main.py --affix new_h_l_50_w_1 --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 1.0 --trainer_early_stopping_patience 40 &> new_h_l_50_w_1.out &
+#nohup python main.py --affix new_h_l_50_w_10 --gpu 2 --phi_nn_dimension 50 --objective_volume_weight 10.0 --trainer_early_stopping_patience 40 &> new_h_l_50_w_10.out &
+#
+#
+#nohup python main.py --affix new_h_l_50_w_0 --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 0.0 --trainer_early_stopping_patience 40 &> new_h_l_50_w_0.out &
+#
+#
+#python main.py --affix debug --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 0.0
 
+# After fixing a bunch of stuff with the attacks
 
-nohup python main.py --affix new_h_l_50_w_0 --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 0.0 --trainer_early_stopping_patience 40 &> new_h_l_50_w_0.out &
-
-
-python main.py --affix debug --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 0.0
+nohup python main.py --affix fixed_attacks_1 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 1.0 &> fixed_attacks_1.out &
+nohup python main.py --affix fixed_attacks_10 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 10.0 &> fixed_attacks_10.out &

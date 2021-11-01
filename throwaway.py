@@ -76,7 +76,9 @@ def graph_log_file_2(exp_name):
 		# test_losses = data["test_losses"]
 		test_attack_losses = data["test_attack_losses"]
 		test_reg_losses = data["test_reg_losses"]
+		# plt.plot(test_attack_losses[:25], linewidth=0.5, label="Test attack loss")
 		plt.plot(test_attack_losses, linewidth=0.5, label="Test attack loss")
+		# plt.plot(test_reg_losses[:25], linewidth=0.5, label="Test reg loss")
 		plt.plot(test_reg_losses, linewidth=0.5, label="Test reg loss")
 		# plt.plot(test_losses, linewidth=0.5, label="Test loss")
 	# plt.plot(timings, color='red', label="Runtime (hours)")
@@ -312,6 +314,7 @@ def plot_3d(checkpoint_number, save_fnm, exp_name):
 
 	x_e = torch.zeros(1, x_dim)
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+	IPython.embed()
 	###################################
 	# IPython.embed()
 	delta = 0.1
@@ -409,8 +412,8 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	                                      n_samples=10,
 	                                      projection_stop_threshold=1e-1, #=args.test_attacker_projection_stop_threshold,
 	                                      projection_lr=1e-4, #args.test_attacker_projection_lr,
-	                                      early_stopping_min_delta=1e-7,
-	                                      early_stopping_patience=50,
+	                                      early_stopping_min_delta=1e-5,
+	                                      early_stopping_patience=10,
 	                                      lr=1e-3
 	                                      )
 	###################################
@@ -457,12 +460,12 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 		print("Manifold optimization does not yield strict improvement")
 		print(improvement)
 
-		neg_inds = np.where(improvement < 0)[0]
-		print("Negative improvement at these init attacks")
-		print(attacks_init[neg_inds])
-		print("Corr. ultimate attacks")
-		print(attacks[neg_inds])
-		IPython.embed()
+		# neg_inds = np.where(improvement < 0)[0]
+		# print("Negative improvement at these init attacks")
+		# print(attacks_init[neg_inds])
+		# print("Corr. ultimate attacks")
+		# print(attacks[neg_inds])
+		# IPython.embed()
 
 	best_attack_improvement = np.max(obj_vals) - np.max(obj_vals_init)
 	print("%f (+ %f)" % (np.max(obj_vals), best_attack_improvement))
@@ -487,7 +490,7 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	# test_attack = torch.tensor([-2.4602,  0.1066]).view(1, -1)
 	# all_phi = objective_fn(test_attack)
 	# print(all_phi)
-	IPython.embed()
+	# IPython.embed()
 	# print(attacks_init)
 
 def debug_manifold_optimization(checkpoint_number, exp_name):
@@ -607,7 +610,7 @@ if __name__=="__main__":
 	# 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
 	# 	plot_2d_binary(checkpoint_number, save_fnm, "cartpole_reduced_new_h_l_50_w_0")
 
-	# for checkpoint_number in [0, 10, 320]:
+	# for checkpoint_number in [0, 10, 320]:s
 	# for checkpoint_number in [100, 200, 250]:
 	# for checkpoint_number in range(0, 60, 10):
 
@@ -621,15 +624,20 @@ if __name__=="__main__":
 	# debug_manifold_optimization(checkpoint_number, exp_name)
 	# plot_2d_attacks(checkpoint_number, exp_name)
 
-	for checkpoint_number in np.arange(0, 320, 50):
-	# for checkpoint_number in [0, 50]:
-		exp_name = "cartpole_reduced_new_h_l_50_w_1"
-		rv = test_reg_term(checkpoint_number, exp_name)
-		print("Checkpoint number %i: %f" % (checkpoint_number, rv))
+	# for checkpoint_number in np.arange(0, 320, 50):
+	# # for checkpoint_number in [0, 50]:
+	# 	exp_name = "cartpole_reduced_new_h_l_50_w_1"
+	# 	rv = test_reg_term(checkpoint_number, exp_name)
+	# 	print("Checkpoint number %i: %f" % (checkpoint_number, rv))
 
 		# print(rv)
 		# plot_2d_attacks(checkpoint_number, exp_name)
 
 
+	# graph_log_file_2("cartpole_reduced_fixed_attacks_1")
+	# graph_log_file_2("cartpole_reduced_fixed_attacks_10")
 
-
+	exp_name = "cartpole_reduced_fixed_attacks_1"
+	for checkpoint_number in np.arange(0, 60, 10):
+		save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
+		plot_3d(checkpoint_number, save_fnm, exp_name)
