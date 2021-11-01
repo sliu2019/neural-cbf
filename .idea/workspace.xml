@@ -5,8 +5,6 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/cartpole_devel.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/cartpole_devel.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/attacks/gradient_batch_attacker.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/attacks/gradient_batch_attacker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trainer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/throwaway.py" beforeDir="false" afterPath="$PROJECT_DIR$/throwaway.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -69,7 +67,7 @@
       <workItem from="1631196657722" duration="52008000" />
       <workItem from="1631628541958" duration="12210000" />
       <workItem from="1632102927249" duration="201945000" />
-      <workItem from="1634332522330" duration="118249000" />
+      <workItem from="1634332522330" duration="119405000" />
     </task>
     <servers />
   </component>

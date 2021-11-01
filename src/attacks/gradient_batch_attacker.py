@@ -220,7 +220,7 @@ class GradientBatchAttacker():
 				# go to the left side
 				right_weight = mid_weight
 				right_val = mid_val
-			elif mid_sign*right_sign < 0:
+			elif mid_sign*right_sign <= 0: # TODO: there was a bug here
 				left_weight = mid_weight
 				left_val = mid_val
 
@@ -230,7 +230,7 @@ class GradientBatchAttacker():
 				intersection_point = p1 + left_weight*diff
 				break
 			t1 = time.perf_counter()
-			if (t1-t0)>100:
+			if (t1-t0)>5:
 				# This clause is necessary for non-differentiable, continuous points (abrupt change)
 				print("Something is wrong in projection")
 				print(torch.abs(left_val - right_val))
@@ -238,6 +238,8 @@ class GradientBatchAttacker():
 				left_point = p1 + left_weight * diff
 				right_point = p1 + right_weight * diff
 				print(left_point, right_point)
+				print(left_val, right_val)
+				print(mid_val, mid_point, mid_sign)
 				# IPython.embed()
 				return None
 
