@@ -13,8 +13,8 @@ import os, sys
 import math
 import IPython
 import time
-from global_settings import *
 
+# from global_settings import *
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
 	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=None):
@@ -437,6 +437,8 @@ def main(args):
 
 if __name__ == "__main__":
 	args = parser()
+	torch.manual_seed(args.random_seed)
+	np.random.seed(args.random_seed)
 	main(args)
 
 

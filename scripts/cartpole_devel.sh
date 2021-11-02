@@ -48,4 +48,12 @@
 
 # After fixing a bunch of stuff with the attacks
 
-nohup python main.py --affix fixed_attacks_1 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 50 --train_attacker_n_samples 50 --test_attacker_n_samples 50 &> fixed_attacks_1.out &
+#nohup python main.py --affix fixed_attacks_1 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 50 --train_attacker_n_samples 50 --test_attacker_n_samples 50 &> fixed_attacks_1.out &
+
+# Trying a bunch of random seeds
+#nohup python main.py --affix r1 --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 50 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 1 &> r1.out &
+#nohup python main.py --affix r2 --gpu 2 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 50 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 2 &> r2.out &
+#nohup python main.py --affix r3 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 50 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 3 &> r3.out &
+#nohup python main.py --affix r4 --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 50 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 4 &> r4.out &
+#nohup python main.py --affix r5 --gpu 2 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 50 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 5 &> r5.out &
+#

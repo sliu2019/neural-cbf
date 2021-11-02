@@ -91,6 +91,8 @@ def graph_log_file_2(exp_name):
 	plt.clf()
 	plt.cla()
 
+	# IPython.embed()
+
 def plot_phi_2d_level_curve(phi_fn, phi_load_fpth, checkpoint_number, x_lim, which_2_state_vars):
 	"""
 	Plots phi's
@@ -249,8 +251,6 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	# Sanity check projection: plot vector field of gradients
 	# IPython.embed()
 	delta = 0.1
-	# x = np.arange(-math.pi, math.pi, delta)
-	# y = np.arange(-5, 5, delta)[::-1] # need to reverse it
 	x = np.arange(plot_range_x[0], plot_range_x[1], delta)
 	y = np.arange(plot_range_y[0], plot_range_y[1], delta)[::-1] # need to reverse it
 	X, Y = np.meshgrid(x, y)
@@ -603,6 +603,58 @@ def test_reg_term(checkpoint_number, exp_name):
 	reg_value = reg_fn()
 	return reg_value
 
+def plot_ci_over_time(exp_name):
+	args = load_args("./log/%s/args.txt" % exp_name)
+	dev = "cpu"
+	device = torch.device(dev)
+
+	r = 2
+	x_dim = 2
+	u_dim = 1
+	x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+
+	# Create phi
+	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
+
+	param_dict = {
+		"I": 0.021,
+		"m": 0.25,
+		"M": 1.00,
+		"l": 0.5,
+		"max_theta": math.pi / 2.0,
+		"max_force": 15.0
+	}
+
+	h_fn = H(param_dict)
+	xdot_fn = XDot(param_dict)
+	x_e = torch.zeros(1, x_dim)
+
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+
+	ci_list = []
+	checkpoint_range = np.arange(0, 14000, 1000)
+	for checkpoint_number in checkpoint_range:
+		phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+		load_model(phi_fn, phi_load_fpth)
+
+		# IPython.embed()
+		# print(phi_fn.beta_net[0].bias)
+		print(phi_fn.c)
+		ci = phi_fn.ci
+		ci = ci.detach().cpu().numpy()
+		ci = ci[0, 0]
+		ci_list.append(ci)
+
+	# IPython.embed()
+	print(ci_list)
+	plt.plot(checkpoint_range, ci_list)
+	plt.xlabel("Optimization steps")
+	plt.title("Ci over training")
+
+	plt.savefig("./log/%s/ci_throughout_training.png" % exp_name)
+	plt.clf()
+	plt.cla()
+
 
 if __name__=="__main__":
 	# graph_log_file_2("cartpole_reduced_new_h_l_50_w_0")
@@ -639,10 +691,21 @@ if __name__=="__main__":
 	# graph_log_file_2("cartpole_reduced_fixed_attacks_1")
 	# graph_log_file_2("cartpole_reduced_fixed_attacks_10")
 
-	exp_name = "cartpole_reduced_fixed_attacks_1"
-	for checkpoint_number in np.arange(0, 50):
-		# save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
-		# plot_3d(checkpoint_number, save_fnm, exp_name)
+	# exp_name = "cartpole_reduced_fixed_attacks_1"
+	# for checkpoint_number in np.arange(0, 14000, 1000):
+	# 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
+	# 	plot_3d(checkpoint_number, save_fnm, exp_name)
+	#
+	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
+	# 	plot_2d_binary(checkpoint_number, save_fnm, exp_name)
 
+	# graph_log_file_2("cartpole_reduced_fixed_attacks_1")
+
+	# exp_name = "cartpole_reduced_fixed_attacks_1"
+	# plot_ci_over_time(exp_name)
+
+	# Testing different random initializations
+	checkpoint_number = 0
+	for exp_name in ["cartpole_reduced_r1", "cartpole_reduced_r2", "cartpole_reduced_r3", "cartpole_reduced_r4", "cartpole_reduced_r5"]:
 		save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
 		plot_2d_binary(checkpoint_number, save_fnm, exp_name)

@@ -42,6 +42,7 @@ def parser():
 	parser.add_argument('--trainer_n_steps', default=1500, type=int, help='if stopping condition is n_steps, specify the number here')
 
 	# Saving/logging
+	parser.add_argument('--random_seed', default=1, type=int)
 	parser.add_argument('--affix', default='default', help='the affix for the save folder')
 	parser.add_argument('--log_root', default='log',
 	                    help='the directory to save the logs or other imformations (e.g. images)')
