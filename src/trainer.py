@@ -23,10 +23,13 @@ class Trainer():
 	def train(self, objective_fn, reg_fn, phi_fn, xdot_fn):
 		# TODO: c_i require projected GD, so you'll need to modify Adam
 		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
-		params_no_ci = [tup[1] for tup in phi_fn.named_parameters() if tup[0] != "ci"]
+		# proj_params = ["ci", "sigma"]
+		proj_params = ["ci"]
+		params_no_proj = [tup[1] for tup in phi_fn.named_parameters() if tup[0] not in proj_params]
 		ci = p_dict["ci"]
+		# sigma = p_dict["sigma"]
 
-		optimizer = optim.Adam(params_no_ci)
+		optimizer = optim.Adam(params_no_proj)
 		_iter = 0
 		t0 = time.perf_counter()
 
@@ -39,6 +42,7 @@ class Trainer():
 		train_attacks = [] # lists of 1D numpy tensors
 		# test_attacks = []
 		ci_lr = 1e-4
+		sigma_lr = 1e-4
 
 		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
 		while True:
@@ -48,6 +52,7 @@ class Trainer():
 			# Outer max
 			optimizer.zero_grad()
 			ci.grad = None
+			# sigma.grad = None
 
 			x_batch = x.view(1, -1)
 			# IPython.embed()
@@ -60,9 +65,17 @@ class Trainer():
 			optimizer.step()
 
 			with torch.no_grad():
+				print(ci.grad)
 				new_ci = ci - ci_lr*ci.grad
+				print(new_ci)
 				new_ci = torch.maximum(new_ci, torch.zeros_like(new_ci)) # Project to all positive
 				ci.copy_(new_ci) # proper way to update
+
+				# print(sigma.grad)
+				# new_sig = sigma - sigma_lr*sigma.grad
+				# print(new_sig)
+				# new_sig = torch.maximum(new_sig, torch.zeros_like(new_sig)) # Project to all positive
+				# sigma.copy_(new_sig) # proper way to update
 
 			# Testing and logging at every iteration
 			t1 = time.perf_counter()

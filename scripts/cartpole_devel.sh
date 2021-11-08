@@ -56,4 +56,12 @@
 #nohup python main.py --affix r3 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 50 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 3 &> r3.out &
 #nohup python main.py --affix r4 --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 50 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 4 &> r4.out &
 #nohup python main.py --affix r5 --gpu 2 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 50 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 5 &> r5.out &
-#
+
+
+
+nohup python main.py --affix r101 --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 10 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 101 --trainer_stopping_condition n_steps --trainer_n_steps 20000 &> r101.out &
+nohup python main.py --affix r102 --gpu 2 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 10 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 102 --trainer_stopping_condition n_steps --trainer_n_steps 20000 &> r102.out &
+nohup python main.py --affix r103 --gpu 3 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 10 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 103 --trainer_stopping_condition n_steps --trainer_n_steps 20000 &> r103.out &
+nohup python main.py --affix r104 --gpu 0 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 10 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 104 --trainer_stopping_condition n_steps --trainer_n_steps 20000 &> r104.out &
+nohup python main.py --affix r105 --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 1.0 --n_checkpoint_step 10 --train_attacker_n_samples 50 --test_attacker_n_samples 50 --random_seed 105 --trainer_stopping_condition n_steps --trainer_n_steps 20000 &> r105.out &
+

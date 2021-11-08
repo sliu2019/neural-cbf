@@ -14,7 +14,8 @@ import math
 import IPython
 import time
 
-# from global_settings import *
+from global_settings import * # TODO: comment this out before a run
+
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
 	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=None):
@@ -27,8 +28,10 @@ class Phi(nn.Module):
 
 		# Note: by default, it registers parameters by their variable name
 		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much largers
+		self.sigma = nn.Parameter(1e-2*torch.rand(1))
 		# print("################################################################")
 		# print("Initial ci: ", self.ci)
+		# print("Initial sig:", self.sigma)
 		# print("################################################################")
 
 		hidden_dims = args.phi_nn_dimension.split("-")
@@ -54,10 +57,10 @@ class Phi(nn.Module):
 		# Assume x is (bs, x_dim)
 		h_val = self.h_fn(x)
 		if self.x_e is None:
-			beta_value = nn.functional.softplus(self.beta_net(x)) + nn.functional.softplus(h_val) - np.log(2)
+			beta_value = nn.functional.softplus(self.beta_net(x)) + nn.functional.softplus(h_val) - np.log(2) #+ self.sigma
 		else:
 			alpha_value = self.c*h_val
-			beta_value = nn.functional.softplus(self.beta_net(x) - self.beta_net(self.x_e)) + alpha_value
+			beta_value = nn.functional.softplus(self.beta_net(x) - self.beta_net(self.x_e)) + alpha_value #+ self.sigma
 
 		# Convert ci to ki
 		ki = torch.tensor([[1.0]])
@@ -139,7 +142,8 @@ class Objective(nn.Module):
 		phidot_cand = torch.reshape(phidot_cand, (-1, n_vertices)) # bs x n_vertices
 
 		# print(phidot_cand)
-		phidot, _ = torch.min(phidot_cand, 1)
+		phidot, min_indices = torch.min(phidot_cand, 1) # TODO: let second argument be _
+		# print(min_indices)
 		result = phidot
 		# result = nn.functional.relu(phidot) # TODO
 		result = result.view(-1, 1) # ensures bs x 1

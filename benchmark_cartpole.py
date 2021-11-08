@@ -127,7 +127,8 @@ class Cartpole_Simulator():
 		u_preclip_all = []
 		i = 0
 		while True:
-			u = controller(x, self.xdot_fn_numpy)
+			# u = controller(x, self.xdot_fn_numpy) # TODO: remove
+			u = 0.0
 			u_feas = np.clip(u, -self.param_dict["max_force"], self.param_dict["max_force"])
 
 			x = self.step(x, u_feas)
@@ -405,12 +406,16 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "
 		c. number of violations over rollout 
 	"""
 	if "FI" in which_tests:
-		bdry_points = attacker.sample_points_on_boundary(phi_fn, mode="dG+dS")
-		x0_pole = bdry_points.detach().cpu().numpy()
-		x0_array = np.zeros((n_x0, 4))
-		x0_array[:, 1] = x0_pole[:, 0]
-		x0_array[:, 3] = x0_pole[:, 1]
-		x0_list = x0_array.tolist()
+		# TODO: uncomment
+		# bdry_points = attacker.sample_points_on_boundary(phi_fn, mode="dG+dS")
+		# x0_pole = bdry_points.detach().cpu().numpy()
+		# x0_array = np.zeros((n_x0, 4))
+		# x0_array[:, 1] = x0_pole[:, 0]
+		# x0_array[:, 3] = x0_pole[:, 1]
+		# x0_list = x0_array.tolist()
+
+		# x0_list = [np.array([0, -1.5796646, 0, 1.0705544])]
+		x0_list = [np.array([0, 0, 0, 1.0])]
 
 		save_fpth = "./simulations/%s_(%i)_FI.pkl" % (exp_name, checkpoint_number)
 		x_experiment, u_experiment, u_preclip_experiment = run_experiment(x0_list, simulator, controller, save_fpth)
@@ -447,7 +452,7 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "
 		# animate_rollout(x_experiment[1], "./animations/debug_cbf_1.mp4")
 		# animate_rollout(x_experiment[2], "./animations/debug_cbf_2.mp4")
 
-		which_rl_to_animate = [26, 20, 22, 13, 28]
+		which_rl_to_animate = []
 		for i in which_rl_to_animate:
 			animate_rollout(x_experiment[i], "./animations/debug_cbf_%i.mp4" % i)
 
