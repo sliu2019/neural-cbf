@@ -1,20 +1,22 @@
-import torch
 import numpy as np
 
+import torch
 from torch import nn
 from torch.autograd import grad
+
 from src.attacks.basic_attacker import BasicAttacker
 from src.attacks.gradient_batch_attacker import GradientBatchAttacker
 from src.trainer import Trainer
 from src.utils import *
-from scipy.linalg import pascal
 from src.argument import parser, print_args
+
+from scipy.linalg import pascal
 import os, sys
 import math
 import IPython
 import time
 
-from global_settings import * # TODO: comment this out before a run
+# from global_settings import * # TODO: comment this out before a run
 
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
@@ -27,8 +29,9 @@ class Phi(nn.Module):
 		assert r>=0
 
 		# Note: by default, it registers parameters by their variable name
-		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much largers
-		self.sigma = nn.Parameter(1e-2*torch.rand(1))
+		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
+		self.a = nn.Parameter(torch.rand(1, 1)) # constrained to be positive, TODO pending change. Can also set this to constant 0.1
+		# self.sigma = nn.Parameter(1e-2*torch.rand(1)) # TODO
 		# print("################################################################")
 		# print("Initial ci: ", self.ci)
 		# print("Initial sig:", self.sigma)
@@ -38,7 +41,13 @@ class Phi(nn.Module):
 		hidden_dims = [int(h) for h in hidden_dims]
 
 		net_layers = []
-		prev_dim = self.x_dim
+		# print(self.args["g_input_is_xy"])
+		if self.args.g_input_is_xy:
+			print("Warning: args.g_input_is_xy flag should only be used for reduced_cartpole problem")
+			prev_dim = 1
+		else:
+			prev_dim = self.x_dim
+
 		for hidden_dim in hidden_dims:
 			net_layers.append(nn.Linear(prev_dim, hidden_dim))
 			net_layers.append(nn.ReLU())
@@ -46,23 +55,42 @@ class Phi(nn.Module):
 		net_layers.append(nn.Linear(prev_dim, 1))
 		self.beta_net = nn.Sequential(*net_layers)
 
-		if self.x_e is not None:
-			self.x_e = self.x_e.view(1, -1)
-
-			h_xe = self.h_fn(self.x_e)
-			self.c = -np.log(2.0)/h_xe
+		# if self.x_e is not None:
+		# 	self.x_e = self.x_e.view(1, -1)
+		#
+		# 	h_xe = self.h_fn(self.x_e)
+		#
+		# 	# print("Constructing CBF: in init")
+		# 	IPython.embed()
+		# 	# self.c = (-np.log(2.0))/h_xe # TODO: put below back
+		# 	# self.c = (-np.log(2.0) - 0.1)/h_xe # TODO: pending change
+		# 	self.c = (-torch.tensor(2.0) - self.a)/h_xe
 
 	def forward(self, x, grad_x=False):
 		# The way these are implemented should be batch compliant
 		# Assume x is (bs, x_dim)
 		h_val = self.h_fn(x)
-		if self.x_e is None:
-			beta_value = nn.functional.softplus(self.beta_net(x)) + nn.functional.softplus(h_val) - np.log(2) #+ self.sigma
+
+		# print("in forward")
+		# IPython.embed()
+		if self.args.g_input_is_xy: # TODO: pending change
+			beta_net_value = self.beta_net(x[:, 0]*x[:, 1])
+			beta_net_xe_value = self.beta_net(self.x_e[:, 0]*self.x_e[:, 1])
 		else:
-			alpha_value = self.c*h_val
-			beta_value = nn.functional.softplus(self.beta_net(x) - self.beta_net(self.x_e)) + alpha_value #+ self.sigma
+			beta_net_value = self.beta_net(x)
+			beta_net_xe_value = self.beta_net(self.x_e)
+
+		if self.x_e is None:
+			beta_value = nn.functional.softplus(beta_net_value) + nn.functional.softplus(h_val) - np.log(2) #+ self.sigma
+		else:
+			# alpha_value = self.c*h_val
+			h_xe = self.h_fn(self.x_e)
+			num = (-torch.tensor(2.0) - self.a).to(self.device)
+			alpha_value = num/h_xe
+			beta_value = nn.functional.softplus(beta_net_value-beta_net_xe_value) + alpha_value #+ self.sigma
 
 		# Convert ci to ki
+		ci = self.ci + 1e-2 # TODO: pending change
 		ki = torch.tensor([[1.0]])
 		ki_all = torch.zeros(self.r, self.r).to(self.device) # phi_i coefficients are in row i
 		ki_all[0, 0:ki.numel()] = ki
@@ -73,7 +101,8 @@ class Phi(nn.Module):
 
 			# Note: to preserve gradient flow, have to assign mat entries to ci not create with ci (i.e. torch.tensor([ci[0]]))
 			binomial = torch.ones((2, 1))
-			binomial[1] = self.ci[i]
+			# binomial[1] = self.ci[i]
+			binomial[1] = ci[i]
 			ki = A.mm(binomial)
 
 			ki_all[i+1, 0:ki.numel()] = ki.view(1, -1)
@@ -101,6 +130,12 @@ class Phi(nn.Module):
 		if grad_x == False:
 			x.requires_grad = orig_req_grad_setting
 		# New: (bs, r+1)
+		# TODO: turn back on
+		# print("h_derivs")
+		# print(h_derivs)
+		# print("ki_all")
+		# print(ki_all)
+
 		result = h_derivs.mm(ki_all.t())
 		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + beta_value
 		result = torch.cat((result, phi_r_minus_1_star), dim=1)
@@ -143,6 +178,11 @@ class Objective(nn.Module):
 
 		# print(phidot_cand)
 		phidot, min_indices = torch.min(phidot_cand, 1) # TODO: let second argument be _
+
+		# print("Figure out shapes in objectvie fn")
+		# IPython.embed()
+		# verif_minimizing_u = (x[:, [0]]*(min_indices.view(-1, 1))-0.5) <= 0
+		# assert torch.all(verif_minimizing_u)
 		# print(min_indices)
 		result = phidot
 		# result = nn.functional.relu(phidot) # TODO
@@ -306,143 +346,46 @@ def main(args):
 	if args.train_attacker == "basic":
 		attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.train_attacker == "gradient_batch":
-		attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, adaptive_lr=args.train_attacker_adaptive_lr, projection_stop_threshold=args.train_attacker_projection_stop_threshold, projection_lr=args.train_attacker_projection_lr)
+		attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, projection_stop_threshold=args.train_attacker_projection_stop_threshold, projection_lr=args.train_attacker_projection_lr)
 
 	# Create test attacker
 	if args.test_attacker == "basic":
 		test_attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.test_attacker == "gradient_batch":
-		test_attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, lr=args.test_attacker_lr, adaptive_lr=args.test_attacker_adaptive_lr, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
+		test_attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, lr=args.test_attacker_lr, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
 
 	# Pass everything to Trainer
-	trainer = Trainer(args, logger, attacker, test_attacker)
-	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
+	# trainer = Trainer(args, logger, attacker, test_attacker)
+	# trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
-	# TODO: Simin, on Sat you are here!
-	# Testing newly design CBF
-	# print("Debug cbf further")
+	# Test of bug fix 11/8
 	# IPython.embed()
-	# phi_fn(x_e) # is 0?
-	# Draw 2D plot
-	# file_name = os.path.join(args.model_folder, f'checkpoint_0.pth')
-	# save_model(phi_fn, file_name)
-
-	# Test: initialization of attacks on manifold
-	# IPython.embed()
-	# X = test_attacker.sample_points_on_boundary(phi_fn)
-	# X = X.detach().cpu().numpy()
-	# save_pth = os.path.join(log_folder, "boundary_samples.npy")
-	# np.save(save_pth, X)
-	# print("Check points and saved correctly")
-	# IPython.embed()
-
-	# run this and viz
-	# X = test_attacker.opt(objective_fn, phi_fn)
-	# X = X.detach().cpu().numpy()
-	# save_pth = os.path.join(log_folder, "boundary_samples_post_opt.npy")
-	# np.save(save_pth, X)
-	# print("Saved")
-	# # print("Check points and saved correctly")
-	# IPython.embed()
-
-	# Test
-	# IPython.embed()
-	# X = torch.tensor([0, -5.0])
+	# X = torch.tensor([0.0, 0.0])
 	# X = X.view(1, -1).to(device)
 	# print(phi_fn(X))
-	# print(phi_fn(-X))
-
-	# Test: different phi init gives different plot
-	# for name, param in phi_fn.named_parameters():
-	# 	print(name, param)
-
-	# file_name = os.path.join(args.model_folder, f'checkpoint_0.pth')
-	# save_model(phi_fn, file_name)
-
-	# Test:
-	# t0 = time.perf_counter()
-	# test_attacker.opt(objective_fn, phi_fn)
-	# t1 = time.perf_counter()
-	# # print("Total time: %f s" % (t1-t0))
-	#
-	# test_attacker.opt(objective_fn, phi_fn)
-
-	# Test load model
-	"""load_model(phi_fn, "./checkpoint/cartpole_reduced_exp1a/checkpoint_60.pth")
-	for name, param in phi_fn.named_parameters():
-		print(name, param)
-	# print(list(phi_fn.parameters()))
-	IPython.embed()"""
-
-	# # Strong attack against model
-	# test_attacker = GradientBatchAttacker(x_lim, stopping_condition=args.test_attacker_stopping_condition, n_samples=200)
-	# t0 = time.perf_counter()
-	# test_attacker.opt(objective_fn, phi_fn)
-	# t1 = time.perf_counter()
-
-	# TODO: test if gradient is propagated through volume term
-	# TODO: check out magnitude of gradient term. What to set weights to?
-
-	# Check the refactored phi function
-	"""x = torch.rand(10, x_dim)
-	# x.requires_grad = True
-	phi_value = phi_fn(x)
-	IPython.embed()
-	for i in range(r+1):
-		# phi_grad = grad([torch.sum(phi_value[:, i])], x, retain_graph=True)[0]
-		# print(phi_grad)
-
-		loss = torch.sum(phi_value[:, i])
-		loss.backward(retain_graph=True)
-		for param in phi_fn.parameters():
-			print(param.grad)
-		print("\n")
-	# test_attacker.opt(objective_fn, phi_fn)"""
-
-	# IPython.embed()
-	# x = torch.zeros(1, 4)
-	# print(phi_fn(x))
-
-	# Check the refactored objective
-	# x = torch.rand(10, x_dim)
-	# loss = torch.sum(objective_fn(x))
-	# loss.backward()
-	# for name, param in phi_fn.named_parameters():
-	# 	print(name)
-	# 	print(param.grad)
-
-	# Check magnitude of volume regularization term
-	# x = torch.rand(10, x_dim)
-	# obj_value = objective_fn(x)
-
-	# Debugging: whether gradients of the objective (wrt x) are calculated properly
-	# Run: python main.py --affix debug --gpu 1 --phi_nn_dimension 50 --objective_volume_weight 0.0
-	# Check that reshaping in objective function is proper
-	# x = torch.rand(10, x_dim).to(device)
-	# obj_val = objective_fn(x)
-	# print(obj_val)
+	# print(phi_fn.ci)
 	# IPython.embed()
 
-	# Check that gradient flows through iterated gradients over x
-	# Computing phi(x) is complex
-	# Computing grad phi(x) is complex
-	# x.requires_grad = True
-	# phi_value = phi_fn(x)
-	# grad_phi = grad([torch.sum(phi_value[:, -1])], x)[0]
-	# print(grad_phi)
+	# Test there is grad of reg term wrt parameters
+	# IPython.embed()
+	# # gradients = grad([reg], list(phi_fn.parameters()))[0]
 
-	# Computing grad f(grad phi(x)) is complex
-	# x.requires_grad = True
-	# obj_val = objective_fn(x)
-	# grad_obj = grad([torch.sum(obj_val)], x)[0]
-	# print(grad_obj)
+	# import torch.optim as optim
+	# optimizer = optim.Adam(phi_fn.parameters())
+	# reg = reg_fn()
+	# reg.backward()
+	# optimizer.step()
+
+	# IPython.embed()
+
 
 if __name__ == "__main__":
 	args = parser()
 	torch.manual_seed(args.random_seed)
 	np.random.seed(args.random_seed)
+	# IPython.embed()
 	main(args)
 
 

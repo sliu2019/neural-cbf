@@ -16,8 +16,8 @@ class GradientBatchAttacker():
 	# Note: this is not batch compliant.
 
 	def __init__(self, x_lim, device, logger, n_samples=20, \
-	             stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-2, early_stopping_patience=10,\
-	             lr=1e-3, adaptive_lr=False,\
+	             stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-7, early_stopping_patience=50,\
+	             lr=1e-3, \
 	             projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=False):
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
@@ -114,7 +114,7 @@ class GradientBatchAttacker():
 		rv_x = torch.cat(x_list)
 		return rv_x
 
-	def step(self, objective_fn, phi_fn, x, optimizer=None):
+	def step(self, objective_fn, phi_fn, x, mode="dG"):
 		# It makes less sense to use an adaptive LR method here, if you think about it
 		t0 = time.perf_counter()
 		x_batch = x.view(-1, self.x_dim)
@@ -137,30 +137,39 @@ class GradientBatchAttacker():
 			print("projected grad: ", proj_obj_grad)
 
 		# Take a step
-		x = x - self.lr*proj_obj_grad
+		x_new = x - self.lr*proj_obj_grad
 
 		t1 = time.perf_counter()
 		# Clip to bounding box
 		# Rationale for this step: everytime you take a step on x, clip to box
 		#
 		if self.verbose:
-			print("After step:", x)
+			print("After step:", x_new)
 		# Project to surface
-		x = self.project(phi_fn, x)
+		x_new = self.project(phi_fn, x_new)
 		if self.verbose:
-			print("After reprojection", x)
+			print("After reprojection", x_new)
 
 		# No torch.clamp in torch 1.7.1
 		# TODO: hard-coded for reduced cartpole; if it's a different problem, comment this out
 		# Mod on angle before clipping (clipping angle will be redundant)
-		x[:, 0] = torch.atan2(torch.sin(x[:, 0]), torch.cos(x[:, 0]))
-		x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
+		x_new[:, 0] = torch.atan2(torch.sin(x_new[:, 0]), torch.cos(x_new[:, 0]))
+		x_new = torch.minimum(torch.maximum(x_new, self.x_lim[:, 0]), self.x_lim[:, 1])
+
+		# TODO: pending change
+		if mode=="dS":
+			# print("in step")
+			# IPython.embed()
+			phi_x_new = phi_fn(x_new)
+			exited_dS_ind = torch.nonzero(torch.max(phi_x_new, axis=1)[0] > 1e-1)
+			print(exited_dS_ind)
+			x_new[exited_dS_ind] = x[exited_dS_ind]
 
 		t2 = time.perf_counter()
 
 		# print("Step: %f s" % (t1-t0))
 		# print("Project: %f s" % (t2 -t1))
-		return x
+		return x_new
 
 	def sample_in_cube(self):
 		"""
@@ -303,12 +312,12 @@ class GradientBatchAttacker():
 					# if mode == "dG/dS":
 					# 	print(intersection, phi_val)
 					# 	print(on_dS)
-					if on_dS and mode=="dG+dS":
+					if on_dS and mode=="dS":
 						samples.append(intersection.view(1, -1))
 						n_remaining_to_sample -= 1
-					elif (not on_dS) and mode=="dG/dS":
-						samples.append(intersection.view(1, -1))
-						n_remaining_to_sample -= 1
+					# elif (not on_dS) and mode=="dG/dS":
+					# 	samples.append(intersection.view(1, -1))
+					# 	n_remaining_to_sample -= 1
 			else:
 				center = self.sample_in_cube()
 			n_segments_sampled += 1
@@ -318,19 +327,20 @@ class GradientBatchAttacker():
 		# self.logger.info("Done with sampling points on the boundary...")
 		return samples
 
-	def opt(self, objective_fn, phi_fn, test=False):
+	def opt(self, objective_fn, phi_fn, test=False, mode="dG"):
 
-		X_init = self.sample_points_on_boundary(phi_fn)
+		X_init = self.sample_points_on_boundary(phi_fn, mode=mode)
 		X = X_init.clone()
 		i = 0
-		early_stopping = EarlyStopping(patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta)
+		# early_stopping = EarlyStopping(patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta)
+		early_stopping = EarlyStoppingBatch(self.n_samples, patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta) # TODO: pending change
 
 		# if self.adaptive_lr:
 		# 	optimizer = optim.Adam(X, lr=self.lr)
 
 		while True:
 			# print(i)
-			X = self.step(objective_fn, phi_fn, X)
+			X = self.step(objective_fn, phi_fn, X, mode=mode)
 
 			if self.stopping_condition == "n_steps":
 				if (i > self.max_n_steps):
@@ -339,8 +349,12 @@ class GradientBatchAttacker():
 				obj_vals = objective_fn(X.view(-1, self.x_dim))
 				obj_val = torch.max(obj_vals)
 
-				early_stopping(obj_val)
-				if early_stopping.early_stop:
+				# early_stopping(obj_val)
+				early_stopping(obj_vals) # TODO: pending change
+				if early_stopping.early_stop: # TODO: pending change
+					break
+				elif i > 400: # Hard-coded n_{max iter} # TODO: pending change
+					# print("i > 400")
 					break
 			i += 1
 
@@ -348,6 +362,7 @@ class GradientBatchAttacker():
 		obj_vals = objective_fn(X)
 		max_ind = torch.argmax(obj_vals)
 
+		# print(X)
 		if not test:
 			x = X[max_ind]
 			return x

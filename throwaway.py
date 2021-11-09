@@ -221,7 +221,7 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	load_model(phi_fn, phi_load_fpth)
 
 	# print(phi_fn.ci)
-	# phi_fn.ci = nn.Parameter(torch.tensor([[0.1]])) # TODO
+	phi_fn.ci = nn.Parameter(torch.tensor([[0.05]])) # TODO
 	# IPython.embed()
 
 	##### Testing ######
@@ -232,7 +232,7 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 
 	# zero_output = phi_fn(torch.zeros(1, 2))
 	# print(zero_output)
-	print(phi_fn.ci, phi_fn.sigma)
+	# print(phi_fn.ci, phi_fn.sigma)
 	######
 
 	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
@@ -249,6 +249,8 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	ax.set_aspect("equal")
 
 	phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+	# print(np.min(phi_vals_numpy))
+	# print(np.sort(phi_vals_numpy)[:500])
 	# ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
 	#                  colors=('k',), linewidths=(2,))
 	ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape))
@@ -417,14 +419,23 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	#                                       n_samples=n_attacks,
 	#                                       projection_stop_threshold=args.test_attacker_projection_stop_threshold,
 	#                                       projection_lr=args.test_attacker_projection_lr)
+	# test_attacker = GradientBatchAttacker(x_lim_torch, device, logger,
+	#                                       stopping_condition="n_steps", # TODO: replaceargs.test_attacker_stopping_condition,
+	#                                       max_n_steps=100,
+	#                                       n_samples=10, # TODO: replace w/ 50
+	#                                       projection_stop_threshold=1e-1, #=args.test_attacker_projection_stop_threshold,
+	#                                       projection_lr=1e-4, #args.test_attacker_projection_lr,
+	#                                       early_stopping_min_delta=1e-5,
+	#                                       early_stopping_patience=10,
+	#                                       lr=1e-3
+	#                                       )
 	test_attacker = GradientBatchAttacker(x_lim_torch, device, logger,
-	                                      stopping_condition="n_steps", # TODO: replaceargs.test_attacker_stopping_condition,
-	                                      max_n_steps=100,
-	                                      n_samples=10, # TODO: replace w/ 50
+	                                      stopping_condition="early_stopping", # TODO: replaceargs.test_attacker_stopping_condition,
+	                                      n_samples=25, # TODO: replace w/ 50
 	                                      projection_stop_threshold=1e-1, #=args.test_attacker_projection_stop_threshold,
 	                                      projection_lr=1e-4, #args.test_attacker_projection_lr,
-	                                      early_stopping_min_delta=1e-5,
-	                                      early_stopping_patience=10,
+	                                      early_stopping_min_delta=1e-3,
+	                                      early_stopping_patience=50,
 	                                      lr=1e-3
 	                                      )
 	###################################
@@ -461,7 +472,7 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 
 	# Plot attacks
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
-	attacks_init, attacks, best_attack, obj_vals = test_attacker.opt(objective_fn, phi_fn, test=True)
+	attacks_init, attacks, best_attack, obj_vals = test_attacker.opt(objective_fn, phi_fn, test=True, mode="dS") # TODO
 	obj_vals = obj_vals.detach().cpu().numpy()
 
 	inds = np.argsort(attacks[:, 0])
@@ -504,7 +515,7 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	# test_attack = torch.tensor([-2.4602,  0.1066]).view(1, -1)
 	# all_phi = objective_fn(test_attack)
 	# print(all_phi)
-	IPython.embed()
+	# IPython.embed()
 	# print(attacks_init)
 
 def debug_manifold_optimization(checkpoint_number, exp_name):
@@ -723,18 +734,18 @@ if __name__=="__main__":
 	# 	graph_log_file_2(exp_name)
 
 	# rand_exps = ["cartpole_reduced_r1", "cartpole_reduced_r2", "cartpole_reduced_r3", "cartpole_reduced_r4", "cartpole_reduced_r5"]
-	# checkpoint_numbers = [300, 550, 400, 300, 300]
+	# checkpoint_numbers = [300, 300, 300, 300, 300]
 	# # TODO: print loss also
 	# for exp_name, checkpoint_number in zip(rand_exps, checkpoint_numbers):
-	# 	# save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
-	# 	# plot_2d_binary(checkpoint_number, save_fnm, exp_name)
+	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
+	# 	plot_2d_binary(checkpoint_number, save_fnm, exp_name)
 	#
 	# 	# graph_log_file_2(exp_name)
 	#
 	# 	# save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
 	# 	# plot_3d(checkpoint_number, save_fnm, exp_name)
 	#
-	# 	plot_2d_attacks(checkpoint_number, exp_name)
+	# 	# plot_2d_attacks(checkpoint_number, exp_name)
 
 
 	# Checking 1 experiment
@@ -768,6 +779,6 @@ if __name__=="__main__":
 	# 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
 	# 	plot_3d(checkpoint_number, save_fnm, exp_name)
 	checkpoint_number = 500
-	# save_fnm = "2d_checkpoint_%i_ci_1e-1.png" % checkpoint_number
+	# save_fnm = "2d_checkpoint_%i_ci_5e-2.png" % checkpoint_number
 	# plot_2d_binary(checkpoint_number, save_fnm, exp_name)
 	plot_2d_attacks(checkpoint_number, exp_name)

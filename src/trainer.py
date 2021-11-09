@@ -24,12 +24,14 @@ class Trainer():
 		# TODO: c_i require projected GD, so you'll need to modify Adam
 		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
 		# proj_params = ["ci", "sigma"]
-		proj_params = ["ci"]
+		proj_params = ["ci", "a"]
 		params_no_proj = [tup[1] for tup in phi_fn.named_parameters() if tup[0] not in proj_params]
 		ci = p_dict["ci"]
 		# sigma = p_dict["sigma"]
+		a = p_dict["a"]
 
-		optimizer = optim.Adam(params_no_proj)
+		# optimizer = optim.Adam(params_no_proj)
+		optimizer = optim.Adam(phi_fn.parameters())
 		_iter = 0
 		t0 = time.perf_counter()
 
@@ -40,9 +42,11 @@ class Trainer():
 		test_losses = []
 		timings = [] # in seconds
 		train_attacks = [] # lists of 1D numpy tensors
+		train_loss_diff_after_step = []
 		# test_attacks = []
 		ci_lr = 1e-4
-		sigma_lr = 1e-4
+		# sigma_lr = 1e-4
+		a_lr = 1e-4
 
 		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
 		while True:
@@ -51,7 +55,8 @@ class Trainer():
 
 			# Outer max
 			optimizer.zero_grad()
-			ci.grad = None
+			# ci.grad = None
+			# a.grad = None
 			# sigma.grad = None
 
 			x_batch = x.view(1, -1)
@@ -64,18 +69,34 @@ class Trainer():
 
 			optimizer.step()
 
-			with torch.no_grad():
-				print(ci.grad)
+			"""with torch.no_grad():
+				print("ci grad: ", ci.grad)
 				new_ci = ci - ci_lr*ci.grad
-				print(new_ci)
+				print("new ci: ", new_ci)
 				new_ci = torch.maximum(new_ci, torch.zeros_like(new_ci)) # Project to all positive
 				ci.copy_(new_ci) # proper way to update
 
+				print("ci: ", ci)
 				# print(sigma.grad)
 				# new_sig = sigma - sigma_lr*sigma.grad
 				# print(new_sig)
 				# new_sig = torch.maximum(new_sig, torch.zeros_like(new_sig)) # Project to all positive
 				# sigma.copy_(new_sig) # proper way to update
+
+				print(a.grad)
+				new_a = a - a_lr*a.grad
+				print(new_a)
+				new_a = torch.maximum(new_a, torch.zeros_like(new_a)) # Project to all positive
+				a.copy_(new_a) # proper way to update"""
+			with torch.no_grad():
+				# manually clip
+				clipped_ci = torch.maximum(ci, torch.zeros_like(ci))  # Project to all positive
+				ci.copy_(clipped_ci)  # proper way to update
+
+				clipped_a = torch.maximum(a, torch.zeros_like(a))  # Project to all positive
+				a.copy_(clipped_a)
+
+				objective_value_after_step = objective_fn(x_batch) + reg_fn()
 
 			# Testing and logging at every iteration
 			t1 = time.perf_counter()
@@ -99,6 +120,7 @@ class Trainer():
 			test_attack_losses.append(test_attack_loss)
 			test_reg_losses.append(test_reg_loss)
 			test_losses.append(test_loss)
+			train_loss_diff_after_step.append(objective_value_after_step-objective_value)
 
 			timings.append(t_so_far)
 			train_attack_numpy = x.detach().cpu().numpy()
@@ -110,7 +132,7 @@ class Trainer():
 				save_model(phi_fn, file_name)
 
 				# save data too
-				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "timings": timings, "train_attacks": train_attacks}
+				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "timings": timings, "train_attacks": train_attacks, "train_loss_diff_after_step": train_loss_diff_after_step}
 				print("Saving at: ", self.data_save_fpth)
 				with open(self.data_save_fpth, 'wb') as handle:
 					pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)

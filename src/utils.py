@@ -4,6 +4,7 @@ import logging
 
 import numpy as np
 import torch
+import IPython
 
 from src.argument import parser, print_args
 
@@ -83,3 +84,47 @@ class EarlyStopping():
             if self.counter >= self.patience:
                 print('INFO: Early stopping')
                 self.early_stop = True
+
+
+class EarlyStoppingBatch():
+    """
+    Like EarlyStopping, but stops when all members of batch meet the individual stopping criteria.
+    Note: this is used for attacks, so loss is being maximized
+    """
+    def __init__(self, bs, patience=3, min_delta=0):
+        """
+        :param patience: how many epochs to wait before stopping when loss is
+               not improving
+        :param min_delta: minimum difference between new loss and old loss for
+               new loss to be considered as an improvement
+        """
+        self.patience = patience
+        self.min_delta = min_delta
+
+        self.counter = torch.zeros(bs)
+        self.best_loss = None #torch.ones(bs)*float("inf")
+        self.early_stop_vec = torch.zeros(bs, dtype=torch.bool)
+        self.early_stop = False
+
+    def __call__(self, test_loss):
+        if self.best_loss == None:
+            self.best_loss = test_loss
+
+        # print("Inside EarlyStoppingBatch")
+        # IPython.embed()
+
+        # print(self.best_loss, test_loss)
+        improve_ind = torch.nonzero(test_loss - self.best_loss >= self.min_delta)
+        nonimprove_ind = torch.nonzero(test_loss - self.best_loss < self.min_delta)
+        self.best_loss[improve_ind] = test_loss[improve_ind]
+
+        self.counter[nonimprove_ind] = self.counter[nonimprove_ind] + 1
+
+        early_stop_ind = torch.nonzero(self.counter >= self.patience)
+        self.early_stop_vec[early_stop_ind] = True
+
+        # print(self.counter)
+        if torch.all(self.early_stop_vec).item():
+            print('INFO: Early stopping')
+            self.early_stop = True
+

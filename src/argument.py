@@ -11,7 +11,9 @@ def parser():
 	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
 
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'])
-	parser.add_argument('--objective_volume_weight', default=0.0, type=float, help='the weight on the volume term')
+	parser.add_argument('--objective_volume_weight', default=1.0, type=float, help='the weight on the volume term')
+
+	parser.add_argument('--g_input_is_xy', action='store_true')
 	###################################################################################################################################
 	# Attacker: train
 	parser.add_argument('--train_attacker', default='gradient_batch', choices=['basic', 'gradient_batch'])
@@ -22,7 +24,7 @@ def parser():
 	parser.add_argument('--train_attacker_projection_stop_threshold', default=1e-1, type=float, help='when to consider a point "projected"')
 	parser.add_argument('--train_attacker_projection_lr', default=1e-4, type=float)
 	parser.add_argument('--train_attacker_lr', default=1e-3, type=float)
-	parser.add_argument('--train_attacker_adaptive_lr', action='store_true')
+	# parser.add_argument('--train_attacker_adaptive_lr', action='store_true')
 	############################################################################
 	# Attacker: test
 	parser.add_argument('--test_attacker', default='gradient_batch', choices=['basic', 'gradient_batch'])
@@ -33,7 +35,7 @@ def parser():
 	parser.add_argument('--test_attacker_projection_stop_threshold', default=1e-1, type=float, help='when to consider a point "projected"')
 	parser.add_argument('--test_attacker_projection_lr', default=1e-4, type=float)
 	parser.add_argument('--test_attacker_lr', default=1e-3, type=float)
-	parser.add_argument('--test_attacker_adaptive_lr', action='store_true')
+	# parser.add_argument('--test_attacker_adaptive_lr', action='store_true')
 	###################################################################################################################################
 
 	# Trainer
