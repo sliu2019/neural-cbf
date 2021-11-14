@@ -12,11 +12,10 @@ class GradientBatchAttacker():
 	"""
 	Gradient-based attack, but parallelized across many initializations
 	"""
-	# TODO: enforce argmax(phi_i) = r constraint (project to this subset of the manifold)
 	# Note: this is not batch compliant.
 
 	def __init__(self, x_lim, device, logger, n_samples=20, \
-	             stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-7, early_stopping_patience=50,\
+	             stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
 	             lr=1e-3, \
 	             projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=False):
 		vars = locals()  # dict of local names
@@ -140,12 +139,8 @@ class GradientBatchAttacker():
 		x_new = x - self.lr*proj_obj_grad
 
 		t1 = time.perf_counter()
-		# Clip to bounding box
-		# Rationale for this step: everytime you take a step on x, clip to box
-		#
 		if self.verbose:
 			print("After step:", x_new)
-		# Project to surface
 		x_new = self.project(phi_fn, x_new)
 		if self.verbose:
 			print("After reprojection", x_new)
@@ -158,15 +153,13 @@ class GradientBatchAttacker():
 
 		# TODO: pending change
 		if mode=="dS":
-			# print("in step")
 			# IPython.embed()
 			phi_x_new = phi_fn(x_new)
-			exited_dS_ind = torch.nonzero(torch.max(phi_x_new, axis=1)[0] > 1e-1)
-			print(exited_dS_ind)
+			# exited_dS_ind = torch.nonzero(torch.max(phi_x_new, axis=1)[0] > 1e-1)
+			exited_dS_ind = torch.nonzero(torch.max(phi_x_new[:, :-1], axis=1)[0] > 1e-6) # tol
 			x_new[exited_dS_ind] = x[exited_dS_ind]
 
-		t2 = time.perf_counter()
-
+		# t2 = time.perf_counter()
 		# print("Step: %f s" % (t1-t0))
 		# print("Project: %f s" % (t2 -t1))
 		return x_new
@@ -302,23 +295,22 @@ class GradientBatchAttacker():
 			outer = self.sample_on_cube()
 
 			intersection = self.intersect_segment_with_manifold(center, outer, phi_fn)
+			valid = False
 			if intersection is not None:
 				if mode == "dG":
 					samples.append(intersection.view(1, -1))
 					n_remaining_to_sample -= 1
-				else:
+					valid = True
+				elif mode == "dS":
 					phi_val = phi_fn(intersection.view(1, -1))
-					on_dS = torch.all(phi_val[0, :-1] <= 1e-6).item()
-					# if mode == "dG/dS":
-					# 	print(intersection, phi_val)
-					# 	print(on_dS)
-					if on_dS and mode=="dS":
+					on_dS = torch.all(phi_val[0, :-1] <= 1e-6).item() # tol
+					if on_dS:
 						samples.append(intersection.view(1, -1))
 						n_remaining_to_sample -= 1
-					# elif (not on_dS) and mode=="dG/dS":
-					# 	samples.append(intersection.view(1, -1))
-					# 	n_remaining_to_sample -= 1
-			else:
+						valid = True
+
+			# else:
+			if not valid:
 				center = self.sample_in_cube()
 			n_segments_sampled += 1
 			# self.logger.info("%i segments" % n_segments_sampled)
@@ -327,16 +319,14 @@ class GradientBatchAttacker():
 		# self.logger.info("Done with sampling points on the boundary...")
 		return samples
 
-	def opt(self, objective_fn, phi_fn, test=False, mode="dG"):
+	def opt(self, objective_fn, phi_fn, debug=False, mode="dG"):
 
+		print("Opt mode: ", mode)
 		X_init = self.sample_points_on_boundary(phi_fn, mode=mode)
 		X = X_init.clone()
 		i = 0
 		# early_stopping = EarlyStopping(patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta)
 		early_stopping = EarlyStoppingBatch(self.n_samples, patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta) # TODO: pending change
-
-		# if self.adaptive_lr:
-		# 	optimizer = optim.Adam(X, lr=self.lr)
 
 		while True:
 			# print(i)
@@ -347,13 +337,14 @@ class GradientBatchAttacker():
 					break
 			elif self.stopping_condition == "early_stopping":
 				obj_vals = objective_fn(X.view(-1, self.x_dim))
-				obj_val = torch.max(obj_vals)
-
+				# obj_val = torch.max(obj_vals)
 				# early_stopping(obj_val)
-				early_stopping(obj_vals) # TODO: pending change
-				if early_stopping.early_stop: # TODO: pending change
+
+				# TODO: pending change
+				early_stopping(obj_vals)
+				if early_stopping.early_stop:
 					break
-				elif i > 400: # Hard-coded n_{max iter} # TODO: pending change
+				elif i > 400: # Hard-coded n_{max iter}
 					# print("i > 400")
 					break
 			i += 1
@@ -363,7 +354,7 @@ class GradientBatchAttacker():
 		max_ind = torch.argmax(obj_vals)
 
 		# print(X)
-		if not test:
+		if not debug:
 			x = X[max_ind]
 			return x
 		else: # TODO: this is terrible coding practice!!!??

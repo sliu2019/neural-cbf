@@ -6,6 +6,7 @@ from torch.autograd import grad
 
 from src.attacks.basic_attacker import BasicAttacker
 from src.attacks.gradient_batch_attacker import GradientBatchAttacker
+from src.attacks.gradient_batch_attacker_warmstart import GradientBatchWarmstartAttacker
 from src.trainer import Trainer
 from src.utils import *
 from src.argument import parser, print_args
@@ -30,7 +31,9 @@ class Phi(nn.Module):
 
 		# Note: by default, it registers parameters by their variable name
 		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
+		# self.ci = nn.Parameter(torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
 		self.a = nn.Parameter(torch.rand(1, 1)) # constrained to be positive, TODO pending change. Can also set this to constant 0.1
+
 		# self.sigma = nn.Parameter(1e-2*torch.rand(1)) # TODO
 		# print("################################################################")
 		# print("Initial ci: ", self.ci)
@@ -41,12 +44,12 @@ class Phi(nn.Module):
 		hidden_dims = [int(h) for h in hidden_dims]
 
 		net_layers = []
-		# print(self.args["g_input_is_xy"])
 		if self.args.g_input_is_xy:
 			print("Warning: args.g_input_is_xy flag should only be used for reduced_cartpole problem")
 			prev_dim = 1
 		else:
 			prev_dim = self.x_dim
+		# prev_dim = self.x_dim
 
 		for hidden_dim in hidden_dims:
 			net_layers.append(nn.Linear(prev_dim, hidden_dim))
@@ -71,8 +74,6 @@ class Phi(nn.Module):
 		# Assume x is (bs, x_dim)
 		h_val = self.h_fn(x)
 
-		# print("in forward")
-		# IPython.embed()
 		if self.args.g_input_is_xy: # TODO: pending change
 			beta_net_value = self.beta_net(x[:, 0]*x[:, 1])
 			beta_net_xe_value = self.beta_net(self.x_e[:, 0]*self.x_e[:, 1])
@@ -81,13 +82,14 @@ class Phi(nn.Module):
 			beta_net_xe_value = self.beta_net(self.x_e)
 
 		if self.x_e is None:
-			beta_value = nn.functional.softplus(beta_net_value) + nn.functional.softplus(h_val) - np.log(2) #+ self.sigma
+			beta_value = nn.functional.softplus(beta_net_value) + nn.functional.softplus(h_val) - np.log(2)
 		else:
+			# TODO: pending change
 			# alpha_value = self.c*h_val
 			h_xe = self.h_fn(self.x_e)
-			num = (-torch.tensor(2.0) - self.a).to(self.device)
+			num = (-torch.tensor(math.log(2.0)).to(self.device) - self.a)
 			alpha_value = num/h_xe
-			beta_value = nn.functional.softplus(beta_net_value-beta_net_xe_value) + alpha_value #+ self.sigma
+			beta_value = nn.functional.softplus(beta_net_value-beta_net_xe_value) + alpha_value*h_val
 
 		# Convert ci to ki
 		ci = self.ci + 1e-2 # TODO: pending change
@@ -129,6 +131,7 @@ class Phi(nn.Module):
 
 		if grad_x == False:
 			x.requires_grad = orig_req_grad_setting
+
 		# New: (bs, r+1)
 		# TODO: turn back on
 		# print("h_derivs")
@@ -177,7 +180,7 @@ class Objective(nn.Module):
 		phidot_cand = torch.reshape(phidot_cand, (-1, n_vertices)) # bs x n_vertices
 
 		# print(phidot_cand)
-		phidot, min_indices = torch.min(phidot_cand, 1) # TODO: let second argument be _
+		phidot, _ = torch.min(phidot_cand, 1) # TODO: let second argument be _
 
 		# print("Figure out shapes in objectvie fn")
 		# IPython.embed()
@@ -281,29 +284,38 @@ def main(args):
 		r = 2
 		x_dim = 2
 		u_dim = 1
-		x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+		# x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
+		x_lim = np.array([[-math.pi, math.pi], [-args.max_angular_velocity, args.max_angular_velocity]], dtype=np.float32)
 
 		# Create phi
 		from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
 
-		if args.physical_difficulty == 'easy':
-			param_dict = {
-				"I": 0.021,
-				"m": 0.25,
-				"M": 1.00,
-				"l": 0.5,
-				"max_theta": math.pi / 2.0,
-				"max_force": 15.0
-			}
-		elif args.physical_difficulty == 'hard':
-			param_dict = {
-				"I": 0.021,
-				"m": 0.25,
-				"M": 1.00,
-				"l": 0.5,
-				"max_theta": math.pi / 4.0,
-				"max_force": 1.0
-			}
+		param_dict = {
+			"I": 0.021,
+			"m": 0.25,
+			"M": 1.00,
+			"l": 0.5
+		}
+		param_dict["max_theta"] = args.max_theta
+		param_dict["max_force"] = args.max_force
+		# if args.physical_difficulty == 'easy':
+		# 	param_dict = {
+		# 		"I": 0.021,
+		# 		"m": 0.25,
+		# 		"M": 1.00,
+		# 		"l": 0.5,
+		# 		"max_theta": math.pi / 2.0,
+		# 		"max_force": 15.0
+		# 	}
+		# elif args.physical_difficulty == 'hard':
+		# 	param_dict = {
+		# 		"I": 0.021,
+		# 		"m": 0.25,
+		# 		"M": 1.00,
+		# 		"l": 0.5,
+		# 		"max_theta": math.pi / 4.0,
+		# 		"max_force": 1.0
+		# 	}
 
 		h_fn = H(param_dict)
 		xdot_fn = XDot(param_dict)
@@ -347,16 +359,20 @@ def main(args):
 		attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.train_attacker == "gradient_batch":
 		attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, projection_stop_threshold=args.train_attacker_projection_stop_threshold, projection_lr=args.train_attacker_projection_lr)
+	elif args.train_attacker == "gradient_batch_warmstart":
+		attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, projection_stop_threshold=args.train_attacker_projection_stop_threshold, projection_lr=args.train_attacker_projection_lr)
 
 	# Create test attacker
 	if args.test_attacker == "basic":
 		test_attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.test_attacker == "gradient_batch":
 		test_attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, lr=args.test_attacker_lr, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
+	elif args.test_attacker == "gradient_batch_warmstart":
+		test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, lr=args.test_attacker_lr, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
 
 	# Pass everything to Trainer
-	# trainer = Trainer(args, logger, attacker, test_attacker)
-	# trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
+	trainer = Trainer(args, logger, attacker, test_attacker)
+	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
@@ -385,7 +401,6 @@ if __name__ == "__main__":
 	args = parser()
 	torch.manual_seed(args.random_seed)
 	np.random.seed(args.random_seed)
-	# IPython.embed()
 	main(args)
 
 

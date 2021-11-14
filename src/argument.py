@@ -1,5 +1,5 @@
 import argparse
-
+import math
 
 def parser():
 	# Problem
@@ -10,13 +10,17 @@ def parser():
 	parser.add_argument('--phi_nn_dimension', default="6", type=str, help='specify the hidden dimension')
 	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
 
-	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'])
+	# parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'])
+	parser.add_argument('--max_angular_velocity', default=15.0, type=float)
+	parser.add_argument('--max_theta', default=math.pi/4.0, type=float)
+	parser.add_argument('--max_force', default=30.0, type=float)
+
 	parser.add_argument('--objective_volume_weight', default=1.0, type=float, help='the weight on the volume term')
 
 	parser.add_argument('--g_input_is_xy', action='store_true')
 	###################################################################################################################################
 	# Attacker: train
-	parser.add_argument('--train_attacker', default='gradient_batch', choices=['basic', 'gradient_batch'])
+	parser.add_argument('--train_attacker', default='gradient_batch', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart'])
 
 	# Gradient batch attacker
 	parser.add_argument('--train_attacker_n_samples', default=20, type=int)
@@ -27,7 +31,7 @@ def parser():
 	# parser.add_argument('--train_attacker_adaptive_lr', action='store_true')
 	############################################################################
 	# Attacker: test
-	parser.add_argument('--test_attacker', default='gradient_batch', choices=['basic', 'gradient_batch'])
+	parser.add_argument('--test_attacker', default='gradient_batch', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart'])
 
 	# Gradient batch attacker
 	parser.add_argument('--test_attacker_n_samples', default=30, type=int)
@@ -42,6 +46,8 @@ def parser():
 	parser.add_argument('--trainer_stopping_condition', default=['early_stopping'], choices=['n_steps', 'early_stopping'])
 	parser.add_argument('--trainer_early_stopping_patience', default=100, type=int)
 	parser.add_argument('--trainer_n_steps', default=1500, type=int, help='if stopping condition is n_steps, specify the number here')
+	parser.add_argument('--trainer_lr', default=1e-3, type=float)
+	parser.add_argument('--train_mode', default='dG', choices=['dG', 'dS'])
 
 	# Saving/logging
 	parser.add_argument('--random_seed', default=1, type=int)

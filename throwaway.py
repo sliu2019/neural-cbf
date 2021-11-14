@@ -208,7 +208,7 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	# plot_range_x = [-0.5, 0.5] # TODO [-math.pi, math.pi]
 	# plot_range_y = [-5, -1] # TODO: [-5, 5]
 	plot_range_x = [-math.pi, math.pi]
-	plot_range_y = [-5, 5]
+	plot_range_y = [-15, 15]
 	###################################
 	# IPython.embed()
 	delta = 0.01
@@ -472,7 +472,7 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 
 	# Plot attacks
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
-	attacks_init, attacks, best_attack, obj_vals = test_attacker.opt(objective_fn, phi_fn, test=True, mode="dS") # TODO
+	attacks_init, attacks, best_attack, obj_vals = test_attacker.opt(objective_fn, phi_fn, debug=True, mode="dS") # TODO
 	obj_vals = obj_vals.detach().cpu().numpy()
 
 	inds = np.argsort(attacks[:, 0])
@@ -517,6 +517,87 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 	# print(all_phi)
 	# IPython.embed()
 	# print(attacks_init)
+
+def plot_2d_attacks_from_loaded(checkpoint_number, exp_name):
+	"""
+	Plots binary +/- of CBF value
+	Also plots training attacks (all of the candidate attacks, not just the maximizer)
+	"""
+	args = load_args("./log/%s/args.txt" % exp_name)
+	dev = "cpu"
+	device = torch.device(dev)
+
+	r = 2
+	x_dim = 2
+	u_dim = 1
+	x_lim = np.array([[-math.pi, math.pi], [-15, 15]], dtype=np.float32)
+
+	# Create phi
+	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
+
+	param_dict = {
+		"I": 0.021,
+		"m": 0.25,
+		"M": 1.00,
+		"l": 0.5,
+		"max_theta": math.pi / 2.0,
+		"max_force": 15.0
+	}
+
+	h_fn = H(param_dict)
+	xdot_fn = XDot(param_dict)
+	uvertices_fn = ULimitSetVertices(param_dict, device)
+
+	x_e = torch.zeros(1, x_dim)
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+
+	out = phi_fn(x_e)
+	assert out[0, -1].item() <= 0
+	# print(out)
+	# IPython.embed()
+	###################################
+	# IPython.embed()
+	delta = 0.01
+	x = np.arange(-math.pi, math.pi, delta)
+	y = np.arange(-5, 5, delta)[::-1] # need to reverse it
+	X, Y = np.meshgrid(x, y)
+
+	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+	load_model(phi_fn, phi_load_fpth)
+
+
+	##### Plotting ######
+	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
+	input = torch.from_numpy(input)
+	phi_vals = phi_fn(input)
+	S_vals = torch.max(phi_vals, dim=1)[0] # S = all phi_i <= 0
+	phi_signs = torch.sign(S_vals).detach().cpu().numpy()
+	phi_signs = np.reshape(phi_signs, X.shape)
+
+	fig, axes = plt.subplots(1, 2)
+
+	for ax in axes:
+		ax.imshow(phi_signs, extent=[-math.pi, math.pi, -15.0, 15.0])
+		ax.set_aspect("equal")
+
+		phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+		ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
+		                 colors=('k',), linewidths=(2,))
+
+	# Plot attacks
+	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+		data = pickle.load(handle)
+
+		attacks_init = data["train_attack_X_init"][checkpoint_number+1]
+		attacks = data["train_attack_X_final"][checkpoint_number+1]
+		best_attack = data["train_attacks"][checkpoint_number+1]
+
+	axes[0].scatter(attacks_init[:, 0], attacks_init[:, 1], c="tab:orange", marker="x")
+	axes[1].scatter(attacks[:, 0], attacks[:, 1], c="tab:orange", marker="x")
+	axes[1].scatter(best_attack[0], best_attack[1], marker="D", c="c")
+
+	plt.savefig("./log/%s/%s" % (exp_name, "2d_attacks_from_loaded_checkpoint_%i.png" % checkpoint_number))
+
 
 def debug_manifold_optimization(checkpoint_number, exp_name):
 	args = load_args("./log/%s/args.txt" % exp_name)
@@ -680,105 +761,39 @@ def plot_ci_over_time(exp_name):
 
 
 if __name__=="__main__":
-	# graph_log_file_2("cartpole_reduced_new_h_l_50_w_0")
-	# for checkpoint_number in np.arange(0, 350, 50):
-	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
-	# 	plot_3d(checkpoint_number, save_fnm, "cartpole_reduced_new_h_l_50_w_0")
-	# 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
-	# 	plot_2d_binary(checkpoint_number, save_fnm, "cartpole_reduced_new_h_l_50_w_0")
-
-	# for checkpoint_number in [0, 10, 320]:s
-	# for checkpoint_number in [100, 200, 250]:
-	# for checkpoint_number in range(0, 60, 10):
-
-	# for checkpoint_number in np.arange(0, 320, 50):
-	# 	print("Checkpoint number: %i" % checkpoint_number)
-	# 	exp_name = "cartpole_reduced_new_h_l_50_w_1"
-	# 	plot_2d_attacks(checkpoint_number, exp_name)
-
-	# checkpoint_number = 300
-	# exp_name = "cartpole_reduced_new_h_l_50_w_1"
-	# debug_manifold_optimization(checkpoint_number, exp_name)
+	# Testing ci > 0
+	# exp_name = "cartpole_reduced_r105"
+	# # for checkpoint_number in range(0, 6000, 500):
+	# # 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
+	# # 	plot_3d(checkpoint_number, save_fnm, exp_name)
+	# checkpoint_number = 500
+	# # save_fnm = "2d_checkpoint_%i_ci_5e-2.png" % checkpoint_number
+	# # plot_2d_binary(checkpoint_number, save_fnm, exp_name)
 	# plot_2d_attacks(checkpoint_number, exp_name)
 
-	# for checkpoint_number in np.arange(0, 320, 50):
-	# # for checkpoint_number in [0, 50]:
-	# 	exp_name = "cartpole_reduced_new_h_l_50_w_1"
-	# 	rv = test_reg_term(checkpoint_number, exp_name)
-	# 	print("Checkpoint number %i: %f" % (checkpoint_number, rv))
+	# Testing 11/9 evening: warm-start
+	# exp_name="cartpole_reduced_debug"
+	# for checkpoint_number in range(10):
+	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
 
-		# print(rv)
-		# plot_2d_attacks(checkpoint_number, exp_name)
-
-
-	# graph_log_file_2("cartpole_reduced_fixed_attacks_1")
-	# graph_log_file_2("cartpole_reduced_fixed_attacks_10")
-
-	# exp_name = "cartpole_reduced_fixed_attacks_1"
-	# for checkpoint_number in np.arange(0, 14000, 1000):
-	# 	# save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
-	# 	# plot_3d(checkpoint_number, save_fnm, exp_name)
+	# with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+	# 	data = pickle.load(handle)
 	#
+	# 	IPython.embed()
+
+	# Plotting: 11/14
+	# exp_name = "cartpole_reduced_dS"
+	# # graph_log_file_2("cartpole_reduced_dS")
+	#
+	# for checkpoint_number in range(25):
 	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
-	# 	plot_2d_binary(checkpoint_number, save_fnm, exp_name)
+	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+	# 	# plot_2d_binary(checkpoint_number, save_fnm, exp_name)
 
-	# graph_log_file_2("cartpole_reduced_fixed_attacks_1")
+	"""exp_name = "cartpole_reduced_debug"
+	save_fnm = "2d_checkoint_0.png"
+	plot_2d_binary(0, save_fnm, exp_name)"""
 
-	# exp_name = "cartpole_reduced_fixed_attacks_1"
-	# plot_ci_over_time(exp_name)
-
-	# Testing different random initializations
-	# checkpoint_number = 0
-	# rand_exps = ["cartpole_reduced_r1", "cartpole_reduced_r2", "cartpole_reduced_r3", "cartpole_reduced_r4", "cartpole_reduced_r5"]
-	# for exp_name in rand_exps:
-	# 	graph_log_file_2(exp_name)
-
-	# rand_exps = ["cartpole_reduced_r1", "cartpole_reduced_r2", "cartpole_reduced_r3", "cartpole_reduced_r4", "cartpole_reduced_r5"]
-	# checkpoint_numbers = [300, 300, 300, 300, 300]
-	# # TODO: print loss also
-	# for exp_name, checkpoint_number in zip(rand_exps, checkpoint_numbers):
-	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
-	# 	plot_2d_binary(checkpoint_number, save_fnm, exp_name)
-	#
-	# 	# graph_log_file_2(exp_name)
-	#
-	# 	# save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
-	# 	# plot_3d(checkpoint_number, save_fnm, exp_name)
-	#
-	# 	# plot_2d_attacks(checkpoint_number, exp_name)
-
-
-	# Checking 1 experiment
-	# exp_name = "cartpole_reduced_r5"
-	# for checkpoint_number in range(450, 800, 50):
-	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
-	# 	plot_2d_binary(checkpoint_number, save_fnm, exp_name)
-
-	# exp_name = "cartpole_reduced_r2"
-	# checkpoint_number = 550
-	# save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
-	# plot_2d_binary(checkpoint_number, save_fnm, exp_name)
-
-	# Checking the one with a constant bias
-	# rand_exps = ["cartpole_reduced_r101", "cartpole_reduced_r102", "cartpole_reduced_r103", "cartpole_reduced_r104", "cartpole_reduced_r105"]
-	# for exp_name in rand_exps:
-	# 	print(exp_name)
-	# 	graph_log_file_2(exp_name)
-
-	# exp_name = "cartpole_reduced_r105"
-	# for checkpoint_number in range(0, 6000, 500):
-	# 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
-	# 	plot_3d(checkpoint_number, save_fnm, exp_name)
-	#
-	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
-	# 	plot_2d_binary(checkpoint_number, save_fnm, exp_name)
-
-	# Testing ci > 0
-	exp_name = "cartpole_reduced_r105"
-	# for checkpoint_number in range(0, 6000, 500):
-	# 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
-	# 	plot_3d(checkpoint_number, save_fnm, exp_name)
-	checkpoint_number = 500
-	# save_fnm = "2d_checkpoint_%i_ci_5e-2.png" % checkpoint_number
-	# plot_2d_binary(checkpoint_number, save_fnm, exp_name)
-	plot_2d_attacks(checkpoint_number, exp_name)
+	exp_name = "cartpole_reduced_debug_warmstart"
+	for checkpoint_number in range(10):
+		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)

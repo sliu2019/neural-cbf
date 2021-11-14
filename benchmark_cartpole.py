@@ -460,6 +460,7 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "
 		#         5,  3,  7, 15, 16, 27, 17,  9, 28, 13, 22, 20, 26])
 
 		print(np.argsort(max_phii)[::-1])
+		print(np.max(x_experiment[:, -1]))
 		IPython.embed()
 	############################################################################################
 	# print("Before FTC G")
@@ -573,7 +574,7 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "
 if __name__ == "__main__":
 	checkpoint_number = 320 # TODO
 	exp_name = "cartpole_reduced_new_h_l_50_w_1"
-	phi_fn = load_trained_cbf(exp_name, checkpoint_number)
+	# phi_fn = load_trained_cbf(exp_name, checkpoint_number)
 	save_fldrnm = "%s_%i" % (exp_name, checkpoint_number)
 
 	from src.problems.cartpole_reduced import H, XDot
@@ -587,7 +588,14 @@ if __name__ == "__main__":
 
 	# print("make sure phi works!")
 	# IPython.embed()
-	run_benchmark(phi_fn, other_phi_fn, save_fldrnm, ["FI"], n_x0=30)
+	# run_benchmark(phi_fn, other_phi_fn, save_fldrnm, ["FI"], n_x0=30)
+
+	xdot_fn_numpy = XDot_numpy(param_dict)
+	simulator = Cartpole_Simulator(xdot_fn_numpy, param_dict)
+	x0 = [0, 0, 0, 1.0]
+	x_rollout, u_rollout, u_preclip_rollout = simulator.simulate_rollout(x0, None)
+	print(np.max(x_rollout[:, -1]))
+	IPython.embed()
 
 
 
