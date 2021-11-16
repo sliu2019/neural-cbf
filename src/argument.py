@@ -55,8 +55,10 @@ def parser():
 	parser.add_argument('--log_root', default='log',
 	                    help='the directory to save the logs or other imformations (e.g. images)')
 	parser.add_argument('--model_root', default='checkpoint', help='the directory to save the models')
-	parser.add_argument('--n_checkpoint_step', type=int, default=10,
+	parser.add_argument('--n_model_checkpoint_step', type=int, default=10,
 	                    help='number of iterations to save a checkpoint')
+	parser.add_argument('--n_data_checkpoint_step', type=int, default=10,
+	                    help='number of iterations to compute test loss and save data')
 
 	# TODO: add lr for ci or Adam option; also for projection, etc.
 

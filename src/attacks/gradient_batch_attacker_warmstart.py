@@ -18,7 +18,7 @@ class GradientBatchWarmstartAttacker():
                  stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
                  lr=1e-3, \
                  p_random=0.3,\
-                 projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=False):
+                 projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=True): # TODO: verbose
         vars = locals()  # dict of local names
         self.__dict__.update(vars)  # __dict__ holds and object's attributes
         del self.__dict__["self"]  # don't need `self`
@@ -61,7 +61,8 @@ class GradientBatchWarmstartAttacker():
             i += 1
             t_now = time.perf_counter()
             if torch.max(loss) < self.projection_stop_threshold:
-                # print("reprojection exited before timeout in %i steps" % i)
+                # if self.verbose:
+                #     print("reprojection exited before timeout in %i steps" % i)
                 break
             elif (t_now - t1) > self.projection_time_limit:
                 # print("reprojection exited on timeout")
@@ -70,6 +71,13 @@ class GradientBatchWarmstartAttacker():
         for x_mem in x_list:
             x_mem.requires_grad = False
         rv_x = torch.cat(x_list)
+
+        if self.verbose:
+            # if torch.max(loss) < self.projection_stop_threshold:
+            #     print("Yes, on manifold")
+            # else:
+            if torch.max(loss) > self.projection_stop_threshold:
+                print("Not on manifold, %f" % (torch.max(loss).item()))
         return rv_x
 
     def step(self, objective_fn, phi_fn, x, mode="dG"):
@@ -90,19 +98,19 @@ class GradientBatchWarmstartAttacker():
         weights = obj_grad.unsqueeze(1).bmm(normal_to_manifold.unsqueeze(2))[:, 0]
         proj_obj_grad = obj_grad - weights*normal_to_manifold
 
-        if self.verbose:
-            print("unprojected grad:", obj_grad)
-            print("projected grad: ", proj_obj_grad)
+        # if self.verbose:
+        #     print("unprojected grad:", obj_grad)
+        #     print("projected grad: ", proj_obj_grad)
 
         # Take a step
         x_new = x - self.lr*proj_obj_grad
 
         t1 = time.perf_counter()
-        if self.verbose:
-            print("After step:", x_new)
+        # if self.verbose:
+        #     print("After step:", x_new)
         x_new = self.project(phi_fn, x_new)
-        if self.verbose:
-            print("After reprojection", x_new)
+        # if self.verbose:
+        #     print("After reprojection", x_new)
 
         # TODO: hard-coded for reduced cartpole
         x_new[:, 0] = torch.atan2(torch.sin(x_new[:, 0]), torch.cos(x_new[:, 0]))
@@ -234,6 +242,7 @@ class GradientBatchWarmstartAttacker():
     def opt(self, objective_fn, phi_fn, debug=False, mode="dG"):
 
         # print("Opt mode: ", mode)
+        t0 = time.perf_counter()
         if self.X_saved is None:
             # print("here")
             X_init = self.sample_points_on_boundary(phi_fn, self.n_samples, mode=mode)
@@ -248,14 +257,17 @@ class GradientBatchWarmstartAttacker():
             X_reuse_init = self.project(phi_fn, X_reuse_init)
 
             X_init = torch.cat([X_random_init, X_reuse_init], axis=0)
+        t1 = time.perf_counter()
 
         X = X_init.clone()
         i = 0
         early_stopping = EarlyStoppingBatch(self.n_samples, patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta)
-
+        step_times = []
+        tstart = time.perf_counter()
         while True:
-            # print(i)
+            t2 = time.perf_counter()
             X = self.step(objective_fn, phi_fn, X, mode=mode)
+            t3 = time.perf_counter()
 
             if self.stopping_condition == "n_steps":
                 if (i > self.max_n_steps):
@@ -267,8 +279,11 @@ class GradientBatchWarmstartAttacker():
                 if early_stopping.early_stop:
                     break
                 elif i > 400: # Hard-coded n_{max iter}
+                    print("Attacker exceeded time limit")
                     break
             i += 1
+            step_times.append((t3-t2))
+        tend = time.perf_counter()
 
         # Save for warmstart
         self.X_saved = X
@@ -277,6 +292,11 @@ class GradientBatchWarmstartAttacker():
         # Returning a single attack
         obj_vals = objective_fn(X)
         max_ind = torch.argmax(obj_vals)
+
+        if self.verbose:
+            print("Init time: %f s" % (t1-t0))
+            print("Per step time: %f s" % (np.mean(step_times)))
+            print("Total step time: %f s" % (tend-tstart))
 
         if not debug:
             x = X[max_ind]

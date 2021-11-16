@@ -331,14 +331,15 @@ def plot_3d(checkpoint_number, save_fnm, exp_name):
 	# IPython.embed()
 	delta = 0.1
 	x = np.arange(-math.pi, math.pi, delta)
-	y = np.arange(-5, 5, delta)[::-1] # need to reverse it
+	y = np.arange(-15, 15, delta)[::-1] # need to reverse it
 	X, Y = np.meshgrid(x, y)
 
 	# phi_load_fpth = "./checkpoint/cartpole_reduced_exp1a/checkpoint_69.pth"
 	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
 	load_model(phi_fn, phi_load_fpth)
 
-
+	# print(phi_fn.a) # TODO
+	# print(phi_fn.ci)
 	##### Testing ######
 	# state_dict = phi_fn.beta_net.state_dict()  # 0.weight/bias and 2.weight/bias
 	# # print(torch.mean(state_dict["4.weight"]))
@@ -362,7 +363,7 @@ def plot_3d(checkpoint_number, save_fnm, exp_name):
 	# fig, ax = plt.subplots(projection="3d")
 	# ax.imshow(phi_signs, extent=[-math.pi, math.pi, -5.0, 5.0])
 	# IPython.embed()
-	ax.set_ylim(-5.0, 5.0)
+	ax.set_ylim(-15.0, 15.0)
 	ax.set_xlim(-math.pi, math.pi)
 	ax.plot_surface(X, Y, Z, cmap="autumn_r", lw=0.5, rstride=1, cstride=1, alpha=0.75)
 	# ax.contour(X, Y, Z, 10, lw=3, cmap="autumn_r", linestyles="solid", offset=-1)
@@ -375,7 +376,7 @@ def plot_3d(checkpoint_number, save_fnm, exp_name):
 	# ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
 	#                  colors=('k',), linewidths=(2,))
 	plt.savefig("./log/%s/%s" % (exp_name, save_fnm))
-
+	plt.clf()
 	# plt.show()
 
 def plot_2d_attacks(checkpoint_number, exp_name):
@@ -558,8 +559,9 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name):
 	###################################
 	# IPython.embed()
 	delta = 0.01
+	# delta = 0.005
 	x = np.arange(-math.pi, math.pi, delta)
-	y = np.arange(-5, 5, delta)[::-1] # need to reverse it
+	y = np.arange(-15, 15, delta)[::-1] # need to reverse it
 	X, Y = np.meshgrid(x, y)
 
 	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
@@ -597,7 +599,7 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name):
 	axes[1].scatter(best_attack[0], best_attack[1], marker="D", c="c")
 
 	plt.savefig("./log/%s/%s" % (exp_name, "2d_attacks_from_loaded_checkpoint_%i.png" % checkpoint_number))
-
+	plt.clf()
 
 def debug_manifold_optimization(checkpoint_number, exp_name):
 	args = load_args("./log/%s/args.txt" % exp_name)
@@ -795,5 +797,18 @@ if __name__=="__main__":
 	plot_2d_binary(0, save_fnm, exp_name)"""
 
 	exp_name = "cartpole_reduced_debug_warmstart"
-	for checkpoint_number in range(10):
+	# for checkpoint_number in range(10):
+	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+
+	# TODO: now the test losses are every n steps, not every step. This will change plotting
+
+	# Debug warmstart
+	# graph_log_file_2(exp_name)
+
+	# for checkpoint_number in range(25):
+	for checkpoint_number in np.arange(0, 550, 25):
 		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+
+	# for checkpoint_number in np.arange(0, 550, 25):
+	# 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
+	# 	plot_3d(checkpoint_number, save_fnm, exp_name)
