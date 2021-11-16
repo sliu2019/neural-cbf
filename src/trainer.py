@@ -47,6 +47,7 @@ class Trainer():
 		train_loss_debug = []
 		train_attack_X_init = []
 		train_attack_X_final = []
+		train_attack_X_obj_vals = []
 		ci_grad = []
 		a_grad = []
 		# ci_lr = 1e-4
@@ -59,7 +60,7 @@ class Trainer():
 		save_model(phi_fn, file_name)
 		while True:
 			# Inner min
-			X_init, X, x, _ = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode)
+			X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode)
 
 			# Outer max
 			optimizer.zero_grad()
@@ -107,6 +108,7 @@ class Trainer():
 			X_numpy = X.detach().cpu().numpy()
 			train_attack_X_init.append(X_init_numpy)
 			train_attack_X_final.append(X_numpy)
+			train_attack_X_obj_vals.append(X_obj_vals)
 			a_grad.append(a.grad)
 			ci_grad.append(ci.grad)
 
@@ -115,11 +117,20 @@ class Trainer():
 			train_attacks.append(train_attack_numpy)
 
 			# Saving at every _ iterations
-			if _iter % self.args.n_model_checkpoint_step == 0:
+			if _iter % self.args.n_checkpoint_step == 0:
 				file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 				save_model(phi_fn, file_name)
 
-			if _iter % self.args.n_data_checkpoint_step == 0:
+				# save data too
+				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "timings": timings, "train_attacks": train_attacks, "train_loss_debug": train_loss_debug, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "a_grad":a_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals}
+				self.logger.info(f'train loss: {objective_value:.3f}%')
+				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
+
+				print("Saving at: ", self.data_save_fpth)
+				with open(self.data_save_fpth, 'wb') as handle:
+					pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+			if _iter % self.args.n_test_loss_step == 0:
 				# compute test loss
 				t1 = time.perf_counter()
 				test_attack_loss = self.test(phi_fn, objective_fn)
@@ -135,15 +146,6 @@ class Trainer():
 				test_attack_losses.append(test_attack_loss)
 				test_reg_losses.append(test_reg_loss)
 				test_losses.append(test_loss)
-
-				# save data too
-				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "timings": timings, "train_attacks": train_attacks, "train_loss_debug": train_loss_debug, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "a_grad":a_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses}
-				self.logger.info(f'train loss: {objective_value:.3f}%')
-				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
-
-				print("Saving at: ", self.data_save_fpth)
-				with open(self.data_save_fpth, 'wb') as handle:
-					pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 			# Rest of print output
 			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')

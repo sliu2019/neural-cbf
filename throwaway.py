@@ -600,6 +600,7 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name):
 
 	plt.savefig("./log/%s/%s" % (exp_name, "2d_attacks_from_loaded_checkpoint_%i.png" % checkpoint_number))
 	plt.clf()
+	plt.close()
 
 def debug_manifold_optimization(checkpoint_number, exp_name):
 	args = load_args("./log/%s/args.txt" % exp_name)
@@ -796,7 +797,7 @@ if __name__=="__main__":
 	save_fnm = "2d_checkoint_0.png"
 	plot_2d_binary(0, save_fnm, exp_name)"""
 
-	exp_name = "cartpole_reduced_debug_warmstart"
+	# exp_name = "cartpole_reduced_debug_warmstart"
 	# for checkpoint_number in range(10):
 	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
 
@@ -806,9 +807,21 @@ if __name__=="__main__":
 	# graph_log_file_2(exp_name)
 
 	# for checkpoint_number in range(25):
-	for checkpoint_number in np.arange(0, 550, 25):
-		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+	# for checkpoint_number in np.arange(0, 550, 25):
+	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
 
 	# for checkpoint_number in np.arange(0, 550, 25):
 	# 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
 	# 	plot_3d(checkpoint_number, save_fnm, exp_name)
+
+	# Plotting 11/16
+	# Bug fix on warmstart, plus reduced projection tolerance
+	# exp_name = "cartpole_reduced_throwaway"
+	# for checkpoint_number in np.arange(0, 20):
+	# # for checkpoint_number in np.arange(20):
+	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+
+	# Reducing n_steps
+	exp_name = "cartpole_reduced_throwaway_2"
+	for checkpoint_number in np.arange(0, 130, 10):
+		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)

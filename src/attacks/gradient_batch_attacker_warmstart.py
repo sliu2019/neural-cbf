@@ -17,8 +17,8 @@ class GradientBatchWarmstartAttacker():
     def __init__(self, x_lim, device, logger, n_samples=20, \
                  stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
                  lr=1e-3, \
-                 p_random=0.3,\
-                 projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=True): # TODO: verbose
+                 p_reuse=0.7,\
+                 projection_tolerance=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=True): # TODO: verbose
         vars = locals()  # dict of local names
         self.__dict__.update(vars)  # __dict__ holds and object's attributes
         del self.__dict__["self"]  # don't need `self`
@@ -41,6 +41,12 @@ class GradientBatchWarmstartAttacker():
         self.X_saved = None
         self.obj_vals_saved = None
 
+        # TODO: for debug only
+        self.n_times_called = 0
+
+        # print(self.projection_tolerance)
+        # IPython.embed()
+
     def project(self, phi_fn, x):
         # Until convergence
         i = 0
@@ -60,12 +66,12 @@ class GradientBatchWarmstartAttacker():
 
             i += 1
             t_now = time.perf_counter()
-            if torch.max(loss) < self.projection_stop_threshold:
+            if torch.max(loss) < self.projection_tolerance:
                 # if self.verbose:
                 #     print("reprojection exited before timeout in %i steps" % i)
                 break
             elif (t_now - t1) > self.projection_time_limit:
-                # print("reprojection exited on timeout")
+                print("reprojection exited on timeout")
                 break
 
         for x_mem in x_list:
@@ -73,10 +79,10 @@ class GradientBatchWarmstartAttacker():
         rv_x = torch.cat(x_list)
 
         if self.verbose:
-            # if torch.max(loss) < self.projection_stop_threshold:
+            # if torch.max(loss) < self.projection_tolerance:
             #     print("Yes, on manifold")
             # else:
-            if torch.max(loss) > self.projection_stop_threshold:
+            if torch.max(loss) > self.projection_tolerance:
                 print("Not on manifold, %f" % (torch.max(loss).item()))
         return rv_x
 
@@ -180,8 +186,11 @@ class GradientBatchWarmstartAttacker():
                 left_val = mid_val
 
             # Use this approach or the one below to prevent infinite loops
-            # Approach #1
-            if np.abs(left_weight - right_weight) < 1e-3:
+            # Approach #1: previously used for discontinuous phi, but we shouldn't have discont. phi
+            # if np.abs(left_weight - right_weight) < 1e-3:
+            #     intersection_point = p1 + left_weight*diff
+            #     break
+            if max(abs(left_val), abs(right_val)) < self.projection_tolerance:
                 intersection_point = p1 + left_weight*diff
                 break
             t1 = time.perf_counter()
@@ -240,6 +249,7 @@ class GradientBatchWarmstartAttacker():
         return samples
 
     def opt(self, objective_fn, phi_fn, debug=False, mode="dG"):
+        self.n_times_called += 1 # TODO: debug
 
         # print("Opt mode: ", mode)
         t0 = time.perf_counter()
@@ -248,15 +258,46 @@ class GradientBatchWarmstartAttacker():
             X_init = self.sample_points_on_boundary(phi_fn, self.n_samples, mode=mode)
         else:
             # IPython.embed()
-            n_random_samples = int(self.n_samples*self.p_random)
+            """n_random_samples = int(self.n_samples*self.p_random)
             n_reuse_samples = self.n_samples - n_random_samples
+ 
             X_random_init = self.sample_points_on_boundary(phi_fn, n_random_samples)
 
             inds = torch.argsort(self.obj_vals_saved, axis=0, descending=True).flatten()
             X_reuse_init = self.X_saved[inds[:n_reuse_samples]]
             X_reuse_init = self.project(phi_fn, X_reuse_init)
 
+            X_init = torch.cat([X_random_init, X_reuse_init], axis=0)"""
+
+            # n_random_samples = int(self.n_samples * self.p_random)
+            n_target_reuse_samples = int(self.n_samples*self.p_reuse)
+
+            inds = torch.argsort(self.obj_vals_saved, axis=0, descending=True).flatten()
+
+            # IPython.embed()
+            inds_distinct = [inds[0]]
+            for ind in inds[1:]:
+                diff = self.X_saved[torch.tensor(inds_distinct)] - self.X_saved[ind]
+                distances = torch.norm(diff.view(-1, self.x_dim), dim=1)
+                if torch.any(distances <= 1e-1).item(): # TODO: set this
+                    print("passed")
+                    continue
+                inds_distinct.append(ind)
+                if len(inds_distinct) >= n_target_reuse_samples:
+                    break
+
+            # if self.n_times_called > 13:
+            #     IPython.embed()
+            # IPython.embed()
+            n_reuse_samples = len(inds_distinct)
+            n_random_samples= self.n_samples - n_reuse_samples
+            print("Actual percentage reuse: %f" % ((n_reuse_samples/self.n_samples)*100))
+            X_reuse_init = self.X_saved[torch.tensor(inds_distinct)]
+            X_reuse_init = self.project(phi_fn, X_reuse_init)
+            X_random_init = self.sample_points_on_boundary(phi_fn, n_random_samples)
+
             X_init = torch.cat([X_random_init, X_reuse_init], axis=0)
+
         t1 = time.perf_counter()
 
         X = X_init.clone()
@@ -269,12 +310,11 @@ class GradientBatchWarmstartAttacker():
             X = self.step(objective_fn, phi_fn, X, mode=mode)
             t3 = time.perf_counter()
 
+            obj_vals = objective_fn(X.view(-1, self.x_dim))
             if self.stopping_condition == "n_steps":
                 if (i > self.max_n_steps):
                     break
-            elif self.stopping_condition == "early_stopping":
-                obj_vals = objective_fn(X.view(-1, self.x_dim))
-
+            elif self.stopping_condition == "early_stopping": # Note: the stopping criteria is so strict that this is effectively the same as using n_steps = 400
                 early_stopping(obj_vals)
                 if early_stopping.early_stop:
                     break

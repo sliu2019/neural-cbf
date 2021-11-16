@@ -358,17 +358,17 @@ def main(args):
 	if args.train_attacker == "basic":
 		attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.train_attacker == "gradient_batch":
-		attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, projection_stop_threshold=args.train_attacker_projection_stop_threshold, projection_lr=args.train_attacker_projection_lr)
+		attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr)
 	elif args.train_attacker == "gradient_batch_warmstart":
-		attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, projection_stop_threshold=args.train_attacker_projection_stop_threshold, projection_lr=args.train_attacker_projection_lr)
+		attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr)
 
 	# Create test attacker
 	if args.test_attacker == "basic":
 		test_attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
 	elif args.test_attacker == "gradient_batch":
-		test_attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, lr=args.test_attacker_lr, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
+		test_attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
 	elif args.test_attacker == "gradient_batch_warmstart":
-		test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, lr=args.test_attacker_lr, projection_stop_threshold=args.test_attacker_projection_stop_threshold, projection_lr=args.test_attacker_projection_lr)
+		test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, max_n_steps=args.test_attacker_max_n_steps, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
 
 	# Pass everything to Trainer
 	trainer = Trainer(args, logger, attacker, test_attacker)

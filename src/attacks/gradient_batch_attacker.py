@@ -17,7 +17,7 @@ class GradientBatchAttacker():
 	def __init__(self, x_lim, device, logger, n_samples=20, \
 	             stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
 	             lr=1e-3, \
-	             projection_stop_threshold=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=False):
+	             projection_tolerance=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=False):
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
@@ -68,31 +68,31 @@ class GradientBatchAttacker():
 
 			i += 1
 			t_now = time.perf_counter()
-			if torch.max(loss) < self.projection_stop_threshold:
+			if torch.max(loss) < self.projection_tolerance:
 				# print("reprojection exited before timeout in %i steps" % i)
 				break
 			elif (t_now - t1) > self.projection_time_limit:
 				# print("reprojection exited on timeout")
 				break
 
-			"""elif (time.perf_counter() - t1) > self.projection_time_limit and (torch.min(loss) <= self.projection_stop_threshold):
+			"""elif (time.perf_counter() - t1) > self.projection_time_limit and (torch.min(loss) <= self.projection_tolerance):
 				# In case projection fails or takes too long on some samples
 				# Keeps the same size X
 				# Replace unprojected x with a projected x
 				IPython.embed()
 				projected_x = x[torch.argmin(loss)]
-				mask = loss > self.projection_stop_threshold
+				mask = loss > self.projection_tolerance
 				mask = mask.type(torch.float32).view(x.shape[0], 1)
 				inv_mask = (1-mask)
 				print("inv_mask")
 				print(inv_mask)
 				x = inv_mask*x + mask.mm(projected_x.unsqueeze(0))
 				break
-			elif (time.perf_counter() - t1) > self.projection_time_limit and (torch.min(loss) > self.projection_stop_threshold):
+			elif (time.perf_counter() - t1) > self.projection_time_limit and (torch.min(loss) > self.projection_tolerance):
 				print("projected: ", x)
 				print("loss: ", loss)
 				print("min loss: ", torch.min(loss))
-				print(self.projection_stop_threshold)
+				print(self.projection_tolerance)
 				IPython.embed() # TODO: for an actual run
 				raise ValueError('Timed out because of non-convergence of projection')"""
 

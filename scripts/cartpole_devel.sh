@@ -35,3 +35,8 @@ python main.py --affix debug_warmstart --train_attacker gradient_batch_warmstart
 
 # Monday 11/15
 python main.py --affix throwaway --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --test_attacker gradient_batch --test_attacker_n_samples 50 --n_model_checkpoint_step 1 --n_data_checkpoint_step 1
+
+# Tuesday 11/16
+#python main.py --affix throwaway --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --test_attacker gradient_batch --test_attacker_n_samples 50 --n_checkpoint_step 1 --n_test_loss_step 100 --train_attacker_projection_tolerance 1e-2
+
+python main.py --affix throwaway_2 --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --test_attacker gradient_batch --test_attacker_n_samples 50 --n_checkpoint_step 1 --n_test_loss_step 100 --train_attacker_max_n_steps 200

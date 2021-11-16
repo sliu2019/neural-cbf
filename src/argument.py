@@ -24,8 +24,9 @@ def parser():
 
 	# Gradient batch attacker
 	parser.add_argument('--train_attacker_n_samples', default=20, type=int)
-	parser.add_argument('--train_attacker_stopping_condition', default='early_stopping', choices=['n_steps', 'early_stopping'])
-	parser.add_argument('--train_attacker_projection_stop_threshold', default=1e-1, type=float, help='when to consider a point "projected"')
+	parser.add_argument('--train_attacker_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping'])
+	parser.add_argument('--train_attacker_max_n_steps', default=200, type=int) # TODO
+	parser.add_argument('--train_attacker_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"')
 	parser.add_argument('--train_attacker_projection_lr', default=1e-4, type=float)
 	parser.add_argument('--train_attacker_lr', default=1e-3, type=float)
 	# parser.add_argument('--train_attacker_adaptive_lr', action='store_true')
@@ -35,8 +36,9 @@ def parser():
 
 	# Gradient batch attacker
 	parser.add_argument('--test_attacker_n_samples', default=30, type=int)
-	parser.add_argument('--test_attacker_stopping_condition', default='early_stopping', choices=['n_steps', 'early_stopping'])
-	parser.add_argument('--test_attacker_projection_stop_threshold', default=1e-1, type=float, help='when to consider a point "projected"')
+	parser.add_argument('--test_attacker_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping'])
+	parser.add_argument('--test_attacker_max_n_steps', default=200, type=int) # TODO
+	parser.add_argument('--test_attacker_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"')
 	parser.add_argument('--test_attacker_projection_lr', default=1e-4, type=float)
 	parser.add_argument('--test_attacker_lr', default=1e-3, type=float)
 	# parser.add_argument('--test_attacker_adaptive_lr', action='store_true')
@@ -55,9 +57,9 @@ def parser():
 	parser.add_argument('--log_root', default='log',
 	                    help='the directory to save the logs or other imformations (e.g. images)')
 	parser.add_argument('--model_root', default='checkpoint', help='the directory to save the models')
-	parser.add_argument('--n_model_checkpoint_step', type=int, default=10,
+	parser.add_argument('--n_checkpoint_step', type=int, default=10,
 	                    help='number of iterations to save a checkpoint')
-	parser.add_argument('--n_data_checkpoint_step', type=int, default=10,
+	parser.add_argument('--n_test_loss_step', type=int, default=10,
 	                    help='number of iterations to compute test loss and save data')
 
 	# TODO: add lr for ci or Adam option; also for projection, etc.
