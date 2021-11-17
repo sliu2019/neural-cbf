@@ -822,6 +822,21 @@ if __name__=="__main__":
 	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
 
 	# Reducing n_steps
+	# exp_name = "cartpole_reduced_throwaway_2"
+	# for checkpoint_number in np.arange(0, 130, 10):
+	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+
 	exp_name = "cartpole_reduced_throwaway_2"
-	for checkpoint_number in np.arange(0, 130, 10):
-		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+		data = pickle.load(handle)
+
+		d = data["train_attack_X_obj_vals"]
+		for i in np.arange(0, 130, 10):
+			# i = 0
+			obj_vals = d[i]
+			obj_vals = obj_vals.detach().cpu().numpy()
+
+			# plt.hist(obj_vals, bins='auto')
+			plt.hist(obj_vals, bins=20)
+			plt.savefig("./log/%s/%s" % (exp_name, "hist_checkpoint_%i.png" % i))
+			plt.close()

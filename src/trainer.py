@@ -26,6 +26,7 @@ class Trainer():
 		# params_no_proj = [tup[1] for tup in phi_fn.named_parameters() if tup[0] not in proj_params]
 		ci = p_dict["ci"]
 		a = p_dict["a"]
+		beta_net_0_weight = p_dict["beta_net.0.weight"]
 
 		# optimizer = optim.Adam(params_no_proj) # TODO: pending change
 		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
@@ -50,31 +51,68 @@ class Trainer():
 		train_attack_X_obj_vals = []
 		ci_grad = []
 		a_grad = []
+		grad_norms = []
 		# ci_lr = 1e-4
 		# a_lr = 1e-4
 
 		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
 
 		# TODO: remove (optional)
-		file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
-		save_model(phi_fn, file_name)
+		# file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
+		# save_model(phi_fn, file_name)
 		while True:
 			# Inner min
 			X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode)
 
-			# Outer max
-			optimizer.zero_grad()
+			if self.args.trainer_average_gradients:
+				# IPython.embed()
+				# Outer max
+				optimizer.zero_grad()
 
-			x_batch = x.view(1, -1)
-			reg_value = reg_fn()
-			attack_value = objective_fn(x_batch)[0, 0]
-			objective_value = attack_value + reg_value
-			objective_value.backward()
+				reg_value = reg_fn()
+				obj = objective_fn(X)
 
-			optimizer.step()
+				c = 0.1
+				with torch.no_grad():
+					# w = torch.nn.functional.softmax(obj, dim=0)
+					w = torch.exp(c*obj)
+					w = w/torch.sum(w)
+				attack_value = torch.dot(w.flatten(), obj.flatten())
+				objective_value = attack_value + reg_value
+				objective_value.backward()
 
+				# Logging for debugging # TODO
+				beta_net_0_weight_grad = beta_net_0_weight.grad
+				grad_norm = torch.norm(beta_net_0_weight_grad)
+				grad_norm = grad_norm.detach().cpu().detach()
+				grad_norms.append(grad_norm)
+
+				optimizer.step()
+
+				objective_value_after_step = objective_fn(X) + reg_fn()
+			else:
+				# Outer max
+				optimizer.zero_grad()
+
+				x_batch = x.view(1, -1)
+				reg_value = reg_fn()
+				attack_value = objective_fn(x_batch)[0, 0]
+				objective_value = attack_value + reg_value
+				objective_value.backward()
+
+				# Logging for debugging # TODO
+				beta_net_0_weight_grad = beta_net_0_weight.grad
+				grad_norm = torch.norm(beta_net_0_weight_grad)
+				grad_norm = grad_norm.detach().cpu().detach()
+				grad_norms.append(grad_norm)
+
+				optimizer.step()
+
+				objective_value_after_step = objective_fn(x_batch) + reg_fn()
+
+			print(grad_norms)
+			# Clipping for positive parameters
 			with torch.no_grad():
-				# manually clip
 				clipped_ci = torch.maximum(ci, torch.zeros_like(ci))  # Project to all positive
 				ci.copy_(clipped_ci)  # proper way to update
 
@@ -101,7 +139,6 @@ class Trainer():
 			train_reg_losses.append(reg_value)
 			train_losses.append(objective_value)
 
-			objective_value_after_step = objective_fn(x_batch) + reg_fn()
 			train_loss_debug.append(objective_value_after_step-objective_value)
 
 			X_init_numpy = X_init.detach().cpu().numpy()
@@ -122,7 +159,7 @@ class Trainer():
 				save_model(phi_fn, file_name)
 
 				# save data too
-				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "timings": timings, "train_attacks": train_attacks, "train_loss_debug": train_loss_debug, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "a_grad":a_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals}
+				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "timings": timings, "train_attacks": train_attacks, "train_loss_debug": train_loss_debug, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "a_grad":a_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "grad_norms": grad_norms}
 				self.logger.info(f'train loss: {objective_value:.3f}%')
 				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
 

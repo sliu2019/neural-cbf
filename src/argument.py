@@ -50,6 +50,7 @@ def parser():
 	parser.add_argument('--trainer_n_steps', default=1500, type=int, help='if stopping condition is n_steps, specify the number here')
 	parser.add_argument('--trainer_lr', default=1e-3, type=float)
 	parser.add_argument('--train_mode', default='dG', choices=['dG', 'dS'])
+	parser.add_argument('--trainer_average_gradients', action='store_true')
 
 	# Saving/logging
 	parser.add_argument('--random_seed', default=1, type=int)
