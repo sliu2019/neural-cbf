@@ -36,7 +36,7 @@ class Phi(nn.Module):
 
 		# self.sigma = nn.Parameter(1e-2*torch.rand(1)) # TODO
 		# print("################################################################")
-		# print("Initial ci: ", self.ci)
+		print("Initial ci: ", self.ci)
 		# print("Initial sig:", self.sigma)
 		# print("################################################################")
 
@@ -75,8 +75,8 @@ class Phi(nn.Module):
 		h_val = self.h_fn(x)
 
 		if self.args.g_input_is_xy: # TODO: pending change
-			beta_net_value = self.beta_net(x[:, 0]*x[:, 1])
-			beta_net_xe_value = self.beta_net(self.x_e[:, 0]*self.x_e[:, 1])
+			beta_net_value = self.beta_net(x[:, [0]]*x[:, [1]])
+			beta_net_xe_value = self.beta_net(self.x_e[:, [0]]*self.x_e[:, [1]])
 		else:
 			beta_net_value = self.beta_net(x)
 			beta_net_xe_value = self.beta_net(self.x_e)
@@ -290,32 +290,34 @@ def main(args):
 		# Create phi
 		from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
 
-		param_dict = {
-			"I": 0.021,
-			"m": 0.25,
-			"M": 1.00,
-			"l": 0.5
-		}
+		# param_dict = {
+		# 	"I": 0.021,
+		# 	"m": 0.25,
+		# 	"M": 1.00,
+		# 	"l": 0.5
+		# }
+
+		if args.physical_difficulty == 'easy': # medium length pole
+			param_dict = {
+				"I": 1.2E-3,
+				"m": 0.127,
+				"M": 1.0731,
+				"l": 0.3365
+				# "max_theta": math.pi / 2.0,
+				# "max_force": 15.0
+			}
+		elif args.physical_difficulty == 'hard': # long pole
+			param_dict = {
+				"I": 7.88E-3,
+				"m": 0.230,
+				"M": 1.0731,
+				"l": 0.6413
+				# "max_theta": math.pi / 4.0,
+				# "max_force": 1.0
+			}
+
 		param_dict["max_theta"] = args.max_theta
 		param_dict["max_force"] = args.max_force
-		# if args.physical_difficulty == 'easy':
-		# 	param_dict = {
-		# 		"I": 0.021,
-		# 		"m": 0.25,
-		# 		"M": 1.00,
-		# 		"l": 0.5,
-		# 		"max_theta": math.pi / 2.0,
-		# 		"max_force": 15.0
-		# 	}
-		# elif args.physical_difficulty == 'hard':
-		# 	param_dict = {
-		# 		"I": 0.021,
-		# 		"m": 0.25,
-		# 		"M": 1.00,
-		# 		"l": 0.5,
-		# 		"max_theta": math.pi / 4.0,
-		# 		"max_force": 1.0
-		# 	}
 
 		h_fn = H(param_dict)
 		xdot_fn = XDot(param_dict)

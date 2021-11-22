@@ -10,10 +10,10 @@ def parser():
 	parser.add_argument('--phi_nn_dimension', default="6", type=str, help='specify the hidden dimension')
 	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
 
-	# parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'])
-	parser.add_argument('--max_angular_velocity', default=15.0, type=float)
+	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole')
+	parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol
 	parser.add_argument('--max_theta', default=math.pi/4.0, type=float)
-	parser.add_argument('--max_force', default=30.0, type=float)
+	parser.add_argument('--max_force', default=22.0, type=float)
 
 	parser.add_argument('--objective_volume_weight', default=1.0, type=float, help='the weight on the volume term')
 
@@ -23,7 +23,7 @@ def parser():
 	parser.add_argument('--train_attacker', default='gradient_batch', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart'])
 
 	# Gradient batch attacker
-	parser.add_argument('--train_attacker_n_samples', default=20, type=int)
+	parser.add_argument('--train_attacker_n_samples', default=30, type=int)
 	parser.add_argument('--train_attacker_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping'])
 	parser.add_argument('--train_attacker_max_n_steps', default=200, type=int) # TODO
 	parser.add_argument('--train_attacker_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"')
@@ -35,7 +35,7 @@ def parser():
 	parser.add_argument('--test_attacker', default='gradient_batch', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart'])
 
 	# Gradient batch attacker
-	parser.add_argument('--test_attacker_n_samples', default=30, type=int)
+	parser.add_argument('--test_attacker_n_samples', default=50, type=int)
 	parser.add_argument('--test_attacker_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping'])
 	parser.add_argument('--test_attacker_max_n_steps', default=200, type=int) # TODO
 	parser.add_argument('--test_attacker_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"')
@@ -60,8 +60,8 @@ def parser():
 	parser.add_argument('--model_root', default='checkpoint', help='the directory to save the models')
 	parser.add_argument('--n_checkpoint_step', type=int, default=10,
 	                    help='number of iterations to save a checkpoint')
-	parser.add_argument('--n_test_loss_step', type=int, default=10,
-	                    help='number of iterations to compute test loss and save data')
+	parser.add_argument('--n_test_loss_step', type=int, default=-1,
+	                    help='number of iterations to compute test loss; if negative, then never')
 
 	# TODO: add lr for ci or Adam option; also for projection, etc.
 

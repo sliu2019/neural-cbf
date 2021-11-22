@@ -42,6 +42,6 @@ python main.py --affix throwaway --train_attacker gradient_batch_warmstart --tra
 #python main.py --affix throwaway_2 --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --test_attacker gradient_batch --test_attacker_n_samples 50 --n_checkpoint_step 1 --n_test_loss_step 100 --train_attacker_max_n_steps 200
 
 # Comparing gradient averaging w/ no gradient averaging
-python main.py --affix throwaway_2 --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --test_attacker gradient_batch --test_attacker_n_samples 50 --n_checkpoint_step 1 --n_test_loss_step 100 --train_attacker_max_n_steps 20 --trainer_average_gradients
+python main.py --affix debug_average_gradients --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --test_attacker gradient_batch --test_attacker_n_samples 50 --n_checkpoint_step 1 --n_test_loss_step 100 --train_attacker_max_n_steps 20 --trainer_average_gradients
 
-python main.py --affix throwaway_2 --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --test_attacker gradient_batch --test_attacker_n_samples 50 --n_checkpoint_step 1 --n_test_loss_step 100 --train_attacker_max_n_steps 20
+python main.py --affix debug_average_gradients_baseline --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --test_attacker gradient_batch --test_attacker_n_samples 50 --n_checkpoint_step 1 --n_test_loss_step 100 --train_attacker_max_n_steps 20

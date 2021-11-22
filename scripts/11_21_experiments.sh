@@ -1,0 +1,7 @@
+nohup python main.py --affix 64_64_gradient_avging_seed_2 --random_seed 2 --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --train_attacker_max_n_steps 50 --n_checkpoint_step 10 --trainer_stopping_condition n_steps --trainer_n_steps 2500 --phi_nn_dimension 64-64 --trainer_average_gradients --gpu 0 &> 64_64_gradient_avging_seed_2.out &
+
+nohup python main.py --affix 64_64_gradient_avging_seed_3 --random_seed 3 --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --train_attacker_max_n_steps 50 --n_checkpoint_step 10 --trainer_stopping_condition n_steps --trainer_n_steps 2500 --phi_nn_dimension 64-64 --trainer_average_gradients --gpu 1 &> 64_64_gradient_avging_seed_3.out &
+
+nohup python main.py --affix 64_64_gradient_avging_seed_4 --random_seed 4 --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --train_attacker_max_n_steps 50 --n_checkpoint_step 10 --trainer_stopping_condition n_steps --trainer_n_steps 2500 --phi_nn_dimension 64-64 --trainer_average_gradients --gpu 2 &> 64_64_gradient_avging_seed_4.out &
+
+nohup python main.py --affix 64_64_gradient_avging_seed_5 --random_seed 5 --train_attacker gradient_batch_warmstart --train_attacker_n_samples 30 --train_attacker_max_n_steps 50 --n_checkpoint_step 10 --trainer_stopping_condition n_steps --trainer_n_steps 2500 --phi_nn_dimension 64-64 --trainer_average_gradients --gpu 3 &> 64_64_gradient_avging_seed_5.out &

@@ -167,7 +167,7 @@ class Trainer():
 				with open(self.data_save_fpth, 'wb') as handle:
 					pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-			if _iter % self.args.n_test_loss_step == 0:
+			if (self.args.n_test_loss_step > 0) and (_iter % self.args.n_test_loss_step == 0):
 				# compute test loss
 				t1 = time.perf_counter()
 				test_attack_loss = self.test(phi_fn, objective_fn)
