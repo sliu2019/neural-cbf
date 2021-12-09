@@ -15,7 +15,10 @@ def parser():
 	parser.add_argument('--max_theta', default=math.pi/4.0, type=float)
 	parser.add_argument('--max_force', default=22.0, type=float)
 
-	parser.add_argument('--objective_volume_weight', default=1.0, type=float, help='the weight on the volume term')
+	parser.add_argument('--reg_weight', default=1.0, type=float, help='the weight on the volume term')
+	parser.add_argument('--reg_relu_weight', default=0.1, type=float)
+	parser.add_argument('--reg_sigmoid_weight', default=10.0, type=float)
+	parser.add_argument('--reg_sample_distance', default=0.1, type=float)
 
 	parser.add_argument('--g_input_is_xy', action='store_true')
 	###################################################################################################################################

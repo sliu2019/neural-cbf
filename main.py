@@ -16,6 +16,7 @@ import os, sys
 import math
 import IPython
 import time
+import pickle
 
 # from global_settings import * # TODO: comment this out before a run
 
@@ -36,7 +37,7 @@ class Phi(nn.Module):
 
 		# self.sigma = nn.Parameter(1e-2*torch.rand(1)) # TODO
 		# print("################################################################")
-		print("Initial ci: ", self.ci)
+		# print("Initial ci: ", self.ci)
 		# print("Initial sig:", self.sigma)
 		# print("################################################################")
 
@@ -194,28 +195,29 @@ class Objective(nn.Module):
 		return result
 
 class Regularizer(nn.Module):
-	def __init__(self, phi_fn, device, volume_term_weight=0.0,
-	             A_samples=None):
+	def __init__(self, phi_fn, device, reg_weight=0.0,
+	             A_samples=None, relu_weight=0.001, sigmoid_weight=10.0):
 		super().__init__()
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
 
-		assert volume_term_weight >= 0.0
-		if volume_term_weight:
+		assert reg_weight >= 0.0
+		if reg_weight:
 			assert A_samples is not None
 
 	def forward(self):
 		reg = torch.tensor(0).to(self.device)
-		if self.volume_term_weight:
+		if self.reg_weight:
 			# IPython.embed()
 			phi_value_A_samples = self.phi_fn(self.A_samples)
 			max_phi_values = torch.max(phi_value_A_samples, dim=1)[0]
 
-			sharp_sigmoid = 1.0/(1.0 + torch.exp(-10*max_phi_values)) # alpha = 10.0, instead of 1.0 as usual
-			step_on_max = -(sharp_sigmoid + 0.001*nn.functional.relu(max_phi_values)) + 1.0
+			print("Mean: %.2f, std: %.2f" % (torch.mean(max_phi_values), torch.std(max_phi_values)))
+			sharp_sigmoid = 1.0/(1.0 + torch.exp(-self.sigmoid_weight*max_phi_values)) # alpha = 10.0, instead of 1.0 as usual
+			step_on_max = -(sharp_sigmoid + self.relu_weight*nn.functional.relu(max_phi_values)) + 1.0
 
-			reg = -self.volume_term_weight*torch.mean(step_on_max)
+			reg = -self.reg_weight*torch.mean(step_on_max)
 		return reg
 
 def main(args):
@@ -324,7 +326,8 @@ def main(args):
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
 
-		n_mesh_grain = 0.75 # TODO: increase or decrease?
+		# n_mesh_grain = 0.75 # TODO: increase or decrease?
+		n_mesh_grain = args.reg_sample_distance
 		XXX = np.meshgrid(*[np.arange(r[0], r[1], n_mesh_grain) for r in x_lim])
 		A_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
 		A_samples = torch.from_numpy(A_samples.astype(np.float32))
@@ -334,6 +337,10 @@ def main(args):
 		raise NotImplementedError
 		A_samples = None
 		x_e = None
+
+	# Save param_dict
+	with open(os.path.join(log_folder, "param_dict.pkl"), 'wb') as handle:
+		pickle.dump(param_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	# Send all modules to the correct device
 	h_fn = h_fn.to(device)
@@ -349,7 +356,7 @@ def main(args):
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
 	# Create objective function
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
-	reg_fn = Regularizer(phi_fn, device, volume_term_weight=args.objective_volume_weight, A_samples=A_samples)
+	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples, relu_weight=args.reg_relu_weight, sigmoid_weight=args.reg_sigmoid_weight)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)

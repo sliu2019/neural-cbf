@@ -72,6 +72,7 @@ def graph_log_file_2(exp_name, mode='train'):
 	# exp_name = "cartpole_reduced_exp1a"
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
+		# IPython.embed()
 		timings = data["timings"]
 		# test_losses = data["test_losses"]
 		if mode == 'test':
@@ -536,19 +537,30 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name):
 	r = 2
 	x_dim = 2
 	u_dim = 1
-	x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32) # TODO
+	x_lim = np.array([[-math.pi, math.pi], [-args.max_angular_velocity, args.max_angular_velocity]], dtype=np.float32) # TODO
 
 	# Create phi
 	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
 
-	param_dict = {
-		"I": 0.021,
-		"m": 0.25,
-		"M": 1.00,
-		"l": 0.5,
-		"max_theta": math.pi / 2.0,
-		"max_force": 15.0
-	}
+	if args.physical_difficulty == 'easy':  # medium length pole
+		param_dict = {
+			"I": 1.2E-3,
+			"m": 0.127,
+			"M": 1.0731,
+			"l": 0.3365
+		}
+	elif args.physical_difficulty == 'hard':  # long pole
+		param_dict = {
+			"I": 7.88E-3,
+			"m": 0.230,
+			"M": 1.0731,
+			"l": 0.6413
+		}
+
+	param_dict["max_theta"] = args.max_theta
+	param_dict["max_force"] = args.max_force
+
+	# param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb")) # TODO: replace with this
 
 	h_fn = H(param_dict)
 	xdot_fn = XDot(param_dict)
@@ -565,8 +577,8 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name):
 	# IPython.embed()
 	delta = 0.01
 	# delta = 0.005
-	x = np.arange(-math.pi, math.pi, delta)
-	y = np.arange(-5, 5, delta)[::-1] # need to reverse it # TODO
+	x = np.arange(x_lim[0, 0], x_lim[0, 1], delta)
+	y = np.arange(x_lim[1, 0], x_lim[1, 1], delta)[::-1] # need to reverse it # TODO
 	X, Y = np.meshgrid(x, y)
 
 	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
@@ -581,17 +593,36 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name):
 	phi_signs = torch.sign(S_vals).detach().cpu().numpy()
 	phi_signs = np.reshape(phi_signs, X.shape)
 
-	fig, axes = plt.subplots(1, 2)
+	# fig, axes = plt.subplots(1, 2)
+	#
+	# for ax in axes:
+	# 	ax.imshow(phi_signs, extent=[-math.pi, math.pi, -5.0, 5.0]) # TODO
+	# 	ax.set_aspect("equal")
+	#
+	# 	phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+	# 	ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
+	# 	                 colors=('k',), linewidths=(2,))
+	#
+	# # Plot attacks
+	# with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+	# 	data = pickle.load(handle)
+	#
+	# 	attacks_init = data["train_attack_X_init"][checkpoint_number+1]
+	# 	attacks = data["train_attack_X_final"][checkpoint_number+1]
+	# 	best_attack = data["train_attacks"][checkpoint_number+1]
+	#
+	# axes[0].scatter(attacks_init[:, 0], attacks_init[:, 1], c="tab:orange", marker="x")
+	# axes[1].scatter(attacks[:, 0], attacks[:, 1], c="tab:orange", marker="x")
+	# axes[1].scatter(best_attack[0], best_attack[1], marker="D", c="c")
 
-	for ax in axes:
-		ax.imshow(phi_signs, extent=[-math.pi, math.pi, -5.0, 5.0]) # TODO
-		ax.set_aspect("equal")
+	fig = plt.figure()
+	ax = fig.add_subplot(111)
+	ax.imshow(phi_signs, extent=x_lim.flatten())
+	ax.set_aspect("equal")
+	phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+	plt.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
+	                 colors=('k',), linewidths=(2,))
 
-		phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
-		ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
-		                 colors=('k',), linewidths=(2,))
-
-	# Plot attacks
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
 
@@ -599,9 +630,8 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name):
 		attacks = data["train_attack_X_final"][checkpoint_number+1]
 		best_attack = data["train_attacks"][checkpoint_number+1]
 
-	axes[0].scatter(attacks_init[:, 0], attacks_init[:, 1], c="tab:orange", marker="x")
-	axes[1].scatter(attacks[:, 0], attacks[:, 1], c="tab:orange", marker="x")
-	axes[1].scatter(best_attack[0], best_attack[1], marker="D", c="c")
+	ax.scatter(attacks[:, 0], attacks[:, 1], c="tab:orange", marker="x")
+	ax.scatter(best_attack[0], best_attack[1], marker="D", c="c")
 
 	# IPython.embed()
 	title = "a = %.4f, k = %.4f" % (phi_fn.a[0, 0].item(), phi_fn.ci[0, 0].item())
@@ -672,52 +702,6 @@ def debug_manifold_optimization(checkpoint_number, exp_name):
 		attack_init = attacker.step(objective_fn, phi_fn, attack_init)
 	IPython.embed()
 
-def test_reg_term(checkpoint_number, exp_name):
-	args = load_args("./log/%s/args.txt" % exp_name)
-	dev = "cpu"
-	device = torch.device(dev)
-
-	r = 2
-	x_dim = 2
-	u_dim = 1
-	x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
-
-	# Create phi
-	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
-
-	param_dict = {
-		"I": 0.021,
-		"m": 0.25,
-		"M": 1.00,
-		"l": 0.5,
-		"max_theta": math.pi / 2.0,
-		"max_force": 15.0
-	}
-
-	h_fn = H(param_dict)
-	xdot_fn = XDot(param_dict)
-	# uvertices_fn = ULimitSetVertices(param_dict, device)
-	# n_samples = 50
-	# rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 1]])
-	# A_samples = torch.rand(n_samples, x_dim) * (2 * rnge) - rnge  # (n_samples, x_dim) # TODO: not torch rand, but a grid
-
-	# TODO: replace A_samples
-	n_mesh_grain = 0.75
-	XXX = np.meshgrid(*[np.arange(r[0], r[1], n_mesh_grain) for r in x_lim])
-	A_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
-	A_samples = torch.from_numpy(A_samples.astype(np.float32)).to(device)
-	# print("Num samples for A_samples: %i" % (A_samples.shape[0])) # TODO: uncomment
-
-	x_e = torch.zeros(1, x_dim)
-
-	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
-	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
-	load_model(phi_fn, phi_load_fpth)
-	reg_fn = Regularizer(phi_fn, device, volume_term_weight=1.0, A_samples=A_samples)
-
-	reg_value = reg_fn()
-	return reg_value
-
 def plot_ci_over_time(exp_name):
 	args = load_args("./log/%s/args.txt" % exp_name)
 	dev = "cpu"
@@ -770,117 +754,135 @@ def plot_ci_over_time(exp_name):
 	plt.clf()
 	plt.cla()
 
+def test_reg_term(exp_name, checkpoint_number):
+	"""
+	Compute the reg term
+	"""
+	args = load_args("./log/%s/args.txt" % exp_name)
+	dev = "cpu"
+	device = torch.device(dev)
+
+	r = 2
+	x_dim = 2
+	u_dim = 1
+	x_lim = np.array([[-math.pi, math.pi], [-args.max_angular_velocity, args.max_angular_velocity]], dtype=np.float32) # TODO
+
+	# Create phi
+	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
+
+	if args.physical_difficulty == 'easy':  # medium length pole
+		param_dict = {
+			"I": 1.2E-3,
+			"m": 0.127,
+			"M": 1.0731,
+			"l": 0.3365
+		}
+	elif args.physical_difficulty == 'hard':  # long pole
+		param_dict = {
+			"I": 7.88E-3,
+			"m": 0.230,
+			"M": 1.0731,
+			"l": 0.6413
+		}
+
+	param_dict["max_theta"] = args.max_theta
+	param_dict["max_force"] = args.max_force
+	h_fn = H(param_dict)
+	xdot_fn = XDot(param_dict)
+	uvertices_fn = ULimitSetVertices(param_dict, device)
+
+	x_e = torch.zeros(1, x_dim)
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+
+	out = phi_fn(x_e)
+	assert out[0, -1].item() <= 0
+	###################################
+	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+	load_model(phi_fn, phi_load_fpth)
+
+	n_mesh_grain = 0.1
+	XXX = np.meshgrid(*[np.arange(r[0], r[1], n_mesh_grain) for r in x_lim])
+	A_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
+	A_samples = torch.from_numpy(A_samples.astype(np.float32))
+	A_samples = A_samples.to(device)
+
+	reg_fn = Regularizer(phi_fn, device, reg_weight=1.0, A_samples=A_samples, sigmoid_weight=10.0, relu_weight=0.1) # TODO: add the other arguments here
+
+	r_value = reg_fn()
+
+	# r_value.backward()
+	# for param in phi_fn.parameters():
+	# 	print(param.grad)
+
+	return r_value
 
 if __name__=="__main__":
-	# Testing ci > 0
-	# exp_name = "cartpole_reduced_r105"
-	# # for checkpoint_number in range(0, 6000, 500):
-	# # 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
-	# # 	plot_3d(checkpoint_number, save_fnm, exp_name)
-	# checkpoint_number = 500
-	# # save_fnm = "2d_checkpoint_%i_ci_5e-2.png" % checkpoint_number
-	# # plot_2d_binary(checkpoint_number, save_fnm, exp_name)
-	# plot_2d_attacks(checkpoint_number, exp_name)
-
-	# Testing 11/9 evening: warm-start
-	# exp_name="cartpole_reduced_debug"
-	# for checkpoint_number in range(10):
-	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
-
-	# with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
-	# 	data = pickle.load(handle)
-	#
-	# 	IPython.embed()
-
-	# Plotting: 11/14
-	# exp_name = "cartpole_reduced_dS"
-	# # graph_log_file_2("cartpole_reduced_dS")
-	#
-	# for checkpoint_number in range(25):
-	# 	save_fnm = "2d_checkpoint_%i.png" % checkpoint_number
-	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
-	# 	# plot_2d_binary(checkpoint_number, save_fnm, exp_name)
-
-	"""exp_name = "cartpole_reduced_debug"
-	save_fnm = "2d_checkoint_0.png"
-	plot_2d_binary(0, save_fnm, exp_name)"""
-
-	# exp_name = "cartpole_reduced_debug_warmstart"
-	# for checkpoint_number in range(10):
-	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
-
-	# TODO: now the test losses are every n steps, not every step. This will change plotting
-
-	# Debug warmstart
-	# graph_log_file_2(exp_name)
-
-	# for checkpoint_number in range(25):
-	# for checkpoint_number in np.arange(0, 550, 25):
-	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
-
-	# for checkpoint_number in np.arange(0, 550, 25):
-	# 	save_fnm = "3d_checkpoint_%i.png" % checkpoint_number
-	# 	plot_3d(checkpoint_number, save_fnm, exp_name)
-
-	# Plotting 11/16
-	# Bug fix on warmstart, plus reduced projection tolerance
-	# exp_name = "cartpole_reduced_throwaway"
-	# for checkpoint_number in np.arange(0, 20):
-	# # for checkpoint_number in np.arange(20):
-	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
-
-	# Reducing n_steps
-	# exp_name = "cartpole_reduced_throwaway_2"
-	# for checkpoint_number in np.arange(0, 130, 10):
-	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
-
-	# exp_name = "cartpole_reduced_throwaway_2"
-	# with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
-	# 	data = pickle.load(handle)
-	#
-	# 	d = data["train_attack_X_obj_vals"]
-	# 	for i in np.arange(0, 130, 10):
-	# 		# i = 0
-	# 		obj_vals = d[i]
-	# 		obj_vals = obj_vals.detach().cpu().numpy()
-	#
-	# 		# plt.hist(obj_vals, bins='auto')
-	# 		plt.hist(obj_vals, bins=20)
-	# 		plt.savefig("./log/%s/%s" % (exp_name, "hist_checkpoint_%i.png" % i))
-	# 		plt.close()
-
-	# Check out gradient averaging
-	# exp_name = "cartpole_reduced_debug_average_gradients_baseline"
-	# # exp_name = "cartpole_reduced_debug_average_gradients"
-	# graph_log_file_2(exp_name, mode='train')
-	#
-	# for checkpoint_number in np.arange(0, 200, 10):
-	# 	plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
-
-	# exp_name = "cartpole_reduced_64_64"
-	# checkpoint_number = 0
-	# plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
-
 	# 11/19 experiment check-in
 	# graph_log_file_2("cartpole_reduced_11_18_baseline")
 	# graph_log_file_2("cartpole_reduced_64_64")
-	graph_log_file_2("cartpole_reduced_64_64_64")
+	# graph_log_file_2("cartpole_reduced_64_64_64")
 	# graph_log_file_2("cartpole_reduced_64_64_gradient_avging")
 	# graph_log_file_2("cartpole_reduced_64_64_xy")
 
-	"""exp_names = ["cartpole_reduced_11_18_baseline", "cartpole_reduced_64_64", "cartpole_reduced_64_64_64", "cartpole_reduced_64_64_gradient_avging", "cartpole_reduced_64_64_xy"]
-	n_it = [2500, 1000, 1000, 2500, 2500]
+	# exp_names = ["cartpole_reduced_11_18_baseline", "cartpole_reduced_64_64", "cartpole_reduced_64_64_64", "cartpole_reduced_64_64_gradient_avging", "cartpole_reduced_64_64_xy"]
+	# n_it = [2500, 1000, 1000, 2500, 2500]
+	#
+	# for i, exp_name in enumerate(exp_names):
+	# 	print(exp_name)
+	# 	for checkpoint_number in np.arange(0, n_it[i], 50):
+	# 		print(checkpoint_number)
+	# 		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+
+	# 11/21 experiment check-in
+	# exp_names = ["cartpole_reduced_64_64_gradient_avging_seed_2", "cartpole_reduced_64_64_gradient_avging_seed_3", "cartpole_reduced_64_64_gradient_avging_seed_4", "cartpole_reduced_64_64_gradient_avging_seed_5"]
+
+	# n_it = [2000, 500, 800, 500]
+	# for exp_name in exp_names:
+	# 	graph_log_file_2(exp_name)
+
+	# for i, exp_name in enumerate(exp_names):
+	# 	for checkpoint_number in np.arange(0, n_it[i], 50):
+	# 		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+
+	# exp_names.insert(0, "cartpole_reduced_64_64_gradient_avging")
+	# for exp_name in exp_names:
+	# 	graph_log_file_2(exp_name)
+
+	# 11/23 here
+	# checkpoint_number = 0
+	# exp_name = "cartpole_reduced_64_64_gradient_avging_seed_2"
+	#
+	# for checkpoint_number in np.arange(0, 2500, 50):
+	# 	r_value = test_reg_term(exp_name, checkpoint_number)
+	# 	# print("Reg value: ", r_value)
+
+	# exp_names = ["cartpole_reduced_64_64_gradient_avging_1", "cartpole_reduced_64_64_gradient_avging_10", "cartpole_reduced_64_64_gradient_avging_50", "cartpole_reduced_64_64_gradient_avging_100"]
+	# n_it = [600, 1000, 1000, 1000]
+	#
+	# # for exp_name in exp_names:
+	# # 	graph_log_file_2(exp_name)
+	# #
+	# # for i, exp_name in enumerate(exp_names):
+	# # 	print(exp_name)
+	# # 	for checkpoint_number in np.arange(0, n_it[i], 50):
+	# # 		print(checkpoint_number)
+	# # 		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+	#
+	# plot_2d_attacks_from_loaded(990, "cartpole_reduced_64_64_gradient_avging_50")
+
+	######################
+	exp_names = ["cartpole_reduced_64_64_40-1", "cartpole_reduced_64_64_40-2", "cartpole_reduced_64_64_64_gradient_avging_40-1", "cartpole_reduced_64_64_64_gradient_avging_40-2"]
+	n_it = [1440, 1440, 990, 980]
+
+	# exp_names = ["cartpole_reduced_64_64_gradient_avging_30-1", "cartpole_reduced_64_64_gradient_avging_30-2", "cartpole_reduced_64_64_gradient_avging_40-1", "cartpole_reduced_64_64_gradient_avging_40-2"]
+	# n_it = [1270, 720, 1430, 1420]
+
+	for exp_name in exp_names:
+		graph_log_file_2(exp_name)
 
 	for i, exp_name in enumerate(exp_names):
-		# if i < 2:
-		# 	continue
-		if i == 1:
-			continue
-		print(exp_name)
 		for checkpoint_number in np.arange(0, n_it[i], 50):
 			print(checkpoint_number)
-			plot_2d_attacks_from_loaded(checkpoint_number, exp_name)"""
+			plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
 
-	exp_name = "cartpole_reduced_64_64_64"
-	for checkpoint_number in np.arange(950, 1300, 50):
-		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+
