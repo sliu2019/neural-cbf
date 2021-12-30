@@ -29,34 +29,17 @@ class Trainer():
 		beta_net_0_weight = p_dict["beta_net.0.weight"]
 
 		if self.args.trainer_type == "Adam":
-			# TODO: adam does not work properly for projected parameters
-			# optimizer = optim.Adam(params_no_proj) # TODO: pending change
+			# TODO: need to fix this for projected parameters
+			# optimizer = optim.Adam(params_no_proj) # old
 			optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
 		elif self.args.trainer_type == "LinearLR":
 			optimizer = optim.SGD(phi_fn.parameters(), self.args.trainer_lr)
 			scheduler = optim.LinearLR(optimizer, start_factor=1.0, end_factor=0.1, total_iters=1000, verbose=True)
+			# TODO: total_iters set experimentally
 		elif self.args.trainer_type == "ExponentialLR":
 			optimizer = optim.SGD(phi_fn.parameters(), self.args.trainer_lr)
 			gamma = 0.997
 			scheduler = optim.ExponentialLR(optimizer, gamma, verbose=True)
-
-
-		"""
-		model = [Parameter(torch.randn(2, 2, requires_grad=True))]
-		optimizer = SGD(model, 0.1)
-		scheduler1 = ExponentialLR(optimizer, gamma=0.9)
-		scheduler2 = MultiStepLR(optimizer, milestones=[30,80], gamma=0.1)
-		
-		for epoch in range(20):
-		    for input, target in dataset:
-		        optimizer.zero_grad()
-		        output = model(input)
-		        loss = loss_fn(output, target)
-		        loss.backward()
-		        optimizer.step()
-		    scheduler1.step()
-		    scheduler2.step()
-		"""
 
 		_iter = 0
 		t0 = time.perf_counter()
