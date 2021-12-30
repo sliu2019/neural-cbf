@@ -9,6 +9,7 @@ def parser():
 	# Phi
 	parser.add_argument('--phi_nn_dimension', default="6", type=str, help='specify the hidden dimension')
 	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
+	parser.add_argument('--phi_nnl', default="relu", type=str)
 
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole')
 	parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol
@@ -17,7 +18,7 @@ def parser():
 
 	parser.add_argument('--reg_weight', default=1.0, type=float, help='the weight on the volume term')
 	parser.add_argument('--reg_relu_weight', default=0.1, type=float)
-	parser.add_argument('--reg_sigmoid_weight', default=10.0, type=float)
+	# parser.add_argument('--reg_sigmoid_weight', default=10.0, type=float)
 	parser.add_argument('--reg_sample_distance', default=0.1, type=float)
 
 	parser.add_argument('--g_input_is_xy', action='store_true')
@@ -54,6 +55,7 @@ def parser():
 	parser.add_argument('--trainer_lr', default=1e-3, type=float)
 	parser.add_argument('--train_mode', default='dG', choices=['dG', 'dS'])
 	parser.add_argument('--trainer_average_gradients', action='store_true')
+	parser.add_argument('--trainer_type', type=str, default="Adam")
 
 	# Saving/logging
 	parser.add_argument('--random_seed', default=1, type=int)

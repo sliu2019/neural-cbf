@@ -25,10 +25,13 @@ class Phi(nn.Module):
 	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=None):
 		# Later: args specifying how beta is parametrized
 		super().__init__()
-		vars = locals()  # dict of local names
-		self.__dict__.update(vars)  # __dict__ holds and object's attributes
+		variables = locals()  # dict of local names
+		self.__dict__.update(variables)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
 		assert r>=0
+
+		# turn Namespace into dict
+		args_dict = vars(args)
 
 		# Note: by default, it registers parameters by their variable name
 		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
@@ -52,9 +55,13 @@ class Phi(nn.Module):
 			prev_dim = self.x_dim
 		# prev_dim = self.x_dim
 
+		phi_nnl = args_dict.get("phi_nnl", "relu") # return relu if var "phi_nnl" not on namespace
 		for hidden_dim in hidden_dims:
 			net_layers.append(nn.Linear(prev_dim, hidden_dim))
-			net_layers.append(nn.ReLU())
+			if phi_nnl == "relu":
+				net_layers.append(nn.ReLU())
+			elif phi_nnl == "tanh":
+				net_layers.append(nn.Tanh())
 			prev_dim = hidden_dim
 		net_layers.append(nn.Linear(prev_dim, 1))
 		self.beta_net = nn.Sequential(*net_layers)
@@ -213,11 +220,16 @@ class Regularizer(nn.Module):
 			phi_value_A_samples = self.phi_fn(self.A_samples)
 			max_phi_values = torch.max(phi_value_A_samples, dim=1)[0]
 
-			print("Mean: %.2f, std: %.2f" % (torch.mean(max_phi_values), torch.std(max_phi_values)))
-			sharp_sigmoid = 1.0/(1.0 + torch.exp(-self.sigmoid_weight*max_phi_values)) # alpha = 10.0, instead of 1.0 as usual
-			step_on_max = -(sharp_sigmoid + self.relu_weight*nn.functional.relu(max_phi_values)) + 1.0
+			# print("Mean: %.2f, std: %.2f" % (torch.mean(max_phi_values), torch.std(max_phi_values)))
+			# sharp_sigmoid = 1.0/(1.0 + torch.exp(-self.sigmoid_weight*max_phi_values)) # alpha = 10.0, instead of 1.0 as usual
+			# step_on_max = -(sharp_sigmoid + self.relu_weight*nn.functional.relu(max_phi_values)) + 1.0
+			# reg = -self.reg_weight*torch.mean(step_on_max)
 
-			reg = -self.reg_weight*torch.mean(step_on_max)
+			shift = -(1.0 + self.relu_weight*np.log(2))# left shift
+			sigmoid = nn.functional.sigmoid(max_phi_values + shift)
+			softplus = nn.functional.softplus(max_phi_values + shift)
+			differentiable_step = -(sigmoid + self.relu_weight*softplus) + 1.0
+
 		return reg
 
 def main(args):

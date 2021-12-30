@@ -22,14 +22,42 @@ class Trainer():
 
 	def train(self, objective_fn, reg_fn, phi_fn, xdot_fn):
 		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
-		# proj_params = ["ci", "a"]
-		# params_no_proj = [tup[1] for tup in phi_fn.named_parameters() if tup[0] not in proj_params]
+		proj_params = ["ci", "a"]
+		params_no_proj = [tup[1] for tup in phi_fn.named_parameters() if tup[0] not in proj_params]
 		ci = p_dict["ci"]
 		a = p_dict["a"]
 		beta_net_0_weight = p_dict["beta_net.0.weight"]
 
-		# optimizer = optim.Adam(params_no_proj) # TODO: pending change
-		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
+		if self.args.trainer_type == "Adam":
+			# TODO: adam does not work properly for projected parameters
+			# optimizer = optim.Adam(params_no_proj) # TODO: pending change
+			optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
+		elif self.args.trainer_type == "LinearLR":
+			optimizer = optim.SGD(phi_fn.parameters(), self.args.trainer_lr)
+			scheduler = optim.LinearLR(optimizer, start_factor=1.0, end_factor=0.1, total_iters=1000, verbose=True)
+		elif self.args.trainer_type == "ExponentialLR":
+			optimizer = optim.SGD(phi_fn.parameters(), self.args.trainer_lr)
+			gamma = 0.997
+			scheduler = optim.ExponentialLR(optimizer, gamma, verbose=True)
+
+
+		"""
+		model = [Parameter(torch.randn(2, 2, requires_grad=True))]
+		optimizer = SGD(model, 0.1)
+		scheduler1 = ExponentialLR(optimizer, gamma=0.9)
+		scheduler2 = MultiStepLR(optimizer, milestones=[30,80], gamma=0.1)
+		
+		for epoch in range(20):
+		    for input, target in dataset:
+		        optimizer.zero_grad()
+		        output = model(input)
+		        loss = loss_fn(output, target)
+		        loss.backward()
+		        optimizer.step()
+		    scheduler1.step()
+		    scheduler2.step()
+		"""
+
 		_iter = 0
 		t0 = time.perf_counter()
 
@@ -52,8 +80,9 @@ class Trainer():
 		ci_grad = []
 		a_grad = []
 		grad_norms = []
-		# ci_lr = 1e-4
-		# a_lr = 1e-4
+
+		ci_lr = 1e-4
+		a_lr = 1e-4
 
 		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
 
@@ -64,11 +93,12 @@ class Trainer():
 			# Inner min
 			X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode)
 
-			if self.args.trainer_average_gradients:
-				# IPython.embed()
-				# Outer max
-				optimizer.zero_grad()
+			optimizer.zero_grad()
+			ci.grad = None # TODO
+			a.grad = None
 
+			if self.args.trainer_average_gradients:
+				# Outer max
 				reg_value = reg_fn()
 				obj = objective_fn(X)
 
@@ -80,44 +110,46 @@ class Trainer():
 				attack_value = torch.dot(w.flatten(), obj.flatten())
 				objective_value = attack_value + reg_value
 				objective_value.backward()
-
-				# Logging for debugging # TODO
-				beta_net_0_weight_grad = beta_net_0_weight.grad
-				grad_norm = torch.norm(beta_net_0_weight_grad)
-				grad_norm = grad_norm.detach().cpu().detach()
-				grad_norms.append(grad_norm)
-
-				optimizer.step()
-
-				objective_value_after_step = objective_fn(X) + reg_fn()
 			else:
 				# Outer max
-				optimizer.zero_grad()
-
 				x_batch = x.view(1, -1)
 				reg_value = reg_fn()
 				attack_value = objective_fn(x_batch)[0, 0]
 				objective_value = attack_value + reg_value
 				objective_value.backward()
 
-				# Logging for debugging # TODO
-				beta_net_0_weight_grad = beta_net_0_weight.grad
-				grad_norm = torch.norm(beta_net_0_weight_grad)
-				grad_norm = grad_norm.detach().cpu().detach()
-				grad_norms.append(grad_norm)
+			# Logging for debugging
+			# TODO: if you uncomment this, make sure you detach otherwise you will accumulate memory over iterations and get an OOM
+			# beta_net_0_weight_grad = beta_net_0_weight.grad
+			# grad_norm = torch.norm(beta_net_0_weight_grad)
+			# grad_norm = grad_norm.detach().cpu().detach()
+			# grad_norms.append(grad_norm)
 
-				optimizer.step()
-
-				objective_value_after_step = objective_fn(x_batch) + reg_fn()
-
-			print(grad_norms)
-			# Clipping for positive parameters
+			optimizer.step()
+			if "LR" in self.args.trainer_type:
+				scheduler.step()
 			with torch.no_grad():
-				clipped_ci = torch.maximum(ci, torch.zeros_like(ci))  # Project to all positive
-				ci.copy_(clipped_ci)  # proper way to update
+				# new_ci = ci - ci_lr*ci.grad
+				new_ci = ci
+				new_ci = torch.maximum(new_ci, torch.zeros_like(new_ci)) # Project to all positive
+				ci.copy_(new_ci) # proper way to update
 
-				clipped_a = torch.maximum(a, torch.zeros_like(a))  # Project to all positive
-				a.copy_(clipped_a)
+				# new_a = a - a_lr*a.grad
+				new_a = a
+				new_a = torch.maximum(new_a, torch.zeros_like(new_a)) # Project to all positive
+				a.copy_(new_a) # proper way to update
+
+			# print(grad_norms)
+			# print("%%%%%%%%%%%%%%%%%%%%%%%%%")
+			# print(ci, a)
+
+			# Clipping for positive parameters
+			# with torch.no_grad():
+			# 	clipped_ci = torch.maximum(ci, torch.zeros_like(ci))  # Project to all positive
+			# 	ci.copy_(clipped_ci)  # proper way to update
+			#
+			# 	clipped_a = torch.maximum(a, torch.zeros_like(a))  # Project to all positive
+			# 	a.copy_(clipped_a)
 
 			tnow = time.perf_counter()
 
@@ -131,23 +163,28 @@ class Trainer():
 			# attack_value = attack_value.detach().cpu().numpy()
 			self.logger.info(f'train loss: {objective_value:.3f}%')
 			self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
-			t_so_far = str(datetime.timedelta(seconds=(tnow-t0)))
-			self.logger.info('time spent training so far: %s' % t_so_far)
+			t_so_far = tnow-t0
+			t_so_far_str = str(datetime.timedelta(seconds=t_so_far))
+			self.logger.info('time spent training so far: %s' % t_so_far_str)
 
+			# TODO
+			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(), torch.cuda.memory_reserved()))
+
+			# IPython.embed()
 			# Gather data
-			train_attack_losses.append(attack_value)
-			train_reg_losses.append(reg_value)
-			train_losses.append(objective_value)
+			train_attack_losses.append(attack_value.item()) # Have to use .item() to detach from graph, otherwise we retain each graph from each iteration
+			train_reg_losses.append(reg_value.item())
+			train_losses.append(objective_value.item())
 
-			train_loss_debug.append(objective_value_after_step-objective_value)
+			# train_loss_debug.append(objective_value_after_step-objective_value)
 
-			X_init_numpy = X_init.detach().cpu().numpy()
-			X_numpy = X.detach().cpu().numpy()
-			train_attack_X_init.append(X_init_numpy)
-			train_attack_X_final.append(X_numpy)
-			train_attack_X_obj_vals.append(X_obj_vals)
-			a_grad.append(a.grad)
-			ci_grad.append(ci.grad)
+			# X_init_numpy = X_init.detach().cpu().numpy()
+			# X_numpy = X.detach().cpu().numpy()
+			train_attack_X_init.append(X_init.detach().cpu().numpy())
+			train_attack_X_final.append(X.detach().cpu().numpy())
+			train_attack_X_obj_vals.append(X_obj_vals.detach().cpu().numpy())
+			a_grad.append(a.grad.detach().cpu().numpy())
+			ci_grad.append(ci.grad.detach().cpu().numpy())
 
 			timings.append(t_so_far)
 			train_attack_numpy = x.detach().cpu().numpy()
@@ -180,9 +217,9 @@ class Trainer():
 				self.logger.info(f'test attack loss: {test_attack_loss:.3f}%, reg loss: {test_reg_loss:.3f}%')
 
 				# Update save data
-				test_attack_losses.append(test_attack_loss)
-				test_reg_losses.append(test_reg_loss)
-				test_losses.append(test_loss)
+				test_attack_losses.append(test_attack_loss.item())
+				test_reg_losses.append(test_reg_loss.item())
+				test_losses.append(test_loss.item())
 
 			# Rest of print output
 			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')

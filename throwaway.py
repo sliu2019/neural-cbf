@@ -84,8 +84,11 @@ def graph_log_file_2(exp_name, mode='train'):
 		elif mode == 'train':
 			train_attack_losses = data["train_attack_losses"]
 			train_reg_losses = data["train_reg_losses"]
+			train_losses = data["train_losses"]
+
 			plt.plot(train_attack_losses, linewidth=0.5, label="train attack loss")
 			plt.plot(train_reg_losses, linewidth=0.5, label="train reg loss")
+			plt.plot(train_losses, linewidth=0.5, label="train total loss")
 			plt.title("Train loss for %s" % exp_name)
 	# plt.plot(timings, color='red', label="Runtime (hours)")
 	# IPython.embed()
@@ -304,7 +307,7 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	# print(attacks)
 	plt.savefig("./log/%s/%s" % (exp_name, save_fnm), dpi=600)
 
-def plot_3d(checkpoint_number, save_fnm, exp_name):
+def plot_3d(checkpoint_number, exp_name):
 	args = load_args("./log/%s/args.txt" % exp_name)
 	dev = "cpu"
 	device = torch.device(dev)
@@ -317,14 +320,22 @@ def plot_3d(checkpoint_number, save_fnm, exp_name):
 	# Create phi
 	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
 
-	param_dict = {
-		"I": 0.021,
-		"m": 0.25,
-		"M": 1.00,
-		"l": 0.5,
-		"max_theta": math.pi / 2.0,
-		"max_force": 15.0
-	}
+	if args.physical_difficulty == 'easy':  # medium length pole
+		param_dict = {
+			"I": 1.2E-3,
+			"m": 0.127,
+			"M": 1.0731,
+			"l": 0.3365
+		}
+	elif args.physical_difficulty == 'hard':  # long pole
+		param_dict = {
+			"I": 7.88E-3,
+			"m": 0.230,
+			"M": 1.0731,
+			"l": 0.6413
+		}
+	param_dict["max_theta"] = args.max_theta
+	param_dict["max_force"] = args.max_force
 
 	h_fn = H(param_dict)
 	xdot_fn = XDot(param_dict)
@@ -381,6 +392,7 @@ def plot_3d(checkpoint_number, save_fnm, exp_name):
 	# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
 	# ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
 	#                  colors=('k',), linewidths=(2,))
+	save_fnm = "3d_checkpoint_%i" % checkpoint_number
 	plt.savefig("./log/%s/%s" % (exp_name, save_fnm))
 	plt.clf()
 	# plt.show()
@@ -816,6 +828,63 @@ def test_reg_term(exp_name, checkpoint_number):
 
 	return r_value
 
+def plot_a_k(exp_name, n_it):
+	args = load_args("./log/%s/args.txt" % exp_name)
+	dev = "cpu"
+	device = torch.device(dev)
+
+	r = 2
+	x_dim = 2
+	u_dim = 1
+	x_lim = np.array([[-math.pi, math.pi], [-args.max_angular_velocity, args.max_angular_velocity]], dtype=np.float32) # TODO
+
+	# Create phi
+	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
+
+	if args.physical_difficulty == 'easy':  # medium length pole
+		param_dict = {
+			"I": 1.2E-3,
+			"m": 0.127,
+			"M": 1.0731,
+			"l": 0.3365
+		}
+	elif args.physical_difficulty == 'hard':  # long pole
+		param_dict = {
+			"I": 7.88E-3,
+			"m": 0.230,
+			"M": 1.0731,
+			"l": 0.6413
+		}
+
+	param_dict["max_theta"] = args.max_theta
+	param_dict["max_force"] = args.max_force
+
+	# param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb")) # TODO: replace with this
+
+	h_fn = H(param_dict)
+	xdot_fn = XDot(param_dict)
+	uvertices_fn = ULimitSetVertices(param_dict, device)
+
+	x_e = torch.zeros(1, x_dim)
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+
+	a_list = []
+	k_list = []
+	for checkpoint_number in np.arange(0, n_it, 50):
+		phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+		load_model(phi_fn, phi_load_fpth)
+
+		a = phi_fn.a[0, 0].item()
+		k = phi_fn.ci[0, 0].item()
+
+		a_list.append(a)
+		k_list.append(k)
+
+	plt.plot(a_list, label="A list")
+	plt.plot(k_list, label="k list")
+	plt.legend(loc="upper right")
+	plt.savefig("./log/%s/a_k_plot.png" % exp_name)
+
 if __name__=="__main__":
 	# 11/19 experiment check-in
 	# graph_log_file_2("cartpole_reduced_11_18_baseline")
@@ -871,18 +940,59 @@ if __name__=="__main__":
 	# plot_2d_attacks_from_loaded(990, "cartpole_reduced_64_64_gradient_avging_50")
 
 	######################
-	exp_names = ["cartpole_reduced_64_64_40-1", "cartpole_reduced_64_64_40-2", "cartpole_reduced_64_64_64_gradient_avging_40-1", "cartpole_reduced_64_64_64_gradient_avging_40-2"]
-	n_it = [1440, 1440, 990, 980]
+	# exp_names = ["cartpole_reduced_64_64_40-1", "cartpole_reduced_64_64_40-2", "cartpole_reduced_64_64_64_gradient_avging_40-1", "cartpole_reduced_64_64_64_gradient_avging_40-2"]
+	# n_it = [1440, 1440, 990, 980]
+
+	# exp_names = ["cartpole_reduced_64_64_40-1", "cartpole_reduced_64_64_40-2", "cartpole_reduced_64_64_40-3", "cartpole_reduced_64_64_40-4", "cartpole_reduced_64_64_40-5"]
+	# n_it = [1440, 1440, 1440, 1440, 1430]
 
 	# exp_names = ["cartpole_reduced_64_64_gradient_avging_30-1", "cartpole_reduced_64_64_gradient_avging_30-2", "cartpole_reduced_64_64_gradient_avging_40-1", "cartpole_reduced_64_64_gradient_avging_40-2"]
 	# n_it = [1270, 720, 1430, 1420]
 
-	for exp_name in exp_names:
-		graph_log_file_2(exp_name)
+	# for exp_name in exp_names:
+	# 	graph_log_file_2(exp_name)
 
-	for i, exp_name in enumerate(exp_names):
-		for checkpoint_number in np.arange(0, n_it[i], 50):
-			print(checkpoint_number)
-			plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+	# for i, exp_name in enumerate(exp_names):
+	# 	for checkpoint_number in np.arange(0, n_it[i], 50):
+	# 		print(checkpoint_number)
+	# 		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
 
+	# December 16
+	# exp_names = ["cartpole_reduced_64_64_64_40-1", "cartpole_reduced_64_64_64_40-2", "cartpole_reduced_64_64_64_45-1"]
+	# n_it = [950, 950, 950]
+	#
+	# # for exp_name in exp_names:
+	# # 	graph_log_file_2(exp_name)
+	# #
+	# # for i, exp_name in enumerate(exp_names):
+	# # 	for checkpoint_number in np.arange(0, n_it[i], 50):
+	# # 		print(checkpoint_number)
+	# # 		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+	#
+	# for i, exp_name in enumerate(exp_names):
+	# 	plot_a_k(exp_name, n_it[i])
+	# 	plt.clf()
+	# 	plt.cla()
+
+	exp_names = ["cartpole_reduced_64_64_40-1", "cartpole_reduced_64_64_40-2", "cartpole_reduced_64_64_40-3", "cartpole_reduced_64_64_40-4", "cartpole_reduced_64_64_40-5"]
+	n_it = [1440, 1440, 1440, 1440, 1430]
+
+	# for i, exp_name in enumerate(exp_names):
+	# 	plot_a_k(exp_name, n_it[i])
+	# 	plt.clf()
+	# 	plt.cla()
+	#
+	# for i, exp_name in enumerate(exp_names):
+	# 	for checkpoint_number in np.arange(0, n_it[i], 10):
+	# 		print(checkpoint_number)
+	# 		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+
+	# for i, exp_name in enumerate(exp_names):
+	# 	for checkpoint_number in np.arange(0, n_it[i], 50):
+	# 		print(checkpoint_number)
+	# 		plot_3d(checkpoint_number, exp_name)
+
+	# for checkpoint_number in np.arange(0, 1440, 50):
+	# 	print(checkpoint_number)
+	# 	plot_3d(checkpoint_number, "cartpole_reduced_64_64_40-1")
 
