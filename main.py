@@ -203,7 +203,8 @@ class Objective(nn.Module):
 
 class Regularizer(nn.Module):
 	def __init__(self, phi_fn, device, reg_weight=0.0,
-	             A_samples=None, relu_weight=0.001, sigmoid_weight=10.0):
+	             A_samples=None):
+		# Old args: relu_weight=0.001, sigmoid_weight=10.0
 		super().__init__()
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
@@ -369,7 +370,8 @@ def main(args):
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
 	# Create objective function
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
-	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples, relu_weight=args.reg_relu_weight, sigmoid_weight=args.reg_sigmoid_weight)
+	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples, relu_weight=args.reg_relu_weight, sigmoid_weight=args.reg_sigmoid_weight)
+	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)
