@@ -225,11 +225,12 @@ class Regularizer(nn.Module):
 			# step_on_max = -(sharp_sigmoid + self.relu_weight*nn.functional.relu(max_phi_values)) + 1.0
 			# reg = -self.reg_weight*torch.mean(step_on_max)
 
-			shift = -(1.0 + self.relu_weight*np.log(2))# left shift
-			sigmoid = nn.functional.sigmoid(max_phi_values + shift)
-			softplus = nn.functional.softplus(max_phi_values + shift)
-			differentiable_step = -(sigmoid + self.relu_weight*softplus) + 1.0
-
+			zero = 1.586586586586587
+			shifted_values = max_phi_values + zero # added the zero of this function, which was found by plotting
+			sigmoid = nn.functional.sigmoid(shifted_values)
+			softplus = nn.functional.softplus(shifted_values)
+			soft_step = -(sigmoid + 0.1*softplus) + 1.0
+			reg = -self.reg_weight*torch.mean(soft_step)
 		return reg
 
 def main(args):
