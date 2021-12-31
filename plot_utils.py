@@ -39,14 +39,17 @@ def graph_log_file_2(exp_name, mode='train'):
 			train_losses = data["train_losses"]
 
 			plt.plot(train_attack_losses, linewidth=0.5, label="train attack loss")
-			plt.plot(train_reg_losses, linewidth=0.5, label="train reg loss")
-			plt.plot(train_losses, linewidth=0.5, label="train total loss")
+			# plt.plot(train_reg_losses, linewidth=0.5, label="train reg loss")
+			# plt.plot(train_losses, linewidth=0.5, label="train total loss")
 			plt.title("Train loss for %s" % exp_name)
 	# plt.plot(timings, color='red', label="Runtime (hours)")
 	# IPython.embed()
 	plt.xlabel("Optimization steps")
 	plt.legend(loc="upper right")
 	# plt.title("Statistics throughout training")
+
+	# Fix the tick interval to make comparison easy
+	# plt.xticks(np.arange(40, -20, 5))
 
 	plt.savefig("./log/%s/%s_%s_loss.png" % (exp_name, exp_name, mode))
 	plt.clf()
@@ -104,8 +107,8 @@ def plot_3d(checkpoint_number, exp_name, fname=None):
 	###################################
 	# IPython.embed()
 	delta = 0.1
-	x = np.arange(-math.pi, math.pi, delta)
-	y = np.arange(-15, 15, delta)[::-1] # need to reverse it
+	x = np.arange(x_lim[0, 0], x_lim[0, 1], delta)
+	y = np.arange(x_lim[1, 0], x_lim[1, 1], delta)[::-1] # need to reverse it
 	X, Y = np.meshgrid(x, y)
 
 	# phi_load_fpth = "./checkpoint/cartpole_reduced_exp1a/checkpoint_69.pth"
@@ -137,9 +140,12 @@ def plot_3d(checkpoint_number, exp_name, fname=None):
 	# fig, ax = plt.subplots(projection="3d")
 	# ax.imshow(phi_signs, extent=[-math.pi, math.pi, -5.0, 5.0])
 	# IPython.embed()
-	ax.set_ylim(-15.0, 15.0)
-	ax.set_xlim(-math.pi, math.pi)
-	ax.plot_surface(X, Y, Z, cmap="autumn_r", lw=0.5, rstride=1, cstride=1, alpha=0.75, bbox_inches='tight')
+	# ax.set_ylim(-15.0, 15.0)
+	ax.set_xlim(x_lim[0, 0], x_lim[0, 1])
+	ax.set_ylim(x_lim[1, 0], x_lim[1, 1])
+
+	# ax.set_xlim(-math.pi, math.pi)
+	ax.plot_surface(X, Y, Z, cmap="autumn_r", lw=0.5, rstride=1, cstride=1, alpha=0.75) #, bbox_inches='tight')
 	# ax.contour(X, Y, Z, 10, lw=3, cmap="autumn_r", linestyles="solid", offset=-1)
 	ax.contour(X, Y, Z, 10, lw=3, colors="k", linestyles="solid")
 	# ax.set_aspect("equal")
@@ -151,6 +157,7 @@ def plot_3d(checkpoint_number, exp_name, fname=None):
 	#                  colors=('k',), linewidths=(2,))
 	if fname is None:
 		fname = "3d_checkpoint_%i" % checkpoint_number
+	plt.title("Ckpt %i" % checkpoint_number)
 	plt.savefig("./log/%s/%s" % (exp_name, fname))
 	plt.clf()
 	# plt.show()
@@ -224,7 +231,7 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=None):
 	ax.scatter(best_attack[0], best_attack[1], marker="D", c="c")
 
 	# IPython.embed()
-	title = "a = %.4f, k = %.4f" % (phi_fn.a[0, 0].item(), phi_fn.ci[0, 0].item())
+	title = "Ckpt %i, a = %.4f, k = %.4f" % (checkpoint_number, phi_fn.a[0, 0].item(), phi_fn.ci[0, 0].item())
 	plt.title(title)
 	if fname is None:
 		fname = "2d_attacks_from_loaded_checkpoint_%i.png" % checkpoint_number
@@ -274,8 +281,14 @@ if __name__=="__main__":
 	# exp_names = ["cartpole_reduced_64_64_60pts_gradient_avging_seed_1", "cartpole_reduced_64_64_60pts_gradient_avging_seed_2", "cartpole_reduced_64_64_60pts_gradient_avging_seed_3", "cartpole_reduced_64_64_60pts_gradient_avging_seed_4"]
 	# n_it = [3000, 3000, 3000, 3000]
 
-	exp_names = ["cartpole_reduced_64_64_60pts_20weight_gdavg_newreg", "cartpole_reduced_64_64_60pts_40weight_gdavg_newreg", "cartpole_reduced_64_64_60pts_50weight_gdavg_newreg"]
-	n_it = [283, 425, 883]
+	# exp_names = ["cartpole_reduced_64_64_60pts_20weight_gdavg_newreg", "cartpole_reduced_64_64_60pts_40weight_gdavg_newreg", "cartpole_reduced_64_64_60pts_50weight_gdavg_newreg"]
+	# n_it = [283, 425, 883]
+
+	# exp_names = ["cartpole_reduced_reg_point3_sigmoid_regweight_10", "cartpole_reduced_reg_point3_sigmoid_regweight_50", "cartpole_reduced_reg_point3_sigmoid_regweight_100", "cartpole_reduced_reg_point3_sigmoid_regweight_250"]
+	# n_it = [470, 540, 480, 540]
+
+	exp_names = ["cartpole_reduced_reg_point3_sigmoid_regweight_250_init_small", "cartpole_reduced_reg_point3_sigmoid_regweight_500_init_small", "cartpole_reduced_reg_point3_sigmoid_regweight_750_init_small"]
+	n_it = [2000, 3000, 3000]
 	####################################################################################
 
 	# for i, exp_name in enumerate(exp_names):
@@ -283,12 +296,12 @@ if __name__=="__main__":
 	# 	plt.clf()
 	# 	plt.cla()
 
-	for exp_name in exp_names:
-		graph_log_file_2(exp_name)
+	# for exp_name in exp_names:
+	# 	graph_log_file_2(exp_name)
 
-	for i, exp_name in enumerate(exp_names):
-		for checkpoint_number in np.arange(0, n_it[i], 50):
-		# for checkpoint_number in np.arange(0, 100, 10):
+	for i, exp_name in enumerate([exp_names[0]]):
+		# for checkpoint_number in np.arange(0, n_it[i], 100):
+		for checkpoint_number in np.arange(100, 250, 10):
 			print(checkpoint_number)
 			plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
 
