@@ -36,7 +36,8 @@ class Phi(nn.Module):
 		# Note: by default, it registers parameters by their variable name
 		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
 		# self.ci = nn.Parameter(torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
-		self.a = nn.Parameter(torch.rand(1, 1)) # constrained to be positive, TODO pending change. Can also set this to constant 0.1
+		rng = args.phi_a_init_max - args.phi_a_init_min
+		self.a = nn.Parameter(rng*torch.rand(1, 1) + args.phi_a_init_min) # constrained to be positive, TODO pending change. Can also set this to constant 0.1
 
 		# self.sigma = nn.Parameter(1e-2*torch.rand(1)) # TODO
 		# print("################################################################")
@@ -226,12 +227,14 @@ class Regularizer(nn.Module):
 			# step_on_max = -(sharp_sigmoid + self.relu_weight*nn.functional.relu(max_phi_values)) + 1.0
 			# reg = -self.reg_weight*torch.mean(step_on_max)
 
-			zero = 1.586586586586587
-			shifted_values = max_phi_values + zero # added the zero of this function, which was found by plotting
-			sigmoid = nn.functional.sigmoid(shifted_values)
-			softplus = nn.functional.softplus(shifted_values)
-			soft_step = -(sigmoid + 0.1*softplus) + 1.0
-			reg = -self.reg_weight*torch.mean(soft_step)
+			# zero = 1.586586586586587
+			# shifted_values = max_phi_values + zero # added the zero of this function, which was found by plotting
+			# sigmoid = nn.functional.sigmoid(shifted_values)
+			# softplus = nn.functional.softplus(shifted_values)
+			# soft_step = -(sigmoid + 0.1*softplus) + 1.0
+			# reg = -self.reg_weight*torch.mean(soft_step)
+
+			reg = self.reg_weight*torch.mean(nn.functional.sigmoid(0.3*max_phi_values) - 0.5)
 		return reg
 
 def main(args):

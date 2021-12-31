@@ -271,8 +271,11 @@ if __name__=="__main__":
 	# exp_names = ["cartpole_reduced_64_64_40-1", "cartpole_reduced_64_64_40-2", "cartpole_reduced_64_64_40-3", "cartpole_reduced_64_64_40-4", "cartpole_reduced_64_64_40-5"]
 	# n_it = [1440, 1440, 1440, 1440, 1430]
 
-	exp_names = ["cartpole_reduced_64_64_60pts_gradient_avging_seed_1", "cartpole_reduced_64_64_60pts_gradient_avging_seed_2", "cartpole_reduced_64_64_60pts_gradient_avging_seed_3", "cartpole_reduced_64_64_60pts_gradient_avging_seed_4"]
-	n_it = [3000, 3000, 3000, 3000]
+	# exp_names = ["cartpole_reduced_64_64_60pts_gradient_avging_seed_1", "cartpole_reduced_64_64_60pts_gradient_avging_seed_2", "cartpole_reduced_64_64_60pts_gradient_avging_seed_3", "cartpole_reduced_64_64_60pts_gradient_avging_seed_4"]
+	# n_it = [3000, 3000, 3000, 3000]
+
+	exp_names = ["cartpole_reduced_64_64_60pts_20weight_gdavg_newreg", "cartpole_reduced_64_64_60pts_40weight_gdavg_newreg", "cartpole_reduced_64_64_60pts_50weight_gdavg_newreg"]
+	n_it = [283, 425, 883]
 	####################################################################################
 
 	# for i, exp_name in enumerate(exp_names):
@@ -280,14 +283,14 @@ if __name__=="__main__":
 	# 	plt.clf()
 	# 	plt.cla()
 
-	# for exp_name in exp_names:
-	# 	graph_log_file_2(exp_name)
+	for exp_name in exp_names:
+		graph_log_file_2(exp_name)
 
-	# for i, exp_name in enumerate(exp_names):
-	# 	for checkpoint_number in np.arange(0, n_it[i], 50):
-	# 	# for checkpoint_number in np.arange(0, 100, 10):
-	# 		print(checkpoint_number)
-	# 		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+	for i, exp_name in enumerate(exp_names):
+		for checkpoint_number in np.arange(0, n_it[i], 50):
+		# for checkpoint_number in np.arange(0, 100, 10):
+			print(checkpoint_number)
+			plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
 
 	# for i, exp_name in enumerate(exp_names):
 	# 	for checkpoint_number in np.arange(0, n_it[i], 50):
@@ -313,7 +316,7 @@ if __name__=="__main__":
 	# train_losses = data["train_losses"]
 
 	# Among the iterations with subzero attack loss, find the one with lowest total loss
-	for exp_name in exp_names:
+	"""for exp_name in exp_names:
 		# IPython.embed()
 		args = load_args("./log/%s/args.txt" % exp_name)
 		n_checkpoint_step = args.n_checkpoint_step
@@ -340,4 +343,4 @@ if __name__=="__main__":
 			# print("Total, attack, reg losses: %.4f, %.4f, %.4f" % (train_losses[ind_best].item(), data["train_attack_losses"][ind_best].item(), data["train_reg_losses"][ind_best].item()))
 			print("Total, attack, reg losses: %.4f, %.4f, %.4f" % (train_losses[ind_best], data["train_attack_losses"][ind_best], data["train_reg_losses"][ind_best]))
 			plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=("best_2d_attacks_from_loaded_checkpoint_%i" % checkpoint_number))
-			# plot_3d(checkpoint_number, exp_name, fname=("best_3d_checkpoint_%i" % checkpoint_number))
+			# plot_3d(checkpoint_number, exp_name, fname=("best_3d_checkpoint_%i" % checkpoint_number))"""

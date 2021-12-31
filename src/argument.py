@@ -8,8 +8,10 @@ def parser():
 
 	# Phi
 	parser.add_argument('--phi_nn_dimension', default="6", type=str, help='specify the hidden dimension')
-	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
 	parser.add_argument('--phi_nnl', default="relu", type=str)
+	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
+	parser.add_argument('--phi_a_init_min', default=0, type=float)
+	parser.add_argument('--phi_a_init_max', default=1, type=float)
 
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole')
 	parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol

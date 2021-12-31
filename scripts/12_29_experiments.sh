@@ -5,14 +5,34 @@
 
 # 64-64; 60 points; gradient averaging; AND NOW, the new regularization term
 
-nohup python main.py --train_attacker gradient_batch_warmstart --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --trainer_stopping_condition n_steps --trainer_n_steps 3000 --phi_nn_dimension 64-64 --trainer_average_gradients --gpu 1 --affix 64_64_60pts_40weight_gdavg_newreg --reg_weight 40 --random_seed 1 &> 64_64_60pts_40weight_gdavg_newreg.out &
+#nohup python main.py --train_attacker gradient_batch_warmstart --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --trainer_stopping_condition n_steps --trainer_n_steps 3000 --phi_nn_dimension 64-64 --trainer_average_gradients --gpu 1 --affix 64_64_60pts_40weight_gdavg_newreg --reg_weight 40 --random_seed 1 &> 64_64_60pts_40weight_gdavg_newreg.out &
+#
+#nohup python main.py --train_attacker gradient_batch_warmstart --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --trainer_stopping_condition n_steps --trainer_n_steps 3000 --phi_nn_dimension 64-64 --trainer_average_gradients --gpu 2 --affix 64_64_60pts_20weight_gdavg_newreg --reg_weight 20 --random_seed 1 &> 64_64_60pts_20weight_gdavg_newreg.out &
+#
+#nohup python main.py --train_attacker gradient_batch_warmstart --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --trainer_stopping_condition n_steps --trainer_n_steps 3000 --phi_nn_dimension 64-64 --trainer_average_gradients --gpu 3 --affix 64_64_60pts_50weight_gdavg_newreg --reg_weight 50 --random_seed 1 &> 64_64_60pts_50weight_gdavg_newreg.out &
 
-nohup python main.py --train_attacker gradient_batch_warmstart --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --trainer_stopping_condition n_steps --trainer_n_steps 3000 --phi_nn_dimension 64-64 --trainer_average_gradients --gpu 2 --affix 64_64_60pts_20weight_gdavg_newreg --reg_weight 20 --random_seed 1 &> 64_64_60pts_20weight_gdavg_newreg.out &
+#######################
+# Test + tune new reg term: weights at different scales
+# Do we successfully avoid the double parabola? (If we stop at the right iteration?)
 
-nohup python main.py --train_attacker gradient_batch_warmstart --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --trainer_stopping_condition n_steps --trainer_n_steps 3000 --phi_nn_dimension 64-64 --trainer_average_gradients --gpu 3 --affix 64_64_60pts_50weight_gdavg_newreg --reg_weight 50 --random_seed 1 &> 64_64_60pts_50weight_gdavg_newreg.out &
+nohup python main.py --train_attacker gradient_batch_warmstart --phi_nn_dimension 64-64 --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --trainer_stopping_condition n_steps --trainer_n_steps 3000 --phi_a_init_min 2.5 --phi_a_init_max 7.5 --reg_sample_distance 0.2 --reg_weight 10 --gpu 0 --affix reg_point3_sigmoid_regweight_10 &> reg_point3_sigmoid_regweight_10.out &
 
-# different weights
-# fixed weight, different seeds
+nohup python main.py --train_attacker gradient_batch_warmstart --phi_nn_dimension 64-64 --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --trainer_stopping_condition n_steps --trainer_n_steps 3000 --phi_a_init_min 2.5 --phi_a_init_max 7.5 --reg_sample_distance 0.2 --reg_weight 50 --gpu 1 --affix reg_point3_sigmoid_regweight_50 &> reg_point3_sigmoid_regweight_50.out &
 
-# tanh instead of relu for different seeds
-# tanh (if it's fine), then replace adam with 2 different LR schedules (to be tuned!)
+nohup python main.py --train_attacker gradient_batch_warmstart --phi_nn_dimension 64-64 --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --trainer_stopping_condition n_steps --trainer_n_steps 3000 --phi_a_init_min 2.5 --phi_a_init_max 7.5 --reg_sample_distance 0.2 --reg_weight 100 --gpu 2 --affix reg_point3_sigmoid_regweight_100 &> reg_point3_sigmoid_regweight_100.out &
+
+nohup python main.py --train_attacker gradient_batch_warmstart --phi_nn_dimension 64-64 --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --trainer_stopping_condition n_steps --trainer_n_steps 3000 --phi_a_init_min 2.5 --phi_a_init_max 7.5 --reg_sample_distance 0.2 --reg_weight 250 --gpu 3 --affix reg_point3_sigmoid_regweight_250 &> reg_point3_sigmoid_regweight_250.out &
+
+# --reg_sample_distance 0.2
+# --reg_weight: 10, 50, 100, 250
+# --phi_a_init_min 2.5(/0.6 denom)
+# --phi_a_init_min 7.5(/0.6 denom)
+# --phi_ci_init_range 0.1
+# regular settings: 64-64, 60 samples, no gradient averaging
+
+
+# Robustness to randomness: fixed weight, different seeds
+# Robustness to initialization bias? Maybe it's not necessary
+
+# Small fix: tanh instead of relu for different seeds
+# Fix to help convergence: adam with 2 different LR schedules (to be tuned!)
