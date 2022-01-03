@@ -35,16 +35,15 @@ class Phi(nn.Module):
 
 		# Note: by default, it registers parameters by their variable name
 		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
-		# self.ci = nn.Parameter(torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
-		rng = args.phi_a_init_max - args.phi_a_init_min
-		self.a = nn.Parameter(rng*torch.rand(1, 1) + args.phi_a_init_min) # constrained to be positive, TODO pending change. Can also set this to constant 0.1
+		rng = args.phi_k0_init_max - args.phi_k0_init_min
+		self.k0 = nn.Parameter(rng*torch.rand(1, 1) + args.phi_k0_init_min)
 
-		# self.sigma = nn.Parameter(1e-2*torch.rand(1)) # TODO
-		# print("################################################################")
-		# print("Initial ci: ", self.ci)
-		# print("Initial sig:", self.sigma)
-		# print("################################################################")
+		# To enforce strict positivity for both
+		self.ci_min = 1e-2
+		self.k0_min = 1e-2
 
+		print("At initialization: k0 is %f" % self.k0.item())
+		#############################################################
 		hidden_dims = args.phi_nn_dimension.split("-")
 		hidden_dims = [int(h) for h in hidden_dims]
 
@@ -54,7 +53,6 @@ class Phi(nn.Module):
 			prev_dim = 1
 		else:
 			prev_dim = self.x_dim
-		# prev_dim = self.x_dim
 
 		phi_nnl = args_dict.get("phi_nnl", "relu") # return relu if var "phi_nnl" not on namespace
 		for hidden_dim in hidden_dims:
@@ -67,41 +65,22 @@ class Phi(nn.Module):
 		net_layers.append(nn.Linear(prev_dim, 1))
 		self.beta_net = nn.Sequential(*net_layers)
 
-		# if self.x_e is not None:
-		# 	self.x_e = self.x_e.view(1, -1)
-		#
-		# 	h_xe = self.h_fn(self.x_e)
-		#
-		# 	# print("Constructing CBF: in init")
-		# 	IPython.embed()
-		# 	# self.c = (-np.log(2.0))/h_xe # TODO: put below back
-		# 	# self.c = (-np.log(2.0) - 0.1)/h_xe # TODO: pending change
-		# 	self.c = (-torch.tensor(2.0) - self.a)/h_xe
-
 	def forward(self, x, grad_x=False):
 		# The way these are implemented should be batch compliant
 		# Assume x is (bs, x_dim)
 		h_val = self.h_fn(x)
 
-		if self.args.g_input_is_xy: # TODO: pending change
-			beta_net_value = self.beta_net(x[:, [0]]*x[:, [1]])
-			beta_net_xe_value = self.beta_net(self.x_e[:, [0]]*self.x_e[:, [1]])
-		else:
-			beta_net_value = self.beta_net(x)
-			beta_net_xe_value = self.beta_net(self.x_e)
+		beta_net_value = self.beta_net(x)
+		beta_net_xe_value = self.beta_net(self.x_e)
 
+		k0 = self.k0 + self.k0_min
 		if self.x_e is None:
-			beta_value = nn.functional.softplus(beta_net_value) + nn.functional.softplus(h_val) - np.log(2)
+			beta_value = nn.functional.softplus(beta_net_value) + k0*h_val
 		else:
-			# TODO: pending change
-			# alpha_value = self.c*h_val
-			h_xe = self.h_fn(self.x_e)
-			num = (-torch.tensor(math.log(2.0)).to(self.device) - self.a)
-			alpha_value = num/h_xe
-			beta_value = nn.functional.softplus(beta_net_value-beta_net_xe_value) + alpha_value*h_val
+			beta_value = torch.square(beta_net_value - beta_net_xe_value) + k0*h_val
 
 		# Convert ci to ki
-		ci = self.ci + 1e-2 # TODO: pending change
+		ci = self.ci + self.ci_min
 		ki = torch.tensor([[1.0]])
 		ki_all = torch.zeros(self.r, self.r).to(self.device) # phi_i coefficients are in row i
 		ki_all[0, 0:ki.numel()] = ki
@@ -203,8 +182,8 @@ class Objective(nn.Module):
 		return result
 
 class Regularizer(nn.Module):
-	def __init__(self, phi_fn, device, reg_weight=0.0,
-	             A_samples=None):
+	def __init__(self, phi_fn, x_e, device, reg_weight=0.0,
+	             A_samples=None, reg_xe=False):
 		# Old args: relu_weight=0.001, sigmoid_weight=10.0
 		super().__init__()
 		vars = locals()  # dict of local names
@@ -222,19 +201,12 @@ class Regularizer(nn.Module):
 			phi_value_A_samples = self.phi_fn(self.A_samples)
 			max_phi_values = torch.max(phi_value_A_samples, dim=1)[0]
 
-			# print("Mean: %.2f, std: %.2f" % (torch.mean(max_phi_values), torch.std(max_phi_values)))
-			# sharp_sigmoid = 1.0/(1.0 + torch.exp(-self.sigmoid_weight*max_phi_values)) # alpha = 10.0, instead of 1.0 as usual
-			# step_on_max = -(sharp_sigmoid + self.relu_weight*nn.functional.relu(max_phi_values)) + 1.0
-			# reg = -self.reg_weight*torch.mean(step_on_max)
-
-			# zero = 1.586586586586587
-			# shifted_values = max_phi_values + zero # added the zero of this function, which was found by plotting
-			# sigmoid = nn.functional.sigmoid(shifted_values)
-			# softplus = nn.functional.softplus(shifted_values)
-			# soft_step = -(sigmoid + 0.1*softplus) + 1.0
-			# reg = -self.reg_weight*torch.mean(soft_step)
-
 			reg = self.reg_weight*torch.mean(nn.functional.sigmoid(0.3*max_phi_values) - 0.5)
+
+			if self.reg_xe != 0:
+				phi_value_xe = self.phi_fn(self.x_e)
+				max_phi_value = torch.max(phi_value_xe, dim=1)[0]
+				reg += self.reg_xe*nn.functional.softplus(max_phi_value)
 		return reg
 
 def main(args):
@@ -349,7 +321,10 @@ def main(args):
 		A_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
 		A_samples = torch.from_numpy(A_samples.astype(np.float32))
 
-		x_e = torch.zeros(1, x_dim)
+		if args.phi_include_xe:
+			x_e = torch.zeros(1, x_dim)
+		else:
+			x_e = None
 	else:
 		raise NotImplementedError
 		A_samples = None
@@ -374,7 +349,7 @@ def main(args):
 	# Create objective function
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
 	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples, relu_weight=args.reg_relu_weight, sigmoid_weight=args.reg_sigmoid_weight)
-	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples)
+	reg_fn = Regularizer(phi_fn, x_e, device, reg_weight=args.reg_weight, A_samples=A_samples, reg_xe=args.reg_xe)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)

@@ -8,10 +8,11 @@ def parser():
 
 	# Phi
 	parser.add_argument('--phi_nn_dimension', default="6", type=str, help='specify the hidden dimension')
-	parser.add_argument('--phi_nnl', default="relu", type=str)
+	parser.add_argument('--phi_nnl', default="tanh", type=str)
 	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
-	parser.add_argument('--phi_a_init_min', default=0, type=float)
-	parser.add_argument('--phi_a_init_max', default=1, type=float)
+	parser.add_argument('--phi_k0_init_min', default=0, type=float)
+	parser.add_argument('--phi_k0_init_max', default=1, type=float)
+	parser.add_argument('--phi_include_xe', action='store_true')
 
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole')
 	parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol
@@ -22,8 +23,9 @@ def parser():
 	# parser.add_argument('--reg_relu_weight', default=0.1, type=float)
 	# parser.add_argument('--reg_sigmoid_weight', default=10.0, type=float)
 	parser.add_argument('--reg_sample_distance', default=0.1, type=float)
+	parser.add_argument('--reg_xe', default=0.0, type=float)
 
-	parser.add_argument('--g_input_is_xy', action='store_true')
+	# parser.add_argument('--g_input_is_xy', action='store_true')
 	###################################################################################################################################
 	# Attacker: train
 	parser.add_argument('--train_attacker', default='gradient_batch', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart'])
