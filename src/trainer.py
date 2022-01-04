@@ -22,10 +22,10 @@ class Trainer():
 
 	def train(self, objective_fn, reg_fn, phi_fn, xdot_fn):
 		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
-		proj_params = ["ci", "a"]
+		proj_params = ["ci", "k0"]
 		params_no_proj = [tup[1] for tup in phi_fn.named_parameters() if tup[0] not in proj_params]
 		ci = p_dict["ci"]
-		a = p_dict["a"]
+		k0 = p_dict["k0"]
 		beta_net_0_weight = p_dict["beta_net.0.weight"]
 
 		if self.args.trainer_type == "Adam":
@@ -61,7 +61,7 @@ class Trainer():
 		train_attack_X_final = []
 		train_attack_X_obj_vals = []
 		ci_grad = []
-		a_grad = []
+		k0_grad = []
 		grad_norms = []
 
 		ci_lr = 1e-4
@@ -77,8 +77,8 @@ class Trainer():
 			X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode)
 
 			optimizer.zero_grad()
-			ci.grad = None # TODO
-			a.grad = None
+			ci.grad = None
+			k0.grad = None
 
 			if self.args.trainer_average_gradients:
 				# Outer max
@@ -117,10 +117,10 @@ class Trainer():
 				new_ci = torch.maximum(new_ci, torch.zeros_like(new_ci)) # Project to all positive
 				ci.copy_(new_ci) # proper way to update
 
-				# new_a = a - a_lr*a.grad
-				new_a = a
-				new_a = torch.maximum(new_a, torch.zeros_like(new_a)) # Project to all positive
-				a.copy_(new_a) # proper way to update
+				# new_k0 = k0 - k0_lr*k0.grad
+				new_k0 = k0
+				new_k0 = torch.maximum(new_k0, torch.zeros_like(new_k0)) # Project to all positive
+				k0.copy_(new_k0) # proper way to update
 
 			# print(grad_norms)
 			# print("%%%%%%%%%%%%%%%%%%%%%%%%%")
@@ -144,6 +144,7 @@ class Trainer():
 			# objective_value = objective_value.detach().cpu().numpy()
 			# reg_value = reg_value.detach().cpu().numpy()
 			# attack_value = attack_value.detach().cpu().numpy()
+			# IPython.embed()
 			self.logger.info(f'train loss: {objective_value:.3f}%')
 			self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
 			t_so_far = tnow-t0
@@ -166,7 +167,7 @@ class Trainer():
 			train_attack_X_init.append(X_init.detach().cpu().numpy())
 			train_attack_X_final.append(X.detach().cpu().numpy())
 			train_attack_X_obj_vals.append(X_obj_vals.detach().cpu().numpy())
-			a_grad.append(a.grad.detach().cpu().numpy())
+			k0_grad.append(k0.grad.detach().cpu().numpy())
 			ci_grad.append(ci.grad.detach().cpu().numpy())
 
 			timings.append(t_so_far)
@@ -179,7 +180,7 @@ class Trainer():
 				save_model(phi_fn, file_name)
 
 				# save data too
-				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "timings": timings, "train_attacks": train_attacks, "train_loss_debug": train_loss_debug, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "a_grad":a_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "grad_norms": grad_norms}
+				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "timings": timings, "train_attacks": train_attacks, "train_loss_debug": train_loss_debug, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "grad_norms": grad_norms}
 				self.logger.info(f'train loss: {objective_value:.3f}%')
 				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
 

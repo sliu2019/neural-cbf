@@ -42,17 +42,13 @@ class Phi(nn.Module):
 		self.ci_min = 1e-2
 		self.k0_min = 1e-2
 
-		print("At initialization: k0 is %f" % self.k0.item())
+		# print("At initialization: k0 is %f" % self.k0.item())
 		#############################################################
 		hidden_dims = args.phi_nn_dimension.split("-")
 		hidden_dims = [int(h) for h in hidden_dims]
 
 		net_layers = []
-		if self.args.g_input_is_xy:
-			print("Warning: args.g_input_is_xy flag should only be used for reduced_cartpole problem")
-			prev_dim = 1
-		else:
-			prev_dim = self.x_dim
+		prev_dim = self.x_dim
 
 		phi_nnl = args_dict.get("phi_nnl", "relu") # return relu if var "phi_nnl" not on namespace
 		for hidden_dim in hidden_dims:
@@ -69,14 +65,13 @@ class Phi(nn.Module):
 		# The way these are implemented should be batch compliant
 		# Assume x is (bs, x_dim)
 		h_val = self.h_fn(x)
-
-		beta_net_value = self.beta_net(x)
-		beta_net_xe_value = self.beta_net(self.x_e)
-
 		k0 = self.k0 + self.k0_min
 		if self.x_e is None:
+			beta_net_value = self.beta_net(x)
 			beta_value = nn.functional.softplus(beta_net_value) + k0*h_val
 		else:
+			beta_net_value = self.beta_net(x)
+			beta_net_xe_value = self.beta_net(self.x_e)
 			beta_value = torch.square(beta_net_value - beta_net_xe_value) + k0*h_val
 
 		# Convert ci to ki
@@ -131,6 +126,7 @@ class Phi(nn.Module):
 		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + beta_value
 		result = torch.cat((result, phi_r_minus_1_star), dim=1)
 
+		# IPython.embed()
 		return result
 
 class Objective(nn.Module):
@@ -168,21 +164,21 @@ class Objective(nn.Module):
 		phidot_cand = torch.reshape(phidot_cand, (-1, n_vertices)) # bs x n_vertices
 
 		# print(phidot_cand)
-		phidot, _ = torch.min(phidot_cand, 1) # TODO: let second argument be _
+		phidot, _ = torch.min(phidot_cand, 1)
 
 		# print("Figure out shapes in objectvie fn")
 		# IPython.embed()
 		# verif_minimizing_u = (x[:, [0]]*(min_indices.view(-1, 1))-0.5) <= 0
 		# assert torch.all(verif_minimizing_u)
 		# print(min_indices)
-		result = phidot
-		# result = nn.functional.relu(phidot) # TODO
+		# result = phidot # TODO
+		result = nn.functional.softplus(phidot) # TODO: using softplus
 		result = result.view(-1, 1) # ensures bs x 1
 
 		return result
 
 class Regularizer(nn.Module):
-	def __init__(self, phi_fn, x_e, device, reg_weight=0.0,
+	def __init__(self, phi_fn, device, reg_weight=0.0,
 	             A_samples=None, reg_xe=False):
 		# Old args: relu_weight=0.001, sigmoid_weight=10.0
 		super().__init__()
@@ -194,6 +190,9 @@ class Regularizer(nn.Module):
 		if reg_weight:
 			assert A_samples is not None
 
+		# TODO: hard-coded
+		self.x_e = torch.zeros(1, 2).to(device)
+
 	def forward(self):
 		reg = torch.tensor(0).to(self.device)
 		if self.reg_weight:
@@ -201,12 +200,14 @@ class Regularizer(nn.Module):
 			phi_value_A_samples = self.phi_fn(self.A_samples)
 			max_phi_values = torch.max(phi_value_A_samples, dim=1)[0]
 
-			reg = self.reg_weight*torch.mean(nn.functional.sigmoid(0.3*max_phi_values) - 0.5)
+			reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5)
 
 			if self.reg_xe != 0:
 				phi_value_xe = self.phi_fn(self.x_e)
-				max_phi_value = torch.max(phi_value_xe, dim=1)[0]
-				reg += self.reg_xe*nn.functional.softplus(max_phi_value)
+				max_phi_value = torch.max(phi_value_xe, dim=1)[0][0]
+				reg = reg + self.reg_xe*nn.functional.softplus(max_phi_value)
+
+			# IPython.embed()
 		return reg
 
 def main(args):
@@ -349,7 +350,7 @@ def main(args):
 	# Create objective function
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
 	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples, relu_weight=args.reg_relu_weight, sigmoid_weight=args.reg_sigmoid_weight)
-	reg_fn = Regularizer(phi_fn, x_e, device, reg_weight=args.reg_weight, A_samples=A_samples, reg_xe=args.reg_xe)
+	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples, reg_xe=args.reg_xe)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)

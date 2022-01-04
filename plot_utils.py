@@ -22,6 +22,8 @@ def graph_log_file_2(exp_name, mode='train'):
 	Corresponds to above
 	"""
 	# exp_name = "cartpole_reduced_exp1a"
+	# fig, axes = plt.subplots(2, 1)
+	# print(axes.shape)
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
 		# IPython.embed()
@@ -39,9 +41,9 @@ def graph_log_file_2(exp_name, mode='train'):
 			train_losses = data["train_losses"]
 
 			plt.plot(train_attack_losses, linewidth=0.5, label="train attack loss")
-			# plt.plot(train_reg_losses, linewidth=0.5, label="train reg loss")
-			# plt.plot(train_losses, linewidth=0.5, label="train total loss")
-			plt.title("Train loss for %s" % exp_name)
+			plt.plot(train_reg_losses, linewidth=0.5, label="train reg loss")
+			plt.plot(train_losses, linewidth=0.5, label="train total loss")
+			plt.title("Losses for %s" % exp_name)
 	# plt.plot(timings, color='red', label="Runtime (hours)")
 	# IPython.embed()
 	plt.xlabel("Optimization steps")
@@ -58,7 +60,7 @@ def graph_log_file_2(exp_name, mode='train'):
 	# IPython.embed()
 
 def load_phi_xlim(exp_name, checkpoint_number):
-	args = load_args("./log/%s/args.txt" % exp_name)
+	"""args = load_args("./log/%s/args.txt" % exp_name)
 	dev = "cpu"
 	device = torch.device(dev)
 
@@ -98,7 +100,47 @@ def load_phi_xlim(exp_name, checkpoint_number):
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
 
 	out = phi_fn(x_e)
-	assert out[0, -1].item() <= 0
+	assert out[0, -1].item() <= 0"""
+	args = load_args("./log/%s/args.txt" % exp_name)
+	dev = "cpu"
+	device = torch.device(dev)
+	param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb"))
+
+	r = 2
+	x_dim = 2
+	u_dim = 1
+	x_lim = np.array([[-math.pi, math.pi], [-args.max_angular_velocity, args.max_angular_velocity]], dtype=np.float32)
+
+	# Create phi
+	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
+
+	# if args.physical_difficulty == 'easy':  # medium length pole
+	# 	param_dict = {
+	# 		"I": 1.2E-3,
+	# 		"m": 0.127,
+	# 		"M": 1.0731,
+	# 		"l": 0.3365
+	# 	}
+	# elif args.physical_difficulty == 'hard':  # long pole
+	# 	param_dict = {
+	# 		"I": 7.88E-3,
+	# 		"m": 0.230,
+	# 		"M": 1.0731,
+	# 		"l": 0.6413
+	# 	}
+	#
+	# param_dict["max_theta"] = args.max_theta
+	# param_dict["max_force"] = args.max_force
+
+	h_fn = H(param_dict)
+	xdot_fn = XDot(param_dict)
+
+	if args.phi_include_xe:
+		x_e = torch.zeros(1, x_dim)
+	else:
+		x_e = None
+
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
 
 	return phi_fn, x_lim
 
@@ -231,7 +273,7 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=None):
 	ax.scatter(best_attack[0], best_attack[1], marker="D", c="c")
 
 	# IPython.embed()
-	title = "Ckpt %i, a = %.4f, k = %.4f" % (checkpoint_number, phi_fn.a[0, 0].item(), phi_fn.ci[0, 0].item())
+	title = "Ckpt %i, k0 = %.4f, k1 = %.4f" % (checkpoint_number, phi_fn.k0[0, 0].item(), phi_fn.ci[0, 0].item())
 	plt.title(title)
 	if fname is None:
 		fname = "2d_attacks_from_loaded_checkpoint_%i.png" % checkpoint_number
@@ -287,8 +329,17 @@ if __name__=="__main__":
 	# exp_names = ["cartpole_reduced_reg_point3_sigmoid_regweight_10", "cartpole_reduced_reg_point3_sigmoid_regweight_50", "cartpole_reduced_reg_point3_sigmoid_regweight_100", "cartpole_reduced_reg_point3_sigmoid_regweight_250"]
 	# n_it = [470, 540, 480, 540]
 
-	exp_names = ["cartpole_reduced_reg_point3_sigmoid_regweight_250_init_small", "cartpole_reduced_reg_point3_sigmoid_regweight_500_init_small", "cartpole_reduced_reg_point3_sigmoid_regweight_750_init_small"]
-	n_it = [2000, 3000, 3000]
+	# exp_names = ["cartpole_reduced_reg_point3_sigmoid_regweight_250_init_small", "cartpole_reduced_reg_point3_sigmoid_regweight_500_init_small", "cartpole_reduced_reg_point3_sigmoid_regweight_750_init_small"]
+	# n_it = [2000, 3000, 3000]
+
+	# exp_names = ["cartpole_reduced_debugpinch1", "cartpole_reduced_debugpinch2a", "cartpole_reduced_debugpinch2b", "cartpole_reduced_debugpinch2c", "cartpole_reduced_debugpinch3"]
+	# n_it = [850, 980, 950, 850, 780]
+	#
+	# exp_names = exp_names[2:]
+	# print(exp_names)
+
+	exp_names = ["cartpole_reduced_debugpinch1_softplus_s1", "cartpole_reduced_debugpinch1_softplus_s2", "cartpole_reduced_debugpinch3_softplus_s1", "cartpole_reduced_debugpinch3_softplus_s2", "cartpole_reduced_debugpinch3_softplus_s3"]
+	n_it = [1500]*5
 	####################################################################################
 
 	# for i, exp_name in enumerate(exp_names):
@@ -296,12 +347,12 @@ if __name__=="__main__":
 	# 	plt.clf()
 	# 	plt.cla()
 
-	# for exp_name in exp_names:
-	# 	graph_log_file_2(exp_name)
+	for exp_name in exp_names:
+		graph_log_file_2(exp_name)
 
-	for i, exp_name in enumerate([exp_names[0]]):
-		# for checkpoint_number in np.arange(0, n_it[i], 100):
-		for checkpoint_number in np.arange(100, 250, 10):
+	for i, exp_name in enumerate(exp_names):
+		for checkpoint_number in np.arange(0, n_it[i], 50):
+		# for checkpoint_number in np.arange(100, 250, 10):
 			print(checkpoint_number)
 			plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
 
@@ -329,31 +380,31 @@ if __name__=="__main__":
 	# train_losses = data["train_losses"]
 
 	# Among the iterations with subzero attack loss, find the one with lowest total loss
-	"""for exp_name in exp_names:
-		# IPython.embed()
-		args = load_args("./log/%s/args.txt" % exp_name)
-		n_checkpoint_step = args.n_checkpoint_step
-		with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
-			data = pickle.load(handle)
-			train_losses = np.array(data["train_losses"])
-			train_attack_losses = np.array(data["train_attack_losses"])
-			train_losses_w_saved_checkpoint = np.array(train_losses)[::n_checkpoint_step]
-			train_attack_losses_w_saved_checkpoint = np.array(data["train_attack_losses"])[::n_checkpoint_step]
-
-			ind_attack_subzero = np.argwhere(train_attack_losses_w_saved_checkpoint < 0)
-
-			if len(ind_attack_subzero) > 0:
-				total_loss_subzero = train_losses[ind_attack_subzero*n_checkpoint_step] # total losses for checkpoints where attack loss < 0
-				ind_best = ind_attack_subzero[np.argmin(total_loss_subzero)]*n_checkpoint_step
-			else:
-				print("No subzero saved checkpoint")
-				ind_best = np.argmin(train_losses_w_saved_checkpoint)*checkpoint_number
-
-			ind_best = ind_best.item() # TODO
-			checkpoint_number = ind_best
-			print("Best checkpoint is: %i" % checkpoint_number)
-			# IPython.embed()
-			# print("Total, attack, reg losses: %.4f, %.4f, %.4f" % (train_losses[ind_best].item(), data["train_attack_losses"][ind_best].item(), data["train_reg_losses"][ind_best].item()))
-			print("Total, attack, reg losses: %.4f, %.4f, %.4f" % (train_losses[ind_best], data["train_attack_losses"][ind_best], data["train_reg_losses"][ind_best]))
-			plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=("best_2d_attacks_from_loaded_checkpoint_%i" % checkpoint_number))
-			# plot_3d(checkpoint_number, exp_name, fname=("best_3d_checkpoint_%i" % checkpoint_number))"""
+	# for exp_name in exp_names:
+	# 	# IPython.embed()
+	# 	args = load_args("./log/%s/args.txt" % exp_name)
+	# 	n_checkpoint_step = args.n_checkpoint_step
+	# 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+	# 		data = pickle.load(handle)
+	# 		train_losses = np.array(data["train_losses"])
+	# 		train_attack_losses = np.array(data["train_attack_losses"])
+	# 		train_losses_w_saved_checkpoint = np.array(train_losses)[::n_checkpoint_step]
+	# 		train_attack_losses_w_saved_checkpoint = np.array(data["train_attack_losses"])[::n_checkpoint_step]
+	#
+	# 		ind_attack_subzero = np.argwhere(train_attack_losses_w_saved_checkpoint < 0)
+	#
+	# 		if len(ind_attack_subzero) > 0:
+	# 			total_loss_subzero = train_losses[ind_attack_subzero*n_checkpoint_step] # total losses for checkpoints where attack loss < 0
+	# 			ind_best = ind_attack_subzero[np.argmin(total_loss_subzero)]*n_checkpoint_step
+	# 		else:
+	# 			print("No subzero saved checkpoint")
+	# 			ind_best = np.argmin(train_losses_w_saved_checkpoint)*checkpoint_number
+	#
+	# 		ind_best = ind_best.item() # TODO
+	# 		checkpoint_number = ind_best
+	# 		print("Best checkpoint is: %i" % checkpoint_number)
+	# 		# IPython.embed()
+	# 		# print("Total, attack, reg losses: %.4f, %.4f, %.4f" % (train_losses[ind_best].item(), data["train_attack_losses"][ind_best].item(), data["train_reg_losses"][ind_best].item()))
+	# 		print("Total, attack, reg losses: %.4f, %.4f, %.4f" % (train_losses[ind_best], data["train_attack_losses"][ind_best], data["train_reg_losses"][ind_best]))
+	# 		plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=("best_2d_attacks_from_loaded_checkpoint_%i" % checkpoint_number))
+	# 		# plot_3d(checkpoint_number, exp_name, fname=("best_3d_checkpoint_%i" % checkpoint_number))
