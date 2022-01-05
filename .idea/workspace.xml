@@ -2,9 +2,13 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/cbf_synthesis.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/cbf_synthesis.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/plot_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/plot_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/01_03_experiments.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/01_03_experiments.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/argument.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/argument.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trainer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -101,7 +105,7 @@
       <workItem from="1640732034699" duration="3718000" />
       <workItem from="1640737523006" duration="222000" />
       <workItem from="1640738160424" duration="35000" />
-      <workItem from="1640810760347" duration="44163000" />
+      <workItem from="1640810760347" duration="53885000" />
     </task>
     <servers />
   </component>

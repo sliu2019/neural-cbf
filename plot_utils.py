@@ -57,6 +57,12 @@ def graph_log_file_2(exp_name, mode='train'):
 	plt.clf()
 	plt.cla()
 
+	# print(train_attack_losses[-20:])
+	# print(timings[-1])
+	# totalsec = timings[-1]
+	# print("Total training time: %i h, %i m" % (totalsec/3600, totalsec % 60))
+	# print("%i h, %i m" % (totalsec/3600, totalsec % 60))
+	print("%.5f" % np.min(train_attack_losses))
 	# IPython.embed()
 
 def load_phi_xlim(exp_name, checkpoint_number):
@@ -338,8 +344,11 @@ if __name__=="__main__":
 	# exp_names = exp_names[2:]
 	# print(exp_names)
 
-	exp_names = ["cartpole_reduced_debugpinch1_softplus_s1", "cartpole_reduced_debugpinch1_softplus_s2", "cartpole_reduced_debugpinch3_softplus_s1", "cartpole_reduced_debugpinch3_softplus_s2", "cartpole_reduced_debugpinch3_softplus_s3"]
-	n_it = [1500]*5
+	# exp_names = ["cartpole_reduced_debugpinch1_softplus_s1", "cartpole_reduced_debugpinch1_softplus_s2", "cartpole_reduced_debugpinch1_softplus_s3",  "cartpole_reduced_debugpinch3_softplus_s1", "cartpole_reduced_debugpinch3_softplus_s2", "cartpole_reduced_debugpinch3_softplus_s3"]
+	# n_it = [1500]*5
+
+	exp_names = ["cartpole_reduced_debugpinch1_resoftplus_s1", "cartpole_reduced_debugpinch1_resoftplus_s2", "cartpole_reduced_debugpinch1_resoftplus_s3"]
+	n_it = [1500, 1500, 1340]
 	####################################################################################
 
 	# for i, exp_name in enumerate(exp_names):
@@ -350,20 +359,16 @@ if __name__=="__main__":
 	for exp_name in exp_names:
 		graph_log_file_2(exp_name)
 
-	for i, exp_name in enumerate(exp_names):
-		for checkpoint_number in np.arange(0, n_it[i], 50):
-		# for checkpoint_number in np.arange(100, 250, 10):
-			print(checkpoint_number)
-			plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
+	# for i, exp_name in enumerate(exp_names):
+	# 	for checkpoint_number in np.arange(0, n_it[i], 50):
+	# 	# for checkpoint_number in np.arange(100, 250, 10):
+	# 		print(checkpoint_number)
+	# 		plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
 
 	# for i, exp_name in enumerate(exp_names):
 	# 	for checkpoint_number in np.arange(0, n_it[i], 50):
 	# 		print(checkpoint_number)
 	# 		plot_3d(checkpoint_number, exp_name)
-
-	# for checkpoint_number in np.arange(0, 1440, 50):
-	# 	print(checkpoint_number)
-	# 	plot_3d(checkpoint_number, "cartpole_reduced_64_64_40-1")
 
 	# exp_names = ["cartpole_reduced_64_64_40_no_adam", "cartpole_reduced_64_64_40_no_adam_fast"]
 	# n_it = [1800, 1600]
@@ -398,7 +403,7 @@ if __name__=="__main__":
 	# 			ind_best = ind_attack_subzero[np.argmin(total_loss_subzero)]*n_checkpoint_step
 	# 		else:
 	# 			print("No subzero saved checkpoint")
-	# 			ind_best = np.argmin(train_losses_w_saved_checkpoint)*checkpoint_number
+	# 			ind_best = np.argmin(train_losses_w_saved_checkpoint)*n_checkpoint_step
 	#
 	# 		ind_best = ind_best.item() # TODO
 	# 		checkpoint_number = ind_best
@@ -406,5 +411,8 @@ if __name__=="__main__":
 	# 		# IPython.embed()
 	# 		# print("Total, attack, reg losses: %.4f, %.4f, %.4f" % (train_losses[ind_best].item(), data["train_attack_losses"][ind_best].item(), data["train_reg_losses"][ind_best].item()))
 	# 		print("Total, attack, reg losses: %.4f, %.4f, %.4f" % (train_losses[ind_best], data["train_attack_losses"][ind_best], data["train_reg_losses"][ind_best]))
-	# 		plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=("best_2d_attacks_from_loaded_checkpoint_%i" % checkpoint_number))
+	# 		# plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=("best_2d_attacks_from_loaded_checkpoint_%i" % checkpoint_number))
 	# 		# plot_3d(checkpoint_number, exp_name, fname=("best_3d_checkpoint_%i" % checkpoint_number))
+
+
+	

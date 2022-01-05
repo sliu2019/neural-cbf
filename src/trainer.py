@@ -152,7 +152,7 @@ class Trainer():
 			self.logger.info('time spent training so far: %s' % t_so_far_str)
 
 			# TODO
-			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(), torch.cuda.memory_reserved()))
+			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(self.args.gpu), torch.cuda.memory_reserved(self.args.gpu)))
 
 			# IPython.embed()
 			# Gather data

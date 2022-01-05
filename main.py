@@ -38,11 +38,12 @@ class Phi(nn.Module):
 		rng = args.phi_k0_init_max - args.phi_k0_init_min
 		self.k0 = nn.Parameter(rng*torch.rand(1, 1) + args.phi_k0_init_min)
 
+		# IPython.embed()
 		# To enforce strict positivity for both
 		self.ci_min = 1e-2
 		self.k0_min = 1e-2
 
-		# print("At initialization: k0 is %f" % self.k0.item())
+		print("At initialization: k0 is %f" % self.k0.item())
 		#############################################################
 		hidden_dims = args.phi_nn_dimension.split("-")
 		hidden_dims = [int(h) for h in hidden_dims]
@@ -172,7 +173,8 @@ class Objective(nn.Module):
 		# assert torch.all(verif_minimizing_u)
 		# print(min_indices)
 		# result = phidot # TODO
-		result = nn.functional.softplus(phidot) # TODO: using softplus
+		# result = nn.functional.softplus(phidot) # TODO: using softplus
+		result = torch.log(torch.exp(phidot + 1) + 1) # TODO: using reshaped softplus
 		result = result.view(-1, 1) # ensures bs x 1
 
 		return result
