@@ -8,6 +8,8 @@ from torch.autograd import grad
 from src.utils import *
 from scipy.integrate import solve_ivp
 from cvxopt import matrix, solvers
+import matplotlib.pyplot as plt
+import pickle
 # Note: none of this is batched
 # Everything done in numpy 
 
@@ -15,10 +17,7 @@ exp_name = "cartpole_reduced_debugpinch3_softplus_s1"
 checkpoint_number = 1450
 
 # todo: LATER, you can load all the below from the experiment name
-eps_value = 10 # TODO? mag? check Changliu paper or Weiye, Tianhao
-alpha = 0.1 # boundary buffer size
-# This experiment has min phi value of -0.6
-dt = 0.005
+dt = 0.005 # TODO
 
 g = 9.81
 I = 1.2E-3
@@ -45,19 +44,14 @@ def numpy_phi_fn(x):
 	assert theta < math.pi and theta > -math.pi
 	x_trunc = np.array([theta, x[3]])
 	x_input = torch.from_numpy(x_trunc.astype("float32")).view(-1, 2)
-	# x_input.requires_grad = True
 
-	# Compute phi grad
 	phi_output = phi_fn(x_input)
-	phi_val = phi_output[0,-1].item()
-	# phi_grad = grad([phi_val], x_input)[0]
-
-	# IPython.embed()
-	return phi_val
+	# phi_vals = phi_output[0,-1].item()
+	phi_vals = phi_output.detach().cpu().numpy()
+	return phi_vals
 
 def numpy_phi_grad(x):
-	# Computes grad of phi at x 
-
+	# Computes grad of phi at x
 	theta = convert_angle_to_negpi_pi_interval(x[1]) # Note: mod theta first, before applying cbf. Also, truncate the state.
 	assert theta < math.pi and theta > -math.pi
 	x_trunc = np.array([theta, x[3]])
@@ -65,8 +59,8 @@ def numpy_phi_grad(x):
 	x_input.requires_grad = True
 
 	# Compute phi grad
-	phi_output = phi_fn(x_input)
-	phi_val = phi_output[0,-1]
+	phi_vals = phi_fn(x_input)
+	phi_val = phi_vals[0,-1]
 	phi_grad = grad([phi_val], x_input)[0]
 
 	# Post op
@@ -76,85 +70,62 @@ def numpy_phi_grad(x):
 
 	return phi_grad
 
-def u_ref(t, x):
+def compute_u_ref(t, x):
 	return 0  
 
-def u_ours(t, x):
-	phi_val = numpy_phi_fn(x)
+def compute_u_ours(t, x):
+	############ Log
+	apply_u_safe = None
+	u_ref = compute_u_ref(t, x)
+	phi_vals = None
+	qp_slack = None
+	qp_lhs = None
+	qp_rhs = None
+	################
+
+	phi_vals = numpy_phi_fn(x)
 	phi_grad = numpy_phi_grad(x)
 
-	x_next = x + dt*x_dot_open_loop(x, u_ref(t, x))
+	x_next = x + dt*x_dot_open_loop(x, compute_u_ref(t, x))
 	next_phi_val = numpy_phi_fn(x_next)
 
-	debug_where_are_we = None
-	if phi_val > 0:
-		eps = eps_value
-		debug_where_are_we = "Outside"
-	# elif phi_val <= 0 and phi_val >= -alpha: # TODO: set this. Simin: doesn't work, a uniform border will never work well.
-	elif phi_val < 0 and next_phi_val >= 0: # TODO: cheating way to convert DT to CT
-		# eps = 0
-		eps = 0
-		debug_where_are_we = "On"
+	if phi_vals[0, -1] > 0:
+		eps = 5.0 # TODO
+		apply_u_safe = True
+	elif phi_vals[0, -1] < 0 and next_phi_val[0, -1] >= 0: # Note: cheating way to convert DT to CT
+		eps = 1.0 # TODO
+		apply_u_safe = True
 	else:
-		# return np.zeros(1)
-		debug_where_are_we = "Inside"
-		# print(debug_where_are_we)
-		debug_dict = {'eps_slack': None, 'phi_val': phi_val, 'next_phi_val': next_phi_val,
-		              "debug_where_are_we": debug_where_are_we}
-		return u_ref(t, x), debug_dict
+		apply_u_safe = False
+		debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs":qp_rhs, "qp_lhs":qp_lhs, "phi_vals":phi_vals}
+		return u_ref, debug_dict
 
 	# Compute the control constraints
-	# Get f(x), g(x)
-	f_x = x_dot_open_loop(x, 0) # xdot defined globally
+	# Get f(x), g(x); note it's a hack for scalar u
+	f_x = x_dot_open_loop(x, 0)
 	g_x = x_dot_open_loop(x, 1) - f_x
 
 	lhs = phi_grad@g_x.T
 	rhs = -phi_grad@f_x.T - eps
 
-	"""# Done computing CBF constraint
-	u_safe = u_ref(t, x)
-
-	# Cbf constraint
-	ratio = (rhs/lhs).item()
-	if lhs >= 0:
-		u_safe = np.clip(u_safe, None, ratio)
-	else:
-		u_safe = np.clip(u_safe, ratio, None)
-
-	# print()
-	# IPython.embed()
-	if debug_where_are_we == "On":
-		print(ratio)
-		IPython.embed()
-	print(debug_where_are_we)
-	print("u: %f" % u_safe)
-	return u_safe"""
-
 	# Computing control using QP
 	# Note, constraint may not always be satisfied, so we include a slack variable on the CBF input constraint
-	u_ref_input = u_ref(t, x)
+	w = 1000.0 # TODO: slack weight
 
-	w = 100.0 # TODO: slack weight
-
-	lhs = lhs.item()
-	rhs = rhs.item()
+	qp_lhs = lhs.item()
+	qp_rhs = rhs.item()
 	Q = 2*np.array([[1.0, 0], [0, 0]])
-	p = np.array([[-2.0*u_ref_input], [w]])
+	p = np.array([[-2.0*u_ref], [w]])
 	G = np.array([[lhs, -1.0], [1, 0], [-1, 0], [0, -1]])
 	h = np.array([[rhs], [max_force], [max_force], [0.0]])
-	A = np.array([[0.0, 0]])
-	b = np.array([0.0])
 
-	# IPython.embed()
-	# sol_obj = solvers.qp(Q, p, G, h, A, b)
-	# sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(h), matrix(A), matrix(b))
 	sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(h))
 	sol_var = sol_obj['x']
 
 	u_safe = sol_var[0]
-	eps_slack = sol_var[1]
+	qp_slack = sol_var[1]
 
-	debug_dict = {'eps_slack': eps_slack, 'phi_val': phi_val, 'next_phi_val': next_phi_val, "debug_where_are_we": debug_where_are_we} # second RV
+	debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs":qp_rhs, "qp_lhs":qp_lhs, "phi_vals":phi_vals}
 	return u_safe, debug_dict
 
 def x_dot_open_loop(x, u):
@@ -178,69 +149,121 @@ def x_dot_open_loop(x, u):
 def x_dot_closed_loop(t, x):
 	# Dynamics function 
 	# Compute u
-	u, _ = u_ours(t, x)
-	# print("u: ", u)
-	# Compute x_dot 
+	u, _ = compute_u_ours(t, x)
 	x_dot = x_dot_open_loop(x, u)
 	return x_dot
 
-
-if __name__ == "__main__":
-	"""
-	theta_dot_init = 0 # TODO: try others later (can only be in the assumed range)
-	theta_init = math.pi/8 # less than pi/4  
-	x0 = np.array([0, theta_init, 0, theta_dot_init]) #x, theta, xdot, theta_dot
-	t_span = [0, 20]
-
-	sol = solve_ivp(x_dot_closed_loop, t_span, x0)
-	assert sol.status==0
-	# print("Solution status: ", sol.status)
-
-	x_rollout = sol.y
-
-	# rv = x_dot_closed_loop(0, x0)
-	print("Rollout has %i steps" % x_rollout.shape[1])
-	IPython.embed()
-	"""
-	theta_dot_init = 0 # TODO: try others later (can only be in the assumed range)
-	theta_init = math.pi/8 # less than pi/4
-	x0 = np.array([0, theta_init, 0, theta_dot_init]) #x, theta, xdot, theta_dot
-	T_max = 70
-
+def simulate_rollout(x0, T_max=100):
 	x = x0.copy()
-	x_rollout = [x]
-	u_rollout = []
-	eps_slack_rollout = []
-	phi_val_rollout = []
-	where_are_we_rollout = []
-	# IPython.embed()
+	# 	debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs":qp_rhs, "qp_lhs":qp_lhs, "phi_vals":phi_vals}
+	xs = [x]
+	us = []
+	dict = None
 
 	for t in range(T_max):
-		u, debug_dict = u_ours(t, x)
+		u, debug_dict = compute_u_ours(t, x)
 		x_dot = x_dot_open_loop(x, u)
 		x = x + dt*x_dot
 
-		u_rollout.append(u)
-		x_rollout.append(x)
-		eps_slack_rollout.append(debug_dict["eps_slack"])
-		phi_val_rollout.append(debug_dict["phi_val"])
-		where_are_we_rollout.append(debug_dict["debug_where_are_we"])
+		us.append(u)
+		xs.append(x)
 
-	print("*********************************************")
-	print("********   Rollout terminated  **************")
+		if dict is None:
+			# dict = debug_dict
+			dict = {key:[value] for (key, value) in debug_dict.items()}
+		else:
+			dict = {key:(value.append(debug_dict[key])) for (key, value) in debug_dict.items()}
+
+	dict = {key:np.array(value) for (key, value) in dict.items()}
+	dict["x"] = np.array(xs)
+	dict["u"] = np.array(us)
+
+	print("At the end of a rollout")
+	IPython.embed()
+	return dict
+
+def compute_phi_signs():
+	# Discretizes state space, gets phi on these states, then returns the subset of states in invariant set
+	delta = 0.01
+	x = np.arange(x_lim[0, 0], x_lim[0, 1], delta)
+	y = np.arange(x_lim[1, 0], x_lim[1, 1], delta)[::-1] # need to reverse it # TODO
+	X, Y = np.meshgrid(x, y)
+
+	##### Plotting ######
+	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
+	input = torch.from_numpy(input)
+	phi_vals = phi_fn(input)
+
+	S_vals = torch.max(phi_vals, dim=1)[0] # S = all phi_i <= 0
+	phi_signs = torch.sign(S_vals).detach().cpu().numpy()
+	phi_signs = np.reshape(phi_signs, X.shape)
+
+	return phi_signs, X, Y # square array with 1, -1. Negative indicates inside invariant set
+
+if __name__ == "__main__":
+	log_folder = "debug"
+	log_fname = "our_cbf"
+
+	makedirs(os.path.join("rollouts", log_folder))
+
+	N_rollout = 5 # TODO
+	phi_signs, X, Y = compute_phi_signs()
+	where_invariant = np.argwhere(phi_signs == -1)
+	which = np.random.choice(np.arange(where_invariant.shape[0]), size=N_rollout, replace=False)
+	chosen_invariant_ind = where_invariant[which]
+	chosen_invariant = np.concatenate((np.reshape(X[chosen_invariant_ind[:, 0]], (-1, 1)), np.reshape(Y[chosen_invariant_ind[:, 1]], (-1, 1))), axis=1)
+
+	x0s = np.zeros((N_rollout, 4))
+	x0s[:, 1] = chosen_invariant[:, 0]
+	x0s[:, 3] = chosen_invariant[:, 1]
+
+	# Plot points
+	print("Check plotted points")
+	fig = plt.figure()
+	ax = fig.add_subplot(111)
+	ax.imshow(phi_signs, extent=x_lim.flatten())
+	ax.set_aspect("equal")
+	ax.scatter(chosen_invariant[:, 0], chosen_invariant[:, 1])
+	plt.savefig("./rollouts/%s/%s_x0.png" % (log_folder, log_fname), bbox_inches='tight')
+	plt.clf()
+	plt.close()
 	IPython.embed()
 
-	# x = np.array([-0.00887287, 0.68213777, -0.08144935, 2.92963457])
-	# x_next = np.array([-0.00928012, 0.69678594, -0.08291683, 3.01757929])
-	#
-	# phi_x = numpy_phi_fn(x)
-	# phi_x_next = numpy_phi_fn(x_next)
-	#
-	# print(phi_x, phi_x_next)
+	info_dicts = None
+	for i in range(N_rollout):
+		info_dict = simulate_rollout(x0s[i])
 
-	"""
-	tensor([[-0.1515, -0.1116,  0.2843],
-        [-0.1313, -0.0893,  0.3068]], grad_fn=<CatBackward>)
-	"""
+		if info_dicts is None:
+			info_dicts = info_dict
+			# Dict comprehension is: dict_variable = {key: value for (key, value) in dictonary.items()}
+			info_dicts = {key: value[None] for (key, value) in info_dicts.items()}
+		else:
+			info_dicts = {key: np.concatenate((value, info_dict[key][None]), axis=0) for (key, value) in info_dicts.items()}
 
+	# Save data
+	save_fpth = "./rollouts/%s/%s.pkl" % (log_folder, log_fname)
+	with open(save_fpth, 'wb') as handle:
+		pickle.dump(info_dicts, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+	# Sanity checks
+	print("before sanity checks")
+	IPython.embed()
+	# 1. Check that all rollouts touched the invariant set boundary. If not, increase T_max
+	# 2. Compute the number of exits for each rollout
+	# 3. Compute the number of rollouts without any exits
+	# debug_dict = {"x": x, "u": u, "apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs":qp_rhs, "qp_lhs":qp_lhs, "phi_vals":phi_vals}
+	apply_u_safe = info_dicts["apply_u_safe"]  # (N_rollout, T_max)
+	rollouts_any_safe_ctrl = np.any(apply_u_safe, axis=1)
+	print(np.any(rollouts_any_safe_ctrl))
+	print(rollouts_any_safe_ctrl)
+
+	phi_vals = info_dicts["phi_vals"] # (N_rollout, T_max, r+1)
+	phi_max = np.max(phi_vals, axis=2)
+	rollouts_any_exits = np.any(phi_max > 0, axis=1)
+	print("Any exits?", np.any(rollouts_any_exits))
+	print("Percent exits: ", np.mean(rollouts_any_exits))
+	print("Which rollouts have exits:", rollouts_any_exits)
+	print("How many exists per rollout: ", np.sum(phi_max > 0, axis=1))
+
+	print("after sanity checks")
+	IPython.embed()
