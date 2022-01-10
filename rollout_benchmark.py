@@ -98,8 +98,10 @@ def u_ours(t, x):
 	else:
 		# return np.zeros(1)
 		debug_where_are_we = "Inside"
-		print(debug_where_are_we)
-		return u_ref(t, x)
+		# print(debug_where_are_we)
+		debug_dict = {'eps_slack': None, 'phi_val': phi_val, 'next_phi_val': next_phi_val,
+		              "debug_where_are_we": debug_where_are_we}
+		return u_ref(t, x), debug_dict
 
 	# Compute the control constraints
 	# Get f(x), g(x)
@@ -132,18 +134,27 @@ def u_ours(t, x):
 	# Note, constraint may not always be satisfied, so we include a slack variable on the CBF input constraint
 	u_ref_input = u_ref(t, x)
 
-	Q = np.array([[1, 0], [0, 0]])
-	p = np.array([-2*u_ref_input, 1])
-	G = np.array([[lhs, -1], [1, 0], [-1, 0], [0, -1]])
-	h = np.array([rhs, max_force, -max_force, 0])
+	w = 100.0 # TODO: slack weight
 
-	sol_obj = solvers.qp(Q, p, G, h)
+	lhs = lhs.item()
+	rhs = rhs.item()
+	Q = 2*np.array([[1.0, 0], [0, 0]])
+	p = np.array([[-2.0*u_ref_input], [w]])
+	G = np.array([[lhs, -1.0], [1, 0], [-1, 0], [0, -1]])
+	h = np.array([[rhs], [max_force], [max_force], [0.0]])
+	A = np.array([[0.0, 0]])
+	b = np.array([0.0])
+
+	# IPython.embed()
+	# sol_obj = solvers.qp(Q, p, G, h, A, b)
+	# sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(h), matrix(A), matrix(b))
+	sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(h))
 	sol_var = sol_obj['x']
 
 	u_safe = sol_var[0]
 	eps_slack = sol_var[1]
-	debug_dict = {'eps_slack': eps_slack} # second RV
 
+	debug_dict = {'eps_slack': eps_slack, 'phi_val': phi_val, 'next_phi_val': next_phi_val, "debug_where_are_we": debug_where_are_we} # second RV
 	return u_safe, debug_dict
 
 def x_dot_open_loop(x, u):
@@ -167,7 +178,7 @@ def x_dot_open_loop(x, u):
 def x_dot_closed_loop(t, x):
 	# Dynamics function 
 	# Compute u
-	u = u_ours(t, x)
+	u, _ = u_ours(t, x)
 	# print("u: ", u)
 	# Compute x_dot 
 	x_dot = x_dot_open_loop(x, u)
@@ -175,12 +186,12 @@ def x_dot_closed_loop(t, x):
 
 
 if __name__ == "__main__":
+	"""
 	theta_dot_init = 0 # TODO: try others later (can only be in the assumed range)
 	theta_init = math.pi/8 # less than pi/4  
 	x0 = np.array([0, theta_init, 0, theta_dot_init]) #x, theta, xdot, theta_dot
 	t_span = [0, 20]
 
-	"""
 	sol = solve_ivp(x_dot_closed_loop, t_span, x0)
 	assert sol.status==0
 	# print("Solution status: ", sol.status)
@@ -191,12 +202,17 @@ if __name__ == "__main__":
 	print("Rollout has %i steps" % x_rollout.shape[1])
 	IPython.embed()
 	"""
+	theta_dot_init = 0 # TODO: try others later (can only be in the assumed range)
+	theta_init = math.pi/8 # less than pi/4
+	x0 = np.array([0, theta_init, 0, theta_dot_init]) #x, theta, xdot, theta_dot
+	T_max = 70
 
-	T_max = 50
 	x = x0.copy()
 	x_rollout = [x]
 	u_rollout = []
 	eps_slack_rollout = []
+	phi_val_rollout = []
+	where_are_we_rollout = []
 	# IPython.embed()
 
 	for t in range(T_max):
@@ -207,8 +223,12 @@ if __name__ == "__main__":
 		u_rollout.append(u)
 		x_rollout.append(x)
 		eps_slack_rollout.append(debug_dict["eps_slack"])
+		phi_val_rollout.append(debug_dict["phi_val"])
+		where_are_we_rollout.append(debug_dict["debug_where_are_we"])
 
-	# IPython.embed()
+	print("*********************************************")
+	print("********   Rollout terminated  **************")
+	IPython.embed()
 
 	# x = np.array([-0.00887287, 0.68213777, -0.08144935, 2.92963457])
 	# x_next = np.array([-0.00928012, 0.69678594, -0.08291683, 3.01757929])
