@@ -65,48 +65,7 @@ def graph_log_file_2(exp_name, mode='train'):
 	print("%.5f" % np.min(train_attack_losses))
 	# IPython.embed()
 
-def load_phi_xlim(exp_name, checkpoint_number):
-	"""args = load_args("./log/%s/args.txt" % exp_name)
-	dev = "cpu"
-	device = torch.device(dev)
-
-	r = 2
-	x_dim = 2
-	u_dim = 1
-	x_lim = np.array([[-math.pi, math.pi], [-args.max_angular_velocity, args.max_angular_velocity]], dtype=np.float32)
-
-	# Create phi
-	from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
-
-	if args.physical_difficulty == 'easy':  # medium length pole
-		param_dict = {
-			"I": 1.2E-3,
-			"m": 0.127,
-			"M": 1.0731,
-			"l": 0.3365
-		}
-	elif args.physical_difficulty == 'hard':  # long pole
-		param_dict = {
-			"I": 7.88E-3,
-			"m": 0.230,
-			"M": 1.0731,
-			"l": 0.6413
-		}
-
-	param_dict["max_theta"] = args.max_theta
-	param_dict["max_force"] = args.max_force
-
-	# param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb")) # TODO: replace with this
-
-	h_fn = H(param_dict)
-	xdot_fn = XDot(param_dict)
-	uvertices_fn = ULimitSetVertices(param_dict, device)
-
-	x_e = torch.zeros(1, x_dim)
-	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
-
-	out = phi_fn(x_e)
-	assert out[0, -1].item() <= 0"""
+def create_phi_struct_load_xlim(exp_name, checkpoint_number):
 	args = load_args("./log/%s/args.txt" % exp_name)
 	dev = "cpu"
 	device = torch.device(dev)
@@ -151,7 +110,7 @@ def load_phi_xlim(exp_name, checkpoint_number):
 	return phi_fn, x_lim
 
 def plot_3d(checkpoint_number, exp_name, fname=None):
-	phi_fn, x_lim = load_phi_xlim(exp_name, checkpoint_number)
+	phi_fn, x_lim = create_phi_struct_load_xlim(exp_name, checkpoint_number)
 	###################################
 	# IPython.embed()
 	delta = 0.1
@@ -215,7 +174,7 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=None):
 	Plots binary +/- of CBF value
 	Also plots training attacks (all of the candidate attacks, not just the maximizer)
 	"""
-	phi_fn, x_lim = load_phi_xlim(exp_name, checkpoint_number)
+	phi_fn, x_lim = create_phi_struct_load_xlim(exp_name, checkpoint_number)
 	# print(out)
 	# IPython.embed()
 	###################################
@@ -234,6 +193,8 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=None):
 	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
 	input = torch.from_numpy(input)
 	phi_vals = phi_fn(input)
+	# print(torch.min(phi_vals))
+	# IPython.embed()
 	S_vals = torch.max(phi_vals, dim=1)[0] # S = all phi_i <= 0
 	phi_signs = torch.sign(S_vals).detach().cpu().numpy()
 	phi_signs = np.reshape(phi_signs, X.shape)
@@ -278,7 +239,13 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=None):
 	ax.scatter(attacks[:, 0], attacks[:, 1], c="tab:orange", marker="x")
 	ax.scatter(best_attack[0], best_attack[1], marker="D", c="c")
 
+	### todo: delete
+	# plt.scatter(0.68213777, 2.92963457, c="red")
+	# plt.scatter(0.69678594, 3.01757929, c="blue")
+	# input = torch.from_numpy(np.array([[0.68213777, 2.92963457], [0.69678594, 3.01757929]]).astype(np.float32))
+	# phi_vals = phi_fn(input)
 	# IPython.embed()
+
 	title = "Ckpt %i, k0 = %.4f, k1 = %.4f" % (checkpoint_number, phi_fn.k0[0, 0].item(), phi_fn.ci[0, 0].item())
 	plt.title(title)
 	if fname is None:
@@ -291,7 +258,7 @@ def plot_a_k(exp_name, n_it):
 	a_list = []
 	k_list = []
 	for checkpoint_number in np.arange(0, n_it, 50):
-		phi_fn, x_lim = load_phi_xlim(exp_name, checkpoint_number)
+		phi_fn, x_lim = create_phi_struct_load_xlim(exp_name, checkpoint_number)
 
 		a = phi_fn.a[0, 0].item()
 		k = phi_fn.ci[0, 0].item()
@@ -347,8 +314,13 @@ if __name__=="__main__":
 	# exp_names = ["cartpole_reduced_debugpinch1_softplus_s1", "cartpole_reduced_debugpinch1_softplus_s2", "cartpole_reduced_debugpinch1_softplus_s3",  "cartpole_reduced_debugpinch3_softplus_s1", "cartpole_reduced_debugpinch3_softplus_s2", "cartpole_reduced_debugpinch3_softplus_s3"]
 	# n_it = [1500]*5
 
-	exp_names = ["cartpole_reduced_debugpinch1_resoftplus_s1", "cartpole_reduced_debugpinch1_resoftplus_s2", "cartpole_reduced_debugpinch1_resoftplus_s3"]
-	n_it = [1500, 1500, 1340]
+	# exp_names = ["cartpole_reduced_debugpinch1_resoftplus_s1", "cartpole_reduced_debugpinch1_resoftplus_s2", "cartpole_reduced_debugpinch1_resoftplus_s3"]
+	# n_it = [1500, 1500, 1340]
+
+	exp_names = ["cartpole_reduced_debugpinch3_softplus_s1"]
+	n_it = [1450]
+
+	plot_2d_attacks_from_loaded(1450, "cartpole_reduced_debugpinch3_softplus_s1")
 	####################################################################################
 
 	# for i, exp_name in enumerate(exp_names):
@@ -356,8 +328,8 @@ if __name__=="__main__":
 	# 	plt.clf()
 	# 	plt.cla()
 
-	for exp_name in exp_names:
-		graph_log_file_2(exp_name)
+	# for exp_name in exp_names:
+	# 	graph_log_file_2(exp_name)
 
 	# for i, exp_name in enumerate(exp_names):
 	# 	for checkpoint_number in np.arange(0, n_it[i], 50):
