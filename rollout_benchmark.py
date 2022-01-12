@@ -10,6 +10,10 @@ from scipy.integrate import solve_ivp
 from cvxopt import matrix, solvers
 import matplotlib.pyplot as plt
 import pickle
+from cart_pole_env import CartPoleEnv
+
+env = CartPoleEnv()
+
 # Note: none of this is batched
 # Everything done in numpy 
 
@@ -17,17 +21,6 @@ exp_name = "cartpole_reduced_debugpinch3_softplus_s1"
 checkpoint_number = 1450
 
 # todo: LATER, you can load all the below from the experiment name
-dt = 0.005 # TODO
-
-g = 9.81
-I = 1.2E-3
-m = 0.127
-M = 1.0731
-l = 0.3365 
-
-max_theta = math.pi/4.0 
-max_force = 22.0
-max_angular_velocity = 5.0 # state space constraint
 
 phi_fn, x_lim = create_phi_struct_load_xlim(exp_name, checkpoint_number)
 phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
@@ -86,7 +79,7 @@ def compute_u_ours(t, x):
 	phi_vals = numpy_phi_fn(x)
 	phi_grad = numpy_phi_grad(x)
 
-	x_next = x + dt*x_dot_open_loop(x, compute_u_ref(t, x))
+	x_next = x + env.dt * env.x_dot_open_loop(x, compute_u_ref(t, x))
 	next_phi_val = numpy_phi_fn(x_next)
 
 	if phi_vals[0, -1] > 0:
@@ -102,8 +95,8 @@ def compute_u_ours(t, x):
 
 	# Compute the control constraints
 	# Get f(x), g(x); note it's a hack for scalar u
-	f_x = x_dot_open_loop(x, 0)
-	g_x = x_dot_open_loop(x, 1) - f_x
+	f_x = env.x_dot_open_loop(x, 0)
+	g_x = env.x_dot_open_loop(x, 1) - f_x
 
 	lhs = phi_grad@g_x.T
 	rhs = -phi_grad@f_x.T - eps
@@ -117,7 +110,7 @@ def compute_u_ours(t, x):
 	Q = 2*np.array([[1.0, 0], [0, 0]])
 	p = np.array([[-2.0*u_ref], [w]])
 	G = np.array([[lhs, -1.0], [1, 0], [-1, 0], [0, -1]])
-	h = np.array([[rhs], [max_force], [max_force], [0.0]])
+	h = np.array([[rhs], [env.max_force], [env.max_force], [0.0]])
 
 	sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(h))
 	sol_var = sol_obj['x']
@@ -128,29 +121,11 @@ def compute_u_ours(t, x):
 	debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs":qp_rhs, "qp_lhs":qp_lhs, "phi_vals":phi_vals}
 	return u_safe, debug_dict
 
-def x_dot_open_loop(x, u):
-	# u is scalar
-	x_dot = np.zeros(4)
-
-	x_dot[0] = x[2]
-	x_dot[1] = x[3]
-
-	theta = x[1]
-	theta_dot = x[3]
-	denom = I*(M + m) + m*(l**2)*(M + m*(math.sin(theta)**2))
-	x_dot[2] = (I + m*(l**2))*(m*l*theta_dot**2*math.sin(theta)) - g*(m**2)*(l**2)*math.sin(theta)*math.cos(theta) + (I + m*l**2)*u
-	x_dot[3] = m*l*(-m*l*theta_dot**2*math.sin(theta)*math.cos(theta) + (M+m)*g*math.sin(theta)) + (-m*l*math.cos(theta))*u
-
-	x_dot[2] = x_dot[2]/denom
-	x_dot[3] = x_dot[3]/denom
-
-	return x_dot 
-
 def x_dot_closed_loop(t, x):
 	# Dynamics function 
 	# Compute u
 	u, _ = compute_u_ours(t, x)
-	x_dot = x_dot_open_loop(x, u)
+	x_dot = env.x_dot_open_loop(x, u)
 	return x_dot
 
 def simulate_rollout(x0, T_max=100):
@@ -162,8 +137,8 @@ def simulate_rollout(x0, T_max=100):
 
 	for t in range(T_max):
 		u, debug_dict = compute_u_ours(t, x)
-		x_dot = x_dot_open_loop(x, u)
-		x = x + dt*x_dot
+		x_dot = env.x_dot_open_loop(x, u)
+		x = x + env.dt * x_dot
 
 		us.append(u)
 		xs.append(x)

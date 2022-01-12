@@ -94,7 +94,7 @@ def create_phi_struct_load_xlim(exp_name, checkpoint_number):
 	# 		"l": 0.6413
 	# 	}
 	#
-	# param_dict["max_theta"] = args.max_theta
+	# param_dict["theta_safe_lim"] = args.theta_safe_lim
 	# param_dict["max_force"] = args.max_force
 
 	h_fn = H(param_dict)

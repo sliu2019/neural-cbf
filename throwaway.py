@@ -155,7 +155,7 @@ def plot_phi_2d_level_curve_over_training():
 		"m": 0.2,
 		"M": 2,
 		"l": 0.5,
-		"max_theta": math.pi / 10.0,
+		"theta_safe_lim": math.pi / 10.0,
 		"max_force": 1.0
 	}
 
@@ -199,7 +199,7 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 		"m": 0.25,
 		"M": 1.00,
 		"l": 0.5,
-		"max_theta": math.pi / 2.0,
+		"theta_safe_lim": math.pi / 2.0,
 		"max_force": 15.0
 	}
 
@@ -208,7 +208,7 @@ def plot_2d_binary(checkpoint_number, save_fnm, exp_name):
 	uvertices_fn = ULimitSetVertices(param_dict, device)
 
 	# n_samples = 50
-	# rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 1]])
+	# rnge = torch.tensor([param_dict["theta_safe_lim"], x_lim[1:x_dim, 1]])
 	# A_samples = torch.rand(n_samples, x_dim) * (2 * rnge) - rnge  # (n_samples, x_dim)
 	x_e = torch.zeros(1, x_dim)
 
@@ -334,7 +334,7 @@ def plot_3d(checkpoint_number, exp_name):
 			"M": 1.0731,
 			"l": 0.6413
 		}
-	param_dict["max_theta"] = args.max_theta
+	param_dict["theta_safe_lim"] = args.theta_safe_lim
 	param_dict["max_force"] = args.max_force
 
 	h_fn = H(param_dict)
@@ -419,7 +419,7 @@ def plot_2d_attacks(checkpoint_number, exp_name):
 		"m": 0.25,
 		"M": 1.00,
 		"l": 0.5,
-		"max_theta": math.pi / 2.0,
+		"theta_safe_lim": math.pi / 2.0,
 		"max_force": 15.0
 	}
 
@@ -569,7 +569,7 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name):
 			"l": 0.6413
 		}
 
-	param_dict["max_theta"] = args.max_theta
+	param_dict["theta_safe_lim"] = args.theta_safe_lim
 	param_dict["max_force"] = args.max_force
 
 	# param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb")) # TODO: replace with this
@@ -670,7 +670,7 @@ def debug_manifold_optimization(checkpoint_number, exp_name):
 		"m": 0.25,
 		"M": 1.00,
 		"l": 0.5,
-		"max_theta": math.pi / 2.0,
+		"theta_safe_lim": math.pi / 2.0,
 		"max_force": 15.0
 	}
 
@@ -732,7 +732,7 @@ def plot_ci_over_time(exp_name):
 		"m": 0.25,
 		"M": 1.00,
 		"l": 0.5,
-		"max_theta": math.pi / 2.0,
+		"theta_safe_lim": math.pi / 2.0,
 		"max_force": 15.0
 	}
 
@@ -797,7 +797,7 @@ def test_reg_term(exp_name, checkpoint_number):
 			"l": 0.6413
 		}
 
-	param_dict["max_theta"] = args.max_theta
+	param_dict["theta_safe_lim"] = args.theta_safe_lim
 	param_dict["max_force"] = args.max_force
 	h_fn = H(param_dict)
 	xdot_fn = XDot(param_dict)
@@ -856,7 +856,7 @@ def plot_a_k(exp_name, n_it):
 			"l": 0.6413
 		}
 
-	param_dict["max_theta"] = args.max_theta
+	param_dict["theta_safe_lim"] = args.theta_safe_lim
 	param_dict["max_force"] = args.max_force
 
 	# param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb")) # TODO: replace with this

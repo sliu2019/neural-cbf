@@ -16,7 +16,7 @@ def parser():
 
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole')
 	parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol
-	parser.add_argument('--max_theta', default=math.pi/4.0, type=float)
+	parser.add_argument('--theta_safe_lim', default=math.pi/4.0, type=float)
 	parser.add_argument('--max_force', default=22.0, type=float)
 
 	parser.add_argument('--reg_weight', default=1.0, type=float, help='the weight on the volume term')
