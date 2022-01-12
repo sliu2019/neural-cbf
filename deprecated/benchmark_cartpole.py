@@ -578,7 +578,7 @@ if __name__ == "__main__":
 	save_fldrnm = "%s_%i" % (exp_name, checkpoint_number)
 
 	from src.problems.cartpole_reduced import H, XDot
-	from phi_baseline import PhiBaseline
+	from deprecated.phi_baseline import PhiBaseline
 
 	h_fn = H(param_dict)
 	xdot_fn = XDot(param_dict)

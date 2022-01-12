@@ -12,7 +12,7 @@ from src.argument import parser, print_args
 from src.utils import *
 import torch
 import pickle
-from phi_baseline import PhiBaseline
+from deprecated.phi_baseline import PhiBaseline
 from src.attacks.gradient_batch_attacker import GradientBatchAttacker
 from torch.autograd import grad
 from torch import nn

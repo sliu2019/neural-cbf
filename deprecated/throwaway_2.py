@@ -6,7 +6,7 @@ import matplotlib.lines as lines
 from scipy.integrate import solve_ivp
 from time import time
 
-import variables
+import deprecated.variables as variables
 
 fig = plt.figure()
 ax = fig.add_subplot(111, aspect = 'equal', xlim = (-5, 5), ylim = (-1, 1), title = "Inverted Pendulum Simulation")

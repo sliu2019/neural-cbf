@@ -15,17 +15,21 @@ tianhao todo
 
 
 weiye todo 
-1. construct agent class
+1. construct agent class (done)
     1. phi and phi grad function for each class
     2. safecontrol function, (u) -> safe control 
-2. unified evaluation platform 
+2. unified evaluation platform (done)
     1. rollout the given agent, by calling the safecontrol function
     2. return a score, metric (violation times? 
-3. code ssa ,c1 = 1, c2 =1, c3 = 1
+3. code ssa ,c1 = 1, c2 =1, c3 = 1 (done)
 safety index: 
 $\beta = (theta^2)^{c_1} - (theta_{max}^2)^{c_1} + c_3 $
 phi(x) = (theta^2)^{c_1} - (theta_{max}^2)^{c_1} - c_2 \dot{h}(x) + c_3    
 where $c_1 > 0, c_2 > 0, c_3 = 0$ are the parameters.
+
+4. takes in the batch input
+    1. verify the correctness for one dim
+    2. multiple dimension
  
 And compute $\dot{h}$ analytically as $\dot{h} = \langle \dot{x}, \nabla_{x} h(x) \rangle = 2 \theta \dot{\theta}$.
     
