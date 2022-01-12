@@ -15,7 +15,7 @@ class H(nn.Module):
 	def forward(self, x):
 		# TODO (toy): implement
 		# The way these are implemented should be batch compliant
-		rv = torch.abs(x[:, [1]]) - self.theta_safe_lim # bs x 1
+		rv = torch.abs(x[:, [1]]) - self.max_theta # bs x 1
 		return rv
 
 class XDot(nn.Module):
@@ -65,7 +65,7 @@ if __name__ == "__main__":
 		"m": 0.2,
 		"M": 2,
 		"l": 0.5,
-		"theta_safe_lim": math.pi/10.0,
+		"max_theta": math.pi/10.0,
 		"max_force": 1.0
 	}
 

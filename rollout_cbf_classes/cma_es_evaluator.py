@@ -56,7 +56,7 @@ class CartPoleEvaluator(object):
         # invariant set: (phi < 0 or dot_phi < 0 (with a valid control)) and phi_0 < 0
         theta = x[1]
         dot_theta = x[3]
-        return theta ** self.coe[0] - self.env.theta_safe_lim ** self.coe[0] + self.coe[1] * dot_theta + self.coe[2]
+        return theta ** self.coe[0] - self.env.max_theta ** self.coe[0] + self.coe[1] * dot_theta + self.coe[2]
 
     def grad_phi(self, x):
         theta = x[1]

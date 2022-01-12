@@ -6,7 +6,7 @@ class CartPoleEnv():
     def __init__(self):
         self.dt = 0.005 # TODO
         self.max_theta = math.pi
-        self.theta_safe_lim = math.pi/4.0
+        self.max_theta = math.pi/4.0
         self.max_force = 22.0
         self.max_angular_velocity = 5.0 # state space constraint
 

@@ -57,7 +57,7 @@ if mode == 'easy':
 		"m": 0.25,
 		"M": 1.00,
 		"l": 0.5,
-		"theta_safe_lim": math.pi / 2.0,
+		"max_theta": math.pi / 2.0,
 		"max_force": 15.0
 	}
 
@@ -67,7 +67,7 @@ elif mode == 'hard':
 		"m": 0.25,
 		"M": 1.00,
 		"l": 0.5,
-		"theta_safe_lim": math.pi / 4.0,
+		"max_theta": math.pi / 4.0,
 		"max_force": 1.0
 	}
 ####################################################################################################################
@@ -282,7 +282,7 @@ def load_trained_cbf(exp_name, checkpoint_number):
 	# 		"m": 0.25,
 	# 		"M": 1.00,
 	# 		"l": 0.5,
-	# 		"theta_safe_lim": math.pi / 2.0,
+	# 		"max_theta": math.pi / 2.0,
 	# 		"max_force": 15.0
 	# 	}
 	# elif args.physical_difficulty == 'hard':
@@ -291,7 +291,7 @@ def load_trained_cbf(exp_name, checkpoint_number):
 	# 		"m": 0.25,
 	# 		"M": 1.00,
 	# 		"l": 0.5,
-	# 		"theta_safe_lim": math.pi / 4.0,
+	# 		"max_theta": math.pi / 4.0,
 	# 		"max_force": 1.0
 	# 	}
 
@@ -318,7 +318,7 @@ def run_experiment(x0_list, simulator, controller, save_fpth, stop_criterion="ma
 	Saves experimental data + computed metrics
 	"""
 
-	x_experiment = [] # n_rollouts, n_rollout_steps (may differ across rollouts), x_dim=4
+	x_experiment = [] # n_rollouts, n_rollout_steps (may differ across rollout_results), x_dim=4
 	u_experiment = [] # n_rollouts, n_rollout_steps, 1
 	u_preclip_experiment = []
 
@@ -340,11 +340,11 @@ def run_experiment(x0_list, simulator, controller, save_fpth, stop_criterion="ma
 	return x_experiment, u_experiment, u_preclip_experiment
 
 # def compute_metrics(x_experiment, u_experiment, u_preclip_experiment):
-# 	theta_safe_lim = param_dict["theta_safe_lim"]
+# 	max_theta = param_dict["max_theta"]
 # 	max_force = param_dict["max_force"]
 #
-# 	# Number of rollouts with safety violation
-# 	# Max angle across rollouts
+# 	# Number of rollout_results with safety violation
+# 	# Max angle across rollout_results
 # 	safety_violation_experiment = [] # list of bools
 # 	max_abs_angle_experiment = []
 # 	control_saturated_experiment = [] # list of counts
@@ -352,7 +352,7 @@ def run_experiment(x0_list, simulator, controller, save_fpth, stop_criterion="ma
 # 		x_rollout = x_experiment[i]
 # 		u_rollout = u_experiment[i]
 #
-# 		safety_violation_experiment.append(np.sum(np.abs(x_rollout[:, 1]) > theta_safe_lim)) # TODO: sum to mean?
+# 		safety_violation_experiment.append(np.sum(np.abs(x_rollout[:, 1]) > max_theta)) # TODO: sum to mean?
 # 		max_abs_angle_experiment.append(np.max(np.abs(x_rollout[:, 1])))
 # 		control_saturated_experiment.append(np.sum(np.abs(u_rollout) > max_force))
 #
@@ -376,7 +376,7 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "
 	# other_phi_fn = load_trained_cbf(other_exp_name, other_checkpoint_number)
 
 	# Defining vars
-	theta_safe_lim = param_dict["theta_safe_lim"]
+	max_theta = param_dict["max_theta"]
 	max_force = param_dict["max_force"]
 
 	# Compute optimization objective
@@ -396,7 +396,7 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "
 	Add options to attacker to sample n points on dG and dS or dG and not dS
 	Let x0 be n points in dG and dS
 	Implement metrics here + delete the function: 
-	1. % rollouts: 0/1 stay in S the whole rollout?
+	1. % rollout_results: 0/1 stay in S the whole rollout?
 	2. amount of safe set violation, measured 2 ways
 		a. number of timesteps outside of S over the rollout 
 		b. max(phi_i) over the rollout
@@ -475,7 +475,7 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "
 	Part 2 
 	Let x0 be n points that are outside of G for both phi1 and phi2
 		You can just sample a grid with density on binary search and evaluate with phi; count number of points for which phi1>0, phi2>0 
-	Make the rollouts longer 
+	Make the rollout_results longer 
 	Implement metrics
 	1. # steps to S
 	2. amount of control limit violation 
@@ -583,7 +583,7 @@ if __name__ == "__main__":
 	h_fn = H(param_dict)
 	xdot_fn = XDot(param_dict)
 	ci = [2.0] # TODO
-	beta = param_dict["theta_safe_lim"] - 0.1 # TODO
+	beta = param_dict["max_theta"] - 0.1 # TODO
 	other_phi_fn = PhiBaseline(h_fn, ci, beta, xdot_fn, r, x_dim, u_dim, device)
 
 	# print("make sure phi works!")
