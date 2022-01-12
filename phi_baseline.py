@@ -110,7 +110,7 @@ if __name__=="__main__":
 			"m": 0.25,
 			"M": 1.00,
 			"l": 0.5,
-			"max_theta": math.pi / 2.0,
+			"theta_safe_lim": math.pi / 2.0,
 			"max_force": 15.0
 		}
 	elif physical_difficulty == 'hard':
@@ -119,7 +119,7 @@ if __name__=="__main__":
 			"m": 0.25,
 			"M": 1.00,
 			"l": 0.5,
-			"max_theta": math.pi / 4.0,
+			"theta_safe_lim": math.pi / 4.0,
 			"max_force": 1.0
 		}
 
@@ -127,7 +127,7 @@ if __name__=="__main__":
 	xdot_fn = XDot(param_dict)
 
 	# ci = [2.0] # TODO
-	# beta = param_dict["max_theta"] - 0.1 # TODO
+	# beta = param_dict["theta_safe_lim"] - 0.1 # TODO
 	# phi_baseline = PhiBaseline(h_fn, ci, beta, xdot_fn, r, x_dim, u_dim, device)
 	# save_model(phi_baseline, "./checkpoint/cartpole_baseline_cbf/checkpoint_0.pth")
 

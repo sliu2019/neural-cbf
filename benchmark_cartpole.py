@@ -57,7 +57,7 @@ if mode == 'easy':
 		"m": 0.25,
 		"M": 1.00,
 		"l": 0.5,
-		"max_theta": math.pi / 2.0,
+		"theta_safe_lim": math.pi / 2.0,
 		"max_force": 15.0
 	}
 
@@ -67,7 +67,7 @@ elif mode == 'hard':
 		"m": 0.25,
 		"M": 1.00,
 		"l": 0.5,
-		"max_theta": math.pi / 4.0,
+		"theta_safe_lim": math.pi / 4.0,
 		"max_force": 1.0
 	}
 ####################################################################################################################
@@ -282,7 +282,7 @@ def load_trained_cbf(exp_name, checkpoint_number):
 	# 		"m": 0.25,
 	# 		"M": 1.00,
 	# 		"l": 0.5,
-	# 		"max_theta": math.pi / 2.0,
+	# 		"theta_safe_lim": math.pi / 2.0,
 	# 		"max_force": 15.0
 	# 	}
 	# elif args.physical_difficulty == 'hard':
@@ -291,7 +291,7 @@ def load_trained_cbf(exp_name, checkpoint_number):
 	# 		"m": 0.25,
 	# 		"M": 1.00,
 	# 		"l": 0.5,
-	# 		"max_theta": math.pi / 4.0,
+	# 		"theta_safe_lim": math.pi / 4.0,
 	# 		"max_force": 1.0
 	# 	}
 
@@ -340,7 +340,7 @@ def run_experiment(x0_list, simulator, controller, save_fpth, stop_criterion="ma
 	return x_experiment, u_experiment, u_preclip_experiment
 
 # def compute_metrics(x_experiment, u_experiment, u_preclip_experiment):
-# 	max_theta = param_dict["max_theta"]
+# 	theta_safe_lim = param_dict["theta_safe_lim"]
 # 	max_force = param_dict["max_force"]
 #
 # 	# Number of rollouts with safety violation
@@ -352,7 +352,7 @@ def run_experiment(x0_list, simulator, controller, save_fpth, stop_criterion="ma
 # 		x_rollout = x_experiment[i]
 # 		u_rollout = u_experiment[i]
 #
-# 		safety_violation_experiment.append(np.sum(np.abs(x_rollout[:, 1]) > max_theta)) # TODO: sum to mean?
+# 		safety_violation_experiment.append(np.sum(np.abs(x_rollout[:, 1]) > theta_safe_lim)) # TODO: sum to mean?
 # 		max_abs_angle_experiment.append(np.max(np.abs(x_rollout[:, 1])))
 # 		control_saturated_experiment.append(np.sum(np.abs(u_rollout) > max_force))
 #
@@ -376,7 +376,7 @@ def run_benchmark(phi_fn, other_phi_fn, save_fldr, which_tests=["FI", "FTC_G", "
 	# other_phi_fn = load_trained_cbf(other_exp_name, other_checkpoint_number)
 
 	# Defining vars
-	max_theta = param_dict["max_theta"]
+	theta_safe_lim = param_dict["theta_safe_lim"]
 	max_force = param_dict["max_force"]
 
 	# Compute optimization objective
@@ -583,7 +583,7 @@ if __name__ == "__main__":
 	h_fn = H(param_dict)
 	xdot_fn = XDot(param_dict)
 	ci = [2.0] # TODO
-	beta = param_dict["max_theta"] - 0.1 # TODO
+	beta = param_dict["theta_safe_lim"] - 0.1 # TODO
 	other_phi_fn = PhiBaseline(h_fn, ci, beta, xdot_fn, r, x_dim, u_dim, device)
 
 	# print("make sure phi works!")

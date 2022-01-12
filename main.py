@@ -257,7 +257,7 @@ def main(args):
 			"m": 0.2,
 			"M": 2,
 			"l": 0.5,
-			"max_theta": math.pi / 10.0,
+			"theta_safe_lim": math.pi / 10.0,
 			"max_force": 1.0
 		}
 
@@ -268,7 +268,7 @@ def main(args):
 		# print("ln 167, main, check A sample creation")
 		# IPython.embed()
 		# n_samples = 50
-		# rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 0]])
+		# rnge = torch.tensor([param_dict["theta_safe_lim"], x_lim[1:x_dim, 0]])
 		# A_samples = torch.rand(n_samples, x_dim)*(2*rnge) - rnge # (n_samples, x_dim)
 		# A_samples = torch.rand(10, x_dim)
 
@@ -297,7 +297,7 @@ def main(args):
 				"m": 0.127,
 				"M": 1.0731,
 				"l": 0.3365
-				# "max_theta": math.pi / 2.0,
+				# "theta_safe_lim": math.pi / 2.0,
 				# "max_force": 15.0
 			}
 		elif args.physical_difficulty == 'hard': # long pole
@@ -306,11 +306,11 @@ def main(args):
 				"m": 0.230,
 				"M": 1.0731,
 				"l": 0.6413
-				# "max_theta": math.pi / 4.0,
+				# "theta_safe_lim": math.pi / 4.0,
 				# "max_force": 1.0
 			}
 
-		param_dict["max_theta"] = args.max_theta
+		param_dict["theta_safe_lim"] = args.theta_safe_lim
 		param_dict["max_force"] = args.max_force
 
 		h_fn = H(param_dict)
