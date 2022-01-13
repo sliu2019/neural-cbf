@@ -39,7 +39,7 @@ class OurCBF:
         # Numpy wrapper
         theta = self.convert_angle_to_negpi_pi_interval(x[:, 1]) # Note: mod theta first, before applying cbf. Also, truncate the state.
         # assert theta < math.pi and theta > -math.pi
-        x_trunc = np.array([theta, x[:, 3]])
+        x_trunc = np.concatenate((theta[:, None], x[:, [3]]), axis=1)
         x_input = torch.from_numpy(x_trunc.astype("float32")).view(-1, 2)
 
         # IPython.embed()

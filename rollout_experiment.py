@@ -58,15 +58,16 @@ class CBFController:
 		x_next = x + dt*x_dot_open_loop(x, compute_u_ref(t, x)) # in the absence of safe control, the next state
 		next_phi_val = self.cbf_obj.phi_fn(x_next)
 
+		# IPython.embed()
 		if phi_vals[0, -1] > 0: # Outside
 			eps = 5.0 # TODO
 			apply_u_safe = True
-		elif phi_vals[0, -1] < 0 and next_phi_val[-1] >= 0: # On boundary. Note: cheating way to convert DT to CT
+		elif phi_vals[0, -1] < 0 and next_phi_val[0, -1] >= 0: # On boundary. Note: cheating way to convert DT to CT
 			eps = 1.0 # TODO
 			apply_u_safe = True
 		else: # Inside
 			apply_u_safe = False
-			debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs":qp_rhs, "qp_lhs":qp_lhs, "phi_vals":phi_vals}
+			debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs":qp_rhs, "qp_lhs":qp_lhs, "phi_vals":phi_vals.flatten()}
 			return u_ref, debug_dict
 
 		# Compute the control constraints
@@ -160,6 +161,7 @@ def simulate_rollout(x0, N_dt, cbf_controller):
 	us = []
 	dict = None
 
+	# IPython.embed()
 	for t in range(N_dt):
 		u, debug_dict = cbf_controller.compute_control(t, x) # Define this
 		x_dot = x_dot_open_loop(x, u)
@@ -189,7 +191,7 @@ if __name__ == "__main__":
 	makedirs(os.path.join("rollout_results", log_folder))
 
 	# TODO: fill out run arguments
-	N_rollout = 5 
+	N_rollout = 2
 	T_max = 1.0 # in seconds
 	N_dt = int(T_max/dt)
 
@@ -232,6 +234,7 @@ if __name__ == "__main__":
 	plt.clf()
 	plt.close()
 
+	# IPython.embed()
 	#####################################
 	# Run multiple rollout_results
 	#####################################
@@ -257,6 +260,8 @@ if __name__ == "__main__":
 	#####################################
 
 	# print("before sanity checks")
+	# for key, value in info_dicts.items():
+	# 	print(key, value.shape)
 	# IPython.embed()
 	# 1. Check that all rollout_results touched the invariant set boundary. If not, increase T_max
 	# 2. Compute the number of exits for each rollout
@@ -296,8 +301,7 @@ if __name__ == "__main__":
 	# print("after sanity checks")
 	# # phi_vals (20, 100, 1, 3)
 	#
-	# for key, value in info_dicts.items():
-	# 	print(key, value.shape)
+
 
 	#####################################
 	# Plot trajectories
