@@ -8,6 +8,9 @@ import math
 from rollout_cbf_classes.cart_pole_env import CartPoleEnv
 import seaborn as sns
 
+# TODO: check if phi_fn, phi_grad are correct.
+# TODO: check if evaluate is correct. Add reg term
+
 class Evaluator(object):
     # Each evaluator must contain two major functions: set_params(params) and evaluate(params)
     def set_params(self, params):
@@ -31,10 +34,18 @@ class CartPoleEvaluator(object):
 
         self.env = CartPoleEnv()
 
-        self.coe = np.zeros(4)
+        self.coe = np.zeros(4) # parameters; initialization doesn't matter
+        """
+        What's in self.coe?
+        0: power
+        1: weight on dot_theta term 
+        2: additive scalar
+        3: weight dotphi < -weight*phi
+        """
+
+        # Sample state space
         n_theta = 100
         n_ang = 100
-        
         self.thetas = np.linspace(0, self.env.max_theta, n_theta)
         self.ang_vels = np.linspace(-self.env.max_angular_velocity, self.env.max_angular_velocity, n_ang)
         m1, m2 = np.meshgrid(self.thetas, self.ang_vels)
@@ -43,25 +54,44 @@ class CartPoleEvaluator(object):
         for i,j in np.ndindex(m1.shape):
             self.samples.append([i,j])
 
+        # Defining some var
         self.max_u = np.vstack([self.env.max_force])
         self.dt = self.env.dt
 
-        self.d_min = 1
+        self.reg_weight = 1.0 # TODO: need to tune to get possible result
+
+        # self.d_min = 1
         
-    def phi(self, x):
+    def phi_fn(self, x):
+        """
+        :param x: (N_batch, 4)
+        :return: (N_batch, r+1) where r is degree
+        """
+        # batched
+        x = np.reshape(x, (-1, 4))
         # x =  [x theta, dot_x, dot_theta]
         # phi = theta ** a1 - theta_max ** a1 + a2 * dot_theta + a3
         # phi_0 = theta ** 2 - theta_max ** 2
 
-        # invariant set: (phi < 0 or dot_phi < 0 (with a valid control)) and phi_0 < 0
-        theta = x[1]
-        dot_theta = x[3]
-        return theta ** self.coe[0] - self.env.max_theta ** self.coe[0] + self.coe[1] * dot_theta + self.coe[2]
+        # invariant set: (phi < 0 or dot_phi < 0 (with a valid control)) and phi_0 < 0 # TODO: Simin, this may not be correct.
+        theta = x[:, 1]
+        dot_theta = x[:, 3]
 
-    def grad_phi(self, x):
+        phi_0 = theta**2 - self.env.theta_safe_lim**2
+        phi_1 = phi_0 + self.coe[1]*theta*dot_theta
+        phi = theta ** self.coe[0] - self.env.theta_safe_lim ** self.coe[0] + self.coe[2] + self.coe[1] * theta*dot_theta
+        phis = np.concatenate((phi_0, phi_1, phi), axis=1)
+        return phis
+
+    def phi_grad(self, x):
+        """
+        :param x: (4)
+        :return: (4)
+        """
+        # not batched
         theta = x[1]
         dot_theta = x[3]
-        return np.hstack([0, self.coe[0] * theta ** (self.coe[0]-1), 0, self.coe[1]])
+        return np.hstack([0, self.coe[0] * theta ** (self.coe[0]-1) + self.coe[1]*dot_theta, 0, self.coe[1]*theta])
 
     def set_params(self, params):
         self.coe = params
@@ -75,32 +105,51 @@ class CartPoleEvaluator(object):
     def evaluate(self, params):
         self.set_params(params)
         valid = 0
+        in_invariant = 0
         for sample in self.samples:
             idx = sample
             x = [0, self.thetas[idx[0]], 0, self.ang_vels[idx[1]]]
-            phi = self.phi(x)
+            phis = self.phi_fn(x)
+            phi = phis[0, -1]
             # C dot_x < d
-            # phi(x_k) > 0 -> con: dot_phi(x_k) < -k*phi(x): C = self.grad_phi(x, o)  d = -phi/dt*self.coe[0]
+            # phi(x_k) > 0 -> con: dot_phi(x_k) < -k*phi(x): C = self.grad_phi(x, o)  d = -phi*self.coe[3]
             # phi(x_k) < 0 -> con: phi(x_k+1) < 0:           C = self.grad_phi(x, o)  d = -phi/dt
             C = self.grad_phi(x)
-            d = -phi/self.dt if phi < 0 else -phi/self.dt*self.coe[2]
+            d = -phi/self.dt if phi < 0 else -phi*self.coe[3]
             valid += self.has_valid_control(C, d, x)
+
+            if np.max(phis) <= 0:
+                in_invariant += 1
 
         self.valid = valid
         valid_rate = valid * 1.0 / len(self.samples)
 
-        return valid_rate
+        #### Reg term ####
+        in_invariant_rate = float(in_invariant)/len(self.samples)
+
+        # Log
+        self.valid_rate = valid_rate
+        self.in_invariant_rate = in_invariant_rate
+
+        rv = valid_rate + self.reg_weight*in_invariant_rate
+        return rv
 
     def visualize(self, params):
+        """
+        Visualizes where in the state space we have valid safe control...
+        :param params:
+        :return:
+        """
         self.set_params(params)
         valid_cnt = np.zeros((len(self.thetas), len(self.ang_vels)))
         tot_cnt = 0
         for sample in self.samples:
             idx = sample
             x = [0, self.thetas[idx[0]], 0, self.ang_vels[idx[1]]]
-            phi = self.phi(x)
+            phis = self.phi_fn(x)
+            phi = phis[0, -1]
             C = self.grad_phi(x)
-            d = -phi/self.dt if phi < 0 else -phi/self.dt*self.coe[2]
+            d = -phi/self.dt if phi < 0 else -phi*self.coe[3]
             if not self.has_valid_control(C, d, x):
                 continue
             valid_cnt[idx[0], idx[1]] += 1
@@ -130,4 +179,7 @@ class CartPoleEvaluator(object):
 
     @property
     def log(self):
-        return "{} {}".format(str(self.coe), str(self.valid))
+        # return "{} {}".format(str(self.coe), str(self.valid))
+        # return "{} {} {}".format(str(self.coe), str(self.valid))
+        s = "Params: %s, valid rate: %f, volume rate: %f" % (str(self.coe), self.valid_rate, self.in_invariant_rate)
+        return s

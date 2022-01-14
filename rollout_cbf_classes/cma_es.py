@@ -5,6 +5,7 @@ import cma_es_evaluator
 import os, sys
 from datetime import datetime
 import yaml
+import pickle
 
 class CMAESLearning(object):
     def __init__(self, CMAES_args):
@@ -104,6 +105,12 @@ class CMAESLearning(object):
         print("Final reward:")
         print(self.evaluate(mu, log=False))
         self.evaluator.visualize(mu)
+
+        # Note: add save
+        # save_fpth = "./cma_es_results/%s" %
+        # with open(save_fpth, 'wb') as handle:
+        #     pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
         return mu
 
 def main(config_path):

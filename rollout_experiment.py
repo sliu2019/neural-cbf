@@ -191,8 +191,8 @@ if __name__ == "__main__":
 	makedirs(os.path.join("rollout_results", log_folder))
 
 	# TODO: fill out run arguments
-	N_rollout = 2
-	T_max = 1.0 # in seconds
+	N_rollout = 100
+	T_max = 1.5 # in seconds
 	N_dt = int(T_max/dt)
 
 	if which_cbf == "our_cbf_football":

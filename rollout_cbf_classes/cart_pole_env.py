@@ -5,10 +5,11 @@ import math
 class CartPoleEnv():
     def __init__(self):
         self.dt = 0.005 # TODO
-        self.max_theta = math.pi
-        self.max_theta = math.pi/4.0
+        self.max_theta = math.pi # state space limit
+        self.max_angular_velocity = 5.0 # state space limit
+
+        self.theta_safe_lim = math.pi/4.0
         self.max_force = 22.0
-        self.max_angular_velocity = 5.0 # state space constraint
 
         self.g = 9.81
         self.I = 1.2E-3

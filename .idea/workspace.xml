@@ -3,8 +3,12 @@
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/our_cbf_class.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/our_cbf_class.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/cart_pole_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/cart_pole_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/cma_es.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_config.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_evaluator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rollout_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_experiment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_results/debug2/our_cbf_football_trajectories.png" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_results/debug2/our_cbf_football_trajectories.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rollout_results/debug2/our_cbf_football_x0s.png" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_results/debug2/our_cbf_football_x0s.png" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -103,7 +107,7 @@
       <workItem from="1640738160424" duration="35000" />
       <workItem from="1640810760347" duration="53885000" />
       <workItem from="1641352861715" duration="34951000" />
-      <workItem from="1642025724437" duration="4801000" />
+      <workItem from="1642025724437" duration="14821000" />
     </task>
     <servers />
   </component>
