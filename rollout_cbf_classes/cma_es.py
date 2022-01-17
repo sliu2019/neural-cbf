@@ -1,11 +1,11 @@
 import numpy as np
 import time
 import subprocess
-import cma_es_evaluator
+import rollout_cbf_classes.cma_es_evaluator as evaluators
 import os, sys
 from datetime import datetime
 import yaml
-import pickle
+import pickle, IPython
 
 class CMAESLearning(object):
     def __init__(self, CMAES_args):
@@ -15,14 +15,19 @@ class CMAESLearning(object):
         """
         self.cmaes_args = CMAES_args
 
+        # print("in CMAES learning obj init")
+        # IPython.embed()
+
         now = datetime.now()
 
         timestamp = now.strftime("%m-%d_%H:%M")
         log_name = CMAES_args["exp_prefix"] + "_epoch:" + str(CMAES_args["epoch"]) + "_populate_num:" + str(CMAES_args["populate_num"]) + "_elite_ratio:" + str(CMAES_args["elite_ratio"]) + "_init_sigma_ratio:" + str(CMAES_args["init_sigma_ratio"]) + "_noise_ratio:" + str(CMAES_args["noise_ratio"]) + "_date:" + timestamp 
         self.log = open(os.path.dirname(os.path.abspath(__file__)) + "/cma_es_logs/" + log_name + ".txt","w")
-
         self.evaluator = self.cmaes_args["evaluator"]
-    
+
+        # print(self.cmaes_args)
+        # IPython.embed()
+
     def regulate_params(self, params):
         """
         ================================================================================
@@ -84,12 +89,18 @@ class CMAESLearning(object):
         """
         best_members = self.population[indexes[0:int(self.cmaes_args["elite_ratio"] * self.cmaes_args["populate_num"])]]
         mu = np.mean(best_members, axis=0)
+
+        # IPython.embed()
         sigma = np.cov(best_members.T) + self.noise
+        # except:
+        #     IPython.embed()
         print("avg best mu in this epoch:")
         print(mu)
         return mu, sigma
 
     def learn(self):
+        # print("inside learn")
+        # IPython.embed()
         mu = self.cmaes_args["init_params"]
         bound_range = np.array(self.cmaes_args["upper_bound"]) - np.array(self.cmaes_args["lower_bound"])
         sigma = np.diag((self.cmaes_args["init_sigma_ratio"] * bound_range)**2)
@@ -113,16 +124,20 @@ class CMAESLearning(object):
 
         return mu
 
-def main(config_path):
-
+def run_cmaes(config_path):
     with open(config_path, 'r') as stream:
         try:
+            # IPython.embed()
             config = yaml.safe_load(stream)
-            config["evaluator"] = eval("cma_es_evaluator."+config["evaluator"]+"()")
+            # config["evaluator"] = eval("cma_es_evaluator."+config["evaluator"]+"()")
+            # print(config)
+            config["evaluator"] = eval("evaluators."+config["evaluator"]+"()")
             learner = CMAESLearning(config)
-            learner.learn()
+            mu = learner.learn()
+            return mu
         except yaml.YAMLError as exc:
             print(exc)
+            return None
         
 if __name__ == "__main__":
 
@@ -130,4 +145,4 @@ if __name__ == "__main__":
         print("===============================================================================")
         print("Please pass in the learning config file path. Pre-defined files are in config")
         print("===============================================================================")
-    main(sys.argv[1])
+    run_cmaes(sys.argv[1])

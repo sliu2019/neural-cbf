@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import math
 from rollout_cbf_classes.cart_pole_env import CartPoleEnv
 import seaborn as sns
+import IPython
 
 # TODO: check if phi_fn, phi_grad are correct.
 # TODO: check if evaluate is correct. Add reg term
@@ -44,8 +45,13 @@ class CartPoleEvaluator(object):
         """
 
         # Sample state space
-        n_theta = 100
-        n_ang = 100
+        n_theta = 200 # TODO
+        n_ang = 200 # TODO
+
+        # delta = 0.01
+        # self.thetas = np.arange(-self.env.max_theta, self.env.max_theta, delta)
+        # self.ang_vels = np.arange(-self.env.max_angular_velocity, self.env.max_angular_velocity, delta)
+
         self.thetas = np.linspace(0, self.env.max_theta, n_theta)
         self.ang_vels = np.linspace(-self.env.max_angular_velocity, self.env.max_angular_velocity, n_ang)
         m1, m2 = np.meshgrid(self.thetas, self.ang_vels)
@@ -58,8 +64,9 @@ class CartPoleEvaluator(object):
         self.max_u = np.vstack([self.env.max_force])
         self.dt = self.env.dt
 
-        self.reg_weight = 1.0 # TODO: need to tune to get possible result
+        self.reg_weight = 2.0 # TODO: need to tune to get possible result
 
+        self.k = 5.0 # TODO: fixed, not learning it. For ease of comparison
         # self.d_min = 1
         
     def phi_fn(self, x):
@@ -79,7 +86,13 @@ class CartPoleEvaluator(object):
 
         phi_0 = theta**2 - self.env.theta_safe_lim**2
         phi_1 = phi_0 + self.coe[1]*theta*dot_theta
-        phi = theta ** self.coe[0] - self.env.theta_safe_lim ** self.coe[0] + self.coe[2] + self.coe[1] * theta*dot_theta
+        # IPython.embed()
+        phi = (theta**2)**(self.coe[0]/2.0) - self.env.theta_safe_lim ** self.coe[0] + self.coe[2] + self.coe[1] * theta*dot_theta # Note: x2/2 is a hack!!!
+        # IPython.embed()
+
+        phi_0 = np.reshape(phi_0, (-1, 1))
+        phi_1 = np.reshape(phi_1, (-1, 1))
+        phi = np.reshape(phi, (-1, 1))
         phis = np.concatenate((phi_0, phi_1, phi), axis=1)
         return phis
 
@@ -91,7 +104,13 @@ class CartPoleEvaluator(object):
         # not batched
         theta = x[1]
         dot_theta = x[3]
-        return np.hstack([0, self.coe[0] * theta ** (self.coe[0]-1) + self.coe[1]*dot_theta, 0, self.coe[1]*theta])
+        theta_sq = x[1]**2 # Note: hack
+        rv = np.hstack([0, self.coe[0] * (theta_sq ** ((self.coe[0]-1)/2.0)) + self.coe[1]*dot_theta, 0, self.coe[1]*theta])
+
+        # if np.any(np.isnan(rv)):
+        #     print("Inside cma-es evaluator, numpy is nan")
+        #     IPython.embed()
+        return rv
 
     def set_params(self, params):
         self.coe = params
@@ -105,6 +124,7 @@ class CartPoleEvaluator(object):
     def evaluate(self, params):
         self.set_params(params)
         valid = 0
+
         in_invariant = 0
         for sample in self.samples:
             idx = sample
@@ -114,8 +134,8 @@ class CartPoleEvaluator(object):
             # C dot_x < d
             # phi(x_k) > 0 -> con: dot_phi(x_k) < -k*phi(x): C = self.grad_phi(x, o)  d = -phi*self.coe[3]
             # phi(x_k) < 0 -> con: phi(x_k+1) < 0:           C = self.grad_phi(x, o)  d = -phi/dt
-            C = self.grad_phi(x)
-            d = -phi/self.dt if phi < 0 else -phi*self.coe[3]
+            C = self.phi_grad(x)
+            d = -phi/self.dt if phi < 0 else -phi*self.k
             valid += self.has_valid_control(C, d, x)
 
             if np.max(phis) <= 0:
@@ -134,6 +154,43 @@ class CartPoleEvaluator(object):
         rv = valid_rate + self.reg_weight*in_invariant_rate
         return rv
 
+        # TODO: special objective on the boundary
+
+        # self.set_params(params)
+        # valid = 0
+        # on_bdry = 0
+        #
+        # in_invariant = 0
+        # for sample in self.samples:
+        #     idx = sample
+        #     x = [0, self.thetas[idx[0]], 0, self.ang_vels[idx[1]]]
+        #     phis = self.phi_fn(x)
+        #     phi = phis[0, -1]
+        #
+        #     if np.abs(phi) <= 1e-2: # near the boundary
+        #         on_bdry += 1
+        #
+        #         C = self.phi_grad(x)
+        #         d = -phi / self.dt if phi < 0 else -phi * self.k # self.coe[3]
+        #         valid += self.has_valid_control(C, d, x)
+        #
+        #     if np.max(phis) <= 0:
+        #         in_invariant += 1
+        #
+        # print("N samples on boundary: %i" % on_bdry)
+        # self.valid = valid
+        # valid_rate = float(valid)/max(on_bdry, 1)
+        #
+        # #### Reg term ####
+        # in_invariant_rate = float(in_invariant) / len(self.samples)
+        #
+        # # Log
+        # self.valid_rate = valid_rate
+        # self.in_invariant_rate = in_invariant_rate
+        #
+        # rv = valid_rate + self.reg_weight * in_invariant_rate
+        # return rv
+
     def visualize(self, params):
         """
         Visualizes where in the state space we have valid safe control...
@@ -148,8 +205,9 @@ class CartPoleEvaluator(object):
             x = [0, self.thetas[idx[0]], 0, self.ang_vels[idx[1]]]
             phis = self.phi_fn(x)
             phi = phis[0, -1]
-            C = self.grad_phi(x)
-            d = -phi/self.dt if phi < 0 else -phi*self.coe[3]
+            C = self.phi_grad(x)
+            # d = -phi/self.dt if phi < 0 else -phi*self.coe[3]
+            d = -phi/self.dt if phi < 0 else -phi*self.k
             if not self.has_valid_control(C, d, x):
                 continue
             valid_cnt[idx[0], idx[1]] += 1
@@ -168,7 +226,7 @@ class CartPoleEvaluator(object):
         plt.ylim(0,len(self.ang_vels))
         plt.xlim(0,len(self.thetas))
         # plt.show()
-        plt.savefig("./cma_es_results/"+str(self.coe)+".png", dpi=300)
+        plt.savefig("./rollout_cbf_classes/cma_es_results/"+str(self.coe)+".png", dpi=300)
         # for key in valid_cnt.keys():
         #     # print(key)
         #     # print(valid_cnt[key])

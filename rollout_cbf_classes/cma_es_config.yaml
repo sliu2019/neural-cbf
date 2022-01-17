@@ -1,10 +1,14 @@
 exp_prefix: "cart_pole"
-epoch: 1
+epoch: 3 # TODO
 elite_ratio: 0.1
-populate_num: 10
-init_params: [2, 1, 1, 1] # theta ^ c1 - theta_max ^ c1 + c2 * theta * dot_theta + c3; fourth is k in dot(phi) <= - k phi
-lower_bound: [1e-2, 1e-2, 0, 1e-2] # Default: [0, 0, 0]; TODO: don't c1, c2, k have to be strictly positive (nonzero)?
-upper_bound: [10, 10, 10, 10]
+populate_num: 25
+init_params: [2, 1, 1] # theta ^ c1 - theta_max ^ c1 + c2 * theta * dot_theta + c3; fourth is k in dot(phi) <= - k phi
+lower_bound: [1, 0, 0] # Default: [1, 0, 0]; TODO: don't c1, c2, k have to be strictly positive (nonzero)?
+upper_bound: [10, 10, 10]
 init_sigma_ratio: 0.3 # initial sigma = init_sigma_ratio * (upper_bound - lower_bound)
 noise_ratio: 0.01 # noise = noise_ratio * (upper_bound - lower_bound)
 evaluator: "CartPoleEvaluator"
+
+#init_params: [2, 1, 1] # theta ^ c1 - theta_max ^ c1 + c2 * dot_theta + c3
+#lower_bound: [1, 0, 0]
+#upper_bound: [10, 10, 10]
