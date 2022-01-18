@@ -3,6 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mpc_inverted_pendulum.py" beforeDir="false" afterPath="$PROJECT_DIR$/mpc_inverted_pendulum.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -102,7 +103,7 @@
       <workItem from="1640810760347" duration="53885000" />
       <workItem from="1641352861715" duration="34951000" />
       <workItem from="1642025724437" duration="21259000" />
-      <workItem from="1642353915915" duration="18751000" />
+      <workItem from="1642353915915" duration="28223000" />
     </task>
     <servers />
   </component>
