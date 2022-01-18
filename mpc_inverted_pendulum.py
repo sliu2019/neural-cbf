@@ -190,6 +190,7 @@ def mpc_compute_invariant_set(args):
 	# Plotting
 	signs = np.zeros_like(X)
 	signs[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
+	signs = np.logical_not(signs) # get colors to match NN plot
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
 	ax.imshow(signs, extent=x_lim.flatten())
@@ -207,6 +208,7 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	mpc_compute_invariant_set(args)
+
 
 
 """

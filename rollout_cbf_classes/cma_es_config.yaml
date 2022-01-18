@@ -1,7 +1,7 @@
 exp_prefix: "cart_pole"
-epoch: 1 # TODO
+epoch: 3 # TODO
 elite_ratio: 0.1
-populate_num: 10
+populate_num: 20
 init_params: [2, 1, 1] # theta ^ c1 - theta_max ^ c1 + c2 * theta * dot_theta + c3; fourth is k in dot(phi) <= - k phi
 lower_bound: [1, 0, 0.01] # Default: [1, 0, 0]; TODO: don't c1, c2, k have to be strictly positive (nonzero)?
 upper_bound: [10, 10, 10]

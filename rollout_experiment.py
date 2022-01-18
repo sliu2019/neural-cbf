@@ -19,7 +19,7 @@ from rollout_cbf_classes.cma_es import run_cmaes
 from rollout_cbf_classes.cma_es_evaluator import CartPoleEvaluator
 from rollout_cbf_classes.our_cbf_class import OurCBF
 
-import sys
+import sys, argparse
 
 # Fixed seed for repeatability
 torch.manual_seed(2022)
@@ -198,10 +198,17 @@ def simulate_rollout(x0, N_dt, cbf_controller):
 	return dict
 
 if __name__ == "__main__":
-	# log_folder = "ssa"
-	# which_cbf = "ssa"
-	log_folder = "cmaes_new_bdry"
-	which_cbf = "cmaes_new_bdry"
+	parser = argparse.ArgumentParser(description='Rollout experiment')
+	parser.add_argument('--log_folder', type=str, default="debug")
+	parser.add_argument('--which_cbf', type=str, default="our_cbf_football")
+	# parser.add_argument('--reg_weight', type=float, default=1.0, help="only relevant for cma-es")
+	args = parser.parse_args()
+
+	# log_folder = "cmaes_new_bdry"
+	# which_cbf = "cmaes_new_bdry"
+	log_folder = args.log_folder
+	which_cbf = args.which_cbf
+	# reg_weight = args.reg_weight
 
 	log_fldrpth = os.path.join("rollout_results", log_folder)
 	if not os.path.exists(log_fldrpth):
@@ -224,18 +231,9 @@ if __name__ == "__main__":
 		cbf_controller = CBFController(cbf_obj)
 	elif 'cmaes' in which_cbf:
 		config_path = "./rollout_cbf_classes/cma_es_config.yaml"
-		params = run_cmaes(config_path) # TODO
+		# params = run_cmaes(config_path) # TODO
 
-		# params = np.array([1. , 0.61012864,  0., 0.00163572]) # weight 1.0
-		# params = np.array([1.54087696, 3.02508398, 0.00694547, 1.2980189]) # weight 0.5
-		# params = np.array([1.61427107, 3.12099036, 0.00694547, 1.26331008]) # weight 0.25
-
-		params = np.array([1.23463575, 4.24406416, 0.00519455, 1.11614425]) # new obj, weight 1.0
-
-		# params = np.array([1.13861313, 2.34687538, 0.76066902]) # new, 1
-		# params = np.array([1. ,        0.93210364, 0.        ]) # orig, 1
-
-		# params = np.array([1.17, 1.05, 0.1])
+		params = np.array([1., 0.93, 0.0])
 
 		cbf_obj = CartPoleEvaluator()
 		if params is not None:
@@ -252,7 +250,7 @@ if __name__ == "__main__":
 		cbf_controller = CBFController(cbf_obj) # Note for dot(phi) <= - k*phi, k is learned
 		# cbf_controller = CBFController(cbf_obj, eps_bdry=0.0, eps_outside=params[-1]) # Note for dot(phi) <= - k*phi, k is learned
 	elif which_cbf == "ssa":
-		params = np.array([1, 1, 0, 1e-2]) # Note: last one doesn't matter, overwritten by defaults in CBFController
+		params = np.array([1, 1, 0]) # Note: last one doesn't matter, overwritten by defaults in CBFController
 		cbf_obj = CartPoleEvaluator()
 		cbf_obj.set_params(params)
 		cbf_controller = CBFController(cbf_obj)
@@ -285,6 +283,13 @@ if __name__ == "__main__":
 	phi_signs = np.reshape(np.sign(max_phi_vals_on_grid), X.shape)
 	ax.imshow(phi_signs, extent=x_lim.flatten())
 	ax.set_aspect("equal")
+	plt.savefig("./rollout_results/%s/%s_invariant_set.png" % (log_folder, which_cbf), bbox_inches='tight')
+
+	# IPython.embed()
+	inds = np.argwhere(max_phi_vals_on_grid <= 0)
+	print(inds.size/max_phi_vals_on_grid.size)
+	sys.exit(0)
+
 	ax.scatter(x0s[:, 1], x0s[:, 3])
 	plt.savefig("./rollout_results/%s/%s_x0s.png" % (log_folder, which_cbf), bbox_inches='tight')
 	plt.clf()

@@ -64,7 +64,7 @@ class CartPoleEvaluator(object):
         self.max_u = np.vstack([self.env.max_force])
         self.dt = self.env.dt
 
-        self.reg_weight = 2.0 # TODO: need to tune to get possible result
+        self.reg_weight = 1.0 # TODO: need to tune to get possible result
 
         self.k = 5.0 # TODO: fixed, not learning it. For ease of comparison
         # self.d_min = 1
@@ -86,9 +86,7 @@ class CartPoleEvaluator(object):
 
         phi_0 = theta**2 - self.env.theta_safe_lim**2
         phi_1 = phi_0 + self.coe[1]*theta*dot_theta
-        # IPython.embed()
         phi = (theta**2)**(self.coe[0]/2.0) - self.env.theta_safe_lim ** self.coe[0] + self.coe[2] + self.coe[1] * theta*dot_theta # Note: x2/2 is a hack!!!
-        # IPython.embed()
 
         phi_0 = np.reshape(phi_0, (-1, 1))
         phi_1 = np.reshape(phi_1, (-1, 1))
