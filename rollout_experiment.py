@@ -8,6 +8,9 @@ from torch.autograd import grad
 from src.utils import *
 from scipy.integrate import solve_ivp
 from cvxopt import matrix, solvers
+
+solvers.options['show_progress'] = False
+
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pickle
@@ -101,7 +104,7 @@ class CBFController:
 		try:
 			sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(h))
 		except:
-			IPython.embed()
+			# IPython.embed()
 			sys.exit(0)
 		sol_var = sol_obj['x']
 
@@ -195,9 +198,10 @@ def simulate_rollout(x0, N_dt, cbf_controller):
 	return dict
 
 if __name__ == "__main__":
-	log_folder = "ssa"
-	which_cbf = "ssa"
-	# which_cbf = "cmaes_new_2"
+	# log_folder = "ssa"
+	# which_cbf = "ssa"
+	log_folder = "cmaes_new_bdry"
+	which_cbf = "cmaes_new_bdry"
 
 	log_fldrpth = os.path.join("rollout_results", log_folder)
 	if not os.path.exists(log_fldrpth):
@@ -226,10 +230,12 @@ if __name__ == "__main__":
 		# params = np.array([1.54087696, 3.02508398, 0.00694547, 1.2980189]) # weight 0.5
 		# params = np.array([1.61427107, 3.12099036, 0.00694547, 1.26331008]) # weight 0.25
 
-		# params = np.array([1.23463575, 4.24406416, 0.00519455, 1.11614425]) # new obj, weight 1.0
+		params = np.array([1.23463575, 4.24406416, 0.00519455, 1.11614425]) # new obj, weight 1.0
 
 		# params = np.array([1.13861313, 2.34687538, 0.76066902]) # new, 1
 		# params = np.array([1. ,        0.93210364, 0.        ]) # orig, 1
+
+		# params = np.array([1.17, 1.05, 0.1])
 
 		cbf_obj = CartPoleEvaluator()
 		if params is not None:
@@ -369,7 +375,7 @@ if __name__ == "__main__":
 
 	phi_star_on_grid = phi_vals_on_grid[:, -1]
 	plt.contour(X, Y, np.reshape(phi_star_on_grid, X.shape), levels=[0.0],
-	                 colors=('k',), linewidths=(2,))
+					 colors=('k',), linewidths=(2,))
 
 	x = info_dicts["x"]
 	for i in range(N_rollout):
@@ -395,7 +401,7 @@ if __name__ == "__main__":
 		ax.imshow(phi_signs, extent=x_lim.flatten())
 		phi_star_on_grid = phi_vals_on_grid[:, -1]
 		plt.contour(X, Y, np.reshape(phi_star_on_grid, X.shape), levels=[0.0],
-		                 colors=('k',), linewidths=(2,))
+						 colors=('k',), linewidths=(2,))
 
 		ax.scatter(x0s[exit_rollout_inds, 1], x0s[exit_rollout_inds, 3]) # x0s
 
@@ -413,4 +419,4 @@ if __name__ == "__main__":
 		plt.clf()
 		plt.close()
 
-	IPython.embed()
+	# IPython.embed()
