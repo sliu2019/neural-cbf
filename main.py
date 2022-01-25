@@ -173,8 +173,8 @@ class Objective(nn.Module):
 		# assert torch.all(verif_minimizing_u)
 		# print(min_indices)
 		# result = phidot # TODO
-		# result = nn.functional.softplus(phidot) # TODO: using softplus
-		result = torch.log(torch.exp(phidot + 1) + 1) # TODO: using reshaped softplus
+		result = nn.functional.softplus(phidot) # TODO: using softplus
+		# result = torch.log(torch.exp(phidot + 1) + 1) # TODO: using reshaped softplus
 		result = result.view(-1, 1) # ensures bs x 1
 
 		return result
@@ -192,8 +192,7 @@ class Regularizer(nn.Module):
 		if reg_weight:
 			assert A_samples is not None
 
-		# TODO: hard-coded
-		self.x_e = torch.zeros(1, 2).to(device)
+		# self.x_e = torch.zeros(1, 2).to(device)
 
 	def forward(self):
 		reg = torch.tensor(0).to(self.device)
@@ -204,10 +203,10 @@ class Regularizer(nn.Module):
 
 			reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5)
 
-			if self.reg_xe != 0:
-				phi_value_xe = self.phi_fn(self.x_e)
-				max_phi_value = torch.max(phi_value_xe, dim=1)[0][0]
-				reg = reg + self.reg_xe*nn.functional.softplus(max_phi_value)
+			# if self.reg_xe != 0:
+			# 	phi_value_xe = self.phi_fn(self.x_e)
+			# 	max_phi_value = torch.max(phi_value_xe, dim=1)[0][0]
+			# 	reg = reg + self.reg_xe*nn.functional.softplus(max_phi_value)
 
 			# IPython.embed()
 		return reg
