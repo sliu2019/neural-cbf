@@ -5,7 +5,7 @@ import numpy as np
 import IPython 
 import torch 
 import math 
-from plot_utils import create_phi_struct_load_xlim
+from plot_utils import create_phi_struct_load_xlim, plot_trajectories, plot_samples_invariant_set, plot_exited_trajectories
 from torch.autograd import grad
 from src.utils import *
 from scipy.integrate import solve_ivp
@@ -13,8 +13,6 @@ from cvxopt import matrix, solvers
 
 solvers.options['show_progress'] = False
 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import pickle
 
 from rollout_cbf_classes.cma_es import run_cmaes
@@ -30,37 +28,7 @@ import sys, argparse
 torch.manual_seed(2022)
 np.random.seed(2022)
 
-# dt = 0.005 # default 0.005
-
-# g = 9.81
-# I = 1.2E-3
-# m = 0.127
-# M = 1.0731
-# l = 0.3365 
-
 # theta_safety_lim = math.pi/4.0 
-# max_force = 22.0
-# max_angular_velocity = 5.0 # state space constraint
-
-
-# def x_dot_open_loop(x, u):
-# 	# u is scalar
-# 	x_dot = np.zeros(4)
-
-# 	x_dot[0] = x[2]
-# 	x_dot[1] = x[3]
-
-# 	theta = x[1]
-# 	theta_dot = x[3]
-# 	denom = I*(M + m) + m*(l**2)*(M + m*(math.sin(theta)**2))
-# 	x_dot[2] = (I + m*(l**2))*(m*l*theta_dot**2*math.sin(theta)) - g*(m**2)*(l**2)*math.sin(theta)*math.cos(theta) + (I + m*l**2)*u
-# 	x_dot[3] = m*l*(-m*l*theta_dot**2*math.sin(theta)*math.cos(theta) + (M+m)*g*math.sin(theta)) + (-m*l*math.cos(theta))*u
-
-# 	x_dot[2] = x_dot[2]/denom
-# 	x_dot[3] = x_dot[3]/denom
-
-# 	return x_dot 
-
 
 def sample_invariant_set(x_lim, cbf_obj, N_samp):
 	"""
@@ -142,7 +110,7 @@ def compute_exits(phi_vals):
 		pos_phi_max = phi_max[pos_phi_inds[:, 0], pos_phi_inds[:, 1]]
 		print("Phi max mean and std: %f +/- %f" % (np.mean(pos_phi_max), np.std(pos_phi_max)))
 		print("Phi max maximum: %f" % (np.max(pos_phi_max)))
-    
+	
 def sanity_check(info_dicts):
 	# print("before sanity checks")
 	# for key, value in info_dicts.items():
@@ -194,89 +162,6 @@ def run_rollout(env, N_rollout, x0s, N_dt, cbf_controller, save_prefix):
 	
 	return info_dicts
 
-def plot_trajectories(x_lim, N_rollout, x0s, phi_vals_on_grid, X, Y, phi_signs, info_dicts, save_prefix):
-	fig = plt.figure()
-	ax = fig.add_subplot(111)
-	ax.imshow(phi_signs, extent=x_lim.flatten())
-	ax.set_aspect("equal")
-	ax.scatter(x0s[:, 1], x0s[:, 3])
-
-	phi_star_on_grid = phi_vals_on_grid[:, -1]
-	plt.contour(X, Y, np.reshape(phi_star_on_grid, X.shape), levels=[0.0],
-					colors=('k',), linewidths=(2,))
-
-	x = info_dicts["x"]
-	for i in range(N_rollout):
-		x_rl = x[i]
-		plt.plot(x_rl[:, 1], x_rl[:, 3])
-	plt.savefig(save_prefix+"trajectories.png", bbox_inches='tight')
-	plt.clf()
-	plt.close()
-
-def plot_exited_trajectories(x_lim, x0s, phi_vals_on_grid, X, Y, phi_signs, info_dicts, save_prefix):
-	phi_vals = info_dicts["phi_vals"] # (N_rollout, T_max, r+1)
-	phi_max = np.max(phi_vals, axis=2)
-	rollouts_any_exits = np.any(phi_max > 0, axis=1)
-	any_exits = np.any(rollouts_any_exits)
-
-	if any_exits:
-		exit_rollout_inds = np.argsort(np.max(phi_max, axis=1)).flatten()[::-1]
-		exit_rollout_inds = exit_rollout_inds[:min(5, np.sum(rollouts_any_exits))]
-		# exit_rollout_inds = np.argwhere(rollouts_any_exits).flatten()
-		# exit_rollout_inds = np.random.choice(exit_rollout_inds, size=5) # Note: sampling 5 (with replacement, so it'll work if there are fewer than 5)
-
-		fig = plt.figure()
-		ax = fig.add_subplot(111)
-		ax.set_aspect("equal")
-
-		ax.imshow(phi_signs, extent=x_lim.flatten())
-		phi_star_on_grid = phi_vals_on_grid[:, -1]
-		plt.contour(X, Y, np.reshape(phi_star_on_grid, X.shape), levels=[0.0],
-						colors=('k',), linewidths=(2,))
-
-		ax.scatter(x0s[exit_rollout_inds, 1], x0s[exit_rollout_inds, 3]) # x0s
-
-		x = info_dicts["x"]
-		for i in exit_rollout_inds:
-			x_rl = x[i]
-			plt.plot(x_rl[:, 1], x_rl[:, 3])
-
-		for i in exit_rollout_inds: # to scatter on top of the trajectories
-			x_rl = x[i]
-			xi_exit_ind = np.argwhere(phi_max[i] > 0).flatten()
-			plt.scatter(x_rl[xi_exit_ind, 1], x_rl[xi_exit_ind, 3], c="red", s=0.2)
-		
-		plt.savefig(save_prefix+"exiting_trajectories.png", bbox_inches='tight')
-		plt.clf()
-		plt.close()
-
-def plot_samples_invariant_set(x_lim, x0s, phi_vals_on_grid, X, save_prefix):
-	# print("Check x0 plotting")
-	# IPython.embed()
-	plt.clf()
-	plt.cla()
-	mpl.rcParams.update(mpl.rcParamsDefault)
-
-	fig = plt.figure()
-	ax = fig.add_subplot(111)
-
-	max_phi_vals_on_grid = phi_vals_on_grid.max(axis=1)
-	phi_signs = np.reshape(np.sign(max_phi_vals_on_grid), X.shape)
-	ax.imshow(phi_signs, extent=x_lim.flatten())
-	ax.set_aspect("equal")
-	plt.savefig(save_prefix+"invariant_set.png", bbox_inches='tight')
-
-	# IPython.embed()
-	inds = np.argwhere(max_phi_vals_on_grid <= 0)
-	print(inds.size/max_phi_vals_on_grid.size)
-	# sys.exit(0)
-
-	ax.scatter(x0s[:, 1], x0s[:, 3])
-	plt.savefig(save_prefix+"x0s.png", bbox_inches='tight')
-	plt.clf()
-	plt.close()
-	return phi_signs
-
 def main(args):
 	log_folder = args.log_folder
 	which_cbf = args.which_cbf
@@ -303,12 +188,16 @@ def main(args):
 		cbf_obj = OurCBF(exp_name, checkpoint_number)
 	elif 'cmaes' in which_cbf:
 		config_path = "./rollout_cbf_classes/cma_es_config.yaml"
-		params = run_cmaes(config_path) # TODO
+		# params = run_cmaes(config_path) # TODO
 
 		# params = np.array([1., 0.1, 0.0])
-		# params = np.array([1., 0.1, 0.0])
+		# params = np.array([1., 1, 0.0])
+		params = np.array([2.99443126, 0.06641364, 0.25343775])  # reg_weight=1
 
 		cbf_obj = SSA(env)
+		evaluator = CartPoleEvaluator()
+		evaluator.evaluate(params)
+
 		if params is not None:
 			print("***********************************************")
 			print("***********************************************")

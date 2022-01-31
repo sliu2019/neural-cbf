@@ -47,8 +47,8 @@ class CartPoleEvaluator(object):
         """
 
         # Sample state space
-        n_theta = 200 # TODO
-        n_ang = 400 # TODO
+        n_theta = 400 # TODO
+        n_ang = 800 # TODO
 
         # delta = 0.01
         # self.thetas = np.arange(-self.env.max_theta, self.env.max_theta, delta)
@@ -66,7 +66,7 @@ class CartPoleEvaluator(object):
         self.max_u = np.vstack([self.env.max_force])
         self.dt = self.env.dt
 
-        self.reg_weight = 1.0 # TODO: need to tune to get possible result
+        self.reg_weight = 0.1 # TODO: need to tune to get possible result
 
         self.k = 5.0 # TODO: fixed, not learning it. For ease of comparison
         # self.d_min = 1
@@ -85,34 +85,51 @@ class CartPoleEvaluator(object):
         self.ssa.c2 = params[1]
         self.ssa.c3 = params[2]
 
-    def has_valid_control(self, C, d, x):
+    def most_valid_control(self, C, x):
         # dot_x = f + g * u 
         f = np.vstack(self.env.x_dot_open_loop(x, 0))
         g = np.vstack(self.env.x_dot_open_loop(x, 1)) - f
-        return (C @ f + C @ g @ self.max_u < d) or (C @ f - C @ g @ self.max_u < d)
+        return min(C @ f + C @ g @ self.max_u, C @ f - C @ g @ self.max_u)
+
+    def near_boundary(self, phis):
+        phi0 = phis[0,0]
+        phi = phis[0,-1]
+        eps = 2e-3
+        return abs(phi0) < eps or abs(phi) < eps
 
     def compute_valid_invariant(self):
         in_invariant = 0
+        in_invariant_valid = 0
         valid = 0
+        tot_cnt = 0
         for sample in self.samples:
             idx = sample
             x = np.hstack([0, self.thetas[idx[0]], 0, self.ang_vels[idx[1]]])
             
             phis = self.ssa.phi_fn(x)
             
-            phi = phis[0, -1]
+            # phi = phis[0, -1]
+            phi = np.max(phis)
             
-            C = self.ssa.phi_grad(x)
-            d = -phi/self.dt if phi < 0 else -phi*self.k
-            
-            has_valid = self.has_valid_control(C, d, x)
-            valid += has_valid
+            if self.near_boundary(phis):
+                tot_cnt += 1
+                
+                C = self.ssa.phi_grad(x)
+                d = -phi/self.dt if phi < 0 else -phi*self.k
+                most_valid = self.most_valid_control(C, x)
+                weighted_valid = np.exp(0.1 * min(d - most_valid, 0))
+                # most_valid < d => 1,   most_valid > d => 1 - exp(d-valid)
+                valid += weighted_valid
 
-            if np.max(phis) <= 0 and has_valid:
+            if np.max(phis) <= 0:
                 in_invariant += 1
 
         self.valid = valid
-        valid_rate = valid * 1.0 / len(self.samples)
+        valid_rate = valid * 1.0 / max(1,tot_cnt)
+        print("valid / tot_cnt: ", valid, "/", tot_cnt)
+        # valid_rate = valid * 1.0 / len(self.samples)
+        # self.valid = in_invariant_valid
+        # valid_rate = in_invariant_valid * 1.0 / max(1, in_invariant)
 
         #### Reg term ####
         in_invariant_rate = float(in_invariant)/len(self.samples)

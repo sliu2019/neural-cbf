@@ -5,6 +5,7 @@ import numpy as np
 import IPython
 import re
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from mpl_toolkits.mplot3d import axes3d
 import math
 from main import Phi, Objective, Regularizer
@@ -270,6 +271,90 @@ def plot_a_k(exp_name, n_it):
 	plt.plot(k_list, label="k list")
 	plt.legend(loc="upper right")
 	plt.savefig("./log/%s/a_k_plot.png" % exp_name)
+
+
+def plot_trajectories(x_lim, N_rollout, x0s, phi_vals_on_grid, X, Y, phi_signs, info_dicts, save_prefix):
+	fig = plt.figure()
+	ax = fig.add_subplot(111)
+	ax.imshow(phi_signs, extent=x_lim.flatten())
+	ax.set_aspect("equal")
+	ax.scatter(x0s[:, 1], x0s[:, 3])
+
+	phi_star_on_grid = phi_vals_on_grid[:, -1]
+	plt.contour(X, Y, np.reshape(phi_star_on_grid, X.shape), levels=[0.0],
+					colors=('k',), linewidths=(2,))
+
+	x = info_dicts["x"]
+	for i in range(N_rollout):
+		x_rl = x[i]
+		plt.plot(x_rl[:, 1], x_rl[:, 3])
+	plt.savefig(save_prefix+"trajectories.png", bbox_inches='tight')
+	plt.clf()
+	plt.close()
+
+def plot_exited_trajectories(x_lim, x0s, phi_vals_on_grid, X, Y, phi_signs, info_dicts, save_prefix):
+	phi_vals = info_dicts["phi_vals"] # (N_rollout, T_max, r+1)
+	phi_max = np.max(phi_vals, axis=2)
+	rollouts_any_exits = np.any(phi_max > 0, axis=1)
+	any_exits = np.any(rollouts_any_exits)
+
+	if any_exits:
+		exit_rollout_inds = np.argsort(np.max(phi_max, axis=1)).flatten()[::-1]
+		exit_rollout_inds = exit_rollout_inds[:min(5, np.sum(rollouts_any_exits))]
+		# exit_rollout_inds = np.argwhere(rollouts_any_exits).flatten()
+		# exit_rollout_inds = np.random.choice(exit_rollout_inds, size=5) # Note: sampling 5 (with replacement, so it'll work if there are fewer than 5)
+
+		fig = plt.figure()
+		ax = fig.add_subplot(111)
+		ax.set_aspect("equal")
+
+		ax.imshow(phi_signs, extent=x_lim.flatten())
+		phi_star_on_grid = phi_vals_on_grid[:, -1]
+		plt.contour(X, Y, np.reshape(phi_star_on_grid, X.shape), levels=[0.0],
+						colors=('k',), linewidths=(2,))
+
+		ax.scatter(x0s[exit_rollout_inds, 1], x0s[exit_rollout_inds, 3]) # x0s
+
+		x = info_dicts["x"]
+		for i in exit_rollout_inds:
+			x_rl = x[i]
+			plt.plot(x_rl[:, 1], x_rl[:, 3])
+
+		for i in exit_rollout_inds: # to scatter on top of the trajectories
+			x_rl = x[i]
+			xi_exit_ind = np.argwhere(phi_max[i] > 0).flatten()
+			plt.scatter(x_rl[xi_exit_ind, 1], x_rl[xi_exit_ind, 3], c="red", s=0.2)
+		
+		plt.savefig(save_prefix+"exiting_trajectories.png", bbox_inches='tight')
+		plt.clf()
+		plt.close()
+
+def plot_samples_invariant_set(x_lim, x0s, phi_vals_on_grid, X, save_prefix):
+	# print("Check x0 plotting")
+	# IPython.embed()
+	plt.clf()
+	plt.cla()
+	mpl.rcParams.update(mpl.rcParamsDefault)
+
+	fig = plt.figure()
+	ax = fig.add_subplot(111)
+
+	max_phi_vals_on_grid = phi_vals_on_grid.max(axis=1)
+	phi_signs = np.reshape(np.sign(max_phi_vals_on_grid), X.shape)
+	ax.imshow(phi_signs, extent=x_lim.flatten())
+	ax.set_aspect("equal")
+	plt.savefig(save_prefix+"invariant_set.png", bbox_inches='tight')
+
+	# IPython.embed()
+	inds = np.argwhere(max_phi_vals_on_grid <= 0)
+	print(inds.size/max_phi_vals_on_grid.size)
+	# sys.exit(0)
+
+	ax.scatter(x0s[:, 1], x0s[:, 3])
+	plt.savefig(save_prefix+"x0s.png", bbox_inches='tight')
+	plt.clf()
+	plt.close()
+	return phi_signs
 
 if __name__=="__main__":
 	# December 16
