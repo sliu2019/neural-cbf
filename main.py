@@ -316,12 +316,6 @@ def main(args):
 		else:
 			x_e = None
 	elif args.problem == "flying_inv_pend":
-		r = 2
-		x_dim = 13 # excluded (x, y, z)
-		u_dim = 4
-		thresh = np.array([2, 2, 2, math.pi, math.pi, math.pi, 2, 2, 2, math.pi, math.pi, 2, 2], dtype=np.float32) # TODO: Simin
-		x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1) # (13, 2)
-
 		param_dict = {
 			"m": 0.8,
 			"J_x": 0.005,
@@ -332,13 +326,24 @@ def main(args):
 			"k2": 0.05,
 			"m_p": 0.04,
 			"L_p": 0.03,  # TODO?
-			'delta_safety_limit': math.pi / 5  # TODO? in radians; should be <= math.pi/4
+			'delta_safety_limit': math.pi / 5  # in radians; should be <= math.pi/4
 		}
 		param_dict["M"] = param_dict["m"] + param_dict["m_p"]
-		index_names = ["dx", "dy", "dz", "gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
-		               "dtheta"]  # excluded x, y, z
-		index_dict = dict(zip(index_names, np.arange(len(index_names))))
-		param_dict["index_dict"] = index_dict
+		state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
+		                     "dtheta"]  # excluded x, y, z
+		state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+
+		r = 4
+		x_dim = len(state_index_names)
+		u_dim = 4
+		thresh = np.array([math.pi, math.pi, math.pi, 2, 2, 2, math.pi, math.pi, 2, 2], dtype=np.float32) # TODO
+		x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1) # (13, 2)
+
+		# Save stuff in param dict
+		param_dict["state_index_dict"] = state_index_dict
+		param_dict["r"] = r
+		param_dict["x_dim"] = x_dim
+		param_dict["u_dim"] = u_dim
 		param_dict["x_lim"] = x_lim
 
 		# Create phi
