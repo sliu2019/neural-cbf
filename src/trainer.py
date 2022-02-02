@@ -108,9 +108,9 @@ class Trainer():
 			# grad_norm = grad_norm.detach().cpu().detach()
 			# grad_norms.append(grad_norm)
 
-			optimizer.step()
+			optimizer._step()
 			if "LR" in self.args.trainer_type:
-				scheduler.step()
+				scheduler._step()
 			with torch.no_grad():
 				# new_ci = ci - ci_lr*ci.grad
 				new_ci = ci
