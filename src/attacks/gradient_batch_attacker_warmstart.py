@@ -47,7 +47,7 @@ class GradientBatchWarmstartAttacker():
         # print(self.projection_tolerance)
         # IPython.embed()
 
-    def project(self, phi_fn, x):
+    def _project(self, phi_fn, x):
         # Until convergence
         i = 0
         t1 = time.perf_counter()
@@ -62,7 +62,7 @@ class GradientBatchWarmstartAttacker():
             proj_opt.zero_grad()
             loss = torch.sum(torch.abs(phi_fn(torch.cat(x_list), grad_x=True)[:, -1]))
             loss.backward()
-            proj_opt.step()
+            proj_opt._step()
 
             i += 1
             t_now = time.perf_counter()
@@ -86,7 +86,7 @@ class GradientBatchWarmstartAttacker():
                 print("Not on manifold, %f" % (torch.max(loss).item()))
         return rv_x
 
-    def step(self, objective_fn, phi_fn, x, mode="dG"):
+    def _step(self, objective_fn, phi_fn, x, mode="dG"):
         # It makes less sense to use an adaptive LR method here, if you think about it
         t0 = time.perf_counter()
         x_batch = x.view(-1, self.x_dim)
@@ -114,7 +114,7 @@ class GradientBatchWarmstartAttacker():
         t1 = time.perf_counter()
         # if self.verbose:
         #     print("After step:", x_new)
-        x_new = self.project(phi_fn, x_new)
+        x_new = self._project(phi_fn, x_new)
         # if self.verbose:
         #     print("After reprojection", x_new)
 
@@ -129,7 +129,7 @@ class GradientBatchWarmstartAttacker():
 
         return x_new
 
-    def sample_in_cube(self):
+    def _sample_in_cube(self):
         """
         Samples uniformly in state space hypercube
         Returns 1 sample
@@ -139,7 +139,7 @@ class GradientBatchWarmstartAttacker():
         sample = unif*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
         return sample
 
-    def sample_on_cube(self):
+    def _sample_on_cube(self):
         """
         Samples uniformly on state space hypercube
         Returns 1 sample
@@ -154,7 +154,7 @@ class GradientBatchWarmstartAttacker():
         sample[which_facet_pair] = self.x_lim[which_facet_pair, which_facet]
         return sample
 
-    def intersect_segment_with_manifold(self, p1, p2, phi_fn, rtol=1e-5, atol=1e-3):
+    def _intersect_segment_with_manifold(self, p1, p2, phi_fn, rtol=1e-5, atol=1e-3):
         """
         Atol? Reltol?
         """
@@ -209,7 +209,7 @@ class GradientBatchWarmstartAttacker():
 
         return intersection_point
 
-    def sample_points_on_boundary(self, phi_fn, n_samples, mode="dG"):
+    def _sample_points_on_boundary(self, phi_fn, n_samples, mode="dG"):
         """
         Returns torch array of size (self.n_samples, self.x_dim)
         Mode between "dG", "dG+dS", "dG/dS"
@@ -218,13 +218,13 @@ class GradientBatchWarmstartAttacker():
         samples = []
         n_remaining_to_sample = n_samples
 
-        center = self.sample_in_cube()
+        center = self._sample_in_cube()
         n_segments_sampled = 0
         while n_remaining_to_sample > 0:
             # print(n_remaining_to_sample)
-            outer = self.sample_on_cube()
+            outer = self._sample_on_cube()
 
-            intersection = self.intersect_segment_with_manifold(center, outer, phi_fn)
+            intersection = self._intersect_segment_with_manifold(center, outer, phi_fn)
             valid = False
             if intersection is not None:
                 if mode == "dG":
@@ -240,7 +240,7 @@ class GradientBatchWarmstartAttacker():
                         valid = True
 
             if not valid:
-                center = self.sample_in_cube()
+                center = self._sample_in_cube()
             n_segments_sampled += 1
             # self.logger.info("%i segments" % n_segments_sampled)
 
@@ -249,32 +249,18 @@ class GradientBatchWarmstartAttacker():
         return samples
 
     def opt(self, objective_fn, phi_fn, debug=False, mode="dG"):
-        self.n_times_called += 1 # TODO: debug
+        # Tianhao, Weiye: ignore presence of mode parameter for now
+        self.n_times_called += 1 # for debug
 
-        # print("Opt mode: ", mode)
         t0 = time.perf_counter()
         if self.X_saved is None:
-            # print("here")
-            X_init = self.sample_points_on_boundary(phi_fn, self.n_samples, mode=mode)
+            X_init = self._sample_points_on_boundary(phi_fn, self.n_samples, mode=mode)
         else:
-            # IPython.embed()
-            """n_random_samples = int(self.n_samples*self.p_random)
-            n_reuse_samples = self.n_samples - n_random_samples
- 
-            X_random_init = self.sample_points_on_boundary(phi_fn, n_random_samples)
-
-            inds = torch.argsort(self.obj_vals_saved, axis=0, descending=True).flatten()
-            X_reuse_init = self.X_saved[inds[:n_reuse_samples]]
-            X_reuse_init = self.project(phi_fn, X_reuse_init)
-
-            X_init = torch.cat([X_random_init, X_reuse_init], axis=0)"""
-
-            # n_random_samples = int(self.n_samples * self.p_random)
             n_target_reuse_samples = int(self.n_samples*self.p_reuse)
 
             inds = torch.argsort(self.obj_vals_saved, axis=0, descending=True).flatten()
 
-            # IPython.embed()
+            # Some attacks will be very near each other. This helps to only select distinct attacks
             inds_distinct = [inds[0]]
             for ind in inds[1:]:
                 diff = self.X_saved[torch.tensor(inds_distinct)] - self.X_saved[ind]
@@ -286,15 +272,12 @@ class GradientBatchWarmstartAttacker():
                 if len(inds_distinct) >= n_target_reuse_samples:
                     break
 
-            # if self.n_times_called > 13:
-            #     IPython.embed()
-            # IPython.embed()
             n_reuse_samples = len(inds_distinct)
             n_random_samples= self.n_samples - n_reuse_samples
             print("Actual percentage reuse: %f" % ((n_reuse_samples/self.n_samples)*100))
             X_reuse_init = self.X_saved[torch.tensor(inds_distinct)]
-            X_reuse_init = self.project(phi_fn, X_reuse_init)
-            X_random_init = self.sample_points_on_boundary(phi_fn, n_random_samples)
+            X_reuse_init = self._project(phi_fn, X_reuse_init) # reproject, since phi changed
+            X_random_init = self._sample_points_on_boundary(phi_fn, n_random_samples)
 
             X_init = torch.cat([X_random_init, X_reuse_init], axis=0)
 
@@ -307,7 +290,7 @@ class GradientBatchWarmstartAttacker():
         tstart = time.perf_counter()
         while True:
             t2 = time.perf_counter()
-            X = self.step(objective_fn, phi_fn, X, mode=mode)
+            X = self._step(objective_fn, phi_fn, X, mode=mode) # Take gradient steps on all candidate attacks
             t3 = time.perf_counter()
 
             obj_vals = objective_fn(X.view(-1, self.x_dim))
@@ -330,7 +313,7 @@ class GradientBatchWarmstartAttacker():
         self.obj_vals_saved = obj_vals
 
         # Returning a single attack
-        obj_vals = objective_fn(X)
+        # obj_vals = objective_fn(X)
         max_ind = torch.argmax(obj_vals)
 
         if self.verbose:
@@ -343,5 +326,5 @@ class GradientBatchWarmstartAttacker():
             return x
         else: # TODO
             x = X[max_ind]
-            return X_init, X, x, obj_vals
+            return X_init, X, x, obj_vals # X_init: the attacks we started this call with, X: ended this call with, x: best of X, obj_vals: corr. X
 

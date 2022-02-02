@@ -65,6 +65,8 @@ class Phi(nn.Module):
 	def forward(self, x, grad_x=False):
 		# The way these are implemented should be batch compliant
 		# Assume x is (bs, x_dim)
+
+		# IPython.embed()
 		h_val = self.h_fn(x)
 		k0 = self.k0 + self.k0_min
 		if self.x_e is None:
@@ -92,8 +94,8 @@ class Phi(nn.Module):
 			ki = A.mm(binomial)
 
 			ki_all[i+1, 0:ki.numel()] = ki.view(1, -1)
-		# Ultimately, ki should be r x 1
 
+		# Ultimately, ki should be r x 1
 		# Compute higher-order Lie derivatives
 		bs = x.size()[0]
 		if grad_x == False:
@@ -167,14 +169,7 @@ class Objective(nn.Module):
 		# print(phidot_cand)
 		phidot, _ = torch.min(phidot_cand, 1)
 
-		# print("Figure out shapes in objectvie fn")
-		# IPython.embed()
-		# verif_minimizing_u = (x[:, [0]]*(min_indices.view(-1, 1))-0.5) <= 0
-		# assert torch.all(verif_minimizing_u)
-		# print(min_indices)
-		# result = phidot # TODO
-		result = nn.functional.softplus(phidot) # TODO: using softplus
-		# result = torch.log(torch.exp(phidot + 1) + 1) # TODO: using reshaped softplus
+		result = nn.functional.softplus(phidot) # using softplus on loss!!!
 		result = result.view(-1, 1) # ensures bs x 1
 
 		return result
@@ -201,14 +196,7 @@ class Regularizer(nn.Module):
 			phi_value_A_samples = self.phi_fn(self.A_samples)
 			max_phi_values = torch.max(phi_value_A_samples, dim=1)[0]
 
-			reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5)
-
-			# if self.reg_xe != 0:
-			# 	phi_value_xe = self.phi_fn(self.x_e)
-			# 	max_phi_value = torch.max(phi_value_xe, dim=1)[0][0]
-			# 	reg = reg + self.reg_xe*nn.functional.softplus(max_phi_value)
-
-			# IPython.embed()
+			reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5) # Huh interesting, 0.3 factor stretches sigmoid out a lot.
 		return reg
 
 def main(args):
@@ -327,6 +315,53 @@ def main(args):
 			x_e = torch.zeros(1, x_dim)
 		else:
 			x_e = None
+	elif args.problem == "flying_inv_pend":
+		r = 2
+		x_dim = 13 # excluded (x, y, z)
+		u_dim = 4
+		thresh = np.array([2, 2, 2, math.pi, math.pi, math.pi, 2, 2, 2, math.pi, math.pi, 2, 2], dtype=np.float32) # TODO: Simin
+		x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1) # (13, 2)
+
+		param_dict = {
+			"m": 0.8,
+			"J_x": 0.005,
+			"J_y": 0.005,
+			"J_z": 0.009,
+			"l": 1.5,
+			"k1": 4.0,
+			"k2": 0.05,
+			"m_p": 0.04,
+			"L_p": 0.03,  # TODO?
+			'delta_safety_limit': math.pi / 5  # TODO? in radians; should be <= math.pi/4
+		}
+		param_dict["M"] = param_dict["m"] + param_dict["m_p"]
+		index_names = ["dx", "dy", "dz", "gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
+		               "dtheta"]  # excluded x, y, z
+		index_dict = dict(zip(index_names, np.arange(len(index_names))))
+		param_dict["index_dict"] = index_dict
+		param_dict["x_lim"] = x_lim
+
+		# Create phi
+		from src.problems.flying_inv_pend import H, XDot, ULimitSetVertices
+		h_fn = H(param_dict)
+		xdot_fn = XDot(param_dict, device)
+		uvertices_fn = ULimitSetVertices(param_dict, device)
+
+		# TODO: reg term doesn't scale
+		"""
+		n_mesh_grain = args.reg_sample_distance
+		XXX = np.meshgrid(*[np.arange(r[0], r[1], n_mesh_grain) for r in x_lim])
+		A_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
+		A_samples = torch.from_numpy(A_samples.astype(np.float32))
+
+		print("N samples:" % (A_samples.shape))
+		IPython.embed()
+		"""
+		A_samples = None
+		if args.phi_include_xe:
+			x_e = torch.zeros(1, x_dim)
+		else:
+			x_e = None
 	else:
 		raise NotImplementedError
 		A_samples = None
@@ -380,26 +415,19 @@ def main(args):
 
 	##############################################################
 	#####################      Testing      ######################
-	# Test of bug fix 11/8
+	# Test of new flying_inv_pend env
+	# x = torch.rand((1, 13)).to(device)
+	#
+	# phi_values = phi_fn(x)
+	# print(x.dtype, x.device)
+	# # print(x.device)
+	# # IPython.embed()
+	# loss = objective_fn(x) + reg_fn()
+	# loss.backward()
+	#
+	# print("Did it run?")
+	# print("Check that gradients were populated?")
 	# IPython.embed()
-	# X = torch.tensor([0.0, 0.0])
-	# X = X.view(1, -1).to(device)
-	# print(phi_fn(X))
-	# print(phi_fn.ci)
-	# IPython.embed()
-
-	# Test there is grad of reg term wrt parameters
-	# IPython.embed()
-	# # gradients = grad([reg], list(phi_fn.parameters()))[0]
-
-	# import torch.optim as optim
-	# optimizer = optim.Adam(phi_fn.parameters())
-	# reg = reg_fn()
-	# reg.backward()
-	# optimizer.step()
-
-	# IPython.embed()
-
 
 if __name__ == "__main__":
 	args = parser()

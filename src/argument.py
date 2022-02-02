@@ -4,36 +4,35 @@ import math
 def parser():
 	# Problem
 	parser = argparse.ArgumentParser(description='CBF synthesis')
-	parser.add_argument('--problem', default='cartpole_reduced', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "challenge", "cartpole_reduced"])
+	parser.add_argument('--problem', default='cartpole_reduced', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced"])
 
 	# Phi
-	parser.add_argument('--phi_nn_dimension', default="6", type=str, help='specify the hidden dimension')
+	parser.add_argument('--phi_nn_dimension', default="64-64", type=str, help='specify the hidden dimension')
 	parser.add_argument('--phi_nnl', default="tanh", type=str)
 	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
 	parser.add_argument('--phi_k0_init_min', default=0.0, type=float)
 	parser.add_argument('--phi_k0_init_max', default=1.0, type=float)
 	parser.add_argument('--phi_include_xe', action='store_true')
 
+	# Parameters for cartpole only
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole')
 	parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol
 	parser.add_argument('--max_theta', default=math.pi/4.0, type=float)
 	parser.add_argument('--max_force', default=22.0, type=float)
 
 	parser.add_argument('--reg_weight', default=1.0, type=float, help='the weight on the volume term')
-	# parser.add_argument('--reg_relu_weight', default=0.1, type=float)
-	# parser.add_argument('--reg_sigmoid_weight', default=10.0, type=float)
 	parser.add_argument('--reg_sample_distance', default=0.1, type=float)
-	parser.add_argument('--reg_xe', default=0.0, type=float)
+	parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
 
 	# parser.add_argument('--g_input_is_xy', action='store_true')
 	###################################################################################################################################
 	# Attacker: train
-	parser.add_argument('--train_attacker', default='gradient_batch', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart'])
+	parser.add_argument('--train_attacker', default='gradient_batch_warmstart', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart'])
 
 	# Gradient batch attacker
-	parser.add_argument('--train_attacker_n_samples', default=30, type=int)
+	parser.add_argument('--train_attacker_n_samples', default=60, type=int)
 	parser.add_argument('--train_attacker_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping'])
-	parser.add_argument('--train_attacker_max_n_steps', default=200, type=int) # TODO
+	parser.add_argument('--train_attacker_max_n_steps', default=50, type=int) # TODO: 200?
 	parser.add_argument('--train_attacker_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"')
 	parser.add_argument('--train_attacker_projection_lr', default=1e-4, type=float)
 	parser.add_argument('--train_attacker_lr', default=1e-3, type=float)
