@@ -1,7 +1,6 @@
 import numpy as np
 import math
 
-
 class CartPoleEnv():
     def __init__(self):
         self.dt = 0.005 # TODO
@@ -16,6 +15,9 @@ class CartPoleEnv():
         self.m = 0.127
         self.M = 1.0731
         self.l = 0.3365 
+        
+        max_angular_velocity = 5.0 # state space constraint
+        self.x_lim = np.array([[-math.pi, math.pi], [-max_angular_velocity, max_angular_velocity]])
 
     def x_dot_open_loop(self, x, u):
 

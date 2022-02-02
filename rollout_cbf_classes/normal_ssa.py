@@ -11,6 +11,11 @@ class SSA:
         self.alpha1 = 1
         self.env = env
 
+    def set_params(self, params):
+        self.c1 = params[0]
+        self.c2 = params[1]
+        self.c3 = params[2]
+        
     def phi_0(self, x):
         ''' user defined safety index
         Input: x[1] is theta, x[3] = theta dot

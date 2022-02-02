@@ -8,6 +8,8 @@ import math
 from rollout_cbf_classes.cart_pole_env import CartPoleEnv
 import seaborn as sns
 import IPython
+from .normal_ssa_newsi import SSA
+# from .normal_ssa import SSA
 
 # TODO: check if phi_fn, phi_grad are correct.
 # TODO: check if evaluate is correct. Add reg term
@@ -45,8 +47,8 @@ class CartPoleEvaluator(object):
         """
 
         # Sample state space
-        n_theta = 200 # TODO
-        n_ang = 400 # TODO
+        n_theta = 400 # TODO
+        n_ang = 800 # TODO
 
         # delta = 0.01
         # self.thetas = np.arange(-self.env.max_theta, self.env.max_theta, delta)
@@ -64,137 +66,131 @@ class CartPoleEvaluator(object):
         self.max_u = np.vstack([self.env.max_force])
         self.dt = self.env.dt
 
-        self.reg_weight = 1.0 # TODO: need to tune to get possible result
+        self.reg_weight = 0.1 # TODO: need to tune to get possible result
 
         self.k = 5.0 # TODO: fixed, not learning it. For ease of comparison
         # self.d_min = 1
         
+        self.ssa = SSA(CartPoleEnv())
+        
     def phi_fn(self, x):
-        """
-        :param x: (N_batch, 4)
-        :return: (N_batch, r+1) where r is degree
-        """
-        # batched
-        x = np.reshape(x, (-1, 4))
-        # x =  [x theta, dot_x, dot_theta]
-        # phi = theta ** a1 - theta_max ** a1 + a2 * dot_theta + a3
-        # phi_0 = theta ** 2 - theta_max ** 2
-
-        # invariant set: (phi_(k+1) < 0 or dot_phi_k < 0 (with a valid control)) and phi_0 < 0 # TODO: Simin, this may not be correct.
-        theta = x[:, 1]
-        dot_theta = x[:, 3]
-
-        phi_0 = theta**2 - self.env.theta_safe_lim**2
-        phi_1 = phi_0 + self.coe[1]*theta*dot_theta
-        phi = (theta**2)**(self.coe[0]/2.0) - self.env.theta_safe_lim ** self.coe[0] + self.coe[2] + self.coe[1] * theta*dot_theta # Note: x2/2 is a hack!!!
-
-        phi_0 = np.reshape(phi_0, (-1, 1))
-        phi_1 = np.reshape(phi_1, (-1, 1))
-        phi = np.reshape(phi, (-1, 1))
-        phis = np.concatenate((phi_0, phi_1, phi), axis=1)
-        return phis
+        return self.ssa.phi_fn(np.hstack(x))
 
     def phi_grad(self, x):
-        """
-        :param x: (4)
-        :return: (4)
-        """
-        # not batched
-        theta = x[1]
-        dot_theta = x[3]
-        theta_sq = x[1]**2 # Note: hack
-        rv = np.hstack([0, self.coe[0] * (theta_sq ** ((self.coe[0]-1)/2.0)) + self.coe[1]*dot_theta, 0, self.coe[1]*theta])
-
-        # if np.any(np.isnan(rv)):
-        #     print("Inside cma-es evaluator, numpy is nan")
-        #     IPython.embed()
-        return rv
+        return self.ssa.phi_grad(np.hstack(x))
 
     def set_params(self, params):
         self.coe = params
+        self.ssa.c1 = params[0]
+        self.ssa.c2 = params[1]
+        self.ssa.c3 = params[2]
 
-    def has_valid_control(self, C, d, x):
+    def most_valid_control(self, C, x):
         # dot_x = f + g * u 
         f = np.vstack(self.env.x_dot_open_loop(x, 0))
         g = np.vstack(self.env.x_dot_open_loop(x, 1)) - f
-        return (C @ f + C @ g @ self.max_u < d) or (C @ f - C @ g @ self.max_u < d)
+        return min(C @ f + C @ g @ self.max_u, C @ f - C @ g @ self.max_u)
 
+    def near_boundary(self, phis):
+        phi0 = phis[0,0]
+        phi = phis[0,-1]
+        eps = 2e-3
+        return abs(phi0) < eps or abs(phi) < eps
+
+    def compute_valid_invariant(self):
+        in_invariant = 0
+        in_invariant_valid = 0
+        valid = 0
+        tot_cnt = 0
+        for sample in self.samples:
+            idx = sample
+            x = np.hstack([0, self.thetas[idx[0]], 0, self.ang_vels[idx[1]]])
+            
+            phis = self.ssa.phi_fn(x)
+            
+            # phi = phis[0, -1]
+            phi = np.max(phis)
+            
+            if self.near_boundary(phis):
+                tot_cnt += 1
+                
+                C = self.ssa.phi_grad(x)
+                d = -phi/self.dt if phi < 0 else -phi*self.k
+                most_valid = self.most_valid_control(C, x)
+                weighted_valid = np.exp(0.1 * min(d - most_valid, 0))
+                # most_valid < d => 1,   most_valid > d => 1 - exp(d-valid)
+                valid += weighted_valid
+
+            if np.max(phis) <= 0:
+                in_invariant += 1
+
+        self.valid = valid
+        valid_rate = valid * 1.0 / max(1,tot_cnt)
+        print("valid / tot_cnt: ", valid, "/", tot_cnt)
+        # valid_rate = valid * 1.0 / len(self.samples)
+        # self.valid = in_invariant_valid
+        # valid_rate = in_invariant_valid * 1.0 / max(1, in_invariant)
+
+        #### Reg term ####
+        in_invariant_rate = float(in_invariant)/len(self.samples)
+        return valid_rate, in_invariant_rate
+        
     def evaluate(self, params):
+        self.set_params(params)
+        
+        valid_rate, in_invariant_rate = self.compute_valid_invariant()
+
+        # Log
+        self.valid_rate = valid_rate
+        self.in_invariant_rate = in_invariant_rate
+
+        rv = valid_rate + self.reg_weight*in_invariant_rate
+        
+        print("valid rate: ", valid_rate,"in_invariant_rate: ", in_invariant_rate, "params: ", params)
+        return rv
+
+        # # TODO: special objective on the boundary
+
         # self.set_params(params)
         # valid = 0
-
+        # on_bdry = 0
+        
         # in_invariant = 0
         # for sample in self.samples:
         #     idx = sample
         #     x = [0, self.thetas[idx[0]], 0, self.ang_vels[idx[1]]]
         #     phis = self.phi_fn(x)
         #     phi = phis[0, -1]
-        #     # C dot_x < d
-        #     # phi(x_k) > 0 -> con: dot_phi(x_k) < -k*phi(x): C = self.grad_phi(x, o)  d = -phi*self.coe[3]
-        #     # phi(x_k) < 0 -> con: phi(x_k+1) < 0:           C = self.grad_phi(x, o)  d = -phi/dt
+
         #     C = self.phi_grad(x)
-        #     d = -phi/self.dt if phi < 0 else -phi*self.k
+        #     d = -phi / self.dt if phi < 0 else -phi * self.k # self.coe[3]
         #     has_valid = self.has_valid_control(C, d, x)
-        #     valid += has_valid
+            
+        #     if np.abs(phi) <= 1e-2: # near the boundary
+        #         on_bdry += 1
+        #         valid += has_valid
 
         #     if np.max(phis) <= 0 and has_valid:
         #         in_invariant += 1
-
+        
+        # print("N samples on boundary: %i" % on_bdry)
         # self.valid = valid
-        # valid_rate = valid * 1.0 / len(self.samples)
-
+        # valid_rate = float(valid)/max(on_bdry, 1)
+        
         # #### Reg term ####
-        # in_invariant_rate = float(in_invariant)/len(self.samples)
-
+        # in_invariant_rate = float(in_invariant) / len(self.samples)
+        
         # # Log
         # self.valid_rate = valid_rate
         # self.in_invariant_rate = in_invariant_rate
+        
+        # rv = valid_rate + self.reg_weight * in_invariant_rate
 
-        # rv = valid_rate + self.reg_weight*in_invariant_rate
+        # print("valid_rate")
+        # print(valid_rate)
+        # print("in_invariant_rate")
+        # print(in_invariant_rate)
         # return rv
-
-        # TODO: special objective on the boundary
-
-        self.set_params(params)
-        valid = 0
-        on_bdry = 0
-        
-        in_invariant = 0
-        for sample in self.samples:
-            idx = sample
-            x = [0, self.thetas[idx[0]], 0, self.ang_vels[idx[1]]]
-            phis = self.phi_fn(x)
-            phi = phis[0, -1]
-
-            C = self.phi_grad(x)
-            d = -phi / self.dt if phi < 0 else -phi * self.k # self.coe[3]
-            has_valid = self.has_valid_control(C, d, x)
-            
-            if np.abs(phi) <= 1e-2: # near the boundary
-                on_bdry += 1
-                valid += has_valid
-
-            if np.max(phis) <= 0 and has_valid:
-                in_invariant += 1
-        
-        print("N samples on boundary: %i" % on_bdry)
-        self.valid = valid
-        valid_rate = float(valid)/max(on_bdry, 1)
-        
-        #### Reg term ####
-        in_invariant_rate = float(in_invariant) / len(self.samples)
-        
-        # Log
-        self.valid_rate = valid_rate
-        self.in_invariant_rate = in_invariant_rate
-        
-        rv = valid_rate + self.reg_weight * in_invariant_rate
-
-        print("valid_rate")
-        print(valid_rate)
-        print("in_invariant_rate")
-        print(in_invariant_rate)
-        return rv
 
     def visualize(self, params):
         """
