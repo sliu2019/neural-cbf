@@ -73,6 +73,7 @@ class Phi(nn.Module):
 			beta_net_value = self.beta_net(x)
 			beta_value = nn.functional.softplus(beta_net_value) + k0*h_val
 		else:
+			# IPython.embed()
 			beta_net_value = self.beta_net(x)
 			beta_net_xe_value = self.beta_net(self.x_e)
 			beta_value = torch.square(beta_net_value - beta_net_xe_value) + k0*h_val
@@ -107,6 +108,8 @@ class Phi(nn.Module):
 		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device)) # bs x x_dim
 
 		for i in range(self.r-1):
+			# print(i)
+			# IPython.embed()
 			grad_h_ith = grad([torch.sum(h_ith_deriv)], x, create_graph=True)[0] # bs x x_dim; create_graph ensures gradient is computed through the gradient operation
 			# grad_h_ith = grad([torch.sum(h_ith_deriv)], x, retain_graph=True)[0] # TODO: for debugging only
 
@@ -114,6 +117,7 @@ class Phi(nn.Module):
 			h_ith_deriv = h_ith_deriv[:, :, 0] # bs x 1
 
 			h_derivs = torch.cat((h_derivs, h_ith_deriv), dim=1)
+
 
 		if grad_x == False:
 			x.requires_grad = orig_req_grad_setting
@@ -415,21 +419,19 @@ def main(args):
 		test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, max_n_steps=args.test_attacker_max_n_steps, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
 
 	# Pass everything to Trainer
-	trainer = Trainer(args, logger, attacker, test_attacker)
-	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
+	# trainer = Trainer(args, logger, attacker, test_attacker)
+	# trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
 	# Test of new flying_inv_pend env
-	# x = torch.rand((1, 13)).to(device)
-	#
-	# phi_values = phi_fn(x)
-	# print(x.dtype, x.device)
-	# # print(x.device)
-	# # IPython.embed()
+	# x = torch.rand((1, x_dim)).to(device)
+	# phi_vals = phi_fn(x)
 	# loss = objective_fn(x) + reg_fn()
 	# loss.backward()
-	#
+
+	# phi_vals_xe = phi_fn(x_e)
+	# print(phi_vals_xe)
 	# print("Did it run?")
 	# print("Check that gradients were populated?")
 	# IPython.embed()
