@@ -330,7 +330,7 @@ def main(args):
 			"k2": 0.05,
 			"m_p": 0.04,
 			"L_p": 0.03,  # TODO?
-			'delta_safety_limit': math.pi / 5  # in radians; should be <= math.pi/4
+			'delta_safety_limit': math.pi / 4  # in radians; should be <= math.pi/4
 		}
 		param_dict["M"] = param_dict["m"] + param_dict["m_p"]
 		state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",

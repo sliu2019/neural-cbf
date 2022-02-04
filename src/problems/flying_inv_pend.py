@@ -19,11 +19,18 @@ class H(nn.Module):
 		theta = x[:, [self.i["theta"]]]
 		phi = x[:, [self.i["phi"]]]
 
+		gamma = x[:, self.i["gamma"]]
+		beta = x[:, self.i["beta"]]
+		alpha = x[:, self.i["alpha"]]
+
 		cos_cos = torch.cos(theta)*torch.cos(phi)
-		eps = 1e-4 # TODO: prevents nan when cos_cos = +/- 1
+		eps = 1e-4 # prevents nan when cos_cos = +/- 1
 		with torch.no_grad():
 			signed_eps = -torch.sign(cos_cos)*eps
-		rv = torch.acos(cos_cos + signed_eps) - self.delta_safety_limit # torch.acos output is in [0, 2pi]? Probably doesn't matter for our purposes
+		rv = torch.acos(cos_cos + signed_eps)**2 - self.delta_safety_limit**2
+		# note: sq is technically unnecessary above, but the other angles are squared so makes it easier
+
+		rv = rv + 0.2*(gamma**2 + beta**2 + alpha**2) # TODO: set weight(s) differently?
 
 		return rv
 
