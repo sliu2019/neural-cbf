@@ -95,12 +95,14 @@ class ULimitSetVertices(nn.Module):
 		l = self.l
 		M = np.array([[k1, k1, k1, k1], [0, -l*k1, 0, l*k1], [l*k1, 0, -l*k1, 0], [-k2, k2, -k2, k2]]) # mixer matrix
 
-		r1 = np.concatenate((np.zeros(8), np.ones(8)))
-		r2 = np.concatenate((np.zeros(4), np.ones(4), np.zeros(4), np.ones(4)))
-		r3 = np.concatenate((np.zeros(2), np.ones(2),np.zeros(2), np.ones(2), np.zeros(2), np.ones(2),np.zeros(2), np.ones(2)))
-		r4 = np.zeros(16)
-		r4[1::2] = 1.0
-		impulse_vert = np.concatenate((r1[None], r2[None], r3[None], r4[None]), axis=0) # 16 vertices in the impulse control space
+
+
+		# r1 = np.concatenate((np.zeros(8), np.ones(8)))
+		# r2 = np.concatenate((np.zeros(4), np.ones(4), np.zeros(4), np.ones(4)))
+		# r3 = np.concatenate((np.zeros(2), np.ones(2),np.zeros(2), np.ones(2), np.zeros(2), np.ones(2),np.zeros(2), np.ones(2)))
+		# r4 = np.zeros(16)
+		# r4[1::2] = 1.0
+		# impulse_vert = np.concatenate((r1[None], r2[None], r3[None], r4[None]), axis=0) # 16 vertices in the impulse control space
 
 		"""
 		Biasing the force by Mg makes computing the limit set a little complicated
@@ -117,7 +119,7 @@ class ULimitSetVertices(nn.Module):
 		"""
 		# IPython.embed()
 
-		force_vert = M@impulse_vert + np.array([[-self.M*g], [0],[0], [0]]) # (4, 16)
+		# force_vert = M@impulse_vert + np.array([[-self.M*g], [0],[0], [0]]) # (4, 16)
 
 		"""
 		Go through all the edges and check if they intersect with the plane. If so, find the intersection.
@@ -156,34 +158,34 @@ class ULimitSetVertices(nn.Module):
 		# all_vert = all_vert.astype("float32")
 
 		# Processing for Pytorch
-		all_vert = np.array([[ 0.0000e+00, -6.0000e+00,  5.6394e+00, -3.0050e-03],
-       [ 0.0000e+00,  6.0000e+00,  5.6394e+00, -3.0050e-03],
-       [ 0.0000e+00,  6.0000e+00,  5.6394e+00, -3.0050e-03],
-       [ 0.0000e+00, -5.6394e+00, -6.0000e+00,  3.0050e-03],
-       [ 0.0000e+00, -5.6394e+00, -6.0000e+00,  3.0050e-03],
-       [ 0.0000e+00,  3.6060e-01,  0.0000e+00, -9.6995e-02],
-       [ 0.0000e+00,  5.6394e+00,  6.0000e+00,  3.0050e-03],
-       [ 0.0000e+00,  5.6394e+00,  6.0000e+00,  3.0050e-03],
-       [ 0.0000e+00,  6.0000e+00, -5.6394e+00, -3.0050e-03],
-       [ 0.0000e+00, -6.0000e+00, -5.6394e+00, -3.0050e-03],
-       [ 0.0000e+00,  0.0000e+00,  3.6060e-01,  9.6995e-02],
-       [ 0.0000e+00, -6.0000e+00, -5.6394e+00, -3.0050e-03],
-       [ 0.0000e+00,  6.0000e+00, -5.6394e+00, -3.0050e-03],
-       [ 0.0000e+00, -3.6060e-01,  0.0000e+00, -9.6995e-02],
-       [ 0.0000e+00, -5.6394e+00,  6.0000e+00,  3.0050e-03],
-       [ 0.0000e+00, -5.6394e+00,  6.0000e+00,  3.0050e-03],
-       [ 0.0000e+00,  0.0000e+00, -3.6060e-01,  9.6995e-02],
-       [ 0.0000e+00,  5.6394e+00, -6.0000e+00,  3.0050e-03],
-       [ 0.0000e+00,  5.6394e+00, -6.0000e+00,  3.0050e-03],
-       [ 0.0000e+00, -6.0000e+00,  5.6394e+00, -3.0050e-03],
-       [ 3.7596e+00,  0.0000e+00, -6.0000e+00,  5.0000e-02],
-       [ 3.7596e+00,  6.0000e+00,  0.0000e+00, -5.0000e-02],
-       [ 3.7596e+00,  0.0000e+00,  6.0000e+00,  5.0000e-02],
-       [ 3.7596e+00, -6.0000e+00,  0.0000e+00, -5.0000e-02],
-       [ 7.7596e+00,  0.0000e+00,  0.0000e+00,  0.0000e+00]],
-      dtype="float32")
-		# print(repr(all_vert))
-		self.vert = torch.from_numpy(all_vert).to(self.device)
+		# all_vert = np.array([[ 0.0000e+00, -6.0000e+00,  5.6394e+00, -3.0050e-03],
+      #  [ 0.0000e+00,  6.0000e+00,  5.6394e+00, -3.0050e-03],
+      #  [ 0.0000e+00,  6.0000e+00,  5.6394e+00, -3.0050e-03],
+      #  [ 0.0000e+00, -5.6394e+00, -6.0000e+00,  3.0050e-03],
+      #  [ 0.0000e+00, -5.6394e+00, -6.0000e+00,  3.0050e-03],
+      #  [ 0.0000e+00,  3.6060e-01,  0.0000e+00, -9.6995e-02],
+      #  [ 0.0000e+00,  5.6394e+00,  6.0000e+00,  3.0050e-03],
+      #  [ 0.0000e+00,  5.6394e+00,  6.0000e+00,  3.0050e-03],
+      #  [ 0.0000e+00,  6.0000e+00, -5.6394e+00, -3.0050e-03],
+      #  [ 0.0000e+00, -6.0000e+00, -5.6394e+00, -3.0050e-03],
+      #  [ 0.0000e+00,  0.0000e+00,  3.6060e-01,  9.6995e-02],
+      #  [ 0.0000e+00, -6.0000e+00, -5.6394e+00, -3.0050e-03],
+      #  [ 0.0000e+00,  6.0000e+00, -5.6394e+00, -3.0050e-03],
+      #  [ 0.0000e+00, -3.6060e-01,  0.0000e+00, -9.6995e-02],
+      #  [ 0.0000e+00, -5.6394e+00,  6.0000e+00,  3.0050e-03],
+      #  [ 0.0000e+00, -5.6394e+00,  6.0000e+00,  3.0050e-03],
+      #  [ 0.0000e+00,  0.0000e+00, -3.6060e-01,  9.6995e-02],
+      #  [ 0.0000e+00,  5.6394e+00, -6.0000e+00,  3.0050e-03],
+      #  [ 0.0000e+00,  5.6394e+00, -6.0000e+00,  3.0050e-03],
+      #  [ 0.0000e+00, -6.0000e+00,  5.6394e+00, -3.0050e-03],
+      #  [ 3.7596e+00,  0.0000e+00, -6.0000e+00,  5.0000e-02],
+      #  [ 3.7596e+00,  6.0000e+00,  0.0000e+00, -5.0000e-02],
+      #  [ 3.7596e+00,  0.0000e+00,  6.0000e+00,  5.0000e-02],
+      #  [ 3.7596e+00, -6.0000e+00,  0.0000e+00, -5.0000e-02],
+      #  [ 7.7596e+00,  0.0000e+00,  0.0000e+00,  0.0000e+00]],
+      # dtype="float32")
+		# # print(repr(all_vert))
+		# self.vert = torch.from_numpy(all_vert).to(self.device)
 
 	def forward(self, x):
 		# The way these are implemented should be batch compliant

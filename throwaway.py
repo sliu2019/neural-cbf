@@ -17,3 +17,4 @@ with open("./rollout_results/mpc_delta_0.050000_dt_0.050000_horizon_30.pkl", 'rb
 	n_inside = np.sum(data["exists_soln_bools"])
 
 	print(n_inside/n_points)
+	# 0.21853174603174602
