@@ -102,97 +102,16 @@ class ULimitSetVertices(nn.Module):
 		l = self.l
 		M = np.array([[k1, k1, k1, k1], [0, -l*k1, 0, l*k1], [l*k1, 0, -l*k1, 0], [-k2, k2, -k2, k2]]) # mixer matrix
 
+		r1 = np.concatenate((np.zeros(8), np.ones(8)))
+		r2 = np.concatenate((np.zeros(4), np.ones(4), np.zeros(4), np.ones(4)))
+		r3 = np.concatenate((np.zeros(2), np.ones(2),np.zeros(2), np.ones(2), np.zeros(2), np.ones(2),np.zeros(2), np.ones(2)))
+		r4 = np.zeros(16)
+		r4[1::2] = 1.0
+		impulse_vert = np.concatenate((r1[None], r2[None], r3[None], r4[None]), axis=0) # 16 vertices in the impulse control space
 
-
-		# r1 = np.concatenate((np.zeros(8), np.ones(8)))
-		# r2 = np.concatenate((np.zeros(4), np.ones(4), np.zeros(4), np.ones(4)))
-		# r3 = np.concatenate((np.zeros(2), np.ones(2),np.zeros(2), np.ones(2), np.zeros(2), np.ones(2),np.zeros(2), np.ones(2)))
-		# r4 = np.zeros(16)
-		# r4[1::2] = 1.0
-		# impulse_vert = np.concatenate((r1[None], r2[None], r3[None], r4[None]), axis=0) # 16 vertices in the impulse control space
-
-		"""
-		Biasing the force by Mg makes computing the limit set a little complicated
-		Impulses have constraints
-		F (thrust) must be positive		
-		So after shifting the polyhedron U_lim down by Mg on the F axis, we also have to compute any vertices appearing at the intersection of this polyhedron and the 0-plane
-		"""
-
-		"""
-		# Deprecated
-		force_vert = M@impulse_vert 
+		force_vert = M@impulse_vert
 		force_vert = force_vert.T.astype("float32")
 		self.vert = torch.from_numpy(force_vert).to(self.device)
-		"""
-		# IPython.embed()
-
-		# force_vert = M@impulse_vert + np.array([[-self.M*g], [0],[0], [0]]) # (4, 16)
-
-		"""
-		Go through all the edges and check if they intersect with the plane. If so, find the intersection.
-		
-		Affine transformations preserve edges (as well as vertices)
-		So we'll go through the edges in U-space. Each U-vertex has 4 neighbors.
-		Naturally, we will be double-computing the plane-poly intersection vertices.
-		"""
-		# all_cross_points = []
-		#
-		# for i in range(16):
-		# 	v = impulse_vert[:, [i]]
-		# 	neighbors = (v + np.eye(4)) % 2
-		# 	transf_v = M@v + np.array([[-self.M*g], [0],[0], [0]])
-		# 	transf_neighbors = M@neighbors + np.array([[-self.M*g], [0],[0], [0]])
-		#
-		# 	# Does edge cross F = 0 plane?
-		# 	ind = np.argwhere(transf_v[0, 0]*transf_neighbors[0] < 0).flatten()
-		# 	if ind.size:
-		# 		crossing_neigh = transf_neighbors[:, ind]
-		#
-		# 		# print(transf_v, crossing_neigh)
-		# 		# Find where they intersect
-		# 		alphas = -transf_v[0]/(crossing_neigh-transf_v)[0, :]
-		# 		cross_point = transf_v + alphas*(crossing_neigh-transf_v)
-		# 		all_cross_points.extend(list(cross_point.T))
-		#
-		# # Set
-		# all_cross_points_set = {tuple(cross_point) for cross_point in all_cross_points}
-		# all_cross_points = np.array([np.array(x) for x in all_cross_points_set])
-		#
-		# pos_vert_ind = np.argwhere(force_vert[0, :]>=0).flatten()
-		# pos_vert = force_vert[:, pos_vert_ind].T # (4, whatever)
-		#
-		# all_vert = np.concatenate((all_cross_points, pos_vert), axis=0) # (25, 4)
-		# all_vert = all_vert.astype("float32")
-
-		# Processing for Pytorch
-		# all_vert = np.array([[ 0.0000e+00, -6.0000e+00,  5.6394e+00, -3.0050e-03],
-      #  [ 0.0000e+00,  6.0000e+00,  5.6394e+00, -3.0050e-03],
-      #  [ 0.0000e+00,  6.0000e+00,  5.6394e+00, -3.0050e-03],
-      #  [ 0.0000e+00, -5.6394e+00, -6.0000e+00,  3.0050e-03],
-      #  [ 0.0000e+00, -5.6394e+00, -6.0000e+00,  3.0050e-03],
-      #  [ 0.0000e+00,  3.6060e-01,  0.0000e+00, -9.6995e-02],
-      #  [ 0.0000e+00,  5.6394e+00,  6.0000e+00,  3.0050e-03],
-      #  [ 0.0000e+00,  5.6394e+00,  6.0000e+00,  3.0050e-03],
-      #  [ 0.0000e+00,  6.0000e+00, -5.6394e+00, -3.0050e-03],
-      #  [ 0.0000e+00, -6.0000e+00, -5.6394e+00, -3.0050e-03],
-      #  [ 0.0000e+00,  0.0000e+00,  3.6060e-01,  9.6995e-02],
-      #  [ 0.0000e+00, -6.0000e+00, -5.6394e+00, -3.0050e-03],
-      #  [ 0.0000e+00,  6.0000e+00, -5.6394e+00, -3.0050e-03],
-      #  [ 0.0000e+00, -3.6060e-01,  0.0000e+00, -9.6995e-02],
-      #  [ 0.0000e+00, -5.6394e+00,  6.0000e+00,  3.0050e-03],
-      #  [ 0.0000e+00, -5.6394e+00,  6.0000e+00,  3.0050e-03],
-      #  [ 0.0000e+00,  0.0000e+00, -3.6060e-01,  9.6995e-02],
-      #  [ 0.0000e+00,  5.6394e+00, -6.0000e+00,  3.0050e-03],
-      #  [ 0.0000e+00,  5.6394e+00, -6.0000e+00,  3.0050e-03],
-      #  [ 0.0000e+00, -6.0000e+00,  5.6394e+00, -3.0050e-03],
-      #  [ 3.7596e+00,  0.0000e+00, -6.0000e+00,  5.0000e-02],
-      #  [ 3.7596e+00,  6.0000e+00,  0.0000e+00, -5.0000e-02],
-      #  [ 3.7596e+00,  0.0000e+00,  6.0000e+00,  5.0000e-02],
-      #  [ 3.7596e+00, -6.0000e+00,  0.0000e+00, -5.0000e-02],
-      #  [ 7.7596e+00,  0.0000e+00,  0.0000e+00,  0.0000e+00]],
-      # dtype="float32")
-		# # print(repr(all_vert))
-		# self.vert = torch.from_numpy(all_vert).to(self.device)
 
 	def forward(self, x):
 		# The way these are implemented should be batch compliant

@@ -337,9 +337,9 @@ def main(args):
 		                     "dtheta"]  # excluded x, y, z
 		state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
 
-		r = 4
+		r = 2 # TODO
 		x_dim = len(state_index_names)
-		u_dim = 4
+		u_dim = 4 # TODO
 		thresh = np.array([math.pi, math.pi, math.pi, 2, 2, 2, math.pi, math.pi, 2, 2], dtype=np.float32) # TODO
 		x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1) # (13, 2)
 
@@ -429,7 +429,7 @@ def main(args):
 	# phi_vals = phi_fn(x)
 	# loss = objective_fn(x) + reg_fn()
 	# loss.backward()
-
+	#
 	# phi_vals_xe = phi_fn(x_e)
 	# print(phi_vals_xe)
 	# print("Did it run?")
