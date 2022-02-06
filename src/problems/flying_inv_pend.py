@@ -16,12 +16,13 @@ class H(nn.Module):
 	def forward(self, x):
 		# The way these are implemented should be batch compliant
 		# Return value is size (bs, 1)
+		# IPython.embed()
 		theta = x[:, [self.i["theta"]]]
 		phi = x[:, [self.i["phi"]]]
 
-		gamma = x[:, self.i["gamma"]]
-		beta = x[:, self.i["beta"]]
-		alpha = x[:, self.i["alpha"]]
+		gamma = x[:, [self.i["gamma"]]]
+		beta = x[:, [self.i["beta"]]]
+		alpha = x[:, [self.i["alpha"]]]
 
 		cos_cos = torch.cos(theta)*torch.cos(phi)
 		eps = 1e-4 # prevents nan when cos_cos = +/- 1
@@ -109,9 +110,11 @@ class ULimitSetVertices(nn.Module):
 		r4[1::2] = 1.0
 		impulse_vert = np.concatenate((r1[None], r2[None], r3[None], r4[None]), axis=0) # 16 vertices in the impulse control space
 
-		force_vert = M@impulse_vert
+		force_vert = M@impulse_vert - self.M*g # TODO
 		force_vert = force_vert.T.astype("float32")
 		self.vert = torch.from_numpy(force_vert).to(self.device)
+
+		IPython.embed()
 
 	def forward(self, x):
 		# The way these are implemented should be batch compliant
@@ -154,17 +157,19 @@ if __name__ == "__main__":
 	xdot_fn = XDot(param_dict, device)
 	uvertices_fn = ULimitSetVertices(param_dict, device)
 
-	N = 2
-	# x = torch.rand(N, 13).to(device)
+	# N = 10
+	# x = torch.rand(N, 10).to(device)
 	# u = torch.rand(N, 4).to(device)
 
-	# IPython.embed()
 	# rv1 = h_fn(x)
-	x = torch.zeros(1, 10).to(device)
-	u = torch.zeros(1, 4).to(device)
-	rv2 = xdot_fn(x, u)
-	# IPython.embed()
-	# rv3 = uvertices_fn(x)
-
 	# print(rv1.shape)
+	# # x = torch.zeros(1, 10).to(device)
+	# # u = torch.zeros(1, 4).to(device)
+	# rv2 = xdot_fn(x, u)
+	# # IPython.embed()
+	# rv3 = uvertices_fn(x)
+	#
+	# print(rv2.shape)
+	# print(rv3.shape)
+	# # print(rv1.shape)
 	# IPython.embed()
