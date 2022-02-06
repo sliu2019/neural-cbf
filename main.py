@@ -425,16 +425,21 @@ def main(args):
 	##############################################################
 	#####################      Testing      ######################
 	# Test of new flying_inv_pend env
-	# x = torch.rand((1, x_dim)).to(device)
-	# phi_vals = phi_fn(x)
-	# loss = objective_fn(x) + reg_fn()
-	# loss.backward()
-	#
-	# phi_vals_xe = phi_fn(x_e)
-	# print(phi_vals_xe)
-	# print("Did it run?")
-	# print("Check that gradients were populated?")
-	# IPython.embed()
+	x = torch.rand((3, x_dim)).to(device)
+	phi_vals = phi_fn(x)
+	loss = objective_fn(x) + reg_fn()
+	loss.backward()
+
+	phi_vals_xe = phi_fn(x_e)
+	print(phi_vals_xe)
+	print("Did it run?")
+	print("Check that gradients were populated?")
+	IPython.embed()
+
+	################################################################
+	# Visualization of points sampled on boundary
+
+
 
 if __name__ == "__main__":
 	args = parser()
