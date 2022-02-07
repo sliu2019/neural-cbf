@@ -249,8 +249,8 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=None):
 	# phi_vals = phi_fn(input)
 	# IPython.embed()
 
-	title = "Ckpt %i, k0 = %.4f, k1 = %.4f" % (checkpoint_number, phi_fn.k0[0, 0].item(), phi_fn.ci[0, 0].item())
-	plt.title(title)
+	# title = "Ckpt %i, k0 = %.4f, k1 = %.4f" % (checkpoint_number, phi_fn.k0[0, 0].item(), phi_fn.ci[0, 0].item())
+	# plt.title(title)
 	if fname is None:
 		fname = "2d_attacks_from_loaded_checkpoint_%i.png" % checkpoint_number
 	plt.savefig("./log/%s/%s" % (exp_name, fname), bbox_inches='tight')

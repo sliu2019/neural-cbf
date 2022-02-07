@@ -66,14 +66,15 @@ class Phi(nn.Module):
 		# The way these are implemented should be batch compliant
 		# Assume x is (bs, x_dim)
 
-		# IPython.embed()
+		print("inside phi's forward")
+		IPython.embed()
+
 		h_val = self.h_fn(x)
 		k0 = self.k0 + self.k0_min
 		if self.x_e is None:
 			beta_net_value = self.beta_net(x)
 			beta_value = nn.functional.softplus(beta_net_value) + k0*h_val
 		else:
-			# IPython.embed()
 			beta_net_value = self.beta_net(x)
 			beta_net_xe_value = self.beta_net(self.x_e)
 			beta_value = torch.square(beta_net_value - beta_net_xe_value) + k0*h_val
@@ -103,37 +104,26 @@ class Phi(nn.Module):
 			orig_req_grad_setting = x.requires_grad # Basically only useful if x.requires_grad was False before
 			x.requires_grad = True
 
-		h_ith_deriv = self.h_fn(x) # bs x 1, the zeroth derivative
+		if self.args.phi_include_beta_deriv:
+			h_ith_deriv = beta_value  # bs x 1, the zeroth derivative
+		else:
+			h_ith_deriv = self.h_fn(x) # bs x 1, the zeroth derivative
 		h_derivs = h_ith_deriv # bs x 1
 		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device)) # bs x x_dim
 
 		for i in range(self.r-1):
-			# print(i)
-			# IPython.embed()
 			grad_h_ith = grad([torch.sum(h_ith_deriv)], x, create_graph=True)[0] # bs x x_dim; create_graph ensures gradient is computed through the gradient operation
-			# grad_h_ith = grad([torch.sum(h_ith_deriv)], x, retain_graph=True)[0] # TODO: for debugging only
-
 			h_ith_deriv = (grad_h_ith.unsqueeze(dim=1)).bmm(f_val.unsqueeze(dim=2)) # bs x 1 x 1
 			h_ith_deriv = h_ith_deriv[:, :, 0] # bs x 1
-
 			h_derivs = torch.cat((h_derivs, h_ith_deriv), dim=1)
-
 
 		if grad_x == False:
 			x.requires_grad = orig_req_grad_setting
-
-		# New: (bs, r+1)
-		# TODO: turn back on
-		# print("h_derivs")
-		# print(h_derivs)
-		# print("ki_all")
-		# print(ki_all)
 
 		result = h_derivs.mm(ki_all.t())
 		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + beta_value
 		result = torch.cat((result, phi_r_minus_1_star), dim=1)
 
-		# IPython.embed()
 		return result
 
 class Objective(nn.Module):
@@ -180,26 +170,25 @@ class Objective(nn.Module):
 
 class Regularizer(nn.Module):
 	def __init__(self, phi_fn, device, reg_weight=0.0,
-	             A_samples=None, reg_xe=False):
-		# Old args: relu_weight=0.001, sigmoid_weight=10.0
+	             A_samples=None):
 		super().__init__()
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
 
 		assert reg_weight >= 0.0
-		if reg_weight:
-			assert A_samples is not None
+		# if reg_weight:
+		# 	assert A_samples is not None
 
-		# self.x_e = torch.zeros(1, 2).to(device)
-
-	def forward(self):
+	def forward(self, x):
 		reg = torch.tensor(0).to(self.device)
 		if self.reg_weight:
-			# IPython.embed()
-			phi_value_A_samples = self.phi_fn(self.A_samples)
-			max_phi_values = torch.max(phi_value_A_samples, dim=1)[0]
+			if self.A_samples:
+				all_phi_values = self.phi_fn(self.A_samples)
+			else:
+				all_phi_values = self.phi_fn(x)
 
+			max_phi_values = torch.max(all_phi_values, dim=1)[0]
 			reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5) # Huh interesting, 0.3 factor stretches sigmoid out a lot.
 		return reg
 
@@ -329,7 +318,7 @@ def main(args):
 			"k1": 4.0,
 			"k2": 0.05,
 			"m_p": 0.04,
-			"L_p": 0.03,  # TODO?
+			"L_p": 0.03,
 			'delta_safety_limit': math.pi / 4  # in radians; should be <= math.pi/4
 		}
 		param_dict["M"] = param_dict["m"] + param_dict["m_p"]
@@ -337,10 +326,14 @@ def main(args):
 		                     "dtheta"]  # excluded x, y, z
 		state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
 
-		r = 2 # TODO
+		r = 2
 		x_dim = len(state_index_names)
-		u_dim = 4 # TODO
-		thresh = np.array([math.pi, math.pi, math.pi, 2, 2, 2, math.pi, math.pi, 2, 2], dtype=np.float32) # TODO
+		u_dim = 4
+		# thresh = np.array([math.pi, math.pi, math.pi, 2, 2, 2, math.pi, math.pi, 2, 2], dtype=np.float32) # TODO
+		# TODO: fill out below
+		thresh = np.array([math.pi, math.pi / 2, math.pi / 2, 2, 2, 2, math.pi / 2, math.pi / 2, 2, 2],
+		                  dtype=np.float32)
+
 		x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1) # (13, 2)
 
 		# Save stuff in param dict
@@ -356,16 +349,6 @@ def main(args):
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
-		# TODO: reg term doesn't scale
-		"""
-		n_mesh_grain = args.reg_sample_distance
-		XXX = np.meshgrid(*[np.arange(r[0], r[1], n_mesh_grain) for r in x_lim])
-		A_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
-		A_samples = torch.from_numpy(A_samples.astype(np.float32))
-
-		print("N samples:" % (A_samples.shape))
-		IPython.embed()
-		"""
 		A_samples = None
 		if args.phi_include_xe:
 			x_e = torch.zeros(1, x_dim)
@@ -390,12 +373,10 @@ def main(args):
 		A_samples = A_samples.to(device)
 	x_lim = torch.tensor(x_lim).to(device)
 
-	# Create CBF
+	# Create CBF, etc.
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
-	# Create objective function
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
-	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples, relu_weight=args.reg_relu_weight, sigmoid_weight=args.reg_sigmoid_weight)
-	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples, reg_xe=args.reg_xe)
+	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)
@@ -418,9 +399,12 @@ def main(args):
 	elif args.test_attacker == "gradient_batch_warmstart":
 		test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, max_n_steps=args.test_attacker_max_n_steps, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
 
+	# Create regularization helper
+	reg_sample_keeper = RegSampleKeeper(x_lim, device, logger, n_samples=args.reg_n_samples)
+
 	# Pass everything to Trainer
-	# trainer = Trainer(args, logger, attacker, test_attacker)
-	# trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
+	trainer = Trainer(args, logger, attacker, test_attacker, reg_sample_keeper)
+	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################

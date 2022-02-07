@@ -11,7 +11,7 @@ import datetime
 import pickle
 
 class Trainer():
-	def __init__(self, args, logger, attacker, test_attacker):
+	def __init__(self, args, logger, attacker, test_attacker, reg_sample_keeper):
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
@@ -80,9 +80,11 @@ class Trainer():
 			ci.grad = None
 			k0.grad = None
 
+			X_reg = self.reg_sample_keeper.return_samples()
+
 			if self.args.trainer_average_gradients:
 				# Outer max
-				reg_value = reg_fn()
+				reg_value = reg_fn(X_reg)
 				obj = objective_fn(X)
 
 				c = 0.1
@@ -96,11 +98,12 @@ class Trainer():
 			else:
 				# Outer max
 				x_batch = x.view(1, -1)
-				reg_value = reg_fn()
+				reg_value = reg_fn(X_reg)
 				attack_value = objective_fn(x_batch)[0, 0]
 				objective_value = attack_value + reg_value
 				objective_value.backward()
 
+			print("Reg value: ", reg_value)
 			# Logging for debugging
 			# TODO: if you uncomment this, make sure you detach otherwise you will accumulate memory over iterations and get an OOM
 			# beta_net_0_weight_grad = beta_net_0_weight.grad
@@ -192,7 +195,7 @@ class Trainer():
 				# compute test loss
 				t1 = time.perf_counter()
 				test_attack_loss = self.test(phi_fn, objective_fn)
-				test_reg_loss = reg_fn()
+				test_reg_loss = reg_fn(X_reg)
 				test_loss = test_attack_loss + test_reg_loss
 				t2 = time.perf_counter()
 
