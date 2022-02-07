@@ -13,6 +13,7 @@ def parser():
 	parser.add_argument('--phi_k0_init_min', default=0.0, type=float)
 	parser.add_argument('--phi_k0_init_max', default=1.0, type=float)
 	parser.add_argument('--phi_include_xe', action='store_true')
+	parser.add_argument('--phi_include_beta_deriv', action='store_true')
 
 	# Parameters for cartpole only
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole')
@@ -22,9 +23,13 @@ def parser():
 
 	parser.add_argument('--reg_weight', default=1.0, type=float, help='the weight on the volume term')
 	parser.add_argument('--reg_sample_distance', default=0.1, type=float)
-	parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
+	# parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
 
 	# parser.add_argument('--g_input_is_xy', action='store_true')
+	###################################################################################################################################
+	# Reg sample keeper
+	parser.add_argument('--reg_n_samples', default=50, type=int)
+
 	###################################################################################################################################
 	# Attacker: train
 	parser.add_argument('--train_attacker', default='gradient_batch_warmstart', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart'])
