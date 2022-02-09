@@ -58,7 +58,7 @@ class GradientBatchAttacker():
 			proj_opt.zero_grad()
 			loss = torch.sum(torch.abs(phi_fn(torch.cat(x_list), grad_x=True)[:, -1]))
 			loss.backward()
-			proj_opt._step()
+			proj_opt.step()
 
 			# TODO: comment out when not debugging
 			# if i==0:

@@ -8,6 +8,7 @@ from src.attacks.basic_attacker import BasicAttacker
 from src.attacks.gradient_batch_attacker import GradientBatchAttacker
 from src.attacks.gradient_batch_attacker_warmstart import GradientBatchWarmstartAttacker
 from src.trainer import Trainer
+from src.reg_sample_keeper import RegSampleKeeper
 from src.utils import *
 from src.argument import parser, print_args
 
@@ -18,7 +19,7 @@ import IPython
 import time
 import pickle
 
-# from global_settings import * # TODO: comment this out before a run
+from global_settings import * # TODO: comment this out before a run
 
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
@@ -63,24 +64,14 @@ class Phi(nn.Module):
 		self.beta_net = nn.Sequential(*net_layers)
 
 	def forward(self, x, grad_x=False):
+		# print("inside phi's forward")
+		# IPython.embed()
 		# The way these are implemented should be batch compliant
 		# Assume x is (bs, x_dim)
-
-		print("inside phi's forward")
-		IPython.embed()
-
-		h_val = self.h_fn(x)
 		k0 = self.k0 + self.k0_min
-		if self.x_e is None:
-			beta_net_value = self.beta_net(x)
-			beta_value = nn.functional.softplus(beta_net_value) + k0*h_val
-		else:
-			beta_net_value = self.beta_net(x)
-			beta_net_xe_value = self.beta_net(self.x_e)
-			beta_value = torch.square(beta_net_value - beta_net_xe_value) + k0*h_val
+		ci = self.ci + self.ci_min
 
 		# Convert ci to ki
-		ci = self.ci + self.ci_min
 		ki = torch.tensor([[1.0]])
 		ki_all = torch.zeros(self.r, self.r).to(self.device) # phi_i coefficients are in row i
 		ki_all[0, 0:ki.numel()] = ki
@@ -96,18 +87,29 @@ class Phi(nn.Module):
 			ki = A.mm(binomial)
 
 			ki_all[i+1, 0:ki.numel()] = ki.view(1, -1)
+			# Ultimately, ki should be r x 1
 
-		# Ultimately, ki should be r x 1
 		# Compute higher-order Lie derivatives
+		#####################################################################
+		# Turn gradient tracking on for x
 		bs = x.size()[0]
 		if grad_x == False:
 			orig_req_grad_setting = x.requires_grad # Basically only useful if x.requires_grad was False before
 			x.requires_grad = True
 
+		if self.x_e is None:
+			beta_net_value = self.beta_net(x)
+			new_h = nn.functional.softplus(beta_net_value) + k0*self.h_fn(x)
+		else:
+			beta_net_value = self.beta_net(x)
+			beta_net_xe_value = self.beta_net(self.x_e)
+			new_h = torch.square(beta_net_value - beta_net_xe_value) + k0*self.h_fn(x)
+
 		if self.args.phi_include_beta_deriv:
-			h_ith_deriv = beta_value  # bs x 1, the zeroth derivative
+			h_ith_deriv = new_h  # bs x 1, the zeroth derivative
 		else:
 			h_ith_deriv = self.h_fn(x) # bs x 1, the zeroth derivative
+
 		h_derivs = h_ith_deriv # bs x 1
 		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device)) # bs x x_dim
 
@@ -119,11 +121,18 @@ class Phi(nn.Module):
 
 		if grad_x == False:
 			x.requires_grad = orig_req_grad_setting
+		#####################################################################
+		# Turn gradient tracking off for x
 
 		result = h_derivs.mm(ki_all.t())
-		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + beta_value
+		if self.args.phi_include_beta_deriv:
+			phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_h
+		else:
+			phi_r_minus_1_star = result[:, [-1]]
+
 		result = torch.cat((result, phi_r_minus_1_star), dim=1)
 
+		# IPython.embed()
 		return result
 
 class Objective(nn.Module):
@@ -177,8 +186,6 @@ class Regularizer(nn.Module):
 		del self.__dict__["self"]  # don't need `self`
 
 		assert reg_weight >= 0.0
-		# if reg_weight:
-		# 	assert A_samples is not None
 
 	def forward(self, x):
 		reg = torch.tensor(0).to(self.device)
@@ -189,7 +196,9 @@ class Regularizer(nn.Module):
 				all_phi_values = self.phi_fn(x)
 
 			max_phi_values = torch.max(all_phi_values, dim=1)[0]
+			# print("max_phi_values, from regularizer: ", max_phi_values)
 			reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5) # Huh interesting, 0.3 factor stretches sigmoid out a lot.
+
 		return reg
 
 def main(args):
@@ -329,9 +338,8 @@ def main(args):
 		r = 2
 		x_dim = len(state_index_names)
 		u_dim = 4
-		# thresh = np.array([math.pi, math.pi, math.pi, 2, 2, 2, math.pi, math.pi, 2, 2], dtype=np.float32) # TODO
 		# TODO: fill out below
-		thresh = np.array([math.pi, math.pi / 2, math.pi / 2, 2, 2, 2, math.pi / 2, math.pi / 2, 2, 2],
+		thresh = np.array([math.pi, math.pi / 3, math.pi / 3, 2, 2, 2, math.pi / 3, math.pi / 3, 2, 2],
 		                  dtype=np.float32)
 
 		x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1) # (13, 2)
@@ -408,17 +416,37 @@ def main(args):
 
 	##############################################################
 	#####################      Testing      ######################
-	# Test of new flying_inv_pend env
-	x = torch.rand((3, x_dim)).to(device)
-	phi_vals = phi_fn(x)
-	loss = objective_fn(x) + reg_fn()
-	loss.backward()
+	# 02/07 debug: phi achieving large values
+	# p1 = torch.tensor([ 0.7896,  0.3761, -0.2465, -1.0356, -1.0155, -0.3704,  0.1800,  1.5708,
+    #      1.5499, -0.0021], device='cuda:0')
 
-	phi_vals_xe = phi_fn(x_e)
-	print(phi_vals_xe)
-	print("Did it run?")
-	print("Check that gradients were populated?")
-	IPython.embed()
+	# p2 = torch.tensor([ 0.7896,  0.3761, -0.2465, -1.0356, -1.0155, -0.3704,  0.1800,  1.5708,
+         # 1.5499, -0.0021], device='cuda:0')
+
+	# p1 = torch.tensor([-0.6615,  0.3179,  0.8850, -0.0507,  1.5265, -0.7742, -0.8944,  1.2942,
+    #      0.0504, -0.5578], device='cuda:0')
+	# p2 = torch.tensor([ 0.7896,  0.3761, -0.2465, -1.0356, -1.0155, -0.3704,  0.1800,  1.5708,
+    #      1.5499, -0.0021], device='cuda:0')
+	#
+	# phi_val = phi_fn(p2.view(1, -1))
+	# print(phi_val)
+	# IPython.embed()
+	# Test of new flying_inv_pend env
+	# x = torch.rand((1, x_dim)).to(device)
+	# phi_vals = phi_fn(x)
+	# loss = objective_fn(x) + reg_fn(x)
+	# loss.backward()
+	#
+	#  # print("finished, in main.py")
+	# # IPython.embed()
+	#
+	#
+	#
+	# phi_vals_xe = phi_fn(x_e)
+	# print(phi_vals_xe)
+	# print("Did it run?")
+	# print("Check that gradients were populated?")
+	# # IPython.embed()
 
 	################################################################
 	# Visualization of points sampled on boundary
