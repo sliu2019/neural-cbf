@@ -16,22 +16,14 @@ class H(nn.Module):
 	def forward(self, x):
 		# The way these are implemented should be batch compliant
 		# Return value is size (bs, 1)
-		# IPython.embed()
 		theta = x[:, [self.i["theta"]]]
 		phi = x[:, [self.i["phi"]]]
 
-		# gamma = x[:, [self.i["gamma"]]]
-		# beta = x[:, [self.i["beta"]]]
-		# alpha = x[:, [self.i["alpha"]]]
-
 		cos_cos = torch.cos(theta)*torch.cos(phi)
-		eps = 1e-4 # prevents nan when cos_cos = +/- 1
+		eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
 		with torch.no_grad():
 			signed_eps = -torch.sign(cos_cos)*eps
-		rv = torch.acos(cos_cos + signed_eps)**2 - self.delta_safety_limit**2
-		# note: sq is technically unnecessary above, but the other angles are squared so makes it easier
-
-		# rv = rv + 0.2*(gamma**2 + beta**2 + alpha**2) # TODO: set weight(s) differently?
+		rv = torch.acos(cos_cos + signed_eps) - self.delta_safety_limit
 
 		return rv
 
@@ -39,11 +31,10 @@ class XDot(nn.Module):
 	def __init__(self, param_dict, device):
 		super().__init__()
 		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes
-		# IPython.embed()
 		self.device = device
 		self.i = self.state_index_dict
 
-	def forward(self, x, u, same_u=False): # TODO: same_u
+	def forward(self, x, u):
 		# x: bs x 10, u: bs x 4
 		# The way these are implemented should be batch compliant
 
@@ -74,7 +65,7 @@ class XDot(nn.Module):
 		k_y = R[:, 1, 2]
 		k_z = R[:, 2, 2]
 
-		F = (u[:, 0] + self.M*g) # TODO: Mg
+		F = (u[:, 0] + self.M*g)
 
 		###### Computing state derivatives
 		ddquad_angles = torch.bmm(R, u[:, 1:, None]) # (N, 3, 1)
@@ -86,7 +77,6 @@ class XDot(nn.Module):
 		ddphi = (3.0)*(k_y*torch.cos(phi) + k_z*torch.sin(phi))/(2*self.M*self.L_p*torch.cos(theta))*F + 2*dtheta*dphi*torch.tan(theta)
 		ddtheta = (3.0*(-k_x*torch.cos(theta)-k_y*torch.sin(phi)*torch.sin(theta) + k_z*torch.cos(phi)*torch.sin(theta))/(2.0*self.M*self.L_p))*F - torch.square(dphi)*torch.sin(theta)*torch.cos(theta)
 
-		# rv = torch.cat([x[:, [self.i["dx"]]], x[:, [self.i["dy"]]], x[:, [self.i["dz"]]], ddx[:, None], ddy[:, None], ddz[:, None], x[:, [self.i["dgamma"]]], x[:, [self.i["dbeta"]]], x[:, [self.i["dalpha"]]], ddgamma[:, None], ddbeta[:, None], ddalpha[:, None], dphi[:, None], dtheta[:, None], ddphi[:, None], ddtheta[:, None]], axis=1)
 		# Excluding translational motion
 		rv = torch.cat([x[:, [self.i["dgamma"]]], x[:, [self.i["dbeta"]]], x[:, [self.i["dalpha"]]], ddgamma[:, None], ddbeta[:, None], ddalpha[:, None], dphi[:, None], dtheta[:, None], ddphi[:, None], ddtheta[:, None]], axis=1)
 		return rv
@@ -110,11 +100,9 @@ class ULimitSetVertices(nn.Module):
 		r4[1::2] = 1.0
 		impulse_vert = np.concatenate((r1[None], r2[None], r3[None], r4[None]), axis=0) # 16 vertices in the impulse control space
 
-		force_vert = M@impulse_vert - self.M*g # TODO
+		force_vert = M@impulse_vert - self.M*g
 		force_vert = force_vert.T.astype("float32")
 		self.vert = torch.from_numpy(force_vert).to(self.device)
-
-		# IPython.embed()
 
 	def forward(self, x):
 		# The way these are implemented should be batch compliant
@@ -134,7 +122,7 @@ if __name__ == "__main__":
 		"l": 1.5,
 		"k1": 4.0,
 		"k2": 0.05,
-		"m_p": 0.04,
+		"m_p": 0.04, # TODO?
 		"L_p": 0.03, # TODO?
 		'delta_safety_limit': math.pi/5 # in radians; should be <= math.pi/4
 	}

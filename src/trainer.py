@@ -49,20 +49,28 @@ class Trainer():
 		test_attack_losses = []
 		test_reg_losses = []
 		test_losses = []
-		timings = [] # in seconds
-		train_attacks = [] # lists of 1D numpy tensors
 
-		# Debug
+		# Debug losses and overall timing
 		train_attack_losses = []
 		train_reg_losses = []
 		train_losses = []
-		train_loss_debug = []
+		train_loop_times = [] # in seconds
+
+		# Debug attacks
+		train_attacks = [] # lists of 1D numpy tensors
 		train_attack_X_init = []
 		train_attack_X_final = []
 		train_attack_X_obj_vals = []
+
+		# Debug PGD on params + grad norms
 		ci_grad = []
 		k0_grad = []
 		grad_norms = []
+
+		# Debug reg sample keeper
+		reg_sample_keeper_X = []
+		max_dists_X_reg = []
+		times_to_compute_X_reg = []
 
 		ci_lr = 1e-4
 		a_lr = 1e-4
@@ -73,14 +81,16 @@ class Trainer():
 		# file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 		# save_model(phi_fn, file_name)
 		while True:
-			# Inner min
+			t0_xreg = time.perf_counter()
+			X_reg = self.reg_sample_keeper.return_samples(phi_fn)
+			tf_xreg = time.perf_counter()
+
+			# Inner max
 			X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode)
 
 			optimizer.zero_grad()
 			ci.grad = None
 			k0.grad = None
-
-			X_reg = self.reg_sample_keeper.return_samples()
 
 			if self.args.trainer_average_gradients:
 				# Outer max
@@ -111,9 +121,9 @@ class Trainer():
 			# grad_norm = grad_norm.detach().cpu().detach()
 			# grad_norms.append(grad_norm)
 
-			optimizer._step()
+			optimizer.step()
 			if "LR" in self.args.trainer_type:
-				scheduler._step()
+				scheduler.step()
 			with torch.no_grad():
 				# new_ci = ci - ci_lr*ci.grad
 				new_ci = ci
@@ -163,7 +173,6 @@ class Trainer():
 			train_reg_losses.append(reg_value.item())
 			train_losses.append(objective_value.item())
 
-			# train_loss_debug.append(objective_value_after_step-objective_value)
 
 			# X_init_numpy = X_init.detach().cpu().numpy()
 			# X_numpy = X.detach().cpu().numpy()
@@ -173,9 +182,17 @@ class Trainer():
 			k0_grad.append(k0.grad.detach().cpu().numpy())
 			ci_grad.append(ci.grad.detach().cpu().numpy())
 
-			timings.append(t_so_far)
+			train_loop_times.append(t_so_far)
 			train_attack_numpy = x.detach().cpu().numpy()
 			train_attacks.append(train_attack_numpy)
+
+			# Recording for reg sample keeper
+			phis_X_reg = phi_fn(X_reg)
+			max_dist_X_reg = torch.max(torch.abs(torch.max(phis_X_reg, axis=1)[0]))[0]
+			max_dist_X_reg = max_dist_X_reg.detach().cpu().numpy()
+			max_dists_X_reg.append(max_dist_X_reg)
+			reg_sample_keeper_X.append(X_reg.detach().cpu().numpy())
+			times_to_compute_X_reg.append(tf_xreg-t0_xreg)
 
 			# Saving at every _ iterations
 			if _iter % self.args.n_checkpoint_step == 0:
@@ -183,7 +200,8 @@ class Trainer():
 				save_model(phi_fn, file_name)
 
 				# save data too
-				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "timings": timings, "train_attacks": train_attacks, "train_loss_debug": train_loss_debug, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "grad_norms": grad_norms}
+				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "grad_norms": grad_norms, "reg_sample_keeper_X": reg_sample_keeper_X, "max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg}
+
 				self.logger.info(f'train loss: {objective_value:.3f}%')
 				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
 

@@ -35,12 +35,8 @@ class RegSampleKeeper():
         # For warmstart
         self.X_saved = None
 
-        print("Finished initializing RegSampleKeeper")
-        IPython.embed()
-
     def _project(self, phi_fn, x):
-        print("Inside project")
-        IPython.embed()
+        # NOTE: it doesn't matter much for reg for the points to be exactly on the boundary!
 
         # Recommend GD instead of line search for this one, since the objective is a max...
         # Until convergence
@@ -48,26 +44,23 @@ class RegSampleKeeper():
         t1 = time.perf_counter()
 
         x_list = list(x)
-        x_list = [x_mem.view(-1, self.x_dim) for x_mem in x_list] # TODO
+        x_list = [x_mem.view(-1, self.x_dim) for x_mem in x_list]
         for x_mem in x_list:
             x_mem.requires_grad = True
         proj_opt = optim.Adam(x_list, lr=self.projection_lr)
 
         while True:
             proj_opt.zero_grad()
-            # loss = torch.sum(torch.abs(phi_fn(torch.cat(x_list), grad_x=True)[:, -1]))
-            loss = torch.sum(torch.abs(torch.max(phi_fn(torch.cat(x_list), grad_x=True), axis=1)))
+            loss = torch.sum(torch.abs(torch.max(phi_fn(torch.cat(x_list), grad_x=True), axis=1)[0]))
             loss.backward()
-            proj_opt._step()
+            proj_opt.step()
 
             i += 1
             t_now = time.perf_counter()
             if torch.max(loss) < self.projection_tolerance:
-                # if self.verbose:
-                #     print("reprojection exited before timeout in %i steps" % i)
                 break
             elif (t_now - t1) > self.projection_time_limit:
-                print("reprojection exited on timeout")
+                print("reprojection exited on timeout, max dist from =0 boundary: ", loss.item())
                 break
 
         for x_mem in x_list:
@@ -111,6 +104,7 @@ class RegSampleKeeper():
         """
         Atol? Reltol?
         """
+        # IPython.embed()
         diff = p2-p1
 
         left_weight = 0.0
@@ -121,8 +115,8 @@ class RegSampleKeeper():
         left_val = torch.max(phi_fn(p1.view(1, -1))).item()
         right_val = torch.max(phi_fn(p2.view(1, -1))).item()
 
-        left_sign = torch.sign(left_val)
-        right_sign = torch.sign(right_val)
+        left_sign = np.sign(left_val)
+        right_sign = np.sign(right_val)
 
         if left_sign*right_sign > 0:
             return None
@@ -135,7 +129,7 @@ class RegSampleKeeper():
             # mid_val = phi_fn(mid_point.view(1, -1))[0, -1] # TODO
             mid_val = torch.max(phi_fn(mid_point.view(1, -1))).item()
 
-            mid_sign = torch.sign(mid_val)
+            mid_sign = np.sign(mid_val)
             if mid_sign*left_sign < 0:
                 # go to the left side
                 right_weight = mid_weight
@@ -172,8 +166,8 @@ class RegSampleKeeper():
         """
         Returns torch array of size (self.n_samples, self.x_dim)
         """
-        print("In sample_invariant_set_boundary")
-        IPython.embed()
+        # print("In sample_invariant_set_boundary")
+        # IPython.embed()
 
         # Everything done in torch
         samples = []
@@ -203,9 +197,11 @@ class RegSampleKeeper():
 
     def return_samples(self, phi_fn):
         if self.X_saved is None:
+            print("sampling for the first time")
             self.X_saved = self._sample_invariant_set_boundary(phi_fn)
-
         else:
+            print("Updating samples")
             self.X_saved = self._project(phi_fn, self.X_saved) # reproject, since phi changed
 
+        # IPython.embed()
         return self.X_saved

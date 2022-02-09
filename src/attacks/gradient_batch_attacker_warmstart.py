@@ -62,7 +62,7 @@ class GradientBatchWarmstartAttacker():
             proj_opt.zero_grad()
             loss = torch.sum(torch.abs(phi_fn(torch.cat(x_list), grad_x=True)[:, -1]))
             loss.backward()
-            proj_opt._step()
+            proj_opt.step()
 
             i += 1
             t_now = time.perf_counter()
@@ -71,7 +71,8 @@ class GradientBatchWarmstartAttacker():
                 #     print("reprojection exited before timeout in %i steps" % i)
                 break
             elif (t_now - t1) > self.projection_time_limit:
-                print("reprojection exited on timeout")
+                # print("reprojection exited on timeout")
+                print("reprojection exited on timeout, max dist from =0 boundary: ", loss.item())
                 break
 
         for x_mem in x_list:
@@ -172,6 +173,8 @@ class GradientBatchWarmstartAttacker():
 
         t0 = time.perf_counter()
         while True:
+            # print(left_weight, right_weight)
+            # print(left_val, right_val)
             mid_weight = (left_weight + right_weight)/2.0
             mid_point = p1 + mid_weight*diff
 
@@ -194,16 +197,18 @@ class GradientBatchWarmstartAttacker():
                 intersection_point = p1 + left_weight*diff
                 break
             t1 = time.perf_counter()
-            if (t1-t0)>7:
+            if (t1-t0)>7: # TODO: set back to 7
                 # This clause is necessary for non-differentiable, continuous points (abrupt change)
                 print("Something is wrong in projection")
-                print(torch.abs(left_val - right_val))
-                print(left_weight, right_weight)
-                left_point = p1 + left_weight * diff
-                right_point = p1 + right_weight * diff
-                print(left_point, right_point)
                 print(left_val, right_val)
-                print(mid_val, mid_point, mid_sign)
+                # print(torch.abs(left_val - right_val))
+                print(left_weight, right_weight)
+                print("p1:", p1)
+                print("p2:", p2)
+                # left_point = p1 + left_weight * diff
+                # right_point = p1 + right_weight * diff
+                # print(left_point, right_point)
+                # print(mid_val, mid_point, mid_sign)
                 # IPython.embed()
                 return None
 
@@ -225,22 +230,22 @@ class GradientBatchWarmstartAttacker():
             outer = self._sample_on_cube()
 
             intersection = self._intersect_segment_with_manifold(center, outer, phi_fn)
-            valid = False
+            # valid = False
             if intersection is not None:
                 if mode == "dG":
                     samples.append(intersection.view(1, -1))
                     n_remaining_to_sample -= 1
-                    valid = True
+                    # valid = True
                 elif mode == "dS":
                     phi_val = phi_fn(intersection.view(1, -1))
                     on_dS = torch.all(phi_val[0, :-1] <= 1e-6).item() # tol
                     if on_dS:
                         samples.append(intersection.view(1, -1))
                         n_remaining_to_sample -= 1
-                        valid = True
+                        # valid = True
 
-            if not valid:
-                center = self._sample_in_cube()
+            # if not valid:
+            center = self._sample_in_cube()
             n_segments_sampled += 1
             # self.logger.info("%i segments" % n_segments_sampled)
 
@@ -289,11 +294,19 @@ class GradientBatchWarmstartAttacker():
         step_times = []
         tstart = time.perf_counter()
         while True:
+            print("Inner max step #%i" % i)
             t2 = time.perf_counter()
             X = self._step(objective_fn, phi_fn, X, mode=mode) # Take gradient steps on all candidate attacks
+            # TODO: SIMIN YOU ARE HERE; NEED STEP TO PASS OUT DETAILED TIMING DICTIONARY
             t3 = time.perf_counter()
 
             obj_vals = objective_fn(X.view(-1, self.x_dim))
+
+            # Logging
+            if i == 0:
+                init_best_attack_value = torch.max(obj_vals)[0]
+
+            # Loop break condition
             if self.stopping_condition == "n_steps":
                 if (i > self.max_n_steps):
                     break
@@ -323,8 +336,10 @@ class GradientBatchWarmstartAttacker():
 
         if not debug:
             x = X[max_ind]
-            return x
+            return x, {}
         else: # TODO
             x = X[max_ind]
-            return X_init, X, x, obj_vals # X_init: the attacks we started this call with, X: ended this call with, x: best of X, obj_vals: corr. X
+            final_best_attack_value = torch.max(obj_vals)[0]
+            return x, {"X_init": X_init, "X_reuse_init": X_reuse_init, "X_random_init": X_random_init, "X": X, "obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value}
+            # return X_init, X, x, obj_vals # X_init: the attacks we started this call with, X: ended this call with, x: best of X, obj_vals: corr. X
 

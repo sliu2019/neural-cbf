@@ -13,19 +13,26 @@ import pickle
 # from phi_baseline import PhiBaseline
 from src.attacks.gradient_batch_attacker import GradientBatchAttacker
 from src.attacks.gradient_batch_attacker_warmstart import GradientBatchWarmstartAttacker
+from src.reg_sample_keeper import RegSampleKeeper
 
+import time
 from torch.autograd import grad
 from torch import nn
 from src.argument import parser, print_args
 
 # Make numpy and torch deterministic
-torch.manual_seed(10)
-np.random.seed(2021)
+seed = 3
+torch.manual_seed(seed)
+np.random.seed(seed)
 
-def create_new_phi_and_attacker():
+device = torch.device("cpu")
+
+thresh = np.array([math.pi, math.pi / 2, math.pi / 2, 2, 2, 2, math.pi / 2, math.pi / 2, 2, 2], dtype=np.float32)
+x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)
+
+def load_phi():
 	# IPython.embed()
 	args = parser()
-	device = torch.device("cpu")
 
 	param_dict = {
 		"m": 0.8,
@@ -47,8 +54,6 @@ def create_new_phi_and_attacker():
 	r = 2
 	x_dim = len(state_index_names)
 	u_dim = 4
-	thresh = np.array([math.pi, math.pi/2, math.pi/2, 2, 2, 2, math.pi/2, math.pi/2, 2, 2], dtype=np.float32)
-	x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)
 
 	# Save stuff in param dict
 	param_dict["state_index_dict"] = state_index_dict
@@ -73,101 +78,129 @@ def create_new_phi_and_attacker():
 
 	#####################################################################
 	# In a loop, plot 2D slices
-	logger = create_logger("./log/discard", 'train', 'info')
-	x_lim_torch = torch.tensor(x_lim).to(device)
-	attacker = GradientBatchWarmstartAttacker(x_lim_torch, device, logger, n_samples=args.train_attacker_n_samples,
-	                                          stopping_condition=args.train_attacker_stopping_condition,
-	                                          max_n_steps=args.train_attacker_max_n_steps, lr=args.train_attacker_lr,
-	                                          projection_tolerance=args.train_attacker_projection_tolerance,
-	                                          projection_lr=args.train_attacker_projection_lr)
+	# logger = create_logger("./log/discard", 'train', 'info')
+	# x_lim_torch = torch.tensor(x_lim).to(device)
+	# attacker = GradientBatchWarmstartAttacker(x_lim_torch, device, logger, n_samples=args.train_attacker_n_samples,
+	#                                           stopping_condition=args.train_attacker_stopping_condition,
+	#                                           max_n_steps=args.train_attacker_max_n_steps, lr=args.train_attacker_lr,
+	#                                           projection_tolerance=args.train_attacker_projection_tolerance,
+	#                                           projection_lr=args.train_attacker_projection_lr)
 
-	return phi_fn, attacker, param_dict
+	return phi_fn, param_dict
 
-def plot_boundary_samples(phi_fn, samples, param_dict, param1, param2):
+def plot_boundary_samples(phi_fn, samples, param_dict, which_params=None, fnm=None):
 	"""
 	Plots invariant set and projected boundary samples in 2D
+	which_params: all or list of lists of length 2
 	"""
-	# IPython.embed()
-
 	x_lim = param_dict["x_lim"]
 	x_dim = param_dict["x_dim"]
 	state_index_dict = param_dict["state_index_dict"]
-	ind1 = state_index_dict[param1]
-	ind2 = state_index_dict[param2]
 
-	delta = 0.01
-	x = np.arange(x_lim[ind1, 0], x_lim[ind1, 1], delta)
-	y = np.arange(x_lim[ind2, 0], x_lim[ind2, 1], delta)[::-1] # need to reverse it # TODO
-	X, Y = np.meshgrid(x, y)
+	if which_params is None:
+		params_to_viz = [["theta", "phi"], ["dtheta", "dphi"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"], ["dbeta", "dalpha"], ["dgamma", "dbeta"], ["dgamma", "dalpha"]]
+	else:
+		params_to_viz = which_params
 
-	###################################
-	##### Plotting ######
-	###################################
-	## Get phi values
-	input = np.zeros((X.size, x_dim))
-	input[:, ind1] = X.flatten()
-	input[:, ind2] = Y.flatten()
+	# IPython.embed()
+	n_per_row = 3
+	n_row = math.ceil(len(params_to_viz)/float(n_per_row))
 
-	batch_size = int(X.size/5)
-	all_size = input.shape[0]
+	n_per_row = min(len(params_to_viz), n_per_row)
+	fig, axs = plt.subplots(n_row, n_per_row, squeeze=False)
+	# IPython.embed()
+	# axs[0, 0].plot(x, y)
+	for i in range(n_row):
+		for j in range(n_per_row):
+			if i*n_per_row + j >= len(params_to_viz):
+				break
+			# for param_pair in params_to_viz:
+			param_pair = params_to_viz[i*n_per_row + j]
+			param1, param2 = param_pair
 
-	phi_vals = []
-	for i in range(math.ceil(all_size/batch_size)):
-		batch_input = input[i*batch_size: min(all_size, (i+1)*batch_size)]
-		batch_input = batch_input.astype("float32")
-		batch_input_torch = torch.from_numpy(batch_input)
+			ind1 = state_index_dict[param1]
+			ind2 = state_index_dict[param2]
 
-		batch_phi_vals = phi_fn(batch_input_torch)
-		phi_vals.append(batch_phi_vals.detach().cpu().numpy())
+			delta = 0.01
+			x = np.arange(x_lim[ind1, 0], x_lim[ind1, 1], delta)
+			y = np.arange(x_lim[ind2, 0], x_lim[ind2, 1], delta)[::-1] # need to reverse it # TODO
+			X, Y = np.meshgrid(x, y)
 
-	## Process phi values
-	phi_vals = np.concatenate((phi_vals), axis=0)
-	S_vals = np.max(phi_vals, axis=1)  # S = all phi_i <= 0
-	phi_signs = np.sign(S_vals)
-	phi_signs = np.reshape(phi_signs, X.shape)
+			###################################
+			##### Plotting ######
+			###################################
+			## Get phi values
+			input = np.zeros((X.size, x_dim))
+			input[:, ind1] = X.flatten()
+			input[:, ind2] = Y.flatten()
 
-	fig = plt.figure()
-	ax = fig.add_subplot(111)
-	ax.imshow(phi_signs, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
-	ax.set_aspect("equal")
-	# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
-	plt.contour(X, Y, np.reshape(phi_vals[:, -1], X.shape), levels=[0.0],
-	                 colors=('k',), linewidths=(2,))
+			batch_size = int(X.size/5)
+			all_size = input.shape[0]
+
+			phi_vals = []
+			for k in range(math.ceil(all_size/batch_size)):
+				batch_input = input[k*batch_size: min(all_size, (k+1)*batch_size)]
+				batch_input = batch_input.astype("float32")
+				batch_input_torch = torch.from_numpy(batch_input)
+
+				batch_phi_vals = phi_fn(batch_input_torch)
+				phi_vals.append(batch_phi_vals.detach().cpu().numpy())
+
+			## Process phi values
+			phi_vals = np.concatenate((phi_vals), axis=0)
+			S_vals = np.max(phi_vals, axis=1)  # S = all phi_i <= 0
+			phi_signs = np.sign(S_vals)
+			phi_signs = np.reshape(phi_signs, X.shape)
+
+			# fig = plt.figure()
+			# ax = fig.add_subplot(111)
+			# IPython.embed()
+			axs[i, j].imshow(phi_signs, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
+			axs[i, j].set_aspect("equal")
+			# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+			axs[i, j].contour(X, Y, np.reshape(phi_vals[:, -1], X.shape), levels=[0.0],
+			                 colors=('k',), linewidths=(2,))
 
 
-	## Plotting the sampled points
-	ax.scatter(samples[:, ind1], samples[:, ind2]) # projection (truncation)
+			## Plotting the sampled points
+			axs[i, j].scatter(samples[:, ind1], samples[:, ind2], s=0.5) # projection (truncation)
 
-	## Title and save
-	# title = "%s vs. %s" % (param1, param2)
-	ax.set_xlabel(param1)
-	ax.set_ylabel(param2)
+			## Title
+			# title = "%s vs. %s" % (param1, param2)
+			axs[i, j].set_xlabel(param1)
+			axs[i, j].set_ylabel(param2)
 
-	plt.savefig("./log/boundary_sampling/%s_vs_%s_50" % (param1, param2), bbox_inches='tight')
+	if fnm is None:
+		fnm = time.strftime('%m_%d_%H:%M:%S')
+	save_fpth = "./log/boundary_sampling/regularization/%s.png" % fnm
+	print("Saved at: %s" % save_fpth)
+	plt.tight_layout(pad=0.5)
+	plt.savefig(save_fpth, bbox_inches='tight')
 	plt.clf()
 	plt.close()
 
 
 if __name__ == "__main__":
-	phi_fn, attacker, param_dict = create_new_phi_and_attacker()
+	phi_fn, param_dict = load_phi()
 	# IPython.embed()
 
-	n_samples = 50
-	samples = attacker._sample_points_on_boundary(phi_fn, n_samples)
-	state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
-	                     "dtheta"]
-
-	# plot_boundary_samples(phi_fn, samples, param_dict, "theta", "phi")
-	# plot_boundary_samples(phi_fn, samples, param_dict, "dtheta", "dphi")
-	#
-	# plot_boundary_samples(phi_fn, samples, param_dict, "beta", "alpha")
-	# plot_boundary_samples(phi_fn, samples, param_dict, "gamma", "beta")
-	# plot_boundary_samples(phi_fn, samples, param_dict, "gamma", "alpha")
-	#
-	# plot_boundary_samples(phi_fn, samples, param_dict, "dbeta", "dalpha")
-	# plot_boundary_samples(phi_fn, samples, param_dict, "dgamma", "dbeta")
-	# plot_boundary_samples(phi_fn, samples, param_dict, "dgamma", "dalpha")
+	# Make attacker and viz
+	logger = create_logger("./log/discard", 'train', 'info')
+	x_lim_torch = torch.tensor(x_lim).to(device)
+	args = parser()
+	# attacker = GradientBatchWarmstartAttacker(x_lim_torch, device, logger, n_samples=args.train_attacker_n_samples,
+	#                                           stopping_condition=args.train_attacker_stopping_condition,
+	#                                           max_n_steps=args.train_attacker_max_n_steps, lr=args.train_attacker_lr,
+	#                                           projection_tolerance=args.train_attacker_projection_tolerance,
+	#                                           projection_lr=args.train_attacker_projection_lr)
+	# n_samples = 50
+	# samples = attacker._sample_points_on_boundary(phi_fn, n_samples)
 
 
-	plot_boundary_samples(phi_fn, samples, param_dict, "theta", "dalpha")
-	plot_boundary_samples(phi_fn, samples, param_dict, "phi", "dphi")
+	# Make regularizer and viz
+	reg_sample_keeper = RegSampleKeeper(x_lim_torch, device, logger, n_samples=30)
+	samples = reg_sample_keeper.return_samples(phi_fn)
+
+	# plot_boundary_samples(phi_fn, samples, param_dict, which_params=[["phi", "theta"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"]])
+	plot_boundary_samples(phi_fn, samples, param_dict, fnm="n30")
+
