@@ -59,8 +59,19 @@ class Trainer():
 		# Debug attacks
 		train_attacks = [] # lists of 1D numpy tensors
 		train_attack_X_init = []
+		train_attack_X_init_reuse = []
+		train_attack_X_init_random = []
 		train_attack_X_final = []
 		train_attack_X_obj_vals = []
+
+		train_attack_init_best_attack_value = []
+		train_attack_final_best_attack_value = []
+
+		# Debug attack timing
+		train_attack_t_init = []
+		train_attack_t_grad_steps = []
+		train_attack_t_reproject = []
+		train_attack_t_total_opt = []
 
 		# Debug PGD on params + grad norms
 		ci_grad = []
@@ -86,7 +97,9 @@ class Trainer():
 			tf_xreg = time.perf_counter()
 
 			# Inner max
-			X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode)
+			# X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode)
+			x, debug_dict = self.attacker.opt(objective_fn, phi_fn, debug=True)
+			X = debug_dict["X"]
 
 			optimizer.zero_grad()
 			ci.grad = None
@@ -113,17 +126,11 @@ class Trainer():
 				objective_value = attack_value + reg_value
 				objective_value.backward()
 
-			print("Reg value: ", reg_value)
-			# Logging for debugging
-			# TODO: if you uncomment this, make sure you detach otherwise you will accumulate memory over iterations and get an OOM
-			# beta_net_0_weight_grad = beta_net_0_weight.grad
-			# grad_norm = torch.norm(beta_net_0_weight_grad)
-			# grad_norm = grad_norm.detach().cpu().detach()
-			# grad_norms.append(grad_norm)
-
+			# print("Reg value: ", reg_value)
 			optimizer.step()
-			if "LR" in self.args.trainer_type:
-				scheduler.step()
+
+			# if "LR" in self.args.trainer_type:
+			# 	scheduler.step()
 			with torch.no_grad():
 				# new_ci = ci - ci_lr*ci.grad
 				new_ci = ci
@@ -135,56 +142,67 @@ class Trainer():
 				new_k0 = torch.maximum(new_k0, torch.zeros_like(new_k0)) # Project to all positive
 				k0.copy_(new_k0) # proper way to update
 
-			# print(grad_norms)
-			# print("%%%%%%%%%%%%%%%%%%%%%%%%%")
-			# print(ci, a)
-
-			# Clipping for positive parameters
-			# with torch.no_grad():
-			# 	clipped_ci = torch.maximum(ci, torch.zeros_like(ci))  # Project to all positive
-			# 	ci.copy_(clipped_ci)  # proper way to update
-			#
-			# 	clipped_a = torch.maximum(a, torch.zeros_like(a))  # Project to all positive
-			# 	a.copy_(clipped_a)
-
 			tnow = time.perf_counter()
 
-			# Output
+			# Logging for debugging
+			# Make sure you detach before logging, otherwise you will accumulate memory over iterations and get an OOM
 			self.logger.info('\n' + '=' * 20 + f' evaluation at iteration: {_iter} ' \
 			                 + '=' * 20)
 
-			# IPython.embed()
-			# objective_value = objective_value.detach().cpu().numpy()
-			# reg_value = reg_value.detach().cpu().numpy()
-			# attack_value = attack_value.detach().cpu().numpy()
-			# IPython.embed()
 			self.logger.info(f'train loss: {objective_value:.3f}%')
 			self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
 			t_so_far = tnow-t0
 			t_so_far_str = str(datetime.timedelta(seconds=t_so_far))
 			self.logger.info('time spent training so far: %s' % t_so_far_str)
 
-			# TODO
 			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(self.args.gpu), torch.cuda.memory_reserved(self.args.gpu)))
 
-			# IPython.embed()
 			# Gather data
 			train_attack_losses.append(attack_value.item()) # Have to use .item() to detach from graph, otherwise we retain each graph from each iteration
 			train_reg_losses.append(reg_value.item())
 			train_losses.append(objective_value.item())
 
+			# Debug attacks
+			X_init = debug_dict["X_init"]
+			X_reuse_init = debug_dict["X_reuse_init"]
+			X_random_init = debug_dict["X_random_init"]
+			obj_vals = debug_dict["obj_vals"]
+			init_best_attack_value = debug_dict["init_best_attack_value"].item()
+			final_best_attack_value = debug_dict["final_best_attack_value"].item()
 
-			# X_init_numpy = X_init.detach().cpu().numpy()
-			# X_numpy = X.detach().cpu().numpy()
 			train_attack_X_init.append(X_init.detach().cpu().numpy())
 			train_attack_X_final.append(X.detach().cpu().numpy())
-			train_attack_X_obj_vals.append(X_obj_vals.detach().cpu().numpy())
+			train_attack_X_obj_vals.append(obj_vals.detach().cpu().numpy())
+			train_attack_numpy = x.detach().cpu().numpy()
+			train_attacks.append(train_attack_numpy)
+			train_attack_X_init_reuse.append(X_reuse_init.detach().cpu().numpy())
+			train_attack_X_init_random.append(X_random_init.detach().cpu().numpy())
+			train_attack_init_best_attack_value.append(init_best_attack_value)
+			train_attack_final_best_attack_value.append(final_best_attack_value)
+
+			self.logger.info(f'train attack loss increase: {final_best_attack_value-init_best_attack_value:.3f}%')
+
+			# Debug attack timing
+			t_init = debug_dict["t_init"]
+			t_grad_steps = debug_dict["t_grad_steps"]
+			t_reproject = debug_dict["t_reproject"]
+			t_total_opt = debug_dict["t_total_opt"]
+
+			train_attack_t_init.append(t_init)
+			train_attack_t_grad_steps.append(t_grad_steps)
+			train_attack_t_reproject.append(t_reproject)
+			train_attack_t_total_opt.append(t_total_opt)
+			self.logger.info(f'train attack init time: {t_init:.3f}%')
+			self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_steps):.3f}%')
+			self.logger.info(f'train attack avg reroj time: {np.mean(t_reproject):.3f}%')
+			self.logger.info(f'train attack total time: {t_total_opt:.3f}%')
+
+			# Gradient debug
 			k0_grad.append(k0.grad.detach().cpu().numpy())
 			ci_grad.append(ci.grad.detach().cpu().numpy())
 
+			# Timing debug
 			train_loop_times.append(t_so_far)
-			train_attack_numpy = x.detach().cpu().numpy()
-			train_attacks.append(train_attack_numpy)
 
 			# Recording for reg sample keeper
 			phis_X_reg = phi_fn(X_reg)
@@ -201,6 +219,10 @@ class Trainer():
 
 				# save data too
 				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "grad_norms": grad_norms, "reg_sample_keeper_X": reg_sample_keeper_X, "max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg}
+
+				additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse, "train_attack_X_init_random": train_attack_X_init_random, "train_attack_init_best_attack_value": train_attack_init_best_attack_value, "train_attack_final_best_attack_value": train_attack_final_best_attack_value,"train_attack_t_init": train_attack_t_init, "train_attack_t_grad_steps": train_attack_t_grad_steps, "train_attack_t_reproject": train_attack_t_reproject, "train_attack_t_total_opt": train_attack_t_total_opt}
+
+				save_dict = save_dict + additional_train_attack_dict
 
 				self.logger.info(f'train loss: {objective_value:.3f}%')
 				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
