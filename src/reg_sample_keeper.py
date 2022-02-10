@@ -15,7 +15,7 @@ class RegSampleKeeper():
     # Note: this is not batch compliant.
 
     def __init__(self, x_lim, device, logger, n_samples=50, \
-                 projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=3, verbose=False):
+                 projection_tolerance=1e-1, projection_lr=1e-2, projection_time_limit=3, verbose=False):
         vars = locals()  # dict of local names
         self.__dict__.update(vars)  # __dict__ holds and object's attributes
         del self.__dict__["self"]  # don't need `self`
@@ -60,7 +60,7 @@ class RegSampleKeeper():
             if torch.max(loss) < self.projection_tolerance:
                 break
             elif (t_now - t1) > self.projection_time_limit:
-                print("reprojection exited on timeout, max dist from =0 boundary: ", loss.item())
+                # print("Reg: reprojection exited on timeout, max dist from =0 boundary: ", loss.item())
                 break
 
         for x_mem in x_list:
@@ -197,10 +197,10 @@ class RegSampleKeeper():
 
     def return_samples(self, phi_fn):
         if self.X_saved is None:
-            print("sampling for the first time")
+            # print("sampling for the first time")
             self.X_saved = self._sample_invariant_set_boundary(phi_fn)
         else:
-            print("Updating samples")
+            # print("Updating samples")
             self.X_saved = self._project(phi_fn, self.X_saved) # reproject, since phi changed
 
         # IPython.embed()
