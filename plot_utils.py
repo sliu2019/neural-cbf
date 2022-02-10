@@ -30,7 +30,7 @@ def graph_log_file_2(exp_name, mode='train'):
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
 		# IPython.embed()
-		timings = data["timings"]
+		# timings = data["timings"]
 		# test_losses = data["test_losses"]
 		if mode == 'test':
 			test_attack_losses = data["test_attack_losses"]
@@ -43,9 +43,9 @@ def graph_log_file_2(exp_name, mode='train'):
 			train_reg_losses = data["train_reg_losses"]
 			train_losses = data["train_losses"]
 
-			plt.plot(train_attack_losses, linewidth=0.5, label="train attack loss")
-			plt.plot(train_reg_losses, linewidth=0.5, label="train reg loss")
-			plt.plot(train_losses, linewidth=0.5, label="train total loss")
+			plt.plot(train_attack_losses[:1000], linewidth=0.5, label="train attack loss")
+			plt.plot(train_reg_losses[:1000], linewidth=0.5, label="train reg loss")
+			plt.plot(train_losses[:1000], linewidth=0.5, label="train total loss")
 			plt.title("Losses for %s" % exp_name)
 	# plt.plot(timings, color='red', label="Runtime (hours)")
 	# IPython.embed()
@@ -404,10 +404,10 @@ if __name__=="__main__":
 	# exp_names = ["cartpole_reduced_debugpinch1_resoftplus_s1", "cartpole_reduced_debugpinch1_resoftplus_s2", "cartpole_reduced_debugpinch1_resoftplus_s3"]
 	# n_it = [1500, 1500, 1340]
 
-	exp_names = ["cartpole_reduced_debugpinch3_softplus_s1"]
-	n_it = [1450]
-
-	plot_2d_attacks_from_loaded(1450, "cartpole_reduced_debugpinch3_softplus_s1")
+	# exp_names = ["cartpole_reduced_debugpinch3_softplus_s1"]
+	# n_it = [1450]
+	#
+	# plot_2d_attacks_from_loaded(1450, "cartpole_reduced_debugpinch3_softplus_s1")
 	####################################################################################
 
 	# for i, exp_name in enumerate(exp_names):
@@ -472,6 +472,9 @@ if __name__=="__main__":
 	# 		print("Total, attack, reg losses: %.4f, %.4f, %.4f" % (train_losses[ind_best], data["train_attack_losses"][ind_best], data["train_reg_losses"][ind_best]))
 	# 		# plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=("best_2d_attacks_from_loaded_checkpoint_%i" % checkpoint_number))
 	# 		# plot_3d(checkpoint_number, exp_name, fname=("best_3d_checkpoint_%i" % checkpoint_number))
+
+	exp_name = "flying_inv_pend_first_run"
+	graph_log_file_2(exp_name)
 
 
 	

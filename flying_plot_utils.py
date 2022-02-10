@@ -20,77 +20,114 @@ from torch.autograd import grad
 from torch import nn
 from src.argument import parser, print_args
 
-# Make numpy and torch deterministic
+# Make numpy and torch deterministic (for rand phi and attack/reg sampling)
 seed = 3
 torch.manual_seed(seed)
 np.random.seed(seed)
 
 device = torch.device("cpu")
 
-thresh = np.array([math.pi, math.pi / 2, math.pi / 2, 2, 2, 2, math.pi / 2, math.pi / 2, 2, 2], dtype=np.float32)
-x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)
+def load_phi_and_params(exp_name=None, checkpoint_number=None):
 
-def load_phi():
-	# IPython.embed()
-	args = parser()
+	if exp_name:
+		args = load_args("./log/%s/args.txt" % exp_name)
+		param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb"))
 
-	param_dict = {
-		"m": 0.8,
-		"J_x": 0.005,
-		"J_y": 0.005,
-		"J_z": 0.009,
-		"l": 1.5,
-		"k1": 4.0,
-		"k2": 0.05,
-		"m_p": 0.04,
-		"L_p": 0.03,
-		'delta_safety_limit': math.pi / 4  # in radians; should be <= math.pi/4
-	}
-	param_dict["M"] = param_dict["m"] + param_dict["m_p"]
-	state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
-	                     "dtheta"]  # excluded x, y, z
-	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+		r = param_dict["r"]
+		x_dim = param_dict["x_dim"]
+		u_dim = param_dict["u_dim"]
+		x_lim = param_dict["x_lim"]
+	else:
+		args = parser() # default
 
-	r = 2
-	x_dim = len(state_index_names)
-	u_dim = 4
+		param_dict = {
+			"m": 0.8,
+			"J_x": 0.005,
+			"J_y": 0.005,
+			"J_z": 0.009,
+			"l": 1.5,
+			"k1": 4.0,
+			"k2": 0.05,
+			"m_p": 0.04,
+			"L_p": 0.03,
+			'delta_safety_limit': math.pi / 4  # in radians; should be <= math.pi/4
+		}
+		param_dict["M"] = param_dict["m"] + param_dict["m_p"]
+		state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
+		                     "dtheta"]  # excluded x, y, z
+		state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
 
-	# Save stuff in param dict
-	param_dict["state_index_dict"] = state_index_dict
-	param_dict["r"] = r
-	param_dict["x_dim"] = x_dim
-	param_dict["u_dim"] = u_dim
-	param_dict["x_lim"] = x_lim
+		r = 2
+		x_dim = len(state_index_names)
+		u_dim = 4
+		# TODO: fill out below
+		thresh = np.array([math.pi, math.pi / 3, math.pi / 3, 2, 2, 2, math.pi / 3, math.pi / 3, 2, 2],
+		                  dtype=np.float32)
+
+		x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
+
+		# Save stuff in param dict
+		param_dict["state_index_dict"] = state_index_dict
+		param_dict["r"] = r
+		param_dict["x_dim"] = x_dim
+		param_dict["u_dim"] = u_dim
+		param_dict["x_lim"] = x_lim
 
 	# Create phi
 	from src.problems.flying_inv_pend import H, XDot, ULimitSetVertices
 	h_fn = H(param_dict)
 	xdot_fn = XDot(param_dict, device)
-	# uvertices_fn = ULimitSetVertices(param_dict, device)
+	uvertices_fn = ULimitSetVertices(param_dict, device)
 
-	x_e = torch.zeros(1, x_dim) # TODO: assume that we include origin
-
+	A_samples = None
+	if args.phi_include_xe:
+		x_e = torch.zeros(1, x_dim)
+	else:
+		x_e = None
+	# Send all modules to the correct device
 	h_fn = h_fn.to(device)
 	xdot_fn = xdot_fn.to(device)
+	uvertices_fn = uvertices_fn.to(device)
+	if x_e is not None:
+		x_e = x_e.to(device)
+	if A_samples is not None:
+		A_samples = A_samples.to(device)
+	x_lim = torch.tensor(x_lim).to(device)
+
+	# Create CBF, etc.
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+	# objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
+	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples)
 
+	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)
+	# objective_fn = objective_fn.to(device)
+	# reg_fn = reg_fn.to(device)
 
-	#####################################################################
-	# In a loop, plot 2D slices
-	# logger = create_logger("./log/discard", 'train', 'info')
-	# x_lim_torch = torch.tensor(x_lim).to(device)
-	# attacker = GradientBatchWarmstartAttacker(x_lim_torch, device, logger, n_samples=args.train_attacker_n_samples,
-	#                                           stopping_condition=args.train_attacker_stopping_condition,
-	#                                           max_n_steps=args.train_attacker_max_n_steps, lr=args.train_attacker_lr,
-	#                                           projection_tolerance=args.train_attacker_projection_tolerance,
-	#                                           projection_lr=args.train_attacker_projection_lr)
+	print("Phi param before load:")
+	# print(list(phi_fn.parameters())[0])
+	print("k0, ci: ", phi_fn.k0, phi_fn.ci)
+
+	if exp_name:
+		assert checkpoint_number is not None
+		phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+		load_model(phi_fn, phi_load_fpth)
+	print("Phi param after load:")
+	# print(list(phi_fn.parameters())[0])
+
+	print("k0, ci: ", phi_fn.k0, phi_fn.ci)
+
+	# for name, param_info in phi_fn.named_parameters():
+	# 	print(name)
+	# 	print(param_info)
+	IPython.embed()
 
 	return phi_fn, param_dict
 
-def plot_boundary_samples(phi_fn, samples, param_dict, which_params=None, fnm=None):
+
+def plot_boundary_samples(phi_fn, param_dict, samples=None, which_params=None, fnm=None, fpth=None):
 	"""
-	Plots invariant set and projected boundary samples in 2D
+	Plots invariant set and (if necessary) projected boundary samples in 2D
 	which_params: all or list of lists of length 2
 	"""
 	x_lim = param_dict["x_lim"]
@@ -163,7 +200,8 @@ def plot_boundary_samples(phi_fn, samples, param_dict, which_params=None, fnm=No
 
 
 			## Plotting the sampled points
-			axs[i, j].scatter(samples[:, ind1], samples[:, ind2], s=0.5) # projection (truncation)
+			if samples is not None:
+				axs[i, j].scatter(samples[:, ind1], samples[:, ind2], s=0.5) # projection (truncation)
 
 			## Title
 			# title = "%s vs. %s" % (param1, param2)
@@ -172,17 +210,56 @@ def plot_boundary_samples(phi_fn, samples, param_dict, which_params=None, fnm=No
 
 	if fnm is None:
 		fnm = time.strftime('%m_%d_%H:%M:%S')
-	save_fpth = "./log/boundary_sampling/regularization/%s.png" % fnm
+
+	if fpth is not None:
+		save_fpth = "./log/%s/%s.png" % (fpth, fnm)
+	else:
+		save_fpth = "./log/boundary_sampling/%s.png" % fnm
+
 	print("Saved at: %s" % save_fpth)
 	plt.tight_layout(pad=0.5)
 	plt.savefig(save_fpth, bbox_inches='tight')
 	plt.clf()
 	plt.close()
 
+def load_attacks(exp_name, checkpoint_number):
+	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+		data = pickle.load(handle)
+
+		# attacks_init = data["train_attack_X_init"][checkpoint_number+1]
+		attacks = data["train_attack_X_final"][checkpoint_number+1]
+		# best_attack = data["train_attacks"][checkpoint_number+1]
+
+	return attacks
+
+def graph_losses(exp_name):
+	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+		data = pickle.load(handle)
+
+		train_attack_losses = data["train_attack_losses"]
+		train_reg_losses = data["train_reg_losses"]
+		train_losses = data["train_losses"]
+
+		plt.plot(train_attack_losses[:1000], linewidth=0.5, label="train attack loss")
+		plt.plot(train_reg_losses[:1000], linewidth=0.5, label="train reg loss")
+		plt.plot(train_losses[:1000], linewidth=0.5, label="train total loss")
+		plt.title("Losses for %s" % exp_name)
+
+	plt.xlabel("Optimization steps")
+	plt.legend(loc="upper right")
+
+
+	plt.savefig("./log/%s/%s_loss.png" % (exp_name, exp_name))
+	plt.clf()
+	plt.cla()
+
+	print("Min attack loss achieved (desired <= 0): %.5f" % np.min(train_attack_losses))
+	print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
 
 if __name__ == "__main__":
-	phi_fn, param_dict = load_phi()
-	# IPython.embed()
+	"""
+	Code to visualize samples (from RegSampleKeeper or Attacker)
+	phi_fn, param_dict = load_phi_and_params()
 
 	# Make attacker and viz
 	logger = create_logger("./log/discard", 'train', 'info')
@@ -202,5 +279,23 @@ if __name__ == "__main__":
 	samples = reg_sample_keeper.return_samples(phi_fn)
 
 	# plot_boundary_samples(phi_fn, samples, param_dict, which_params=[["phi", "theta"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"]])
-	plot_boundary_samples(phi_fn, samples, param_dict, fnm="n30")
+	plot_boundary_samples(phi_fn, param_dict, samples, fnm="n30")
+	"""
+
+	########################################################
+	#########     FILL OUT HERE !!!!   #####################
+	### ****************************************************
+	exp_name = "flying_inv_pend_first_run"
+	checkpoint_number = 10
+	### ****************************************************
+	########################################################
+
+	# graph_losses(exp_name)
+
+	phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+
+	samples = load_attacks(exp_name, checkpoint_number)
+
+	plot_boundary_samples(phi_fn, param_dict, fpth=exp_name, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
+	plot_boundary_samples(phi_fn, param_dict, samples=samples, fpth=exp_name, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
 

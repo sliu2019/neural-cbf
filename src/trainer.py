@@ -102,8 +102,8 @@ class Trainer():
 			X = debug_dict["X"]
 
 			optimizer.zero_grad()
-			ci.grad = None
-			k0.grad = None
+			# ci.grad = None
+			# k0.grad = None
 
 			if self.args.trainer_average_gradients:
 				# Outer max
@@ -157,6 +157,7 @@ class Trainer():
 
 			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(self.args.gpu), torch.cuda.memory_reserved(self.args.gpu)))
 
+			# IPython.embed()
 			# Gather data
 			train_attack_losses.append(attack_value.item()) # Have to use .item() to detach from graph, otherwise we retain each graph from each iteration
 			train_reg_losses.append(reg_value.item())
@@ -167,8 +168,8 @@ class Trainer():
 			X_reuse_init = debug_dict["X_reuse_init"]
 			X_random_init = debug_dict["X_random_init"]
 			obj_vals = debug_dict["obj_vals"]
-			init_best_attack_value = debug_dict["init_best_attack_value"].item()
-			final_best_attack_value = debug_dict["final_best_attack_value"].item()
+			init_best_attack_value = debug_dict["init_best_attack_value"]
+			final_best_attack_value = debug_dict["final_best_attack_value"]
 
 			train_attack_X_init.append(X_init.detach().cpu().numpy())
 			train_attack_X_final.append(X.detach().cpu().numpy())
@@ -180,22 +181,22 @@ class Trainer():
 			train_attack_init_best_attack_value.append(init_best_attack_value)
 			train_attack_final_best_attack_value.append(final_best_attack_value)
 
-			self.logger.info(f'train attack loss increase: {final_best_attack_value-init_best_attack_value:.3f}%')
+			self.logger.info(f'train attack loss increase: {final_best_attack_value-init_best_attack_value:.3f}')
 
 			# Debug attack timing
 			t_init = debug_dict["t_init"]
-			t_grad_steps = debug_dict["t_grad_steps"]
+			t_grad_step = debug_dict["t_grad_step"]
 			t_reproject = debug_dict["t_reproject"]
 			t_total_opt = debug_dict["t_total_opt"]
 
 			train_attack_t_init.append(t_init)
-			train_attack_t_grad_steps.append(t_grad_steps)
+			train_attack_t_grad_steps.append(t_grad_step)
 			train_attack_t_reproject.append(t_reproject)
 			train_attack_t_total_opt.append(t_total_opt)
-			self.logger.info(f'train attack init time: {t_init:.3f}%')
-			self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_steps):.3f}%')
-			self.logger.info(f'train attack avg reroj time: {np.mean(t_reproject):.3f}%')
-			self.logger.info(f'train attack total time: {t_total_opt:.3f}%')
+			self.logger.info(f'train attack init time: {t_init:.3f}s')
+			self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_step):.3f}s')
+			self.logger.info(f'train attack avg reroj time: {np.mean(t_reproject):.3f}s')
+			self.logger.info(f'train attack total time: {t_total_opt:.3f}s')
 
 			# Gradient debug
 			k0_grad.append(k0.grad.detach().cpu().numpy())
@@ -206,11 +207,13 @@ class Trainer():
 
 			# Recording for reg sample keeper
 			phis_X_reg = phi_fn(X_reg)
-			max_dist_X_reg = torch.max(torch.abs(torch.max(phis_X_reg, axis=1)[0]))[0]
-			max_dist_X_reg = max_dist_X_reg.detach().cpu().numpy()
+			max_dist_X_reg = torch.max(torch.abs(torch.max(phis_X_reg, axis=1)[0])).item()
+			# max_dist_X_reg = max_dist_X_reg.detach().cpu().numpy()
 			max_dists_X_reg.append(max_dist_X_reg)
 			reg_sample_keeper_X.append(X_reg.detach().cpu().numpy())
 			times_to_compute_X_reg.append(tf_xreg-t0_xreg)
+			self.logger.info(f'reg, total time: {(tf_xreg-t0_xreg):.3f}s')
+			self.logger.info(f'reg, max dist: {max_dist_X_reg:.3f}')
 
 			# Saving at every _ iterations
 			if _iter % self.args.n_checkpoint_step == 0:
@@ -222,7 +225,10 @@ class Trainer():
 
 				additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse, "train_attack_X_init_random": train_attack_X_init_random, "train_attack_init_best_attack_value": train_attack_init_best_attack_value, "train_attack_final_best_attack_value": train_attack_final_best_attack_value,"train_attack_t_init": train_attack_t_init, "train_attack_t_grad_steps": train_attack_t_grad_steps, "train_attack_t_reproject": train_attack_t_reproject, "train_attack_t_total_opt": train_attack_t_total_opt}
 
-				save_dict = save_dict + additional_train_attack_dict
+				# save_dict = save_dict + additional_train_attack_dict
+				save_dict.update(additional_train_attack_dict)
+
+				# IPython.embed()
 
 				self.logger.info(f'train loss: {objective_value:.3f}%')
 				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')

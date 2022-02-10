@@ -7,6 +7,7 @@ from torch.autograd import grad
 import torch.optim as optim
 import time
 from src.utils import *
+import IPython
 
 class GradientBatchWarmstartAttacker():
     """
@@ -18,7 +19,7 @@ class GradientBatchWarmstartAttacker():
                  stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
                  lr=1e-3, \
                  p_reuse=0.7,\
-                 projection_tolerance=1e-3, projection_lr=1e-3, projection_time_limit=3, verbose=False): # TODO: verbose
+                 projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=10, verbose=False): # TODO: verbose
         vars = locals()  # dict of local names
         self.__dict__.update(vars)  # __dict__ holds and object's attributes
         del self.__dict__["self"]  # don't need `self`
@@ -72,8 +73,10 @@ class GradientBatchWarmstartAttacker():
                 break
             elif (t_now - t1) > self.projection_time_limit:
                 # print("reprojection exited on timeout")
-                print("reprojection exited on timeout, max dist from =0 boundary: ", torch.max(loss).item())
+                print("Attack: reprojection exited on timeout, max dist from =0 boundary: ", torch.max(loss).item())
                 break
+
+            # print((t_now - t1), torch.max(loss))
 
         for x_mem in x_list:
             x_mem.requires_grad = False
@@ -85,9 +88,10 @@ class GradientBatchWarmstartAttacker():
             # else:
             if torch.max(loss) > self.projection_tolerance:
                 print("Not on manifold, %f" % (torch.max(loss).item()))
+        # IPython.embed()
         return rv_x
 
-    def _step(self, objective_fn, phi_fn, x, mode="dG"):
+    def _step(self, objective_fn, phi_fn, x):
         # It makes less sense to use an adaptive LR method here, if you think about it
         t0_step = time.perf_counter()
 
@@ -161,6 +165,7 @@ class GradientBatchWarmstartAttacker():
         right_sign = torch.sign(right_val)
 
         if left_sign*right_sign > 0:
+            # print("does not intersect")
             return None
 
         t0 = time.perf_counter()
@@ -202,39 +207,31 @@ class GradientBatchWarmstartAttacker():
                 # print(left_point, right_point)
                 # print(mid_val, mid_point, mid_sign)
                 # IPython.embed()
+                # print("out of time")
                 return None
-
+        # print("success")
         return intersection_point
 
-    def _sample_points_on_boundary(self, phi_fn, mode="dG"):
+    def _sample_points_on_boundary(self, phi_fn, n_samples):
         """
         Returns torch array of size (self.n_samples, self.x_dim)
         Mode between "dG", "dG+dS", "dG/dS"
         """
         # Everything done in torch
         samples = []
-        n_remaining_to_sample = self.n_samples
+        n_remaining_to_sample = n_samples
 
         center = self._sample_in_cube()
         n_segments_sampled = 0
         while n_remaining_to_sample > 0:
-            # print(n_remaining_to_sample)
+            # print(n_remaining_to_sample, n_segments_sampled)
             outer = self._sample_on_cube()
 
             intersection = self._intersect_segment_with_manifold(center, outer, phi_fn)
             # valid = False
             if intersection is not None:
-                if mode == "dG":
-                    samples.append(intersection.view(1, -1))
-                    n_remaining_to_sample -= 1
-                    # valid = True
-                elif mode == "dS":
-                    phi_val = phi_fn(intersection.view(1, -1))
-                    on_dS = torch.all(phi_val[0, :-1] <= 1e-6).item() # tol
-                    if on_dS:
-                        samples.append(intersection.view(1, -1))
-                        n_remaining_to_sample -= 1
-                        # valid = True
+                samples.append(intersection.view(1, -1))
+                n_remaining_to_sample -= 1
 
             # if not valid:
             center = self._sample_in_cube()
@@ -245,12 +242,15 @@ class GradientBatchWarmstartAttacker():
         # self.logger.info("Done with sampling points on the boundary...")
         return samples
 
-    def opt(self, objective_fn, phi_fn, debug=False, mode="dG"):
+    def opt(self, objective_fn, phi_fn, debug=False):
         # self.n_times_called += 1 # for debug
         t0_opt = time.perf_counter()
 
         if self.X_saved is None:
-            X_init = self._sample_points_on_boundary(phi_fn)
+            X_init = self._sample_points_on_boundary(phi_fn, self.n_samples)
+
+            X_reuse_init = torch.zeros((0, self.x_dim))
+            X_random_init = X_init
         else:
             n_target_reuse_samples = int(self.n_samples*self.p_reuse)
 
@@ -270,10 +270,13 @@ class GradientBatchWarmstartAttacker():
 
             n_reuse_samples = len(inds_distinct)
             n_random_samples= self.n_samples - n_reuse_samples
-            print("Actual percentage reuse: %f" % ((n_reuse_samples/self.n_samples)*100))
+            # print("Actual percentage reuse: %f" % ((n_reuse_samples/self.n_samples)*100))
             X_reuse_init = self.X_saved[torch.tensor(inds_distinct)]
             X_reuse_init = self._project(phi_fn, X_reuse_init) # reproject, since phi changed
+
+            # print("Sampling points on boundary")
             X_random_init = self._sample_points_on_boundary(phi_fn, n_random_samples)
+            # print("Done")
 
             X_init = torch.cat([X_random_init, X_reuse_init], axis=0)
 
@@ -283,17 +286,17 @@ class GradientBatchWarmstartAttacker():
         i = 0
         early_stopping = EarlyStoppingBatch(self.n_samples, patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta)
         # logging
-        t_grad_steps = []
+        t_grad_step = []
         t_reproject = []
         while True:
-            print("Inner max step #%i" % i)
+            # print("Inner max step #%i" % i)
             X, step_debug_dict = self._step(objective_fn, phi_fn, X) # Take gradient steps on all candidate attacks
             obj_vals = objective_fn(X.view(-1, self.x_dim))
 
             # Logging
             if i == 0:
-                init_best_attack_value = torch.max(obj_vals)[0]
-            t_grad_steps.append(step_debug_dict["t_grad_steps"])
+                init_best_attack_value = torch.max(obj_vals).item()
+            t_grad_step.append(step_debug_dict["t_grad_step"])
             t_reproject.append(step_debug_dict["t_reproject"])
 
             # Loop break condition
@@ -323,12 +326,12 @@ class GradientBatchWarmstartAttacker():
             return x, {}
         else:
             x = X[max_ind]
-            final_best_attack_value = torch.max(obj_vals)[0]
+            final_best_attack_value = torch.max(obj_vals).item()
 
             t_init = tf_init - t0_opt
             t_total_opt = tf_opt - t0_opt
 
-            debug_dict = {"X_init": X_init, "X_reuse_init": X_reuse_init, "X_random_init": X_random_init, "X": X, "obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_steps": t_grad_steps, "t_reproject": t_reproject, "t_total_opt": t_total_opt}
+            debug_dict = {"X_init": X_init, "X_reuse_init": X_reuse_init, "X_random_init": X_random_init, "X": X, "obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_step": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt}
 
             return x, debug_dict
 
