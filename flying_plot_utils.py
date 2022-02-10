@@ -120,12 +120,12 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	# for name, param_info in phi_fn.named_parameters():
 	# 	print(name)
 	# 	print(param_info)
-	IPython.embed()
+	# IPython.embed()
 
 	return phi_fn, param_dict
 
 
-def plot_boundary_samples(phi_fn, param_dict, samples=None, which_params=None, fnm=None, fpth=None):
+def plot_invariant_set_slices(phi_fn, param_dict, samples=None, which_params=None, fnm=None, fpth=None):
 	"""
 	Plots invariant set and (if necessary) projected boundary samples in 2D
 	which_params: all or list of lists of length 2
@@ -278,8 +278,8 @@ if __name__ == "__main__":
 	reg_sample_keeper = RegSampleKeeper(x_lim_torch, device, logger, n_samples=30)
 	samples = reg_sample_keeper.return_samples(phi_fn)
 
-	# plot_boundary_samples(phi_fn, samples, param_dict, which_params=[["phi", "theta"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"]])
-	plot_boundary_samples(phi_fn, param_dict, samples, fnm="n30")
+	# plot_invariant_set_slices(phi_fn, samples, param_dict, which_params=[["phi", "theta"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"]])
+	plot_invariant_set_slices(phi_fn, param_dict, samples, fnm="n30")
 	"""
 
 	########################################################
@@ -296,6 +296,6 @@ if __name__ == "__main__":
 
 	samples = load_attacks(exp_name, checkpoint_number)
 
-	plot_boundary_samples(phi_fn, param_dict, fpth=exp_name, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
-	plot_boundary_samples(phi_fn, param_dict, samples=samples, fpth=exp_name, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
+	plot_invariant_set_slices(phi_fn, param_dict, fpth=exp_name, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
+	plot_invariant_set_slices(phi_fn, param_dict, samples=samples, fpth=exp_name, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
 
