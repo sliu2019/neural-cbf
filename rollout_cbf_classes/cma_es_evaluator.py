@@ -94,7 +94,7 @@ class CartPoleEvaluator(object):
     def near_boundary(self, phis):
         phi0 = phis[0,0]
         phi = phis[0,-1]
-        eps = 2e-3
+        eps = 1e-2
         return abs(phi0) < eps or abs(phi) < eps
 
     def compute_valid_invariant(self):
@@ -206,12 +206,20 @@ class CartPoleEvaluator(object):
             x = [0, self.thetas[idx[0]], 0, self.ang_vels[idx[1]]]
             phis = self.phi_fn(x)
             phi = phis[0, -1]
-            C = self.phi_grad(x)
-            # d = -phi/self.dt if phi < 0 else -phi*self.coe[3]
+            # C = self.phi_grad(x)
+            # # d = -phi/self.dt if phi < 0 else -phi*self.coe[3]
+            # d = -phi/self.dt if phi < 0 else -phi*self.k
+            # if not self.has_valid_control(C, d, x):
+            #     continue
+            # valid_cnt[idx[0], idx[1]] += 1
+            
+            C = self.ssa.phi_grad(x)
             d = -phi/self.dt if phi < 0 else -phi*self.k
-            if not self.has_valid_control(C, d, x):
-                continue
-            valid_cnt[idx[0], idx[1]] += 1
+            most_valid = self.most_valid_control(C, x)
+            weighted_valid = np.exp(0.1 * min(d - most_valid, 0))
+            # most_valid < d => 1,   most_valid > d => 1 - exp(d-valid)
+            valid_cnt[idx[0], idx[1]] += weighted_valid
+            
             tot_cnt += 1
 
         print("tot_cnt: ", tot_cnt)

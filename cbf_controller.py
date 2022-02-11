@@ -20,7 +20,6 @@ class CBFController:
         self.eps_bdry = eps_bdry
         self.eps_outside = eps_outside
         
-    
     def compute_u_ref(self, t, x):
         return 0 
 
@@ -71,7 +70,6 @@ class CBFController:
         
         max_force = 22.0
         
-
         qp_lhs = lhs.item()
         qp_rhs = rhs.item()
         Q = 2*np.array([[1.0, 0], [0, 0]])
