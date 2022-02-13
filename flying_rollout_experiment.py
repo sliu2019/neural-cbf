@@ -13,7 +13,8 @@ from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 from cbf_controller import CBFController
 from flying_plot_utils import *
 
-from rollout_cbf_classes.our_cbf_class import OurCBF
+# from rollout_cbf_classes.our_cbf_class import OurCBF
+from rollout_cbf_classes.flying_our_cbf_class import OurCBF
 
 import argparse
 
@@ -178,6 +179,7 @@ def run_rollout_experiment(args):
 	# TODO: Tianhao, Weiye, add clauses here
 	if which_cbf == "ours":
 		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+		cbf_obj = OurCBF(phi_fn, param_dict) # numpy wrapper
 
 	# if which_cbf == "our_cbf_football":
 	# 	exp_name = "cartpole_reduced_debugpinch3_softplus_s1"
