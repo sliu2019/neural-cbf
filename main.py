@@ -19,7 +19,7 @@ import IPython
 import time
 import pickle
 
-from global_settings import * # TODO: comment this out before a run
+# from global_settings import * # TODO: comment this out before a run
 
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
@@ -189,7 +189,9 @@ class Regularizer(nn.Module):
 
 	def forward(self, x):
 		reg = torch.tensor(0).to(self.device)
+		# IPython.embed()
 		if self.reg_weight:
+			print("inside")
 			if self.A_samples:
 				all_phi_values = self.phi_fn(self.A_samples)
 			else:
@@ -200,6 +202,42 @@ class Regularizer(nn.Module):
 			reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5) # Huh interesting, 0.3 factor stretches sigmoid out a lot.
 
 		return reg
+
+def create_flying_param_dict(args=None):
+	# Args: for modifying the defaults through args
+	param_dict = {
+		"m": 0.8,
+		"J_x": 0.005,
+		"J_y": 0.005,
+		"J_z": 0.009,
+		"l": 1.5,
+		"k1": 4.0,
+		"k2": 0.05,
+		"m_p": 0.04,
+		"L_p": 8.0, # Prev: 0.03
+		'delta_safety_limit': math.pi / 4  # in radians; should be <= math.pi/4
+	}
+	param_dict["M"] = param_dict["m"] + param_dict["m_p"]
+	state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
+	                     "dtheta"]  # excluded x, y, z
+	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+
+	r = 2
+	x_dim = len(state_index_names)
+	u_dim = 4
+	thresh = np.array([math.pi / 3, math.pi / 3, math.pi, 5, 5, 5, math.pi / 3, math.pi / 3, 5, 5],
+	                  dtype=np.float32) # angular velocities bounds probably much higher in reality (~10-20 for drone, which can do 3 flips in 1 sec).
+
+	x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
+
+	# Save stuff in param dict
+	param_dict["state_index_dict"] = state_index_dict
+	param_dict["r"] = r
+	param_dict["x_dim"] = x_dim
+	param_dict["u_dim"] = u_dim
+	param_dict["x_lim"] = x_lim
+
+	return param_dict
 
 def main(args):
 	# Boilerplate for saving
@@ -318,38 +356,12 @@ def main(args):
 		else:
 			x_e = None
 	elif args.problem == "flying_inv_pend":
-		param_dict = {
-			"m": 0.8,
-			"J_x": 0.005,
-			"J_y": 0.005,
-			"J_z": 0.009,
-			"l": 1.5,
-			"k1": 4.0,
-			"k2": 0.05,
-			"m_p": 0.04,
-			"L_p": 0.03,
-			'delta_safety_limit': math.pi / 4  # in radians; should be <= math.pi/4
-		}
-		param_dict["M"] = param_dict["m"] + param_dict["m_p"]
-		state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
-		                     "dtheta"]  # excluded x, y, z
-		state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+		param_dict = create_flying_param_dict(args)
 
-		r = 2
-		x_dim = len(state_index_names)
-		u_dim = 4
-		# TODO: fill out below
-		thresh = np.array([math.pi, math.pi / 3, math.pi / 3, 2, 2, 2, math.pi / 3, math.pi / 3, 2, 2],
-		                  dtype=np.float32)
-
-		x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1) # (13, 2)
-
-		# Save stuff in param dict
-		param_dict["state_index_dict"] = state_index_dict
-		param_dict["r"] = r
-		param_dict["x_dim"] = x_dim
-		param_dict["u_dim"] = u_dim
-		param_dict["x_lim"] = x_lim
+		r = param_dict["r"]
+		x_dim = param_dict["x_dim"]
+		u_dim = param_dict["u_dim"]
+		x_lim = param_dict["x_lim"]
 
 		# Create phi
 		from src.problems.flying_inv_pend import H, XDot, ULimitSetVertices
@@ -458,5 +470,4 @@ if __name__ == "__main__":
 	torch.manual_seed(args.random_seed)
 	np.random.seed(args.random_seed)
 	main(args)
-
 
