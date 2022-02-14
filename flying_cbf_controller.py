@@ -1,36 +1,28 @@
 import numpy as np
 import math
-# from plot_utils import create_phi_struct_load_xlim
-from torch.autograd import grad
-# from src.utils import *
-# from scipy.integrate import solve_ivp
 from cvxopt import matrix, solvers
-import IPython
-
 solvers.options['show_progress'] = False
-
+import IPython
 from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
-# from rollout_envs.cart_pole_env import CartPoleEnv
 
-
-class FlyingCBFController:
+class CBFController:
 	def __init__(self, env, cbf_obj, param_dict, eps_bdry=1.0, eps_outside=5.0):
 		super().__init__()
 		variables = locals()  # dict of local names
 		self.__dict__.update(variables)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
-
 		self.__dict__.update(self.param_dict)  # __dict__ holds and object's attributes
 
-		# pre-compute M
-		self.mixer = np.array([[self.k1, self.k1, self.k1, self.k1], [0, -self.l*self.k1, 0, self.l*self.k1], [self.l*self.k1, 0, -self.l*self.k1, 0], [-self.k2, self.k2, -self.k2, self.k2]]) # mixer matrix
-
+		# pre-compute mixer matrix
+		self.mixer = np.array([[self.k1, self.k1, self.k1, self.k1], [0, -self.l*self.k1, 0, self.l*self.k1], [self.l*self.k1, 0, -self.l*self.k1, 0], [-self.k2, self.k2, -self.k2, self.k2]])
 
 	def compute_u_ref(self, t, x):
 		u_ref = np.zeros(self.u_dim)
 		return u_ref
 
 	def compute_control(self, t, x):
+		print("in CBFcontroller, compute control")
+		IPython.embed()
 		############ Init log vars
 		apply_u_safe = None
 		u_ref = self.compute_u_ref(t, x)
@@ -40,22 +32,16 @@ class FlyingCBFController:
 		qp_rhs = None
 		################
 
-		# phi_vals = numpy_phi_fn(x) # This is an array of (1, r+1), where r is the degree
-		# phi_grad = numpy_phi_grad(x)
-
 		phi_vals = self.cbf_obj.phi_fn(x)  # This is an array of (1, r+1), where r is the degree
 		phi_grad = self.cbf_obj.phi_grad(x)
 
-		x_next = x + self.env.dt * self.env.x_dot_open_loop(x, self.compute_u_ref(t,
-		                                                                          x))  # in the absence of safe control, the next state
+		x_next = x + self.env.dt * self.env.x_dot_open_loop(x, self.compute_u_ref(t, x))  # in the absence of safe control, the next state
 		next_phi_val = self.cbf_obj.phi_fn(x_next)
 
-		# IPython.embed()
 		if phi_vals[0, -1] > 0:  # Outside
 			eps = self.eps_outside
 			apply_u_safe = True
 		elif phi_vals[0, -1] < 0 and next_phi_val[0, -1] >= 0:  # On boundary. Note: cheating way to convert DT to CT
-			# eps = 1.0 # TODO
 			eps = self.eps_bdry
 			apply_u_safe = True
 		else:  # Inside
@@ -65,35 +51,15 @@ class FlyingCBFController:
 			return u_ref, debug_dict
 
 		# Compute the control constraints
-		# if isinstance(self.env, CartPoleEnv):
-		# 	# Hack for u_dim = 1
-		# 	f_x = self.env.x_dot_open_loop(x, 0)
-		# 	g_x = self.env.x_dot_open_loop(x, 1) - f_x
-		# elif isinstance(self.env, FlyingInvertedPendulumEnv):
-		print("cbf controller line 71")
-		IPython.embed()
 		f_x = self.env._f(x)
 		g_x = self.env._g(x)
-		# else:
-		# 	raise NotImplementedError
 
-		print("line 79 in compute control")
-		IPython.embed()
 		lhs = phi_grad.T @ g_x # 1 x 4
 		rhs = -phi_grad.T @ f_x - eps
 
 		# Computing control using QP
 		# Note, constraint may not always be satisfied, so we include a slack variable on the CBF input constraint
 		w = 1000.0  # slack weight
-
-		# max_force = 22.0
-		#
-		# qp_lhs = lhs.item()
-		# qp_rhs = rhs.item()
-		# Q = 2 * np.array([[1.0, 0], [0, 0]])
-		# p = np.array([[-2.0 * u_ref], [w]])
-		# G = np.array([[qp_lhs, -1.0], [1, 0], [-1, 0], [0, -1]])
-		# h = np.array([[qp_rhs], [max_force], [max_force], [0.0]])
 
 		Q = np.zeros((5, 5))
 		Q[:4, :4] = 2*self.mixer.T@self.mixer

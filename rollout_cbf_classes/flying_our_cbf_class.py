@@ -3,13 +3,7 @@ import numpy as np
 import IPython
 import torch
 import math
-# from plot_utils import create_phi_struct_load_xlim
 from torch.autograd import grad
-# from src.utils import *
-# from scipy.integrate import solve_ivp
-from cvxopt import matrix, solvers
-import matplotlib.pyplot as plt
-import pickle
 
 class OurCBF:
     def __init__(self, torch_phi_fn, param_dict):
@@ -23,26 +17,13 @@ class OurCBF:
 
     def phi_fn(self, x): # Batched
         """
-        :param x: (N_batch, 10)
+        :param x: (N_batch, 16)
         :return: (N_batch, r+1) where r is degree
         """
-        """# print("here")
-        # IPython.embed()
-        x = np.reshape(x, (-1, 4))
-        # Numpy wrapper
-        theta = self.convert_angle_to_negpi_pi_interval(x[:, 1]) # Note: mod theta first, before applying cbf. Also, truncate the state.
-        # assert theta < math.pi and theta > -math.pi
-        x_trunc = np.concatenate((theta[:, None], x[:, [3]]), axis=1)
-        x_input = torch.from_numpy(x_trunc.astype("float32")).view(-1, 2)
-
-        # IPython.embed()
-        phi_output = self.torch_phi_fn(x_input)
-        phi_vals = phi_output.detach().cpu().numpy()"""
-
-
-        print("inside ourcbfclass, debug")
+        print("inside ourcbfclass, phi_fn")
         IPython.embed()
-
+        # Slice off translational states
+        x = x[:, :10]
         x = np.reshape(x, (-1, self.x_dim))
         # Wrap-around on cyclical angles
         ind_cyclical = np.argwhere(self.x_lim[:, 1] == math.pi).flatten()
@@ -62,19 +43,13 @@ class OurCBF:
 
     def phi_grad(self, x): # Not batched
         """
-        :param x: (10)
-        :return: (10)
+        :param x: (16)
+        :return: (16)
         """
-
-        print("inside phi grad")
+        print("inside ourcbf, phi grad")
         IPython.embed()
-        # Computes grad of phi at x
-        # theta = self.convert_angle_to_negpi_pi_interval(x[1]) # Note: mod theta first, before applying cbf. Also, truncate the state.
-        # assert theta < math.pi and theta > -math.pi
-        # x_trunc = np.array([theta, x[3]])
-        # x_input = torch.from_numpy(x_trunc.astype("float32")).view(-1, 2)
-        # x_input.requires_grad = True
 
+        x = x[:, :10]
         x = np.reshape(x, (-1, self.x_dim))
         # Wrap-around on cyclical angles
         ind_cyclical = np.argwhere(self.x_lim[:, 1] == math.pi).flatten()
@@ -96,7 +71,8 @@ class OurCBF:
         # Post op
         x_torch.requires_grad = False
         phi_grad = phi_grad.detach().cpu().numpy()
-
+        phi_grad = np.concatenate((phi_grad, np.zeros(6)))
         # phi_grad = np.array([0, phi_grad[0, 0], 0, phi_grad[0, 1]])[None]
+
         return phi_grad
 
