@@ -190,10 +190,11 @@ def main(args):
 		config_path = "./rollout_cbf_classes/cma_es_config.yaml"
 		# params = run_cmaes(config_path) # TODO 
 
-		# params = np.array([1., 0.1, 0.0])
+		# params = np.array([1.4, 0.2, 0.0])
+		params = np.array([1.0, 0.1, 0.0])
 		# params = np.array([1., 1, 0.0])
-		params = np.array([1.06870235, 0.14911268, 0.09038379])  # reg_weight = 0.1, boundary eps = 1e-2
-
+		# params = np.array([1.06870235, 0.14911268, 0.09038379])  # reg_weight = 0.1, boundary eps = 1e-2
+		# params = np.array([2.04809693, 0.4586106, 0.06874261])
 		cbf_obj = SSA(env)
 		evaluator = CartPoleEvaluator()
 		evaluator.evaluate(params)

@@ -84,6 +84,7 @@ class SSA:
             u: control
         """
         # batch implementation
+        x = np.array(x)
         try:
             assert len(x.shape) == 2 and x.shape[1] == 4
         except:
