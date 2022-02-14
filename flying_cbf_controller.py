@@ -1,15 +1,16 @@
 import numpy as np
 import math
-from plot_utils import create_phi_struct_load_xlim
+# from plot_utils import create_phi_struct_load_xlim
 from torch.autograd import grad
-from src.utils import *
-from scipy.integrate import solve_ivp
+# from src.utils import *
+# from scipy.integrate import solve_ivp
 from cvxopt import matrix, solvers
+import IPython
 
 solvers.options['show_progress'] = False
 
 from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
-from rollout_envs.cart_pole_env import CartPoleEnv
+# from rollout_envs.cart_pole_env import CartPoleEnv
 
 
 class FlyingCBFController:
@@ -64,17 +65,17 @@ class FlyingCBFController:
 			return u_ref, debug_dict
 
 		# Compute the control constraints
-		if isinstance(self.env, CartPoleEnv):
-			# Hack for u_dim = 1
-			f_x = self.env.x_dot_open_loop(x, 0)
-			g_x = self.env.x_dot_open_loop(x, 1) - f_x
-		elif isinstance(self.env, FlyingInvertedPendulumEnv):
-			print("cbf controller line 71")
-			IPython.embed()
-			f_x = self.env._f(x)
-			g_x = self.env._g(x)
-		else:
-			raise NotImplementedError
+		# if isinstance(self.env, CartPoleEnv):
+		# 	# Hack for u_dim = 1
+		# 	f_x = self.env.x_dot_open_loop(x, 0)
+		# 	g_x = self.env.x_dot_open_loop(x, 1) - f_x
+		# elif isinstance(self.env, FlyingInvertedPendulumEnv):
+		print("cbf controller line 71")
+		IPython.embed()
+		f_x = self.env._f(x)
+		g_x = self.env._g(x)
+		# else:
+		# 	raise NotImplementedError
 
 		print("line 79 in compute control")
 		IPython.embed()

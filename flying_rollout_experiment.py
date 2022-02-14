@@ -1,7 +1,10 @@
 import torch
-from plot_utils import plot_trajectories, plot_samples_invariant_set, \
-	plot_exited_trajectories
-from src.utils import *
+import numpy as np
+import matplotlib.pyplot as plt
+import os, sys, IPython
+# from plot_utils import plot_trajectories, plot_samples_invariant_set, \
+# 	plot_exited_trajectories
+# from src.utils import *
 from cvxopt import solvers
 
 solvers.options['show_progress'] = False
@@ -10,7 +13,7 @@ import pickle
 
 from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 from flying_cbf_controller import FlyingCBFController
-from flying_plot_utils import *
+from flying_plot_utils import load_phi_and_params, plot_invariant_set_slices
 from rollout_cbf_classes.flying_our_cbf_class import OurCBF
 
 import argparse
@@ -125,7 +128,7 @@ def sanity_check(info_dicts):
 		x_for_false = x[false_ind.flatten()]
 		# theta_for_false = x_for_false[:, :, 1]
 		# thetadot_for_false = x_for_false[:, :, 3]
-	
+
 	phi_vals = info_dicts["phi_vals"]  # (N_rollout, T_max, r+1)
 	compute_exits(phi_vals)
 
@@ -165,23 +168,35 @@ def run_rollout_experiment(args):
 
 	log_fldrpth = os.path.join("rollout_results", log_folder)
 	if not os.path.exists(log_fldrpth):
-		makedirs(log_fldrpth)
-
-	env = FlyingInvertedPendulumEnv()
-
-	# TODO: fill out run arguments
-	N_rollout = 100
-	T_max = 1.5  # in seconds
-	N_dt = int(T_max / env.dt)
+		os.makedirs(log_fldrpth)
 
 	# TODO: Tianhao, Weiye, add clauses here
 	if which_cbf == "ours":
 		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+		# Including translational dynamics in system; update param_dict accordingly
+		state_index_dict = param_dict["state_index_dict"]
+		names = ["x", "y", "z", "dx", "dy", "dz"]
+		more_dict = dict(zip(names, len(state_index_dict) + np.arange(len(names))))
+		state_index_dict.update(more_dict)
+		print("ln 185")
+		IPython.embed()
+
 		cbf_obj = OurCBF(phi_fn, param_dict) # numpy wrapper
 	else:
 		# create default param_dict
 		from main import create_flying_param_dict
 		param_dict = create_flying_param_dict()
+
+	env = FlyingInvertedPendulumEnv(param_dict)
+	x = np.random.rand(10)
+	u = np.random.rand(4)
+	x_dot = env.x_dot_open_loop(x, u)
+	IPython.embed()
+
+	# TODO: fill out run arguments
+	N_rollout = 100
+	T_max = 1.5  # in seconds
+	N_dt = int(T_max / env.dt)
 
 	cbf_controller = FlyingCBFController(env, cbf_obj, param_dict)
 	x_lim = cbf_controller.env.x_lim
@@ -218,14 +233,18 @@ def run_rollout_experiment(args):
 	# #####################################
 	# plot_exited_trajectories(x_lim, x0s, phi_vals_on_grid, X, Y, phi_signs, info_dicts, save_prefix) # TODO: reuse plot_util
 
+# import argparse, IPython
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Rollout experiment')
-	parser.add_argument('--log_folder', type=str, default="debug")
-	parser.add_argument('--which_cbf', type=str, choices=["ours", "hand_derived", "cma_es"])
+	parser.add_argument('--log_folder', type=str, default="flying_debug")
+	parser.add_argument('--which_cbf', type=str, default="ours", choices=["ours", "hand_derived", "cma_es"])
 
 	parser.add_argument('--exp_name', type=str, help="for our CBF")
 	parser.add_argument('--checkpoint_number', type=int, help="for our CBF")
 
 	# parser.add_argument('--reg_weight', type=float, default=1.0, help="only relevant for cma-es")
 	args = parser.parse_args()
-	run_rollout_experiment(args)
+	# IPython.embed()
+	# run_rollout_experiment(args)
+
+	# python flying_rollout_experiment.py --which_cbf ours --exp_name first_run --checkpoint_number 3080
