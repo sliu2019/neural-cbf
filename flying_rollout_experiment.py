@@ -187,36 +187,36 @@ def run_rollout_experiment(args):
 	x_lim = cbf_controller.env.x_lim
 
 	# Get x0's
-	x0s, phi_vals_on_grid, X, Y = sample_invariant_set(x_lim, cbf_obj, N_rollout) # TODO!!! How can we get uniform samples within the invariant set?
-	save_prefix = "./rollout_results/%s/%s_" % (log_folder, which_cbf)
-
-	#####################################
-	# Plot x0 samples and invariant set
-	#####################################
-	phi_signs = plot_samples_invariant_set(x_lim, x0s, phi_vals_on_grid, X, save_prefix) # TODO: reuse plot_util
-
-	# IPython.embed()
-	# sys.exit(0)
-
-	#####################################
-	# Run multiple rollout_results
-	#####################################
-	info_dicts = run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, save_prefix)
-
-	#####################################
-	# Sanity checks
-	#####################################
-	sanity_check(info_dicts)
-
-	#####################################
-	# Plot trajectories
-	#####################################
-	plot_trajectories(x_lim, N_rollout, x0s, phi_vals_on_grid, X, Y, phi_signs, info_dicts, save_prefix) # TODO: reuse plot_util
-
-	#####################################
-	# Plot EXITED trajectories ONLY (we choose the 5 with the largest violation)
-	#####################################
-	plot_exited_trajectories(x_lim, x0s, phi_vals_on_grid, X, Y, phi_signs, info_dicts, save_prefix) # TODO: reuse plot_util
+	# x0s, phi_vals_on_grid, X, Y = sample_invariant_set(x_lim, cbf_obj, N_rollout) # TODO!!! How can we get uniform samples within the invariant set?
+	# save_prefix = "./rollout_results/%s/%s_" % (log_folder, which_cbf)
+	#
+	# #####################################
+	# # Plot x0 samples and invariant set
+	# #####################################
+	# phi_signs = plot_samples_invariant_set(x_lim, x0s, phi_vals_on_grid, X, save_prefix) # TODO: reuse plot_util
+	#
+	# # IPython.embed()
+	# # sys.exit(0)
+	#
+	# #####################################
+	# # Run multiple rollout_results
+	# #####################################
+	# info_dicts = run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, save_prefix) # TODO: check that this works
+	#
+	# #####################################
+	# # Sanity checks
+	# #####################################
+	# sanity_check(info_dicts)
+	#
+	# #####################################
+	# # Plot trajectories
+	# #####################################
+	# plot_trajectories(x_lim, N_rollout, x0s, phi_vals_on_grid, X, Y, phi_signs, info_dicts, save_prefix) # TODO: reuse plot_util
+	#
+	# #####################################
+	# # Plot EXITED trajectories ONLY (we choose the 5 with the largest violation)
+	# #####################################
+	# plot_exited_trajectories(x_lim, x0s, phi_vals_on_grid, X, Y, phi_signs, info_dicts, save_prefix) # TODO: reuse plot_util
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Rollout experiment')
