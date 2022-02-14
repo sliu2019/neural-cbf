@@ -8,6 +8,8 @@ from cvxopt import matrix, solvers
 
 solvers.options['show_progress'] = False
 
+from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
+from rollout_envs.cart_pole_env import CartPoleEnv
 
 class CBFController:
     def __init__(self, env, cbf_obj, eps_bdry=1.0, eps_outside=5.0):
@@ -17,6 +19,7 @@ class CBFController:
         # del self.__dict__["self"]  # don't need `self`
         self.cbf_obj = cbf_obj
         self.env = env
+        # self.param_dict = param_dict
         self.eps_bdry = eps_bdry
         self.eps_outside = eps_outside
         
@@ -68,9 +71,7 @@ class CBFController:
         # Note, constraint may not always be satisfied, so we include a slack variable on the CBF input constraint
         w = 1000.0 # slack weight
         
-        
         max_force = 22.0
-        
 
         qp_lhs = lhs.item()
         qp_rhs = rhs.item()

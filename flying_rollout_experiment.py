@@ -8,12 +8,9 @@ solvers.options['show_progress'] = False
 
 import pickle
 
-# from rollout_envs.cart_pole_env import CartPoleEnv
 from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
-from cbf_controller import CBFController
+from flying_cbf_controller import FlyingCBFController
 from flying_plot_utils import *
-
-# from rollout_cbf_classes.our_cbf_class import OurCBF
 from rollout_cbf_classes.flying_our_cbf_class import OurCBF
 
 import argparse
@@ -30,31 +27,32 @@ def sample_invariant_set(x_lim, cbf_obj, N_samp):
 	"""
 	# IPython.embed()
 	# Discretizes state space, then returns the subset of states in invariant set
-	delta = 0.01
-	x = np.arange(x_lim[0, 0], x_lim[0, 1], delta)
-	y = np.arange(x_lim[1, 0], x_lim[1, 1], delta)[::-1]  # need to reverse it
-	X, Y = np.meshgrid(x, y)
 
-	##### Plotting ######
-	sze = X.size
-	input = np.concatenate((np.zeros((sze, 1)), X.flatten()[:, None], np.zeros((sze, 1)), Y.flatten()[:, None]), axis=1)
-	phi_vals_on_grid = cbf_obj.phi_fn(input)  # N_samp x r+1
-
-	max_phi_vals_on_grid = phi_vals_on_grid.max(axis=1)  # Assuming S = all phi_i <= 0
-	max_phi_vals_on_grid = np.reshape(max_phi_vals_on_grid, X.shape)
-	where_invariant = np.argwhere(max_phi_vals_on_grid <= 0)
-
-	sample_ind = np.random.choice(np.arange(where_invariant.shape[0]), size=N_samp, replace=False)
-	global_ind = where_invariant[sample_ind]
-	sample_X = X[global_ind[:, 0], global_ind[:, 1]]
-	sample_Y = Y[global_ind[:, 0], global_ind[:, 1]]
-
-	x0s = np.zeros((N_samp, 4))
-	x0s[:, 1] = sample_X
-	x0s[:, 3] = sample_Y
-
-	return x0s, phi_vals_on_grid, X, Y
-
+	# delta = 0.01
+	# x = np.arange(x_lim[0, 0], x_lim[0, 1], delta)
+	# y = np.arange(x_lim[1, 0], x_lim[1, 1], delta)[::-1]  # need to reverse it
+	# X, Y = np.meshgrid(x, y)
+	#
+	# ##### Plotting ######
+	# sze = X.size
+	# input = np.concatenate((np.zeros((sze, 1)), X.flatten()[:, None], np.zeros((sze, 1)), Y.flatten()[:, None]), axis=1)
+	# phi_vals_on_grid = cbf_obj.phi_fn(input)  # N_samp x r+1
+	#
+	# max_phi_vals_on_grid = phi_vals_on_grid.max(axis=1)  # Assuming S = all phi_i <= 0
+	# max_phi_vals_on_grid = np.reshape(max_phi_vals_on_grid, X.shape)
+	# where_invariant = np.argwhere(max_phi_vals_on_grid <= 0)
+	#
+	# sample_ind = np.random.choice(np.arange(where_invariant.shape[0]), size=N_samp, replace=False)
+	# global_ind = where_invariant[sample_ind]
+	# sample_X = X[global_ind[:, 0], global_ind[:, 1]]
+	# sample_Y = Y[global_ind[:, 0], global_ind[:, 1]]
+	#
+	# x0s = np.zeros((N_samp, 4))
+	# x0s[:, 1] = sample_X
+	# x0s[:, 3] = sample_Y
+	#
+	# return x0s, phi_vals_on_grid, X, Y
+	raise NotImplementedError
 
 def simulate_rollout(env, x0, N_dt, cbf_controller):
 	# print("Inside simulate_rollout")
@@ -125,9 +123,9 @@ def sanity_check(info_dicts):
 		false_ind = np.argwhere(np.logical_not(rollouts_any_safe_ctrl))
 		x = info_dicts["x"]
 		x_for_false = x[false_ind.flatten()]
-		theta_for_false = x_for_false[:, :, 1]
-		thetadot_for_false = x_for_false[:, :, 3]
-
+		# theta_for_false = x_for_false[:, :, 1]
+		# thetadot_for_false = x_for_false[:, :, 3]
+	
 	phi_vals = info_dicts["phi_vals"]  # (N_rollout, T_max, r+1)
 	compute_exits(phi_vals)
 
@@ -140,7 +138,7 @@ def sanity_check(info_dicts):
 		print("Which rollout_results had phi_star positive:", rollouts_any_phistar_pos)
 
 
-def run_rollout(env, N_rollout, x0s, N_dt, cbf_controller, save_prefix):
+def run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, save_prefix):
 	info_dicts = None
 	for i in range(N_rollout):
 		info_dict = simulate_rollout(env, x0s[i], N_dt, cbf_controller)
@@ -180,54 +178,22 @@ def run_rollout_experiment(args):
 	if which_cbf == "ours":
 		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 		cbf_obj = OurCBF(phi_fn, param_dict) # numpy wrapper
+	else:
+		# create default param_dict
+		from main import create_flying_param_dict
+		param_dict = create_flying_param_dict()
 
-	# if which_cbf == "our_cbf_football":
-	# 	exp_name = "cartpole_reduced_debugpinch3_softplus_s1"
-	# 	checkpoint_number = 1450
-	# 	cbf_obj = OurCBF(exp_name, checkpoint_number)
-	# elif which_cbf == "our_cbf_baguette":
-	# 	exp_name = "cartpole_reduced_debugpinch1_softplus_s1"
-	# 	checkpoint_number = 1450
-	# 	cbf_obj = OurCBF(exp_name, checkpoint_number)
-	# elif 'cmaes' in which_cbf:
-	# 	config_path = "./rollout_cbf_classes/cma_es_config.yaml"
-	# 	# params = run_cmaes(config_path) # TODO
-	#
-	# 	# params = np.array([1., 0.1, 0.0])
-	# 	# params = np.array([1., 1, 0.0])
-	# 	params = np.array([2.99443126, 0.06641364, 0.25343775])  # reg_weight=1
-	#
-	# 	cbf_obj = SSA(env)
-	# 	evaluator = CartPoleEvaluator()
-	# 	evaluator.evaluate(params)
-	#
-	# 	if params is not None:
-	# 		print("***********************************************")
-	# 		print("***********************************************")
-	# 		print(params)
-	# 		cbf_obj.set_params(params)
-	# 		print("***********************************************")
-	# 		print("***********************************************")
-	# 	else:
-	# 		print("Failed to run CMA-ES")
-	# 		sys.exit(0)
-	#
-	# # cbf_controller = CBFController(cbf_obj, eps_bdry=0.0, eps_outside=params[-1]) # Note for dot(phi) <= - k*phi, k is learned
-	# elif which_cbf == "ssa":
-	# 	params = np.array([1.0, 0.1, 0])  # Note: last one doesn't matter, overwritten by defaults in CBFController
-	# 	cbf_obj = SSA(env)
-	# 	cbf_obj.set_params(params)
-
-	cbf_controller = CBFController(env, cbf_obj) # TODO: check
+	cbf_controller = FlyingCBFController(env, cbf_obj, param_dict)
 	x_lim = cbf_controller.env.x_lim
 
-	x0s, phi_vals_on_grid, X, Y = sample_invariant_set(x_lim, cbf_obj, N_rollout) # TODO; reuse plot_util
+	# Get x0's
+	x0s, phi_vals_on_grid, X, Y = sample_invariant_set(x_lim, cbf_obj, N_rollout) # TODO!!! How can we get uniform samples within the invariant set?
 	save_prefix = "./rollout_results/%s/%s_" % (log_folder, which_cbf)
 
 	#####################################
 	# Plot x0 samples and invariant set
 	#####################################
-	phi_signs = plot_samples_invariant_set(x_lim, x0s, phi_vals_on_grid, X, save_prefix) # TODO; reuse plot_util
+	phi_signs = plot_samples_invariant_set(x_lim, x0s, phi_vals_on_grid, X, save_prefix) # TODO: reuse plot_util
 
 	# IPython.embed()
 	# sys.exit(0)
@@ -235,7 +201,7 @@ def run_rollout_experiment(args):
 	#####################################
 	# Run multiple rollout_results
 	#####################################
-	info_dicts = run_rollout(env, N_rollout, x0s, N_dt, cbf_controller, save_prefix)
+	info_dicts = run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, save_prefix)
 
 	#####################################
 	# Sanity checks
