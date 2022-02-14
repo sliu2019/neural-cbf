@@ -2,60 +2,60 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import os, sys, IPython
-# from plot_utils import plot_trajectories, plot_samples_invariant_set, \
-# 	plot_exited_trajectories
-# from src.utils import *
 from cvxopt import solvers
-
 solvers.options['show_progress'] = False
-
+import argparse
 import pickle
 
 from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
-from flying_cbf_controller import FlyingCBFController
+from flying_cbf_controller import CBFController
 from flying_plot_utils import load_phi_and_params, plot_invariant_set_slices
 from rollout_cbf_classes.flying_our_cbf_class import OurCBF
 
-import argparse
 
 # Fixed seed for repeatability
 torch.manual_seed(2022)
 np.random.seed(2022)
 
-
-def sample_invariant_set(x_lim, cbf_obj, N_samp):
+def sample_x0s(param_dict, cbf_obj, N_samp):
 	"""
+	Uses rejection sampling to sample uniformly in the invariant set
+
 	Note: assumes invariant set is defined as follows:
 	x0 in S if max(phi_array(x)) <= 0
 	"""
-	# IPython.embed()
-	# Discretizes state space, then returns the subset of states in invariant set
+	print("inside sample_x0s")
+	IPython.embed()
+	# Define some variables
+	x_dim = param_dict["x_dim"]
+	x_lim = param_dict["x_lim"]
+	box_side_lengths = x_lim[:, 1] - x_lim[:, 0]
+	x0s = np.empty((None, 16))
 
-	# delta = 0.01
-	# x = np.arange(x_lim[0, 0], x_lim[0, 1], delta)
-	# y = np.arange(x_lim[1, 0], x_lim[1, 1], delta)[::-1]  # need to reverse it
-	# X, Y = np.meshgrid(x, y)
-	#
-	# ##### Plotting ######
-	# sze = X.size
-	# input = np.concatenate((np.zeros((sze, 1)), X.flatten()[:, None], np.zeros((sze, 1)), Y.flatten()[:, None]), axis=1)
-	# phi_vals_on_grid = cbf_obj.phi_fn(input)  # N_samp x r+1
-	#
-	# max_phi_vals_on_grid = phi_vals_on_grid.max(axis=1)  # Assuming S = all phi_i <= 0
-	# max_phi_vals_on_grid = np.reshape(max_phi_vals_on_grid, X.shape)
-	# where_invariant = np.argwhere(max_phi_vals_on_grid <= 0)
-	#
-	# sample_ind = np.random.choice(np.arange(where_invariant.shape[0]), size=N_samp, replace=False)
-	# global_ind = where_invariant[sample_ind]
-	# sample_X = X[global_ind[:, 0], global_ind[:, 1]]
-	# sample_Y = Y[global_ind[:, 0], global_ind[:, 1]]
-	#
-	# x0s = np.zeros((N_samp, 4))
-	# x0s[:, 1] = sample_X
-	# x0s[:, 3] = sample_Y
-	#
-	# return x0s, phi_vals_on_grid, X, Y
-	raise NotImplementedError
+	M = 50
+	N_samp_found = 0
+	i = 0
+	while N_samp_found < N_samp:
+		print(i)
+		# Sample in box
+		samples = np.random.rand(M, x_dim)
+		samples = samples*box_side_lengths + x_lim[:, 0]
+		samples = np.concatenate((samples, np.zeros(M, 6)), axis=1) # Add translational states as zeros
+
+		# Check if samples in invariant set
+		phi_vals_on_grid = cbf_obj.phi_fn(samples)
+		max_phi_vals_on_grid = phi_vals_on_grid.max(axis=1)
+
+		# Save good samples
+		ind = np.argwhere(max_phi_vals_on_grid).flatten()
+		samples_inside = samples[ind]
+		x0s = np.concatenate((x0s, samples_inside), axis=0)
+		N_samp_found += len(ind)
+		i += 1
+
+	# Could be more than N_samp currently; truncate to exactly N_samp
+	x0s = x0s[:N_samp]
+	return x0s
 
 def simulate_rollout(env, x0, N_dt, cbf_controller):
 	# print("Inside simulate_rollout")
@@ -141,7 +141,7 @@ def sanity_check(info_dicts):
 		print("Which rollout_results had phi_star positive:", rollouts_any_phistar_pos)
 
 
-def run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, save_prefix):
+def run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, log_fldr):
 	info_dicts = None
 	for i in range(N_rollout):
 		info_dict = simulate_rollout(env, x0s[i], N_dt, cbf_controller)
@@ -155,7 +155,8 @@ def run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, save_prefix):
 			              info_dicts.items()}
 
 	# Save data
-	with open(save_prefix + ".pkl", 'wb') as handle:
+	save_fpth = os.path.join(log_fldr, "data.pkl")
+	with open(save_fpth, 'wb') as handle:
 		pickle.dump(info_dicts, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	return info_dicts
@@ -166,85 +167,94 @@ def run_rollout_experiment(args):
 	exp_name = args.exp_name
 	checkpoint_number = args.checkpoint_number
 
-	log_fldrpth = os.path.join("rollout_results", log_folder)
+	log_fldrpth = os.path.join("./rollout_results/flying", log_folder)
 	if not os.path.exists(log_fldrpth):
 		os.makedirs(log_fldrpth)
+	# save_prefix = "%s/%s_" % (log_fldrpth, which_cbf)
 
 	# TODO: Tianhao, Weiye, add clauses here
 	if which_cbf == "ours":
 		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
-		# Including translational dynamics in system; update param_dict accordingly
-		state_index_dict = param_dict["state_index_dict"]
-		names = ["x", "y", "z", "dx", "dy", "dz"]
-		more_dict = dict(zip(names, len(state_index_dict) + np.arange(len(names))))
-		state_index_dict.update(more_dict)
-		print("ln 185")
-		IPython.embed()
-
 		cbf_obj = OurCBF(phi_fn, param_dict) # numpy wrapper
 	else:
-		# create default param_dict
-		from main import create_flying_param_dict
-		param_dict = create_flying_param_dict()
+		raise NotImplementedError
+		# Create your own cbf_obj
+		# Use the following to create param_dict
+		# from main import create_flying_param_dict
+		# param_dict = create_flying_param_dict()
 
 	env = FlyingInvertedPendulumEnv(param_dict)
-	x = np.random.rand(10)
-	u = np.random.rand(4)
-	x_dot = env.x_dot_open_loop(x, u)
-	IPython.embed()
 
 	# TODO: fill out run arguments
 	N_rollout = 100
 	T_max = 1.5  # in seconds
 	N_dt = int(T_max / env.dt)
 
-	cbf_controller = FlyingCBFController(env, cbf_obj, param_dict)
-	x_lim = cbf_controller.env.x_lim
+	cbf_controller = CBFController(env, cbf_obj, param_dict)
+	# x_lim = cbf_controller.env.x_lim
 
 	# Get x0's
-	# x0s, phi_vals_on_grid, X, Y = sample_invariant_set(x_lim, cbf_obj, N_rollout) # TODO!!! How can we get uniform samples within the invariant set?
-	# save_prefix = "./rollout_results/%s/%s_" % (log_folder, which_cbf)
-	#
-	# #####################################
-	# # Plot x0 samples and invariant set
-	# #####################################
-	# phi_signs = plot_samples_invariant_set(x_lim, x0s, phi_vals_on_grid, X, save_prefix) # TODO: reuse plot_util
-	#
-	# # IPython.embed()
-	# # sys.exit(0)
-	#
-	# #####################################
-	# # Run multiple rollout_results
-	# #####################################
-	# info_dicts = run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, save_prefix) # TODO: check that this works
-	#
-	# #####################################
-	# # Sanity checks
-	# #####################################
-	# sanity_check(info_dicts)
-	#
-	# #####################################
-	# # Plot trajectories
-	# #####################################
-	# plot_trajectories(x_lim, N_rollout, x0s, phi_vals_on_grid, X, Y, phi_signs, info_dicts, save_prefix) # TODO: reuse plot_util
-	#
-	# #####################################
-	# # Plot EXITED trajectories ONLY (we choose the 5 with the largest violation)
-	# #####################################
-	# plot_exited_trajectories(x_lim, x0s, phi_vals_on_grid, X, Y, phi_signs, info_dicts, save_prefix) # TODO: reuse plot_util
+	x0s = sample_x0s(param_dict, cbf_obj, N_rollout) # TODO!!! How can we get uniform samples within the invariant set?
 
-# import argparse, IPython
+	#####################################
+	# Plot x0 samples and invariant set
+	#####################################
+	if which_cbf == "ours":
+		x0s_no_translation = x0s[:, :10]
+		plot_invariant_set_slices(phi_fn, param_dict, samples=x0s_no_translation, fnm="x0s.png", fpth=log_folder) # which_params=None
+	else:
+		raise NotImplementedError
+		# TODO: Suggest slightly modify above function to be used with cbf_obj (numpy wrapper of phi_fn), instead of phi_fn
+
+	#####################################
+	# Run multiple rollout_results
+	#####################################
+	info_dicts = run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, log_fldrpth)
+
+	#####################################
+	# Sanity checks
+	#####################################
+	sanity_check(info_dicts)
+
+	#####################################
+	# Plot trajectories
+	#####################################
+	if which_cbf == "ours":
+		rollouts = info_dicts["x"]
+		plot_invariant_set_slices(phi_fn, param_dict, rollouts=rollouts, fnm="traj.png", fpth=log_folder)
+	else:
+		raise NotImplementedError
+		# TODO: Suggest slightly modify above function to be used with cbf_obj (numpy wrapper of phi_fn), instead of phi_fn
+
+	#####################################
+	# Plot EXITED trajectories ONLY (we choose the 5 with the largest violation)
+	#####################################
+	if which_cbf == "ours":
+		rollouts = info_dicts["x"]
+		phi_vals = info_dicts["phi_vals"]  # (N_rollout, T_max, r+1)
+		phi_max = np.max(phi_vals, axis=2)
+		rollouts_any_exits = np.any(phi_max > 0, axis=1)
+		any_exits = np.any(rollouts_any_exits)
+
+		if any_exits:
+			exit_rollout_inds = np.argsort(np.max(phi_max, axis=1)).flatten()[::-1]
+			exit_rollout_inds = exit_rollout_inds[:min(5, np.sum(rollouts_any_exits))]
+
+			exiting_rollouts = [rollouts for i in exit_rollout_inds]
+			plot_invariant_set_slices(phi_fn, param_dict, rollouts=exiting_rollouts, fnm="traj.png", fpth=log_folder)
+	else:
+		raise NotImplementedError
+		# TODO: Suggest slightly modify above function to be used with cbf_obj (numpy wrapper of phi_fn), instead of phi_fn
+
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Rollout experiment')
-	parser.add_argument('--log_folder', type=str, default="flying_debug")
+	parser.add_argument('--log_folder', type=str, default="debug")
 	parser.add_argument('--which_cbf', type=str, default="ours", choices=["ours", "hand_derived", "cma_es"])
 
 	parser.add_argument('--exp_name', type=str, help="for our CBF")
 	parser.add_argument('--checkpoint_number', type=int, help="for our CBF")
 
-	# parser.add_argument('--reg_weight', type=float, default=1.0, help="only relevant for cma-es")
 	args = parser.parse_args()
-	# IPython.embed()
-	# run_rollout_experiment(args)
+	run_rollout_experiment(args)
 
 	# python flying_rollout_experiment.py --which_cbf ours --exp_name first_run --checkpoint_number 3080

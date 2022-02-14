@@ -95,7 +95,7 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	return phi_fn, param_dict
 
 
-def plot_invariant_set_slices(phi_fn, param_dict, samples=None, which_params=None, fnm=None, fpth=None):
+def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, fnm=None, fpth=None):
 	"""
 	Plots invariant set and (if necessary) projected boundary samples in 2D
 	which_params: all or list of lists of length 2
@@ -173,6 +173,14 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, which_params=Non
 			if samples is not None:
 				axs[i, j].scatter(samples[:, ind1], samples[:, ind2], s=0.5) # projection (truncation)
 
+
+			## Plotting the included trajectories
+			if rollouts is not None:
+				N_rollout = len(rollouts) # rollouts is a ist
+				for i in range(N_rollout):
+					ith_rl = rollouts[i]
+					axs[i, j].plot(ith_rl[:, ind1], ith_rl[:, ind2])
+
 			## Title
 			# title = "%s vs. %s" % (param1, param2)
 			axs[i, j].set_xlabel(param1)
@@ -189,8 +197,10 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, which_params=Non
 	print("Saved at: %s" % save_fpth)
 	plt.tight_layout(pad=0.5)
 	plt.savefig(save_fpth, bbox_inches='tight')
-	plt.clf()
-	plt.close()
+	# plt.clf()
+	# plt.close()
+
+	return fig, axs
 
 def load_attacks(exp_name, checkpoint_number):
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
