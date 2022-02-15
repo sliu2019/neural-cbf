@@ -32,46 +32,16 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	if exp_name:
 		args = load_args("./log/%s/args.txt" % exp_name)
 		param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb"))
-
-		r = param_dict["r"]
-		x_dim = param_dict["x_dim"]
-		u_dim = param_dict["u_dim"]
-		x_lim = param_dict["x_lim"]
 	else:
 		args = parser() # default
 
-		param_dict = {
-			"m": 0.8,
-			"J_x": 0.005,
-			"J_y": 0.005,
-			"J_z": 0.009,
-			"l": 1.5,
-			"k1": 4.0,
-			"k2": 0.05,
-			"m_p": 0.04,
-			"L_p": 0.03,
-			'delta_safety_limit': math.pi / 4  # in radians; should be <= math.pi/4
-		}
-		param_dict["M"] = param_dict["m"] + param_dict["m_p"]
-		state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
-		                     "dtheta"]  # excluded x, y, z
-		state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+		from main import create_flying_param_dict
+		param_dict = create_flying_param_dict() # default
 
-		r = 2
-		x_dim = len(state_index_names)
-		u_dim = 4
-		# TODO: fill out below
-		thresh = np.array([math.pi, math.pi / 3, math.pi / 3, 2, 2, 2, math.pi / 3, math.pi / 3, 2, 2],
-		                  dtype=np.float32)
-
-		x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
-
-		# Save stuff in param dict
-		param_dict["state_index_dict"] = state_index_dict
-		param_dict["r"] = r
-		param_dict["x_dim"] = x_dim
-		param_dict["u_dim"] = u_dim
-		param_dict["x_lim"] = x_lim
+	r = param_dict["r"]
+	x_dim = param_dict["x_dim"]
+	u_dim = param_dict["u_dim"]
+	x_lim = param_dict["x_lim"]
 
 	# Create phi
 	from src.problems.flying_inv_pend import H, XDot, ULimitSetVertices
@@ -256,6 +226,104 @@ def graph_losses(exp_name):
 	print("Min attack loss achieved (desired <= 0): %.5f" % np.min(train_attack_losses))
 	print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
 
+def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
+	"""
+	Plots CBF value against 2 inputs, for a total of 3 dimensions (value, input1, input2)
+	"""
+	x_lim = param_dict["x_lim"]
+	x_dim = param_dict["x_dim"]
+	state_index_dict = param_dict["state_index_dict"]
+
+	if which_params is None:
+		params_to_viz = [["theta", "phi"], ["dtheta", "dphi"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"], ["dbeta", "dalpha"], ["dgamma", "dbeta"], ["dgamma", "dalpha"]]
+	else:
+		params_to_viz = which_params
+
+	# IPython.embed()
+	n_per_row = 3
+	n_row = math.ceil(len(params_to_viz)/float(n_per_row))
+
+	n_per_row = min(len(params_to_viz), n_per_row)
+	# fig, axs = plt.subplots(n_row, n_per_row, squeeze=False, projection="3d")
+	fig = plt.figure()
+	# IPython.embed()
+	# axs[0, 0].plot(x, y)
+	for i in range(n_row):
+		for j in range(n_per_row):
+			if i*n_per_row + j >= len(params_to_viz):
+				break
+
+			# Create 3D axis on fig
+			ax = fig.add_subplot(n_row, n_per_row, (i*n_per_row + j) + 1, projection='3d') # 3rd argument: using 1-indexing
+
+			# for param_pair in params_to_viz:
+			param_pair = params_to_viz[i*n_per_row + j]
+			param1, param2 = param_pair
+
+			ind1 = state_index_dict[param1]
+			ind2 = state_index_dict[param2]
+
+			delta = 0.01 # larger for 3D plotting, due to latency
+			x = np.arange(x_lim[ind1, 0], x_lim[ind1, 1], delta)
+			y = np.arange(x_lim[ind2, 0], x_lim[ind2, 1], delta)[::-1] # need to reverse it # TODO
+			X, Y = np.meshgrid(x, y)
+
+			###################################
+			##### Plotting ######
+			###################################
+			## Get phi values
+			input = np.zeros((X.size, x_dim))
+			input[:, ind1] = X.flatten()
+			input[:, ind2] = Y.flatten()
+
+			batch_size = int(X.size/5)
+			all_size = input.shape[0]
+
+			phi_vals = []
+			for k in range(math.ceil(all_size/batch_size)):
+				batch_input = input[k*batch_size: min(all_size, (k+1)*batch_size)]
+				batch_input = batch_input.astype("float32")
+				batch_input_torch = torch.from_numpy(batch_input)
+
+				batch_phi_vals = phi_fn(batch_input_torch)
+				phi_vals.append(batch_phi_vals.detach().cpu().numpy())
+
+			## Process phi values
+			phi_vals = np.concatenate((phi_vals), axis=0)
+			last_phi_vals = phi_vals[:, -1]
+			Z = np.reshape(last_phi_vals, X.shape)
+
+			## Finally, plot
+			# IPython.embed()
+			ax.set_xlim(x_lim[ind1, 0], x_lim[ind1, 1])
+			ax.set_ylim(x_lim[ind2, 0], x_lim[ind2, 1])
+
+			# ax.plot_surface(X, Y, Z, cmap="autumn_r", lw=0.5, rstride=1, cstride=1,
+			#                 alpha=0.75)
+			ax.plot_surface(X, Y, Z, cmap="autumn_r", linewidth = 0, antialiased = False)
+			# ax.contour(X, Y, Z, 10, lw=3, colors="k", linestyles="solid")
+
+			print("CBF min, max: %.3f, %.3f" % (np.min(Z), np.max(Z)))
+			# IPython.embed()
+			## Title
+			ax.set_xlabel(param1)
+			ax.set_ylabel(param2)
+
+	if fnm is None:
+		fnm = time.strftime('%m_%d_%H:%M:%S')
+
+	if fpth is not None:
+		save_fpth = "./log/%s/%s.png" % (fpth, fnm)
+	else:
+		save_fpth = "./log/flying_3d_viz/%s.png" % fnm
+
+	print("Saved at: %s" % save_fpth)
+	plt.tight_layout(pad=0.5)
+	# plt.show()
+	plt.savefig(save_fpth, bbox_inches='tight')
+	plt.clf()
+	plt.close()
+
 if __name__ == "__main__":
 	"""
 	Code to visualize samples (from RegSampleKeeper or Attacker)
@@ -283,19 +351,20 @@ if __name__ == "__main__":
 	"""
 
 	########################################################
-	#########     FILL OUT HERE !!!!   #####################
+#########     FILL OUT HERE !!!!   #####################
 	### ****************************************************
 	exp_name = "flying_inv_pend_first_run"
-	checkpoint_number = 10
+	checkpoint_number = 3080
 	### ****************************************************
 	########################################################
 
-	# graph_losses(exp_name)
+	graph_losses(exp_name)
 
-	phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+	# phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 
-	samples = load_attacks(exp_name, checkpoint_number)
+	# samples = load_attacks(exp_name, checkpoint_number)
 
-	plot_invariant_set_slices(phi_fn, param_dict, fpth=exp_name, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
-	plot_invariant_set_slices(phi_fn, param_dict, samples=samples, fpth=exp_name, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
+	# plot_invariant_set_slices(phi_fn, param_dict, fpth=exp_name, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
+	# plot_invariant_set_slices(phi_fn, param_dict, samples=samples, fpth=exp_name, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
 
+	# plot_cbf_3d_slices(phi_fn, param_dict, which_params = [["phi", "theta"]], fnm = "3d_viz_ckpt_%i" % checkpoint_number, fpth = exp_name)

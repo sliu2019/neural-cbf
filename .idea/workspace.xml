@@ -2,8 +2,14 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/flying_plot_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/flying_plot_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/cart_pole_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_envs/cart_pole_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_evaluator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_experiment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/02_06_experiments.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/02_06_experiments.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -53,10 +59,11 @@
     <property name="WebServerToolWindowPanel.toolwindow.show.size" value="false" />
     <property name="com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File" value="Python" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+    <property name="settings.editor.selected.configurable" value="web.server" />
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/rollout_envs" />
       <recent name="$PROJECT_DIR$/rollout_cbf_classes" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/src" />
@@ -108,7 +115,9 @@
       <workItem from="1640810760347" duration="53885000" />
       <workItem from="1641352861715" duration="34951000" />
       <workItem from="1642025724437" duration="21259000" />
-      <workItem from="1642353915915" duration="139118000" />
+      <workItem from="1642353915915" duration="144403000" />
+      <workItem from="1644589811941" duration="1677000" />
+      <workItem from="1644611075717" duration="10478000" />
     </task>
     <servers />
   </component>
