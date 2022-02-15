@@ -20,11 +20,11 @@ class OurCBF:
         :param x: (N_batch, 16)
         :return: (N_batch, r+1) where r is degree
         """
-        print("inside ourcbfclass, phi_fn")
-        IPython.embed()
+        # print("inside ourcbfclass, phi_fn")
+        # IPython.embed()
         # Slice off translational states
+        x = np.reshape(x, (-1, 16))
         x = x[:, :10]
-        x = np.reshape(x, (-1, self.x_dim))
         # Wrap-around on cyclical angles
         ind_cyclical = np.argwhere(self.x_lim[:, 1] == math.pi).flatten()
         for i in ind_cyclical:
@@ -46,11 +46,11 @@ class OurCBF:
         :param x: (16)
         :return: (16)
         """
-        print("inside ourcbf, phi grad")
-        IPython.embed()
+        # print("inside ourcbf, phi grad")
+        # IPython.embed()
 
+        x = np.reshape(x, (-1, 16))
         x = x[:, :10]
-        x = np.reshape(x, (-1, self.x_dim))
         # Wrap-around on cyclical angles
         ind_cyclical = np.argwhere(self.x_lim[:, 1] == math.pi).flatten()
         for i in ind_cyclical:
@@ -70,8 +70,9 @@ class OurCBF:
 
         # Post op
         x_torch.requires_grad = False
-        phi_grad = phi_grad.detach().cpu().numpy()
+        phi_grad = phi_grad.detach().cpu().numpy().flatten()
         phi_grad = np.concatenate((phi_grad, np.zeros(6)))
+        # phi_grad = phi_grad[None]
         # phi_grad = np.array([0, phi_grad[0, 0], 0, phi_grad[0, 1]])[None]
 
         return phi_grad

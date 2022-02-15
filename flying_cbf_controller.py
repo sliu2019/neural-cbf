@@ -21,8 +21,8 @@ class CBFController:
 		return u_ref
 
 	def compute_control(self, t, x):
-		print("in CBFcontroller, compute control")
-		IPython.embed()
+		# print("in CBFcontroller, compute control")
+		# IPython.embed()
 		############ Init log vars
 		apply_u_safe = None
 		u_ref = self.compute_u_ref(t, x)
@@ -35,6 +35,7 @@ class CBFController:
 		phi_vals = self.cbf_obj.phi_fn(x)  # This is an array of (1, r+1), where r is the degree
 		phi_grad = self.cbf_obj.phi_grad(x)
 
+		print(x.shape)
 		x_next = x + self.env.dt * self.env.x_dot_open_loop(x, self.compute_u_ref(t, x))  # in the absence of safe control, the next state
 		next_phi_val = self.cbf_obj.phi_fn(x_next)
 
@@ -50,12 +51,16 @@ class CBFController:
 			              "qp_lhs": qp_lhs, "phi_vals": phi_vals.flatten()}
 			return u_ref, debug_dict
 
+		# IPython.embed()
 		# Compute the control constraints
 		f_x = self.env._f(x)
+		f_x = np.reshape(f_x, (16, 1))
 		g_x = self.env._g(x)
 
+		phi_grad = np.reshape(phi_grad, (16, 1))
 		lhs = phi_grad.T @ g_x # 1 x 4
 		rhs = -phi_grad.T @ f_x - eps
+		rhs = rhs.item() # scalar, not numpy array
 
 		# Computing control using QP
 		# Note, constraint may not always be satisfied, so we include a slack variable on the CBF input constraint
@@ -63,8 +68,8 @@ class CBFController:
 
 		Q = np.zeros((5, 5))
 		Q[:4, :4] = 2*self.mixer.T@self.mixer
-		p = np.array([-2*u_ref.T@self.mixer, w])
-		p = p.T # column?
+		p = np.concatenate([-2*u_ref.T@self.mixer, np.array([w])])
+		p = np.reshape(p, (-1, 1))
 
 		G = np.zeros((10, 5))
 		G[0, :4] = lhs@self.mixer
@@ -73,18 +78,19 @@ class CBFController:
 		G[5:9, 0:4] = np.eye(4)
 		G[-1, -1] = -1.0
 
-		h = np.array([rhs, np.zeros(4), np.ones(4), 0.0])
-		h = h.T # column?
+		h = np.concatenate([np.array([rhs]), np.zeros(4), np.ones(4), np.zeros(1)])
+		h = np.reshape(h, (-1, 1))
 
 		try:
 			sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(h))
 		except:
-			# IPython.embed()
+			IPython.embed()
 			exit(0)
-		sol_var = sol_obj['x']
+		sol_var = np.array(sol_obj['x'])
 
-		u_safe = sol_var[0]
-		qp_slack = sol_var[1]
+		u_safe = sol_var[0:4]
+		u_safe = np.reshape(u_safe, (4))
+		qp_slack = sol_var[-1]
 
 		debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "phi_vals": phi_vals.flatten(),
 		              "qp_slack": qp_slack, "qp_rhs": qp_rhs, "qp_lhs": qp_lhs}

@@ -6,7 +6,7 @@ import matplotlib as mpl
 from mpl_toolkits.mplot3d import axes3d
 import math
 from main import Phi, Objective, Regularizer
-from src.argument import parser, print_args
+# from src.argument import parser, print_args
 from src.utils import *
 import torch
 import pickle
@@ -18,7 +18,7 @@ from src.reg_sample_keeper import RegSampleKeeper
 import time
 from torch.autograd import grad
 from torch import nn
-from src.argument import parser, print_args
+# from src.argument import parser, print_args
 
 # Make numpy and torch deterministic (for rand phi and attack/reg sampling)
 seed = 3
@@ -33,6 +33,7 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 		args = load_args("./log/%s/args.txt" % exp_name)
 		param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb"))
 	else:
+		from src.argument import parser
 		args = parser() # default
 
 		from main import create_flying_param_dict
@@ -95,7 +96,7 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	return phi_fn, param_dict
 
 
-def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, fnm=None, fpth=None):
+def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, fnm=None, fldr_path=None):
 	"""
 	Plots invariant set and (if necessary) projected boundary samples in 2D
 	which_params: all or list of lists of length 2
@@ -188,11 +189,14 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 
 	if fnm is None:
 		fnm = time.strftime('%m_%d_%H:%M:%S')
+	if fldr_path is None:
+		fldr_path = "./log/boundary_sampling"
 
-	if fpth is not None:
-		save_fpth = "./log/%s/%s.png" % (fpth, fnm)
-	else:
-		save_fpth = "./log/boundary_sampling/%s.png" % fnm
+	# if fpth is not None:
+	# 	save_fpth = "./log/%s/%s.png" % (fpth, fnm)
+	# else:
+	# 	save_fpth = "./log/boundary_sampling/%s.png" % fnm
+	save_fpth = os.path.join(fldr_path, fnm + ".png")
 
 	print("Saved at: %s" % save_fpth)
 	plt.tight_layout(pad=0.5)
