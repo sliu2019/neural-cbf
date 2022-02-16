@@ -31,8 +31,16 @@ class OurCBF:
             x[:, i] = self.convert_angle_to_negpi_pi_interval(x[:, i])
 
         # Warn if x outside of state box of phi
-        if np.any(np.logical_or(x < self.x_lim[:, 0], x > self.x_lim[:, 1])):
-            print("WARNING: evaluating phi at x outside of state box \n")
+        outside_box = np.logical_or(x < self.x_lim[:, 0], x > self.x_lim[:, 1]).flatten()
+        if np.any(outside_box):
+            print("WARNING: phi_fn( . ) evaluating phi at x outside of state box")
+            ind_outside_box = np.argwhere(outside_box).flatten()
+            # print(ind_outside_box)
+            # value_to_key = lambda i, : ]
+            state_vars_outside_box = [list(self.state_index_dict.keys())[list(self.state_index_dict.values()).index(i)] for i in ind_outside_box]
+            print("States: " + ", ".join(state_vars_outside_box))
+            # IPython.embed()
+
 
         # To torch
         x_torch = torch.from_numpy(x.astype("float32"))
@@ -57,8 +65,16 @@ class OurCBF:
             x[:, i] = self.convert_angle_to_negpi_pi_interval(x[:, i])
 
         # Warn if x outside of state box of phi
-        if np.any(np.logical_or(x < self.x_lim[:, 0], x > self.x_lim[:, 1])):
-            print("WARNING: evaluating phi at x outside of state box \n")
+        outside_box = np.logical_or(x < self.x_lim[:, 0], x > self.x_lim[:, 1]).flatten()
+        if np.any(outside_box):
+            print("WARNING: phi_grad( . ) evaluating phi at x outside of state box")
+            ind_outside_box = np.argwhere(outside_box).flatten()
+            # print(ind_outside_box)
+            # value_to_key = lambda i, : ]
+            state_vars_outside_box = [list(self.state_index_dict.keys())[list(self.state_index_dict.values()).index(i)] for i in ind_outside_box]
+            print("States: " + ", ".join(state_vars_outside_box))
+            # IPython.embed()
+
 
         x_torch = torch.from_numpy(x.astype("float32"))
         x_torch.requires_grad = True

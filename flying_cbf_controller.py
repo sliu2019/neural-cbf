@@ -35,14 +35,16 @@ class CBFController:
 		phi_vals = self.cbf_obj.phi_fn(x)  # This is an array of (1, r+1), where r is the degree
 		phi_grad = self.cbf_obj.phi_grad(x)
 
-		print(x.shape)
+		# print(x.shape)
 		x_next = x + self.env.dt * self.env.x_dot_open_loop(x, self.compute_u_ref(t, x))  # in the absence of safe control, the next state
 		next_phi_val = self.cbf_obj.phi_fn(x_next)
 
 		if phi_vals[0, -1] > 0:  # Outside
+			print("Outside boundary")
 			eps = self.eps_outside
 			apply_u_safe = True
 		elif phi_vals[0, -1] < 0 and next_phi_val[0, -1] >= 0:  # On boundary. Note: cheating way to convert DT to CT
+			print("On boundary")
 			eps = self.eps_bdry
 			apply_u_safe = True
 		else:  # Inside
@@ -84,13 +86,16 @@ class CBFController:
 		try:
 			sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(h))
 		except:
-			IPython.embed()
+			# IPython.embed()
+			print("Infeasible QP, exiting")
 			exit(0)
 		sol_var = np.array(sol_obj['x'])
 
 		u_safe = sol_var[0:4]
 		u_safe = np.reshape(u_safe, (4))
 		qp_slack = sol_var[-1]
+
+		print(u_safe, qp_slack)
 
 		debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "phi_vals": phi_vals.flatten(),
 		              "qp_slack": qp_slack, "qp_rhs": qp_rhs, "qp_lhs": qp_lhs}

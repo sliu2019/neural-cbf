@@ -119,6 +119,7 @@ def simulate_rollout(env, x0, N_dt, cbf_controller):
 	# IPython.embed()
 	for t in range(N_dt):
 		print("rollout, step %i" % t)
+		print(x)
 		# IPython.embed()
 		# if t == 10:
 		# 	IPython.embed()
