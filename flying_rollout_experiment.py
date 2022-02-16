@@ -18,7 +18,7 @@ torch.manual_seed(2022)
 np.random.seed(2022)
 
 def sample_x0s(param_dict, cbf_obj, N_samp):
-	"""
+    	"""
 	Uses rejection sampling to sample uniformly in the invariant set
 
 	Note: assumes invariant set is defined as follows:
@@ -107,7 +107,7 @@ def sanity_check(info_dicts):
 		print("Which rollout_results had phi_star positive:", rollouts_any_phistar_pos)
 
 def simulate_rollout(env, x0, N_dt, cbf_controller):
-	# print("Inside simulate_rollout")
+    	# print("Inside simulate_rollout")
 	# IPython.embed()
 
 	x = x0.copy()
@@ -228,7 +228,7 @@ def run_rollout_experiment(args):
 	# Plot trajectories
 	#####################################
 	if which_cbf == "ours":
-		rollouts = info_dicts["x"]
+    		rollouts = info_dicts["x"]
 		plot_invariant_set_slices(phi_fn, param_dict, rollouts=rollouts, fnm="traj", fldr_path=log_fldrpth, which_params=[["phi", "theta"]])
 	else:
 		raise NotImplementedError
@@ -238,7 +238,7 @@ def run_rollout_experiment(args):
 	# Plot EXITED trajectories ONLY (we choose the 5 with the largest violation)
 	#####################################
 	if which_cbf == "ours":
-		rollouts = info_dicts["x"]
+    		rollouts = info_dicts["x"]
 		phi_vals = info_dicts["phi_vals"]  # (N_rollout, T_max, r+1)
 		phi_max = np.max(phi_vals, axis=2)
 		rollouts_any_exits = np.any(phi_max > 0, axis=1)

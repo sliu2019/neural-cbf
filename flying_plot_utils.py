@@ -97,7 +97,7 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 
 
 def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, fnm=None, fldr_path=None):
-	"""
+    	"""
 	Plots invariant set and (if necessary) projected boundary samples in 2D
 	which_params: all or list of lists of length 2
 	"""
@@ -190,7 +190,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 	if fnm is None:
 		fnm = time.strftime('%m_%d_%H:%M:%S')
 	if fldr_path is None:
-		fldr_path = "./log/boundary_sampling"
+    		fldr_path = "./log/boundary_sampling"
 
 	# if fpth is not None:
 	# 	save_fpth = "./log/%s/%s.png" % (fpth, fnm)

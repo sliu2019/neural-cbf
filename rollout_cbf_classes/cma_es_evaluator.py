@@ -60,7 +60,9 @@ class CartPoleEvaluator(object):
         self.max_u = np.vstack([self.env.max_force])
         self.dt = self.env.dt
 
-        self.reg_weight = 0.1 # TODO: need to tune to get possible result
+        # self.reg_weight = 0.1 # TODO: need to tune to get possible result
+        
+        self.reg_weight = 1 # TODO: need to tune to get possible result
 
         self.k = 5.0 # TODO: fixed, not learning it. For ease of comparison
         # self.d_min = 1
@@ -84,13 +86,47 @@ class CartPoleEvaluator(object):
         f = np.vstack(self.env.x_dot_open_loop(x, 0))
         g = np.vstack(self.env.x_dot_open_loop(x, 1)) - f
         return min(C @ f + C @ g @ self.max_u, C @ f - C @ g @ self.max_u)
-
+    
     def near_boundary(self, phis):
         phi0 = phis[0,0]
         phi = phis[0,-1]
-        eps = 2e-3
+        eps = 1e-2
         return abs(phi0) < eps or abs(phi) < eps
 
+    def find_max_dot_phi(self):
+        in_invariant = 0
+        valid = 0
+        tot_cnt = 0
+        max_dot_phi = -1e9
+        reg = 0
+        
+        sigmoid = lambda x: 1/(1 + np.exp(-x))
+        
+        for sample in self.samples:
+            idx = sample
+            x = np.hstack([0, self.thetas[idx[0]], 0, self.ang_vels[idx[1]]])
+            
+            phis = self.ssa.phi_fn(x)
+            
+            # phi = phis[0, -1]
+            phi = np.max(phis)
+            
+            if self.near_boundary(phis):
+                tot_cnt += 1
+                
+                C = self.ssa.phi_grad(x)
+                d = -phi/self.dt if phi < 0 else -phi*self.k
+                most_valid = self.most_valid_control(C, x)
+                max_dot_phi = max(max_dot_phi, most_valid)
+                
+            if phi <= 0:
+                # reg += sigmoid(phi)
+                in_invariant += 1
+        
+        in_invariant_rate = float(in_invariant)/len(self.samples)
+        return max_dot_phi, in_invariant_rate
+        
+    
     def compute_valid_invariant(self):
         in_invariant = 0
         in_invariant_valid = 0
@@ -132,15 +168,19 @@ class CartPoleEvaluator(object):
     def evaluate(self, params):
         self.set_params(params)
         
-        valid_rate, in_invariant_rate = self.compute_valid_invariant()
-
+        # valid_rate, in_invariant_rate = self.compute_valid_invariant()
         # Log
-        self.valid_rate = valid_rate
-        self.in_invariant_rate = in_invariant_rate
-
-        rv = valid_rate + self.reg_weight*in_invariant_rate
+        # self.valid_rate = valid_rate
+        # self.in_invariant_rate = in_invariant_rate
+        # rv = valid_rate + self.reg_weight*in_invariant_rate
+        # print("valid rate: ", valid_rate,"in_invariant_rate: ", in_invariant_rate, "params: ", params)
+        # return rv
         
-        print("valid rate: ", valid_rate,"in_invariant_rate: ", in_invariant_rate, "params: ", params)
+        max_dot_phi, in_invariant_rate = self.find_max_dot_phi()
+        print("=======")
+        print(params)
+        print(max_dot_phi, " ", in_invariant_rate)
+        rv = -max_dot_phi + self.reg_weight*in_invariant_rate
         return rv
 
         # # TODO: special objective on the boundary
@@ -200,12 +240,20 @@ class CartPoleEvaluator(object):
             x = [0, self.thetas[idx[0]], 0, self.ang_vels[idx[1]]]
             phis = self.phi_fn(x)
             phi = phis[0, -1]
-            C = self.phi_grad(x)
-            # d = -phi/self.dt if phi < 0 else -phi*self.coe[3]
+            # C = self.phi_grad(x)
+            # # d = -phi/self.dt if phi < 0 else -phi*self.coe[3]
+            # d = -phi/self.dt if phi < 0 else -phi*self.k
+            # if not self.has_valid_control(C, d, x):
+            #     continue
+            # valid_cnt[idx[0], idx[1]] += 1
+            
+            C = self.ssa.phi_grad(x)
             d = -phi/self.dt if phi < 0 else -phi*self.k
-            if not self.has_valid_control(C, d, x):
-                continue
-            valid_cnt[idx[0], idx[1]] += 1
+            most_valid = self.most_valid_control(C, x)
+            weighted_valid = np.exp(0.1 * min(d - most_valid, 0))
+            # most_valid < d => 1,   most_valid > d => 1 - exp(d-valid)
+            valid_cnt[idx[0], idx[1]] += weighted_valid
+            
             tot_cnt += 1
 
         print("tot_cnt: ", tot_cnt)
@@ -234,5 +282,6 @@ class CartPoleEvaluator(object):
     def log(self):
         # return "{} {}".format(str(self.coe), str(self.valid))
         # return "{} {} {}".format(str(self.coe), str(self.valid))
-        s = "Params: %s, valid rate: %f, volume rate: %f" % (str(self.coe), self.valid_rate, self.in_invariant_rate)
-        return s
+        # s = "Params: %s, valid rate: %f, volume rate: %f" % (str(self.coe), self.valid_rate, self.in_invariant_rate)
+        # return s
+        return ""
