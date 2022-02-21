@@ -14,10 +14,11 @@ class HMax(nn.Module):
 		self.i = self.state_index_dict
 
 	def forward(self, x):
-		# print("Inside HMax forward")
-		# IPython.embed()
 		# The way these are implemented should be batch compliant
 		# Return value is size (bs, 1)
+
+		# print("Inside HMax forward")
+		# IPython.embed()
 		theta = x[:, [self.i["theta"]]]
 		phi = x[:, [self.i["phi"]]]
 		gamma = x[:, [self.i["gamma"]]]
@@ -27,7 +28,6 @@ class HMax(nn.Module):
 		eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
 		with torch.no_grad():
 			signed_eps = -torch.sign(cos_cos)*eps
-		# rv = torch.acos(cos_cos + signed_eps) - self.delta_safety_limit
 		delta = torch.acos(cos_cos + signed_eps)
 		rv = torch.maximum(torch.maximum(delta**2, gamma**2), beta**2) - self.delta_safety_limit**2
 		return rv
@@ -39,10 +39,11 @@ class HSum(nn.Module):
 		self.i = self.state_index_dict
 
 	def forward(self, x):
-		# print("Inside HSum forward")
-		# IPython.embed()
 		# The way these are implemented should be batch compliant
 		# Return value is size (bs, 1)
+
+		# print("Inside HSum forward")
+		# IPython.embed()
 		theta = x[:, [self.i["theta"]]]
 		phi = x[:, [self.i["phi"]]]
 		gamma = x[:, [self.i["gamma"]]]
@@ -130,7 +131,10 @@ class ULimitSetVertices(nn.Module):
 		r4[1::2] = 1.0
 		impulse_vert = np.concatenate((r1[None], r2[None], r3[None], r4[None]), axis=0) # 16 vertices in the impulse control space
 
-		force_vert = M@impulse_vert - self.M*g
+		# print("ulimitsetvertices")
+		# IPython.embed()
+
+		force_vert = M@impulse_vert - np.array([[self.M*g], [0.0], [0.0], [0.0]]) # Fixed bug: was subtracting self.M*g (not just in the first row)
 		force_vert = force_vert.T.astype("float32")
 		self.vert = torch.from_numpy(force_vert).to(self.device)
 
@@ -179,7 +183,9 @@ if __name__ == "__main__":
 	x = torch.rand(N, 10).to(device)
 	u = torch.rand(N, 4).to(device)
 
-	h_fn = HMax(param_dict)
+	uvert = uvertices_fn(x)
+	# IPython.embed()
+	# h_fn = HMax(param_dict)
 	# h_fn = HSum(param_dict)
 	# rv1 = h_fn(x)
 	# print(rv1.shape)
