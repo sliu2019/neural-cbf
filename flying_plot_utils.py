@@ -45,8 +45,11 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	x_lim = param_dict["x_lim"]
 
 	# Create phi
-	from src.problems.flying_inv_pend import H, XDot, ULimitSetVertices
-	h_fn = H(param_dict)
+	from src.problems.flying_inv_pend import HMax, HSum, XDot, ULimitSetVertices
+	if args.h == "sum":
+		h_fn = HSum(param_dict)
+	elif args.h == "max":
+		h_fn = HMax(param_dict)
 	xdot_fn = XDot(param_dict, device)
 	uvertices_fn = ULimitSetVertices(param_dict, device)
 
@@ -365,20 +368,76 @@ if __name__ == "__main__":
 	"""
 
 	########################################################
-#########     FILL OUT HERE !!!!   #####################
+	#########     FILL OUT HERE !!!!   #####################
 	### ****************************************************
-	exp_name = "flying_inv_pend_first_run"
-	checkpoint_number = 3080
+
+	exp_names = ["flying_inv_pend_easier_env_flat_beta", "flying_inv_pend_easier_env_iterated_beta", "flying_inv_pend_harder_env_flat_beta", "flying_inv_pend_harder_env_iterated_beta"]
+	# checkpoint_numbers = [500, 1800, 800, 1800]
+	checkpoint_numbers = [0]*4
 	### ****************************************************
 	########################################################
+	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
+		# graph_losses(exp_name)
+		# plt.clf()
+		# plt.close()
 
-	graph_losses(exp_name)
+		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 
-	# phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+		samples = load_attacks(exp_name, checkpoint_number)
 
-	# samples = load_attacks(exp_name, checkpoint_number)
+		fldr_path = os.path.join("./log", exp_name)
+		plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
 
-	# plot_invariant_set_slices(phi_fn, param_dict, fpth=exp_name, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
-	# plot_invariant_set_slices(phi_fn, param_dict, samples=samples, fpth=exp_name, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
+		plt.clf()
+		plt.close()
 
-	# plot_cbf_3d_slices(phi_fn, param_dict, which_params = [["phi", "theta"]], fnm = "3d_viz_ckpt_%i" % checkpoint_number, fpth = exp_name)
+		plot_invariant_set_slices(phi_fn, param_dict, samples=samples, fldr_path=fldr_path, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
+
+		# plot_cbf_3d_slices(phi_fn, param_dict, which_params = [["phi", "theta"]], fnm = "3d_viz_ckpt_%i" % checkpoint_number, fpth = exp_name)
+
+		plt.clf()
+		plt.close()
+
+		#################################################
+		#### Graphing other debug info ##################
+
+		# with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+		# 	data = pickle.load(handle)
+		#
+		# 	train_attack_losses = data["train_attack_losses"]
+		# 	train_reg_losses = data["train_reg_losses"]
+		# 	train_losses = data["train_losses"]
+		#
+		# 	plt.plot(train_attack_losses[:1000], linewidth=0.5, label="train attack loss")
+		# 	plt.plot(train_reg_losses[:1000], linewidth=0.5, label="train reg loss")
+		# 	plt.plot(train_losses[:1000], linewidth=0.5, label="train total loss")
+		# 	plt.title("Losses for %s" % exp_name)
+		#
+		# plt.xlabel("Optimization steps")
+		# plt.legend(loc="upper right")
+		#
+		# plt.savefig("./log/%s/%s_loss.png" % (exp_name, exp_name))
+		# plt.clf()
+		# plt.cla()
+		#
+		# print("Min attack loss achieved (desired <= 0): %.5f" % np.min(train_attack_losses))
+		# print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
+		#
+		# save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses,
+		#              "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times,
+		#              "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init,
+		#              "train_attack_X_final": train_attack_X_final, "k0_grad": k0_grad, "ci_grad": ci_grad,
+		#              "train_losses": train_losses, "train_attack_losses": train_attack_losses,
+		#              "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals,
+		#              "grad_norms": grad_norms, "reg_sample_keeper_X": reg_sample_keeper_X}
+		#
+		# additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse,
+		#                                 "train_attack_X_init_random": train_attack_X_init_random,
+		#                                 "train_attack_init_best_attack_value": train_attack_init_best_attack_value,
+		#                                 "train_attack_final_best_attack_value": train_attack_final_best_attack_value,
+		#                                 "train_attack_t_init": train_attack_t_init,
+		#                                 "train_attack_t_grad_steps": train_attack_t_grad_steps,
+		#                                 "train_attack_t_reproject": train_attack_t_reproject,
+		#                                 "train_attack_t_total_opt": train_attack_t_total_opt}
+		#
+		# reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg}

@@ -36,7 +36,7 @@ def sample_x0s(param_dict, cbf_obj, N_samp):
 	N_samp_found = 0
 	i = 0
 	while N_samp_found < N_samp:
-		print(i)
+		# print(i)
 		# Sample in box
 		samples = np.random.rand(M, x_dim)
 		samples = samples*box_side_lengths + x_lim[:, 0]
@@ -53,6 +53,8 @@ def sample_x0s(param_dict, cbf_obj, N_samp):
 		N_samp_found += len(ind)
 		i += 1
 
+	# print("Inside sample x0s")
+	# IPython.embed()
 	# Could be more than N_samp currently; truncate to exactly N_samp
 	x0s = x0s[:N_samp]
 	return x0s
@@ -191,7 +193,7 @@ def run_rollout_experiment(args):
 	env = FlyingInvertedPendulumEnv(param_dict)
 
 	# TODO: fill out run arguments
-	N_rollout = 1
+	N_rollout = 5
 	T_max = 1.5  # in seconds
 	N_dt = int(T_max / env.dt)
 
@@ -260,8 +262,8 @@ if __name__ == "__main__":
 	parser.add_argument('--log_folder', type=str, default="debug")
 	parser.add_argument('--which_cbf', type=str, default="ours")
 
-	parser.add_argument('--exp_name', type=str, default="flying_inv_pend_first_run", help="for our CBF")
-	parser.add_argument('--checkpoint_number', type=int, default=3080, help="for our CBF")
+	parser.add_argument('--exp_name', type=str, default="flying_inv_pend_easier_env_iterated_beta", help="for our CBF") # flying_inv_pend_first_run
+	parser.add_argument('--checkpoint_number', type=int, default=500, help="for our CBF") # 3080
 
 	args = parser.parse_args()
 	# IPython.embed()

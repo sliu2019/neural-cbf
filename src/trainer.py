@@ -92,10 +92,6 @@ class Trainer():
 		# file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 		# save_model(phi_fn, file_name)
 		while True:
-			t0_xreg = time.perf_counter()
-			X_reg = self.reg_sample_keeper.return_samples(phi_fn)
-			tf_xreg = time.perf_counter()
-
 			# Inner max
 			# X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode)
 			x, debug_dict = self.attacker.opt(objective_fn, phi_fn, debug=True)
@@ -105,11 +101,17 @@ class Trainer():
 			# ci.grad = None
 			# k0.grad = None
 
+			t0_xreg = time.perf_counter()
+			if self.args.reg_weight:
+				X_reg = self.reg_sample_keeper.return_samples(phi_fn)
+				reg_value = reg_fn(X_reg)
+			else:
+				reg_value = torch.tensor(0)
+			tf_xreg = time.perf_counter()
+
 			if self.args.trainer_average_gradients:
 				# Outer max
-				reg_value = reg_fn(X_reg)
 				obj = objective_fn(X)
-
 				c = 0.1
 				with torch.no_grad():
 					# w = torch.nn.functional.softmax(obj, dim=0)
@@ -121,7 +123,7 @@ class Trainer():
 			else:
 				# Outer max
 				x_batch = x.view(1, -1)
-				reg_value = reg_fn(X_reg)
+				# reg_value = reg_fn(X_reg)
 				attack_value = objective_fn(x_batch)[0, 0]
 				objective_value = attack_value + reg_value
 				objective_value.backward()
@@ -199,6 +201,7 @@ class Trainer():
 			self.logger.info(f'train attack total time: {t_total_opt:.3f}s')
 
 			# Gradient debug
+			# IPython.embed()
 			k0_grad.append(k0.grad.detach().cpu().numpy())
 			ci_grad.append(ci.grad.detach().cpu().numpy())
 
@@ -206,14 +209,15 @@ class Trainer():
 			train_loop_times.append(t_so_far)
 
 			# Recording for reg sample keeper
-			phis_X_reg = phi_fn(X_reg)
-			max_dist_X_reg = torch.max(torch.abs(torch.max(phis_X_reg, axis=1)[0])).item()
-			# max_dist_X_reg = max_dist_X_reg.detach().cpu().numpy()
-			max_dists_X_reg.append(max_dist_X_reg)
-			reg_sample_keeper_X.append(X_reg.detach().cpu().numpy())
-			times_to_compute_X_reg.append(tf_xreg-t0_xreg)
-			self.logger.info(f'reg, total time: {(tf_xreg-t0_xreg):.3f}s')
-			self.logger.info(f'reg, max dist: {max_dist_X_reg:.3f}')
+			if self.args.reg_weight:
+				phis_X_reg = phi_fn(X_reg)
+				max_dist_X_reg = torch.max(torch.abs(torch.max(phis_X_reg, axis=1)[0])).item()
+				# max_dist_X_reg = max_dist_X_reg.detach().cpu().numpy()
+				max_dists_X_reg.append(max_dist_X_reg)
+				reg_sample_keeper_X.append(X_reg.detach().cpu().numpy())
+				times_to_compute_X_reg.append(tf_xreg-t0_xreg)
+				self.logger.info(f'reg, total time: {(tf_xreg-t0_xreg):.3f}s')
+				self.logger.info(f'reg, max dist: {max_dist_X_reg:.3f}')
 
 			# Saving at every _ iterations
 			if _iter % self.args.n_checkpoint_step == 0:
@@ -221,12 +225,15 @@ class Trainer():
 				save_model(phi_fn, file_name)
 
 				# save data too
-				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "grad_norms": grad_norms, "reg_sample_keeper_X": reg_sample_keeper_X, "max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg}
+				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "grad_norms": grad_norms, "reg_sample_keeper_X": reg_sample_keeper_X}
 
 				additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse, "train_attack_X_init_random": train_attack_X_init_random, "train_attack_init_best_attack_value": train_attack_init_best_attack_value, "train_attack_final_best_attack_value": train_attack_final_best_attack_value,"train_attack_t_init": train_attack_t_init, "train_attack_t_grad_steps": train_attack_t_grad_steps, "train_attack_t_reproject": train_attack_t_reproject, "train_attack_t_total_opt": train_attack_t_total_opt}
 
+				reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg}
+
 				# save_dict = save_dict + additional_train_attack_dict
 				save_dict.update(additional_train_attack_dict)
+				save_dict.update(reg_debug_dict)
 
 				# IPython.embed()
 
@@ -237,29 +244,31 @@ class Trainer():
 				with open(self.data_save_fpth, 'wb') as handle:
 					pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-			if (self.args.n_test_loss_step > 0) and (_iter % self.args.n_test_loss_step == 0):
-				# compute test loss
-				t1 = time.perf_counter()
-				test_attack_loss = self.test(phi_fn, objective_fn)
-				test_reg_loss = reg_fn(X_reg)
-				test_loss = test_attack_loss + test_reg_loss
-				t2 = time.perf_counter()
-
-				# IPython.embed()
-				self.logger.info(f'test loss: {test_loss:.3f}%, time spent testing: {t2 - t1:.3f} s')
-				self.logger.info(f'test attack loss: {test_attack_loss:.3f}%, reg loss: {test_reg_loss:.3f}%')
-
-				# Update save data
-				test_attack_losses.append(test_attack_loss.item())
-				test_reg_losses.append(test_reg_loss.item())
-				test_losses.append(test_loss.item())
+			# TODO: test loss is not being computed
+			# if (self.args.n_test_loss_step > 0) and (_iter % self.args.n_test_loss_step == 0):
+			# 	# compute test loss
+			# 	t1 = time.perf_counter()
+			# 	test_attack_loss = self.test(phi_fn, objective_fn)
+			# 	test_reg_loss = reg_fn(X_reg) # TODO: this won't work if self.args.reg_weight = 0
+			# 	test_loss = test_attack_loss + test_reg_loss
+			# 	t2 = time.perf_counter()
+			#
+			# 	# IPython.embed()
+			# 	self.logger.info(f'test loss: {test_loss:.3f}%, time spent testing: {t2 - t1:.3f} s')
+			# 	self.logger.info(f'test attack loss: {test_attack_loss:.3f}%, reg loss: {test_reg_loss:.3f}%')
+			#
+			# 	# Update save data
+			# 	test_attack_losses.append(test_attack_loss.item())
+			# 	test_reg_losses.append(test_reg_loss.item())
+			# 	test_losses.append(test_loss.item())
 
 			# Rest of print output
 			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')
 
 			# Check for stopping
 			if self.args.trainer_stopping_condition == "early_stopping":
-				early_stopping(test_loss)
+				# early_stopping(test_loss) # TODO: should technically use test_loss, but we're not computing it
+				early_stopping(objective_value)
 				if early_stopping.early_stop:
 					break
 			elif self.args.trainer_stopping_condition == "n_steps":

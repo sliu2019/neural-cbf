@@ -36,10 +36,11 @@ class Phi(nn.Module):
 
 		# Note: by default, it registers parameters by their variable name
 		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
-		rng = args.phi_k0_init_max - args.phi_k0_init_min
-		self.k0 = nn.Parameter(rng*torch.rand(1, 1) + args.phi_k0_init_min)
+		# rng = args.phi_k0_init_max - args.phi_k0_init_min
+		# self.k0 = nn.Parameter(rng*torch.rand(1, 1) + args.phi_k0_init_min)
+		self.k0 = nn.Parameter(args.phi_ci_init_range*torch.rand(1, 1))
 
-		# IPython.embed()
+		# IPython.embed()s
 		# To enforce strict positivity for both
 		self.ci_min = 1e-2
 		self.k0_min = 1e-2
@@ -64,6 +65,7 @@ class Phi(nn.Module):
 		self.beta_net = nn.Sequential(*net_layers)
 
 	def forward(self, x, grad_x=False):
+		# RV is (bs, r+1)
 		# print("inside phi's forward")
 		# IPython.embed()
 		# The way these are implemented should be batch compliant
@@ -113,6 +115,9 @@ class Phi(nn.Module):
 		h_derivs = h_ith_deriv # bs x 1
 		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device)) # bs x x_dim
 
+		# print("Inside phi, ln 118")
+		# IPython.embed()
+
 		for i in range(self.r-1):
 			grad_h_ith = grad([torch.sum(h_ith_deriv)], x, create_graph=True)[0] # bs x x_dim; create_graph ensures gradient is computed through the gradient operation
 			h_ith_deriv = (grad_h_ith.unsqueeze(dim=1)).bmm(f_val.unsqueeze(dim=2)) # bs x 1 x 1
@@ -126,17 +131,19 @@ class Phi(nn.Module):
 
 		result = h_derivs.mm(ki_all.t())
 		if self.args.phi_include_beta_deriv:
-			phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_h
-		else:
 			phi_r_minus_1_star = result[:, [-1]]
+		else:
+			phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_h
 
 		result = torch.cat((result, phi_r_minus_1_star), dim=1)
 
+		# print(phi_r_minus_1_star)
+		# print(result)
 		# IPython.embed()
 		return result
 
 class Objective(nn.Module):
-	def __init__(self, phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger):
+	def __init__(self, phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args):
 		super().__init__()
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
@@ -172,7 +179,12 @@ class Objective(nn.Module):
 		# print(phidot_cand)
 		phidot, _ = torch.min(phidot_cand, 1)
 
-		result = nn.functional.softplus(phidot) # using softplus on loss!!!
+		if self.args.no_softplus_on_obj:
+			# print("ln 176, creating objective")
+			# IPython.embed()
+			result = phidot
+		else:
+			result = nn.functional.softplus(phidot) # using softplus on loss!!!
 		result = result.view(-1, 1) # ensures bs x 1
 
 		return result
@@ -188,18 +200,18 @@ class Regularizer(nn.Module):
 		assert reg_weight >= 0.0
 
 	def forward(self, x):
-		reg = torch.tensor(0).to(self.device)
+		# reg = torch.tensor(0).to(self.device)
 		# IPython.embed()
-		if self.reg_weight:
-			print("inside")
-			if self.A_samples:
-				all_phi_values = self.phi_fn(self.A_samples)
-			else:
-				all_phi_values = self.phi_fn(x)
+		# if self.reg_weight:
+		# print("inside")
+		if self.A_samples:
+			all_phi_values = self.phi_fn(self.A_samples)
+		else:
+			all_phi_values = self.phi_fn(x)
 
-			max_phi_values = torch.max(all_phi_values, dim=1)[0]
-			# print("max_phi_values, from regularizer: ", max_phi_values)
-			reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5) # Huh interesting, 0.3 factor stretches sigmoid out a lot.
+		max_phi_values = torch.max(all_phi_values, dim=1)[0]
+		# print("max_phi_values, from regularizer: ", max_phi_values)
+		reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5) # Huh interesting, 0.3 factor stretches sigmoid out a lot.
 
 		return reg
 
@@ -213,9 +225,9 @@ def create_flying_param_dict(args=None):
 		"l": 1.5,
 		"k1": 4.0,
 		"k2": 0.05,
-		"m_p": 0.04,
-		"L_p": 8.0, # Prev: 0.03
-		'delta_safety_limit': math.pi / 4  # in radians; should be <= math.pi/4
+		"m_p": 0.04, # 5% of quad weight
+		"L_p": 3.0, # Prev: 0.03
+		'delta_safety_limit': math.pi / 4  # should be <= math.pi/4
 	}
 	param_dict["M"] = param_dict["m"] + param_dict["m_p"]
 	state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
@@ -225,7 +237,8 @@ def create_flying_param_dict(args=None):
 	r = 2
 	x_dim = len(state_index_names)
 	u_dim = 4
-	thresh = np.array([math.pi / 3, math.pi / 3, math.pi, 5, 5, 5, math.pi / 3, math.pi / 3, 5, 5],
+	ub = args.box_ang_vel_limit
+	thresh = np.array([math.pi / 3, math.pi / 3, math.pi, ub, ub, ub, math.pi / 3, math.pi / 3, ub, ub],
 	                  dtype=np.float32) # angular velocities bounds probably much higher in reality (~10-20 for drone, which can do 3 flips in 1 sec).
 
 	x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
@@ -237,6 +250,11 @@ def create_flying_param_dict(args=None):
 	param_dict["u_dim"] = u_dim
 	param_dict["x_lim"] = x_lim
 
+	# write args into the param_dict
+	param_dict["L_p"] = args.pend_length
+
+	# print("creating param_dict in main")
+	# IPython.embed()
 	return param_dict
 
 def main(args):
@@ -364,8 +382,12 @@ def main(args):
 		x_lim = param_dict["x_lim"]
 
 		# Create phi
-		from src.problems.flying_inv_pend import H, XDot, ULimitSetVertices
-		h_fn = H(param_dict)
+		from src.problems.flying_inv_pend import HMax, HSum, XDot, ULimitSetVertices
+		if args.h == "sum":
+			h_fn = HSum(param_dict)
+		elif args.h == "max":
+			h_fn = HMax(param_dict)
+		# h_fn = H(param_dict)
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
@@ -395,7 +417,7 @@ def main(args):
 
 	# Create CBF, etc.
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
-	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
+	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
 	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples)
 
 	# Send remaining modules to the correct device
@@ -420,7 +442,10 @@ def main(args):
 		test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, max_n_steps=args.test_attacker_max_n_steps, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
 
 	# Create regularization helper
-	reg_sample_keeper = RegSampleKeeper(x_lim, device, logger, n_samples=args.reg_n_samples)
+	if args.reg_weight:
+		reg_sample_keeper = RegSampleKeeper(x_lim, device, logger, n_samples=args.reg_n_samples)
+	else:
+		reg_sample_keeper = None
 
 	# Pass everything to Trainer
 	trainer = Trainer(args, logger, attacker, test_attacker, reg_sample_keeper)
@@ -428,40 +453,17 @@ def main(args):
 
 	##############################################################
 	#####################      Testing      ######################
-	# 02/07 debug: phi achieving large values
-	# p1 = torch.tensor([ 0.7896,  0.3761, -0.2465, -1.0356, -1.0155, -0.3704,  0.1800,  1.5708,
-    #      1.5499, -0.0021], device='cuda:0')
 
-	# p2 = torch.tensor([ 0.7896,  0.3761, -0.2465, -1.0356, -1.0155, -0.3704,  0.1800,  1.5708,
-         # 1.5499, -0.0021], device='cuda:0')
-
-	# p1 = torch.tensor([-0.6615,  0.3179,  0.8850, -0.0507,  1.5265, -0.7742, -0.8944,  1.2942,
-    #      0.0504, -0.5578], device='cuda:0')
-	# p2 = torch.tensor([ 0.7896,  0.3761, -0.2465, -1.0356, -1.0155, -0.3704,  0.1800,  1.5708,
-    #      1.5499, -0.0021], device='cuda:0')
-	#
-	# phi_val = phi_fn(p2.view(1, -1))
-	# print(phi_val)
-	# IPython.embed()
-	# Test of new flying_inv_pend env
-	# x = torch.rand((1, x_dim)).to(device)
-	# phi_vals = phi_fn(x)
-	# loss = objective_fn(x) + reg_fn(x)
-	# loss.backward()
-	#
-	#  # print("finished, in main.py")
+	# 2.20 bug
+	# x_rand = torch.rand(1, 10).to(device)
+	# phi_vals = phi_fn(x_rand)
 	# # IPython.embed()
+	# obj = phi_vals[0, -1]
+	# obj.backward()
 	#
-	#
-	#
-	# phi_vals_xe = phi_fn(x_e)
-	# print(phi_vals_xe)
-	# print("Did it run?")
-	# print("Check that gradients were populated?")
+	# for n, p in phi_fn.named_parameters():
+	# 	print(n, p.grad)
 	# # IPython.embed()
-
-	################################################################
-	# Visualization of points sampled on boundary
 
 
 
@@ -470,4 +472,3 @@ if __name__ == "__main__":
 	torch.manual_seed(args.random_seed)
 	np.random.seed(args.random_seed)
 	main(args)
-

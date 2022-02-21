@@ -7,23 +7,53 @@ import IPython
 import math
 
 g = 9.81
-class H(nn.Module):
+class HMax(nn.Module):
 	def __init__(self, param_dict):
 		super().__init__()
 		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes
 		self.i = self.state_index_dict
 
 	def forward(self, x):
+		# print("Inside HMax forward")
+		# IPython.embed()
 		# The way these are implemented should be batch compliant
 		# Return value is size (bs, 1)
 		theta = x[:, [self.i["theta"]]]
 		phi = x[:, [self.i["phi"]]]
+		gamma = x[:, [self.i["gamma"]]]
+		beta = x[:, [self.i["beta"]]]
 
 		cos_cos = torch.cos(theta)*torch.cos(phi)
 		eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
 		with torch.no_grad():
 			signed_eps = -torch.sign(cos_cos)*eps
-		rv = torch.acos(cos_cos + signed_eps) - self.delta_safety_limit
+		# rv = torch.acos(cos_cos + signed_eps) - self.delta_safety_limit
+		delta = torch.acos(cos_cos + signed_eps)
+		rv = torch.maximum(torch.maximum(delta**2, gamma**2), beta**2) - self.delta_safety_limit**2
+		return rv
+
+class HSum(nn.Module):
+	def __init__(self, param_dict):
+		super().__init__()
+		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes
+		self.i = self.state_index_dict
+
+	def forward(self, x):
+		# print("Inside HSum forward")
+		# IPython.embed()
+		# The way these are implemented should be batch compliant
+		# Return value is size (bs, 1)
+		theta = x[:, [self.i["theta"]]]
+		phi = x[:, [self.i["phi"]]]
+		gamma = x[:, [self.i["gamma"]]]
+		beta = x[:, [self.i["beta"]]]
+
+		cos_cos = torch.cos(theta)*torch.cos(phi)
+		eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
+		with torch.no_grad():
+			signed_eps = -torch.sign(cos_cos)*eps
+		delta = torch.acos(cos_cos + signed_eps)
+		rv = delta**2 + gamma**2 + beta**2 - self.delta_safety_limit**2
 
 		return rv
 
@@ -141,23 +171,26 @@ if __name__ == "__main__":
 		dev = "cpu"
 	device = torch.device(dev)
 
-	h_fn = H(param_dict)
+	# h_fn = H(param_dict)
 	xdot_fn = XDot(param_dict, device)
 	uvertices_fn = ULimitSetVertices(param_dict, device)
 
-	# N = 10
-	# x = torch.rand(N, 10).to(device)
-	# u = torch.rand(N, 4).to(device)
+	N = 10
+	x = torch.rand(N, 10).to(device)
+	u = torch.rand(N, 4).to(device)
 
+	h_fn = HMax(param_dict)
+	# h_fn = HSum(param_dict)
 	# rv1 = h_fn(x)
 	# print(rv1.shape)
-	# # x = torch.zeros(1, 10).to(device)
-	# # u = torch.zeros(1, 4).to(device)
+
+	# x = torch.zeros(1, 10).to(device)
+	# u = torch.zeros(1, 4).to(device)
 	# rv2 = xdot_fn(x, u)
-	# # IPython.embed()
+	# IPython.embed()
 	# rv3 = uvertices_fn(x)
-	#
+
 	# print(rv2.shape)
 	# print(rv3.shape)
-	# # print(rv1.shape)
+	# print(rv1.shape)
 	# IPython.embed()

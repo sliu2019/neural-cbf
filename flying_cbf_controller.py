@@ -22,6 +22,7 @@ class CBFController:
 
 	def compute_control(self, t, x):
 		# print("in CBFcontroller, compute control")
+		# print(x)
 		# IPython.embed()
 		############ Init log vars
 		apply_u_safe = None

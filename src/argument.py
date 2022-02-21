@@ -6,12 +6,15 @@ def parser():
 	parser = argparse.ArgumentParser(description='CBF synthesis')
 	parser.add_argument('--problem', default='cartpole_reduced', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced"])
 
+	# h(x) (user-specified SI)
+	parser.add_argument('--h', type=str, choices=['max', 'sum'], help='For flying inv pend, chose the form of h(x)')
+
 	# Phi
 	parser.add_argument('--phi_nn_dimension', default="64-64", type=str, help='specify the hidden dimension')
 	parser.add_argument('--phi_nnl', default="tanh", type=str)
 	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
-	parser.add_argument('--phi_k0_init_min', default=0.0, type=float)
-	parser.add_argument('--phi_k0_init_max', default=1.0, type=float)
+	# parser.add_argument('--phi_k0_init_min', default=0.0, type=float)
+	# parser.add_argument('--phi_k0_init_max', default=1.0, type=float)
 	parser.add_argument('--phi_include_xe', action='store_true')
 	parser.add_argument('--phi_include_beta_deriv', action='store_true')
 
@@ -21,11 +24,20 @@ def parser():
 	parser.add_argument('--max_theta', default=math.pi/4.0, type=float)
 	parser.add_argument('--max_force', default=22.0, type=float)
 
+	# Parameters for flying cartpole only
+	parser.add_argument('--pend_length', default=3.0, type=float)
+	parser.add_argument('--box_ang_vel_limit', default=20.0, type=float)
+
+	# Reg
 	parser.add_argument('--reg_weight', default=1.0, type=float, help='the weight on the volume term')
 	parser.add_argument('--reg_sample_distance', default=0.1, type=float)
 	# parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
 
 	# parser.add_argument('--g_input_is_xy', action='store_true')
+
+	# Objective
+	parser.add_argument('--no_softplus_on_obj', action='store_true', help='removes softplus on the objective')
+
 	###################################################################################################################################
 	# Reg sample keeper
 	parser.add_argument('--reg_n_samples', default=50, type=int)
