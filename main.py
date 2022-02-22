@@ -65,11 +65,12 @@ class Phi(nn.Module):
 		self.beta_net = nn.Sequential(*net_layers)
 
 	def forward(self, x, grad_x=False):
-		# RV is (bs, r+1)
-		# print("inside phi's forward")
-		# IPython.embed()
 		# The way these are implemented should be batch compliant
 		# Assume x is (bs, x_dim)
+		# RV is (bs, r+1)
+
+		# print("inside phi's forward")
+		# IPython.embed()
 		k0 = self.k0 + self.k0_min
 		ci = self.ci + self.ci_min
 
@@ -84,7 +85,6 @@ class Phi(nn.Module):
 
 			# Note: to preserve gradient flow, have to assign mat entries to ci not create with ci (i.e. torch.tensor([ci[0]]))
 			binomial = torch.ones((2, 1))
-			# binomial[1] = self.ci[i]
 			binomial[1] = ci[i]
 			ki = A.mm(binomial)
 
@@ -115,9 +115,6 @@ class Phi(nn.Module):
 		h_derivs = h_ith_deriv # bs x 1
 		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device)) # bs x x_dim
 
-		# print("Inside phi, ln 118")
-		# IPython.embed()
-
 		for i in range(self.r-1):
 			grad_h_ith = grad([torch.sum(h_ith_deriv)], x, create_graph=True)[0] # bs x x_dim; create_graph ensures gradient is computed through the gradient operation
 			h_ith_deriv = (grad_h_ith.unsqueeze(dim=1)).bmm(f_val.unsqueeze(dim=2)) # bs x 1 x 1
@@ -128,7 +125,6 @@ class Phi(nn.Module):
 			x.requires_grad = orig_req_grad_setting
 		#####################################################################
 		# Turn gradient tracking off for x
-
 		result = h_derivs.mm(ki_all.t())
 		if self.args.phi_include_beta_deriv:
 			phi_r_minus_1_star = result[:, [-1]]
@@ -200,18 +196,13 @@ class Regularizer(nn.Module):
 		assert reg_weight >= 0.0
 
 	def forward(self, x):
-		# reg = torch.tensor(0).to(self.device)
-		# IPython.embed()
-		# if self.reg_weight:
-		# print("inside")
 		if self.A_samples:
 			all_phi_values = self.phi_fn(self.A_samples)
 		else:
 			all_phi_values = self.phi_fn(x)
 
 		max_phi_values = torch.max(all_phi_values, dim=1)[0]
-		# print("max_phi_values, from regularizer: ", max_phi_values)
-		reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5) # Huh interesting, 0.3 factor stretches sigmoid out a lot.
+		reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5) # TODO: Huh interesting, 0.3 factor stretches sigmoid out a lot; should we remove it?
 
 		return reg
 
@@ -275,9 +266,6 @@ def main(args):
 
 	args_savepth = os.path.join(log_folder, "args.txt")
 	save_args(args, args_savepth)
-
-	# print("Parsed and saved args")
-	# IPython.embed()
 
 	# Device
 	if torch.cuda.is_available():
@@ -387,7 +375,7 @@ def main(args):
 			h_fn = HSum(param_dict)
 		elif args.h == "max":
 			h_fn = HMax(param_dict)
-		# h_fn = H(param_dict)
+
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
@@ -442,7 +430,7 @@ def main(args):
 		test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, max_n_steps=args.test_attacker_max_n_steps, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
 
 	# Create regularization helper
-	if args.reg_weight:
+	if args.reg_weight and reg_fn.A_samples:
 		reg_sample_keeper = RegSampleKeeper(x_lim, device, logger, n_samples=args.reg_n_samples)
 	else:
 		reg_sample_keeper = None

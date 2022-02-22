@@ -1,6 +1,7 @@
 import torch
 import IPython
 import numpy as np
+import sys
 
 from torch import nn
 from torch.autograd import grad
@@ -34,6 +35,9 @@ class RegSampleKeeper():
 
         # For warmstart
         self.X_saved = None
+
+        print("NEED TO PROOFREAD THIS IMPLEMENTATION REGSAMPLEKEEPER BEFORE USING IT")
+        sys.exit(0)
 
     def _project(self, phi_fn, x):
         # NOTE: it doesn't matter much for reg for the points to be exactly on the boundary!

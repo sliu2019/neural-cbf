@@ -75,7 +75,7 @@ def parser():
 	parser.add_argument('--trainer_lr', default=1e-3, type=float)
 	parser.add_argument('--train_mode', default='dG', choices=['dG', 'dS'])
 	parser.add_argument('--trainer_average_gradients', action='store_true')
-	parser.add_argument('--trainer_type', type=str, default="Adam")
+	# parser.add_argument('--trainer_type', type=str, default="Adam")
 
 	# Saving/logging
 	parser.add_argument('--random_seed', default=1, type=int)

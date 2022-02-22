@@ -28,18 +28,20 @@ class Trainer():
 		k0 = p_dict["k0"]
 		beta_net_0_weight = p_dict["beta_net.0.weight"]
 
-		if self.args.trainer_type == "Adam":
-			# TODO: need to fix this for projected parameters
-			# optimizer = optim.Adam(params_no_proj) # old
-			optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
-		elif self.args.trainer_type == "LinearLR":
-			optimizer = optim.SGD(phi_fn.parameters(), self.args.trainer_lr)
-			scheduler = optim.LinearLR(optimizer, start_factor=1.0, end_factor=0.1, total_iters=1000, verbose=True)
-			# TODO: total_iters set experimentally
-		elif self.args.trainer_type == "ExponentialLR":
-			optimizer = optim.SGD(phi_fn.parameters(), self.args.trainer_lr)
-			gamma = 0.997
-			scheduler = optim.ExponentialLR(optimizer, gamma, verbose=True)
+		# if self.args.trainer_type == "Adam":
+		# 	# TODO: need to fix this for projected parameters
+		# 	# optimizer = optim.Adam(params_no_proj) # old
+		# 	optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
+		# elif self.args.trainer_type == "LinearLR":
+		# 	optimizer = optim.SGD(phi_fn.parameters(), self.args.trainer_lr)
+		# 	scheduler = optim.LinearLR(optimizer, start_factor=1.0, end_factor=0.1, total_iters=1000, verbose=True)
+		# 	# TODO: total_iters set experimentally
+		# elif self.args.trainer_type == "ExponentialLR":
+		# 	optimizer = optim.SGD(phi_fn.parameters(), self.args.trainer_lr)
+		# 	gamma = 0.997
+		# 	scheduler = optim.ExponentialLR(optimizer, gamma, verbose=True)
+
+		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
 
 		_iter = 0
 		t0 = time.perf_counter()
@@ -102,7 +104,10 @@ class Trainer():
 			# k0.grad = None
 
 			t0_xreg = time.perf_counter()
-			if self.args.reg_weight:
+			if reg_fn.A_samples:
+				doesnt_matter = torch.tensor(0)
+				reg_value = reg_fn(doesnt_matter) # reg_fn depends on property A_samples, not the input
+			elif reg_fn.A_samples is None and self.args.reg_weight:
 				X_reg = self.reg_sample_keeper.return_samples(phi_fn)
 				reg_value = reg_fn(X_reg)
 			else:
@@ -114,25 +119,19 @@ class Trainer():
 				obj = objective_fn(X)
 				c = 0.1
 				with torch.no_grad():
-					# w = torch.nn.functional.softmax(obj, dim=0)
 					w = torch.exp(c*obj)
 					w = w/torch.sum(w)
 				attack_value = torch.dot(w.flatten(), obj.flatten())
-				objective_value = attack_value + reg_value
-				objective_value.backward()
 			else:
 				# Outer max
 				x_batch = x.view(1, -1)
-				# reg_value = reg_fn(X_reg)
 				attack_value = objective_fn(x_batch)[0, 0]
-				objective_value = attack_value + reg_value
-				objective_value.backward()
 
 			# print("Reg value: ", reg_value)
+			objective_value = attack_value + reg_value
+			objective_value.backward()
 			optimizer.step()
 
-			# if "LR" in self.args.trainer_type:
-			# 	scheduler.step()
 			with torch.no_grad():
 				# new_ci = ci - ci_lr*ci.grad
 				new_ci = ci
@@ -209,7 +208,7 @@ class Trainer():
 			train_loop_times.append(t_so_far)
 
 			# Recording for reg sample keeper
-			if self.args.reg_weight:
+			if self.args.reg_weight and reg_fn.A_samples is None:
 				phis_X_reg = phi_fn(X_reg)
 				max_dist_X_reg = torch.max(torch.abs(torch.max(phis_X_reg, axis=1)[0])).item()
 				# max_dist_X_reg = max_dist_X_reg.detach().cpu().numpy()
