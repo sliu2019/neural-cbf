@@ -90,7 +90,8 @@ class FlyingInvertedPendulumEnv():
 		k_z = R[2, 2]
 
 		###### Computing state derivatives
-		dd_drone_angles = np.diag([(1.0/self.J_x), (1.0/self.J_y), (1.0/self.J_z)])@R
+		J_inv = np.diag([(1.0/self.J_x), (1.0/self.J_y), (1.0/self.J_z)])
+		dd_drone_angles = R@J_inv
 
 		ddphi = (3.0)*(k_y*np.cos(phi) + k_z*np.sin(phi))/(2*self.M*self.L_p*np.cos(theta))
 		ddtheta = (3.0*(-k_x*np.cos(theta)-k_y*np.sin(phi)*np.sin(theta) + k_z*np.cos(phi)*np.sin(theta))/(2.0*self.M*self.L_p))
