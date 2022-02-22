@@ -65,6 +65,7 @@ class Trainer():
 		train_attack_X_init_random = []
 		train_attack_X_final = []
 		train_attack_X_obj_vals = []
+		train_attack_X_phi_vals = []
 
 		train_attack_init_best_attack_value = []
 		train_attack_final_best_attack_value = []
@@ -171,10 +172,12 @@ class Trainer():
 			obj_vals = debug_dict["obj_vals"]
 			init_best_attack_value = debug_dict["init_best_attack_value"]
 			final_best_attack_value = debug_dict["final_best_attack_value"]
+			X_phi_vals = debug_dict["phi_vals"]
 
 			train_attack_X_init.append(X_init.detach().cpu().numpy())
 			train_attack_X_final.append(X.detach().cpu().numpy())
 			train_attack_X_obj_vals.append(obj_vals.detach().cpu().numpy())
+			train_attack_X_phi_vals.append(X_phi_vals.detach().cpu().numpy())
 			train_attack_numpy = x.detach().cpu().numpy()
 			train_attacks.append(train_attack_numpy)
 			train_attack_X_init_reuse.append(X_reuse_init.detach().cpu().numpy())
@@ -224,7 +227,7 @@ class Trainer():
 				save_model(phi_fn, file_name)
 
 				# save data too
-				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "grad_norms": grad_norms, "reg_sample_keeper_X": reg_sample_keeper_X}
+				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "train_attack_X_phi_vals": train_attack_X_phi_vals, "grad_norms": grad_norms, "reg_sample_keeper_X": reg_sample_keeper_X}
 
 				additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse, "train_attack_X_init_random": train_attack_X_init_random, "train_attack_init_best_attack_value": train_attack_init_best_attack_value, "train_attack_final_best_attack_value": train_attack_final_best_attack_value,"train_attack_t_init": train_attack_t_init, "train_attack_t_grad_steps": train_attack_t_grad_steps, "train_attack_t_reproject": train_attack_t_reproject, "train_attack_t_total_opt": train_attack_t_total_opt}
 
