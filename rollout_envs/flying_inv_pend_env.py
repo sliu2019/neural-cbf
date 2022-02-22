@@ -93,6 +93,8 @@ class FlyingInvertedPendulumEnv():
 		J_inv = np.diag([(1.0/self.J_x), (1.0/self.J_y), (1.0/self.J_z)])
 		dd_drone_angles = R@J_inv
 
+		# print(J_inv, R)
+
 		ddphi = (3.0)*(k_y*np.cos(phi) + k_z*np.sin(phi))/(2*self.M*self.L_p*np.cos(theta))
 		ddtheta = (3.0*(-k_x*np.cos(theta)-k_y*np.sin(phi)*np.sin(theta) + k_z*np.cos(phi)*np.sin(theta))/(2.0*self.M*self.L_p))
 
@@ -103,6 +105,7 @@ class FlyingInvertedPendulumEnv():
 		g[9, 0] = ddtheta
 		g[13:, 0] = (1.0/self.M)*np.array([k_x, k_y, k_z])
 
+		# print(g)
 		return g
 
 	def x_dot_open_loop(self, x, u):
@@ -117,11 +120,34 @@ class FlyingInvertedPendulumEnv():
 
 if __name__ == "__main__":
 	pass
-	# default_env = FlyingInvertedPendulumEnv()
-	#
-	# x = np.random.rand(16)
-	# u = np.random.rand(4)
-	# x_dot = default_env.x_dot_open_loop(x, u)
-	#
-	# print(x_dot)
+	"""param_dict = {
+		"m": 0.8,
+		"J_x": 0.005,
+		"J_y": 0.005,
+		"J_z": 0.009,
+		"l": 1.5,
+		"k1": 4.0,
+		"k2": 0.05,
+		"m_p": 0.04, # 5% of quad weight
+		"L_p": 3.0, # Prev: 0.03
+		'delta_safety_limit': math.pi / 4  # should be <= math.pi/4
+	}
+	param_dict["M"] = param_dict["m"] + param_dict["m_p"]
+	state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
+	                     "dtheta"]  # excluded x, y, z
+	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+	param_dict["state_index_dict"] = state_index_dict
+
+
+	np.random.seed(3)
+	default_env = FlyingInvertedPendulumEnv(param_dict)
+
+	x = np.random.rand(16)
+	u = np.random.rand(4)
+	print(x, u)
+	x_dot = default_env.x_dot_open_loop(x, u)
+
+	print(x_dot)"""
+
+
 

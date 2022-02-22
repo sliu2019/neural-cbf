@@ -99,11 +99,19 @@ class XDot(nn.Module):
 		F = (u[:, 0] + self.M*g)
 
 		###### Computing state derivatives
-		ddquad_angles = torch.bmm(R, u[:, 1:, None]) # (N, 3, 1)
+		# IPython.embed()
+		J = torch.tensor([self.J_x, self.J_y, self.J_z]).to(self.device)
+		norm_torques = u[:, 1:]*(1.0/J)
+
+		ddquad_angles = torch.bmm(R, norm_torques[:, :, None]) # (N, 3, 1)
 		ddquad_angles = ddquad_angles[:, :, 0]
-		ddgamma = (1.0/self.J_x)*ddquad_angles[:, 0]
-		ddbeta = (1.0/self.J_y)*ddquad_angles[:, 1]
-		ddalpha = (1.0/self.J_z)*ddquad_angles[:, 2]
+		# ddgamma = (1.0/self.J_x)*ddquad_angles[:, 0]
+		# ddbeta = (1.0/self.J_y)*ddquad_angles[:, 1]
+		# ddalpha = (1.0/self.J_z)*ddquad_angles[:, 2]
+
+		ddgamma = ddquad_angles[:, 0]
+		ddbeta = ddquad_angles[:, 1]
+		ddalpha = ddquad_angles[:, 2]
 
 		ddphi = (3.0)*(k_y*torch.cos(phi) + k_z*torch.sin(phi))/(2*self.M*self.L_p*torch.cos(theta))*F + 2*dtheta*dphi*torch.tan(theta)
 		ddtheta = (3.0*(-k_x*torch.cos(theta)-k_y*torch.sin(phi)*torch.sin(theta) + k_z*torch.cos(phi)*torch.sin(theta))/(2.0*self.M*self.L_p))*F - torch.square(dphi)*torch.sin(theta)*torch.cos(theta)
@@ -148,42 +156,43 @@ class ULimitSetVertices(nn.Module):
 		return rv
 
 if __name__ == "__main__":
-	param_dict = {
-		"m": 0.8,
-		"J_x": 0.005,
-		"J_y": 0.005,
-		"J_z": 0.009,
-		"l": 1.5,
-		"k1": 4.0,
-		"k2": 0.05,
-		"m_p": 0.04, # TODO?
-		"L_p": 0.03, # TODO?
-		'delta_safety_limit': math.pi/5 # in radians; should be <= math.pi/4
-	}
-	param_dict["M"] = param_dict["m"] + param_dict["m_p"]
+	# param_dict = {
+	# 	"m": 0.8,
+	# 	"J_x": 0.005,
+	# 	"J_y": 0.005,
+	# 	"J_z": 0.009,
+	# 	"l": 1.5,
+	# 	"k1": 4.0,
+	# 	"k2": 0.05,
+	# 	"m_p": 0.04, # TODO?
+	# 	"L_p": 0.03, # TODO?
+	# 	'delta_safety_limit': math.pi/5 # in radians; should be <= math.pi/4
+	# }
+	# param_dict["M"] = param_dict["m"] + param_dict["m_p"]
+	#
+	# state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi", "dtheta"] # excluded x, y, z
+	# state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+	# param_dict["state_index_dict"] = state_index_dict
+	# ##############################################
+	#
+	# if torch.cuda.is_available():
+	# 	os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+	# 	dev = "cuda:%i" % (0)
+	# 	print("Using GPU device: %s" % dev)
+	# else:
+	# 	dev = "cpu"
+	# device = torch.device(dev)
+	#
+	# # h_fn = H(param_dict)
+	# xdot_fn = XDot(param_dict, device)
+	# uvertices_fn = ULimitSetVertices(param_dict, device)
+	#
+	# N = 10
+	# x = torch.rand(N, 10).to(device)
+	# u = torch.rand(N, 4).to(device)
+	#
+	# uvert = uvertices_fn(x)
 
-	state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi", "dtheta"] # excluded x, y, z
-	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
-	param_dict["state_index_dict"] = state_index_dict
-	##############################################
-
-	if torch.cuda.is_available():
-		os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-		dev = "cuda:%i" % (0)
-		print("Using GPU device: %s" % dev)
-	else:
-		dev = "cpu"
-	device = torch.device(dev)
-
-	# h_fn = H(param_dict)
-	xdot_fn = XDot(param_dict, device)
-	uvertices_fn = ULimitSetVertices(param_dict, device)
-
-	N = 10
-	x = torch.rand(N, 10).to(device)
-	u = torch.rand(N, 4).to(device)
-
-	uvert = uvertices_fn(x)
 	# IPython.embed()
 	# h_fn = HMax(param_dict)
 	# h_fn = HSum(param_dict)
@@ -200,3 +209,52 @@ if __name__ == "__main__":
 	# print(rv3.shape)
 	# print(rv1.shape)
 	# IPython.embed()
+
+	"""param_dict = {
+		"m": 0.8,
+		"J_x": 0.005,
+		"J_y": 0.005,
+		"J_z": 0.009,
+		"l": 1.5,
+		"k1": 4.0,
+		"k2": 0.05,
+		"m_p": 0.04, # 5% of quad weight
+		"L_p": 3.0, # Prev: 0.03
+		'delta_safety_limit': math.pi / 4  # should be <= math.pi/4
+	}
+	param_dict["M"] = param_dict["m"] + param_dict["m_p"]
+	state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
+	                     "dtheta"]  # excluded x, y, z
+	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+	param_dict["state_index_dict"] = state_index_dict
+
+	if torch.cuda.is_available():
+		os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+		dev = "cuda:%i" % (0)
+		print("Using GPU device: %s" % dev)
+	else:
+		dev = "cpu"
+	device = torch.device(dev)
+
+	xdot_fn = XDot(param_dict, device)
+
+	np.random.seed(3)
+	x = np.random.rand(16)
+	u = np.random.rand(4)
+
+	x = x[:10]
+	x = torch.from_numpy(x.astype("float32")).to(device)
+	u = torch.from_numpy(u.astype("float32")).to(device)
+
+	x = x.view(1, -1)
+	u = u.view(1, -1)
+
+	# N = 10
+	# x = torch.rand(N, 10).to(device)
+	# u = torch.rand(N, 4).to(device)
+
+	xdot = xdot_fn(x, u)
+
+	print(x, u)
+	print(xdot)"""
+	pass
