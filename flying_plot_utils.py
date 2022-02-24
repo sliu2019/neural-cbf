@@ -203,6 +203,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 
 	print("Saved at: %s" % save_fpth)
 	plt.tight_layout(pad=0.5)
+	plt.title("From %s" % fldr_path)
 	plt.savefig(save_fpth, bbox_inches='tight')
 	# plt.clf()
 	# plt.close()
@@ -227,9 +228,9 @@ def graph_losses(exp_name):
 		train_reg_losses = data["train_reg_losses"]
 		train_losses = data["train_losses"]
 
-		plt.plot(train_attack_losses[:1000], linewidth=0.5, label="train attack loss")
-		plt.plot(train_reg_losses[:1000], linewidth=0.5, label="train reg loss")
-		plt.plot(train_losses[:1000], linewidth=0.5, label="train total loss")
+		plt.plot(train_attack_losses[:1500], linewidth=0.5, label="train attack loss")
+		plt.plot(train_reg_losses[:1500], linewidth=0.5, label="train reg loss")
+		plt.plot(train_losses[:1500], linewidth=0.5, label="train total loss")
 		plt.title("Losses for %s" % exp_name)
 
 	plt.xlabel("Optimization steps")
@@ -371,9 +372,9 @@ if __name__ == "__main__":
 	#########     FILL OUT HERE !!!!   #####################
 	### ****************************************************
 
-	exp_names = ["flying_inv_pend_easier_env_flat_beta", "flying_inv_pend_easier_env_iterated_beta", "flying_inv_pend_harder_env_flat_beta", "flying_inv_pend_harder_env_iterated_beta"]
+	exp_names = ["flying_inv_pend_pend_5_beta_iterated", "flying_inv_pend_pend_3_beta_iterated_nn_128_128", "flying_inv_pend_pend_5_beta_flat_nn_128_128", "flying_inv_pend_pend_3_beta_iterated"]
 	# checkpoint_numbers = [500, 1800, 800, 1800]
-	checkpoint_numbers = [0]*4
+	checkpoint_numbers = [1420, 1450, 430, 1370]
 	### ****************************************************
 	########################################################
 	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):

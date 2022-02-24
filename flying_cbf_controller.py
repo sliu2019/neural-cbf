@@ -40,7 +40,7 @@ class CBFController:
 		x_next = x + self.env.dt * self.env.x_dot_open_loop(x, self.compute_u_ref(t, x))  # in the absence of safe control, the next state
 		next_phi_val = self.cbf_obj.phi_fn(x_next)
 
-		if phi_vals[0, -1] > 0:  # Outside
+		if phi_vals[0, -1] >= 0:  # Outside
 			print("Outside boundary")
 			eps = self.eps_outside
 			apply_u_safe = True
@@ -69,13 +69,13 @@ class CBFController:
 		# Note, constraint may not always be satisfied, so we include a slack variable on the CBF input constraint
 		w = 1000.0  # slack weight
 
-		Q = np.zeros((5, 5))
-		Q[:4, :4] = 2*self.mixer.T@self.mixer
-		p = np.concatenate([-2*u_ref.T@self.mixer, np.array([w])])
-		p = np.reshape(p, (-1, 1))
+		P = np.zeros((5, 5))
+		P[:4, :4] = 2*self.mixer.T@self.mixer
+		q = np.concatenate([-2*u_ref.T@self.mixer, np.array([w])])
+		q = np.reshape(q, (-1, 1))
 
 		G = np.zeros((10, 5))
-		G[0, :4] = lhs@self.mixer
+		G[0, 0:4] = lhs@self.mixer
 		G[0, 4] = -1.0
 		G[1:5, 0:4] = -np.eye(4)
 		G[5:9, 0:4] = np.eye(4)
@@ -85,19 +85,26 @@ class CBFController:
 		h = np.reshape(h, (-1, 1))
 
 		try:
-			sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(h))
+			sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h))
 		except:
 			# IPython.embed()
 			print("Infeasible QP, exiting")
 			exit(0)
+
+		print("ln 94 in cbf controller")
+		print("Try to check out the properties on sol_obj")
+		print("So that we can debug exceptions")
+		IPython.embed()
 		sol_var = np.array(sol_obj['x'])
 
-		u_safe = sol_var[0:4]
+		# u_safe = sol_var[0:4]
+		sol_impulses = sol_var[0:4]
+		u_safe = self.mixer@np.reshape(sol_impulses, (4, 1))
+
 		u_safe = np.reshape(u_safe, (4))
 		qp_slack = sol_var[-1]
 
-		print(u_safe, qp_slack)
-
+		print(sol_impulses, u_safe, qp_slack)
 		debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "phi_vals": phi_vals.flatten(),
 		              "qp_slack": qp_slack, "qp_rhs": qp_rhs, "qp_lhs": qp_lhs}
 		return u_safe, debug_dict

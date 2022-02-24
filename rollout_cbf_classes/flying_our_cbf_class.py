@@ -10,6 +10,7 @@ class OurCBF:
         self.torch_phi_fn = torch_phi_fn
         self.param_dict = param_dict
         self.__dict__.update(self.param_dict)
+        self.state_index_list = list(self.state_index_dict.keys())
 
     def convert_angle_to_negpi_pi_interval(self, angle):
         new_angle = np.arctan2(np.sin(angle), np.cos(angle))
@@ -22,25 +23,26 @@ class OurCBF:
         """
         # print("inside ourcbfclass, phi_fn")
         # IPython.embed()
+        bs = x.shape[0]
+
         # Slice off translational states
         x = np.reshape(x, (-1, 16))
         x = x[:, :10]
+
         # Wrap-around on cyclical angles
-        ind_cyclical = np.argwhere(self.x_lim[:, 1] == math.pi).flatten()
+        ind_cyclical = [0, 1, 2, 6, 7]
         for i in ind_cyclical:
             x[:, i] = self.convert_angle_to_negpi_pi_interval(x[:, i])
 
         # Warn if x outside of state box of phi
-        outside_box = np.logical_or(x < self.x_lim[:, 0], x > self.x_lim[:, 1]).flatten()
-        if np.any(outside_box):
-            print("WARNING: phi_fn( . ) evaluating phi at x outside of state box")
-            ind_outside_box = np.argwhere(outside_box).flatten()
-            # print(ind_outside_box)
-            # value_to_key = lambda i, : ]
-            state_vars_outside_box = [list(self.state_index_dict.keys())[list(self.state_index_dict.values()).index(i)] for i in ind_outside_box]
-            print("States: " + ", ".join(state_vars_outside_box))
-            # IPython.embed()
-
+        if bs == 1: # NOTE: ONLY PRINTS WHEN RUNNING 1 ROLLOUT AT A TIME
+            outside_box = np.logical_or(x < self.x_lim[:, 0], x > self.x_lim[:, 1]).flatten()
+            if np.any(outside_box):
+                print("WARNING: phi_fn( . ) evaluating phi at x outside of state box")
+                ind_outside_box = np.argwhere(outside_box).flatten()
+                for ind in ind_outside_box:
+                    print(self.state_index_list[ind], x[0, ind])
+                # print("States: " + ", ".join(state_vars_outside_box))
 
         # To torch
         x_torch = torch.from_numpy(x.astype("float32"))
@@ -56,25 +58,26 @@ class OurCBF:
         """
         # print("inside ourcbf, phi grad")
         # IPython.embed()
+        bs = x.shape[0]
 
+        # Slice off translational states
         x = np.reshape(x, (-1, 16))
         x = x[:, :10]
+
         # Wrap-around on cyclical angles
-        ind_cyclical = np.argwhere(self.x_lim[:, 1] == math.pi).flatten()
+        ind_cyclical = [0, 1, 2, 6, 7]
         for i in ind_cyclical:
             x[:, i] = self.convert_angle_to_negpi_pi_interval(x[:, i])
 
         # Warn if x outside of state box of phi
-        outside_box = np.logical_or(x < self.x_lim[:, 0], x > self.x_lim[:, 1]).flatten()
-        if np.any(outside_box):
-            print("WARNING: phi_grad( . ) evaluating phi at x outside of state box")
-            ind_outside_box = np.argwhere(outside_box).flatten()
-            # print(ind_outside_box)
-            # value_to_key = lambda i, : ]
-            state_vars_outside_box = [list(self.state_index_dict.keys())[list(self.state_index_dict.values()).index(i)] for i in ind_outside_box]
-            print("States: " + ", ".join(state_vars_outside_box))
-            # IPython.embed()
-
+        if bs == 1: # NOTE: ONLY PRINTS WHEN RUNNING 1 ROLLOUT AT A TIME
+            outside_box = np.logical_or(x < self.x_lim[:, 0], x > self.x_lim[:, 1]).flatten()
+            if np.any(outside_box):
+                print("WARNING: phi_fn( . ) evaluating phi at x outside of state box")
+                ind_outside_box = np.argwhere(outside_box).flatten()
+                for ind in ind_outside_box:
+                    print(self.state_index_list[ind], x[0, ind])
+                # print("States: " + ", ".join(state_vars_outside_box))
 
         x_torch = torch.from_numpy(x.astype("float32"))
         x_torch.requires_grad = True
@@ -88,8 +91,6 @@ class OurCBF:
         x_torch.requires_grad = False
         phi_grad = phi_grad.detach().cpu().numpy().flatten()
         phi_grad = np.concatenate((phi_grad, np.zeros(6)))
-        # phi_grad = phi_grad[None]
-        # phi_grad = np.array([0, phi_grad[0, 0], 0, phi_grad[0, 1]])[None]
 
         return phi_grad
 
