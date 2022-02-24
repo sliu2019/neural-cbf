@@ -104,7 +104,7 @@ class CBFController:
 		u_safe = np.reshape(u_safe, (4))
 		qp_slack = sol_var[-1]
 
-		print(sol_impulses, u_safe, qp_slack)
+		# print(sol_impulses, u_safe, qp_slack)
 		debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "phi_vals": phi_vals.flatten(),
 		              "qp_slack": qp_slack, "qp_rhs": qp_rhs, "qp_lhs": qp_lhs}
 		return u_safe, debug_dict
