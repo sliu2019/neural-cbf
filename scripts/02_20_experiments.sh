@@ -30,13 +30,13 @@
 ### Evening run
 
 ## Pend 3.0, iterated beta
-nohup python main.py --problem flying_inv_pend --h sum --phi_include_beta_deriv --no_softplus_on_obj --reg_weight 0.0 --phi_include_xe --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 1500 --affix pend_3_beta_iterated --gpu 0 &> pend_3_beta_iterated.out &
+nohup python main.py --problem flying_inv_pend --h sum --phi_include_beta_deriv --no_softplus_on_obj --reg_weight 0.0 --phi_include_xe --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 4500 --affix pend_3_beta_iterated --gpu 1 &> pend_3_beta_iterated.out &
 
 ## Longer pend (5.0), beta iterated
-nohup python main.py --problem flying_inv_pend --pend_length 5.0 --h sum --phi_include_beta_deriv --no_softplus_on_obj --reg_weight 0.0 --phi_include_xe --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 1500 --affix pend_5_beta_iterated --gpu 1 &> pend_5_beta_iterated.out &
+nohup python main.py --problem flying_inv_pend --pend_length 5.0 --h sum --phi_include_beta_deriv --no_softplus_on_obj --reg_weight 0.0 --phi_include_xe --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 4500 --affix pend_5_beta_iterated --gpu 2 &> pend_5_beta_iterated.out &
 
 ## Pend 3.0, iterated beta, 128-128 NN
-nohup python main.py --problem flying_inv_pend --phi_nn_dimension 128-128 --h sum --phi_include_beta_deriv --no_softplus_on_obj --reg_weight 0.0 --phi_include_xe --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 1500 --affix pend_3_beta_iterated_nn_128_128 --gpu 3 &> pend_3_beta_iterated_nn_128_128.out &
+nohup python main.py --problem flying_inv_pend --phi_nn_dimension 128-128 --h sum --phi_include_beta_deriv --no_softplus_on_obj --reg_weight 0.0 --phi_include_xe --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 4500 --affix pend_3_beta_iterated_nn_128_128 --gpu 3 &> pend_3_beta_iterated_nn_128_128.out &
 
 ## Longer pend (5.0), beta flat, 128-128 NN
-nohup python main.py --problem flying_inv_pend --pend_length 5.0 --phi_nn_dimension 128-128 --h sum --no_softplus_on_obj --reg_weight 0.0 --phi_include_xe --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 1500 --affix pend_5_beta_flat_nn_128_128 --gpu 3 &> pend_5_beta_flat_nn_128_128.out &
+#nohup python main.py --problem flying_inv_pend --pend_length 5.0 --phi_nn_dimension 128-128 --h sum --no_softplus_on_obj --reg_weight 0.0 --phi_include_xe --train_attacker_n_samples 60 --train_attacker_max_n_steps 50 --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 1500 --affix pend_5_beta_flat_nn_128_128 --gpu 3 &> pend_5_beta_flat_nn_128_128.out &

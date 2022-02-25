@@ -34,6 +34,9 @@ class CBFController:
 		qp_lhs = None
 		qp_rhs = None
 		impulses = None
+		inside_boundary = False
+		on_boundary = False
+		outside_boundary = False
 		################
 
 		phi_vals = self.cbf_obj.phi_fn(x)  # This is an array of (1, r+1), where r is the degree
@@ -45,18 +48,22 @@ class CBFController:
 		next_phi_val = self.cbf_obj.phi_fn(x_next)
 
 		if phi_vals[0, -1] > 0:  # Outside
-			print("STATUS: Outside")
+			# print("STATUS: Outside") # TODO
 			eps = self.eps_outside
 			apply_u_safe = True
+			outside_boundary = True
 		elif phi_vals[0, -1] < 0 and next_phi_val[0, -1] >= 0:  # On boundary. Note: cheating way to convert DT to CT
-			print("STATUS: On")
+			# print("STATUS: On") # TODO
 			eps = self.eps_bdry
 			apply_u_safe = True
+			on_boundary = True
 		else:  # Inside
-			print("STATUS: Inside")
+			# print("STATUS: Inside") # TODO
 			apply_u_safe = False
+			inside_boundary = True
 			debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs": qp_rhs,
-			              "qp_lhs": qp_lhs, "phi_vals": phi_vals.flatten(), "impulses": impulses}
+			              "qp_lhs": qp_lhs, "phi_vals": phi_vals.flatten(), "impulses": impulses,
+			              "inside_boundary": inside_boundary, "on_boundary": on_boundary, "outside_boundary": outside_boundary}
 			return u_ref, debug_dict
 
 		# IPython.embed()
@@ -112,9 +119,10 @@ class CBFController:
 		u_safe = np.reshape(u_safe, (4))
 		qp_slack = sol_var[-1]
 
-		print("Slack: %.6f" % qp_slack)
+		# print("Slack: %.6f" % qp_slack) # TODO
 		# print(sol_impulses, u_safe, qp_slack)
 		impulses = sol_impulses
 		debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "phi_vals": phi_vals.flatten(),
-		              "qp_slack": qp_slack, "qp_rhs": qp_rhs, "qp_lhs": qp_lhs, "impulses": impulses}
+		              "qp_slack": qp_slack, "qp_rhs": qp_rhs, "qp_lhs": qp_lhs, "impulses": impulses,
+		             "inside_boundary": inside_boundary, "on_boundary": on_boundary, "outside_boundary": outside_boundary}
 		return u_safe, debug_dict

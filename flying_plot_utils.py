@@ -98,17 +98,35 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	return phi_fn, param_dict
 
 
-def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, fnm=None, fldr_path=None):
+def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, constants_for_other_params=None, fnm=None, fldr_path=None):
 	"""
 	Plots invariant set and (if necessary) projected boundary samples in 2D
 	which_params: all or list of lists of length 2
 	"""
+	if rollouts is not None:
+		print("Inside plot_invariant_set_slices() of fling_plot_utils")
+		print("Have never debugged traj plotting using this")
+		IPython.embed()
+
 	x_lim = param_dict["x_lim"]
 	x_dim = param_dict["x_dim"]
 	state_index_dict = param_dict["state_index_dict"]
 
 	if which_params is None:
-		params_to_viz = [["theta", "phi"], ["dtheta", "dphi"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"], ["dbeta", "dalpha"], ["dgamma", "dbeta"], ["dgamma", "dalpha"]]
+		# params_to_viz = [["theta", "phi"], ["dtheta", "dphi"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"], ["dbeta", "dalpha"], ["dgamma", "dbeta"], ["dgamma", "dalpha"]]
+		# Default is intelligent plotting
+		constants_for_other_params = []
+		params_to_viz = []
+
+		# Test
+		params_to_viz.append(["gamma", "phi"])
+		constants_for_other_params.append(np.zeros(16))
+
+		# Test 2: gamma v phi
+		params_to_viz.append(["gamma", "phi"])
+		constants_for_other_params.append(np.zeros(16))
+
+
 	else:
 		params_to_viz = which_params
 

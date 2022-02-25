@@ -5,7 +5,7 @@ import os, sys, IPython
 from cvxopt import solvers
 solvers.options['show_progress'] = False
 import argparse
-import pickle
+import pickle, math
 
 from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 from flying_cbf_controller import CBFController
@@ -16,14 +16,14 @@ from rollout_cbf_classes.flying_our_cbf_class import OurCBF
 torch.manual_seed(2022)
 np.random.seed(2022)
 
-def sample_x0s(param_dict, cbf_obj, N_samp):
+def sample_inside_safe_set(param_dict, cbf_obj, N_samp):
 	"""
 	Uses rejection sampling to sample uniformly in the invariant set
 
 	Note: assumes invariant set is defined as follows:
 	x0 in S if max(phi_array(x)) <= 0
 	"""
-	# print("inside sample_x0s")
+	# print("inside sample_inside_safe_set")
 	# IPython.embed()
 
 	# Define some variables
@@ -57,56 +57,64 @@ def sample_x0s(param_dict, cbf_obj, N_samp):
 	# IPython.embed()
 	# Could be more than N_samp currently; truncate to exactly N_samp
 	x0s = x0s[:N_samp]
-	return x0s
+	percent_inside = float(N_samp_found)/(M*i)
+	return x0s, percent_inside
 
-def compute_exits(phi_vals):
-	phi_max = np.max(phi_vals, axis=2)
-	rollouts_any_exits = np.any(phi_max > 0, axis=1)
-	any_exits = np.any(rollouts_any_exits)
-	print("Any exits?", any_exits)
-	if any_exits:
-		print("Percent exits: ", np.mean(rollouts_any_exits))
-		print("Which rollout_results have exits:", rollouts_any_exits)
-		print("How many exits per rollout: ", np.sum(phi_max > 0, axis=1))
+def extract_statistics(info_dicts, env):
+	# print("Inside extract_statistics")
+	# IPython.embed()
 
-		# Compute magnitude of exits
-		pos_phi_inds = np.argwhere(phi_max > 0)
-		pos_phi_max = phi_max[pos_phi_inds[:, 0], pos_phi_inds[:, 1]]
-		print("Phi max mean and std: %f +/- %f" % (np.mean(pos_phi_max), np.std(pos_phi_max)))
-		print("Phi max maximum: %f" % (np.max(pos_phi_max)))
+	stat_dict = {}
 
-
-def sanity_check(info_dicts):
-	# print("before sanity checks")
 	# for key, value in info_dicts.items():
 	# 	print(key, value.shape)
-	# IPython.embed()
-	# 1. Check that all rollout_results touched the invariant set boundary. If not, increase T_max
-	# 2. Compute the number of exits for each rollout
-	# 3. Compute the number of rollout_results without any exits
-	# debug_dict = {"x": x, "u": u, "apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs":qp_rhs, "qp_lhs":qp_lhs, "phi_vals":phi_vals}
-	print("*********************************************************\n")
+	"""
+	1. Check how many rollouts didn't apply safe control; if too many, then increase T_max
+	2. For all rollouts that applied safe control, how many exited?
+	3. For each time the boundary was hit, how many times did the safe control prevent exit?
+	"""
 	apply_u_safe = info_dicts["apply_u_safe"]  # (N_rollout, T_max)
+	N_rollout = apply_u_safe.shape[0]
 	rollouts_any_safe_ctrl = np.any(apply_u_safe, axis=1)
-	print("Did we apply safe control?", np.all(rollouts_any_safe_ctrl))
-	if np.all(rollouts_any_safe_ctrl) == False:
-		print("Which rollout_results did we apply safe control?", rollouts_any_safe_ctrl)
-		false_ind = np.argwhere(np.logical_not(rollouts_any_safe_ctrl))
-		x = info_dicts["x"]
-		x_for_false = x[false_ind.flatten()]
-		# theta_for_false = x_for_false[:, :, 1]
-		# thetadot_for_false = x_for_false[:, :, 3]
+	percent_rollouts_with_safe_ctrl = np.sum(rollouts_any_safe_ctrl)/float(N_rollout)
+	stat_dict["percent_rollouts_with_safe_ctrl"] = percent_rollouts_with_safe_ctrl
 
 	phi_vals = info_dicts["phi_vals"]  # (N_rollout, T_max, r+1)
-	compute_exits(phi_vals)
+	phi_max = np.max(phi_vals, axis=2)
+	rollouts_any_exits = np.any(phi_max > 0, axis=1)
+	percent_exits = float(np.sum(rollouts_any_exits))/np.sum(rollouts_any_safe_ctrl)
+	stat_dict["percent_exits"] = percent_exits
 
-	phi_star = phi_vals[:, :, -1]
-	rollouts_any_phistar_pos = np.any(phi_star > 0, axis=1)
-	any_phistar_pos = np.any(rollouts_any_phistar_pos)
+	# how much did they exit by?
+	rollouts = info_dicts["x"] # n_rollouts, t_max, 16
+	rl_flattened = np.reshape(rollouts, (rollouts.shape[0]*rollouts.shape[1], -1))
+	M = 100
+	rl_h = np.empty((0, 1))
+	for i in range(math.ceil(rl_flattened.shape[0]/float(M))):
+		batch_h = env.h(rl_flattened[i*M: min((i+1)*M, rl_flattened.shape[0])])
+		rl_h = np.concatenate((rl_h, batch_h), axis=0)
+	rl_h = np.reshape(rl_h, (rollouts.shape[0], rollouts.shape[1]))
 
-	print("Any phi_star positive?", any_phistar_pos)
-	if any_phistar_pos:
-		print("Which rollout_results had phi_star positive:", rollouts_any_phistar_pos)
+	max_max_h = np.max(np.max(rl_h, axis=1)) # TODO: is this a bad measure? Highly dependent on the number of steps
+	mean_max_h = np.mean(np.max(rl_h, axis=1))
+	stat_dict["max_max_h"] = max_max_h
+	stat_dict["mean_max_h"] = mean_max_h
+
+	# number of times hit border and became safe again
+	inside = info_dicts["inside_boundary"] # (n_rollouts, t_max)?
+	on = info_dicts["on_boundary"]
+	outside = info_dicts["outside_boundary"]
+
+	on_inside_transitions = on[:, :-1]*inside[:, 1:]
+	on_outside_transitions = on[:, :-1]*outside[:, 1:]
+	on_not_on_transitions = np.logical_or(on_inside_transitions, on_outside_transitions)
+
+	percent_attempted_exits_blocked = float(np.sum(on_inside_transitions))/np.sum(on_not_on_transitions)
+	percent_attempted_exits_not_blocked = float(np.sum(on_outside_transitions))/np.sum(on_not_on_transitions)
+	stat_dict["percent_attempted_exits_blocked"] = percent_attempted_exits_blocked
+	stat_dict["percent_attempted_exits_not_blocked"] = percent_attempted_exits_not_blocked
+
+	return stat_dict
 
 def simulate_rollout(env, x0, N_dt, cbf_controller):
 		# print("Inside simulate_rollout")
@@ -145,6 +153,7 @@ def simulate_rollout(env, x0, N_dt, cbf_controller):
 def run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, log_fldr):
 	info_dicts = None
 	for i in range(N_rollout):
+		print("Rollout %i" % i)
 		info_dict = simulate_rollout(env, x0s[i], N_dt, cbf_controller)
 
 		if info_dicts is None:
@@ -183,15 +192,15 @@ def run_rollout_experiment(args):
 	env = FlyingInvertedPendulumEnv(param_dict)
 
 	# TODO: fill out run arguments
-	N_rollout = 1
-	T_max = 0.1 #1.5  # in seconds
+	N_rollout = 50
+	T_max = 0.075 #1.5  # in seconds
 	N_dt = int(T_max / env.dt)
 	print("Number of timesteps: %f" % N_dt)
 
 	cbf_controller = CBFController(env, cbf_obj, param_dict)
 
 	# Get x0's
-	x0s = sample_x0s(param_dict, cbf_obj, N_rollout)
+	x0s, _ = sample_inside_safe_set(param_dict, cbf_obj, N_rollout)
 
 	#####################################
 	# Plot x0 samples and invariant set
@@ -212,21 +221,35 @@ def run_rollout_experiment(args):
 	#####################################
 	# Sanity checks
 	#####################################
-	sanity_check(info_dicts)
+	stat_dict = extract_statistics(info_dicts, env)
 
+	# Finally, approximate volume of invariant set
+	N_samp = 1000
+	_, percent_inside = sample_inside_safe_set(param_dict, cbf_obj, N_samp)
+	stat_dict["percent_inside"] = percent_inside
+	stat_dict["N_samp"] = N_samp
+
+	with open(os.path.join(log_fldrpth, "stat_dict.pkl"), 'wb') as handle:
+		pickle.dump(stat_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+	for key, value in stat_dict.items():
+		print("%s: %.3f" % (key, value))
+
+	sys.exit(0)
 	#####################################
 	# Plot trajectories
 	#####################################
-	if which_cbf == "ours":
-		rollouts = info_dicts["x"]
-		plot_invariant_set_slices(phi_fn, param_dict, rollouts=rollouts, fnm="traj", fldr_path=log_fldrpth, which_params=[["phi", "theta"]])
-	else:
-		raise NotImplementedError
+	# if which_cbf == "ours":
+	# 	rollouts = info_dicts["x"]
+	# 	plot_invariant_set_slices(phi_fn, param_dict, rollouts=rollouts, fnm="traj", fldr_path=log_fldrpth, which_params=[["phi", "theta"]])
+	# else:
+	# 	raise NotImplementedError
 		# TODO: Suggest slightly modify above function to be used with cbf_obj (numpy wrapper of phi_fn), instead of phi_fn
 
 	#####################################
 	# Plot EXITED trajectories ONLY (we choose the 5 with the largest violation)
 	#####################################
+	# TODO: should we be maximizing h instead of phi?
 	if which_cbf == "ours":
 		rollouts = info_dicts["x"]
 		phi_vals = info_dicts["phi_vals"]  # (N_rollout, T_max, r+1)
@@ -245,7 +268,7 @@ def run_rollout_experiment(args):
 		# TODO: Suggest slightly modify above function to be used with cbf_obj (numpy wrapper of phi_fn), instead of phi_fn
 
 if __name__ == "__main__":
-	# TODO: something wrong with parser, prevents us from passing arguments in
+	# TODO: something wrong with parser, prevents us from passing arguments in; it is clashing with another instance of ArgumentParser which is being imported
 	parser = argparse.ArgumentParser(description='Rollout experiment for flying')
 	parser.add_argument('--which_cbf', type=str, default="ours")
 

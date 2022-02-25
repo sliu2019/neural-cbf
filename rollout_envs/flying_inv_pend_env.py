@@ -120,6 +120,24 @@ class FlyingInvertedPendulumEnv():
 		rv = f + g@u
 		return rv
 
+	def h(self, x):
+		"""
+		:param x: (bs, 16)
+		:return: (bs, 1)
+		"""
+		theta = x[:, [self.i["theta"]]]
+		phi = x[:, [self.i["phi"]]]
+		gamma = x[:, [self.i["gamma"]]]
+		beta = x[:, [self.i["beta"]]]
+
+		cos_cos = np.cos(theta)*np.cos(phi)
+		eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
+		# with np.no_grad():
+		signed_eps = -np.sign(cos_cos)*eps
+		delta = np.arccos(cos_cos + signed_eps)
+		rv = delta**2 + gamma**2 + beta**2 - self.delta_safety_limit**2
+		return rv
+
 if __name__ == "__main__":
 	pass
 	"""param_dict = {
