@@ -1,32 +1,33 @@
 import numpy as np
 import math
+from plot_utils import create_phi_struct_load_xlim
+from torch.autograd import grad
+from src.utils import *
+from scipy.integrate import solve_ivp
 from cvxopt import matrix, solvers
 
 solvers.options['show_progress'] = False
-import IPython
+
 from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
+from rollout_envs.cart_pole_env import CartPoleEnv
 
 
 class CBFController:
-	def __init__(self, env, cbf_obj, param_dict, eps_bdry=1.0, eps_outside=5.0):
-		super().__init__()
-		variables = locals()  # dict of local names
-		self.__dict__.update(variables)  # __dict__ holds and object's attributes
-		del self.__dict__["self"]  # don't need `self`
-		self.__dict__.update(self.param_dict)  # __dict__ holds and object's attributes
-
-		# pre-compute mixer matrix
-		self.mixer = np.array([[self.k1, self.k1, self.k1, self.k1], [0, -self.l * self.k1, 0, self.l * self.k1],
-		                       [self.l * self.k1, 0, -self.l * self.k1, 0], [-self.k2, self.k2, -self.k2, self.k2]])
+	def __init__(self, env, cbf_obj, eps_bdry=1.0, eps_outside=5.0):
+		# super().__init__()
+		# variables = locals()  # dict of local names
+		# self.__dict__.update(variables)  # __dict__ holds and object's attributes
+		# del self.__dict__["self"]  # don't need `self`
+		self.cbf_obj = cbf_obj
+		self.env = env
+		# self.param_dict = param_dict
+		self.eps_bdry = eps_bdry
+		self.eps_outside = eps_outside
 
 	def compute_u_ref(self, t, x):
-		u_ref = np.zeros(self.u_dim)
-		return u_ref
+		return 0
 
 	def compute_control(self, t, x):
-		# print("in CBFcontroller, compute control")
-		# print(x)
-		# IPython.embed()
 		############ Init log vars
 		apply_u_safe = None
 		u_ref = self.compute_u_ref(t, x)
@@ -36,20 +37,22 @@ class CBFController:
 		qp_rhs = None
 		################
 
+		# phi_vals = numpy_phi_fn(x) # This is an array of (1, r+1), where r is the degree
+		# phi_grad = numpy_phi_grad(x)
+
 		phi_vals = self.cbf_obj.phi_fn(x)  # This is an array of (1, r+1), where r is the degree
 		phi_grad = self.cbf_obj.phi_grad(x)
 
-		# print(x.shape)
 		x_next = x + self.env.dt * self.env.x_dot_open_loop(x, self.compute_u_ref(t,
 		                                                                          x))  # in the absence of safe control, the next state
 		next_phi_val = self.cbf_obj.phi_fn(x_next)
 
-		if phi_vals[0, -1] >= 0:  # Outside
-			print("Outside boundary")
+		# IPython.embed()
+		if phi_vals[0, -1] > 0:  # Outside
 			eps = self.eps_outside
 			apply_u_safe = True
 		elif phi_vals[0, -1] < 0 and next_phi_val[0, -1] >= 0:  # On boundary. Note: cheating way to convert DT to CT
-			print("On boundary")
+			# eps = 1.0 # TODO
 			eps = self.eps_bdry
 			apply_u_safe = True
 		else:  # Inside
@@ -58,57 +61,37 @@ class CBFController:
 			              "qp_lhs": qp_lhs, "phi_vals": phi_vals.flatten()}
 			return u_ref, debug_dict
 
-		# IPython.embed()
 		# Compute the control constraints
-		f_x = self.env._f(x)
-		f_x = np.reshape(f_x, (16, 1))
-		g_x = self.env._g(x)
+		# Get f(x), g(x); note it's a hack for scalar u
+		f_x = self.env.x_dot_open_loop(x, 0)
+		g_x = self.env.x_dot_open_loop(x, 1) - f_x
 
-		phi_grad = np.reshape(phi_grad, (16, 1))
-		lhs = phi_grad.T @ g_x  # 1 x 4
-		rhs = -phi_grad.T @ f_x - eps
-		rhs = rhs.item()  # scalar, not numpy array
+		lhs = phi_grad @ g_x.T
+		rhs = -phi_grad @ f_x.T - eps
 
 		# Computing control using QP
 		# Note, constraint may not always be satisfied, so we include a slack variable on the CBF input constraint
 		w = 1000.0  # slack weight
 
-		P = np.zeros((5, 5))
-		P[:4, :4] = 2 * self.mixer.T @ self.mixer
-		q = np.concatenate([-2 * u_ref.T @ self.mixer, np.array([w])])
-		q = np.reshape(q, (-1, 1))
+		max_force = 22.0
 
-		G = np.zeros((10, 5))
-		G[0, 0:4] = lhs @ self.mixer
-		G[0, 4] = -1.0
-		G[1:5, 0:4] = -np.eye(4)
-		G[5:9, 0:4] = np.eye(4)
-		G[-1, -1] = -1.0
-
-		h = np.concatenate([np.array([rhs]), np.zeros(4), np.ones(4), np.zeros(1)])
-		h = np.reshape(h, (-1, 1))
+		qp_lhs = lhs.item()
+		qp_rhs = rhs.item()
+		Q = 2 * np.array([[1.0, 0], [0, 0]])
+		p = np.array([[-2.0 * u_ref], [w]])
+		G = np.array([[qp_lhs, -1.0], [1, 0], [-1, 0], [0, -1]])
+		h = np.array([[qp_rhs], [max_force], [max_force], [0.0]])
 
 		try:
-			sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h))
+			sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(h))
 		except:
 			# IPython.embed()
-			print("Infeasible QP, exiting")
 			exit(0)
+		sol_var = sol_obj['x']
 
-		print("ln 94 in cbf controller")
-		print("Try to check out the properties on sol_obj")
-		print("So that we can debug exceptions")
-		IPython.embed()
-		sol_var = np.array(sol_obj['x'])
+		u_safe = sol_var[0]
+		qp_slack = sol_var[1]
 
-		# u_safe = sol_var[0:4]
-		sol_impulses = sol_var[0:4]
-		u_safe = self.mixer @ np.reshape(sol_impulses, (4, 1))
-
-		u_safe = np.reshape(u_safe, (4))
-		qp_slack = sol_var[-1]
-
-		# print(sol_impulses, u_safe, qp_slack)
 		debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "phi_vals": phi_vals.flatten(),
 		              "qp_slack": qp_slack, "qp_rhs": qp_rhs, "qp_lhs": qp_lhs}
 		return u_safe, debug_dict

@@ -17,7 +17,7 @@ torch.manual_seed(2022)
 np.random.seed(2022)
 
 def sample_x0s(param_dict, cbf_obj, N_samp):
-		"""
+	"""
 	Uses rejection sampling to sample uniformly in the invariant set
 
 	Note: assumes invariant set is defined as follows:
@@ -183,9 +183,10 @@ def run_rollout_experiment(args):
 	env = FlyingInvertedPendulumEnv(param_dict)
 
 	# TODO: fill out run arguments
-	N_rollout = 5
-	T_max = 1.5  # in seconds
+	N_rollout = 1
+	T_max = 0.1 #1.5  # in seconds
 	N_dt = int(T_max / env.dt)
+	print("Number of timesteps: %f" % N_dt)
 
 	cbf_controller = CBFController(env, cbf_obj, param_dict)
 
@@ -207,6 +208,7 @@ def run_rollout_experiment(args):
 	#####################################
 	info_dicts = run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, log_fldrpth)
 
+	# IPython.embed()
 	#####################################
 	# Sanity checks
 	#####################################
@@ -247,8 +249,8 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Rollout experiment for flying')
 	parser.add_argument('--which_cbf', type=str, default="ours")
 
-	parser.add_argument('--exp_name', type=str, default="flying_inv_pend_easier_env_iterated_beta", help="for our CBF") # flying_inv_pend_first_run
-	parser.add_argument('--checkpoint_number', type=int, default=500, help="for our CBF") # 3080
+	parser.add_argument('--exp_name', type=str, default="flying_inv_pend_pend_3_beta_iterated_nn_128_128", help="for our CBF") # flying_inv_pend_first_run
+	parser.add_argument('--checkpoint_number', type=int, default=1450, help="for our CBF")
 
 	args = parser.parse_args()
 	run_rollout_experiment(args)

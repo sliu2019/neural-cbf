@@ -28,7 +28,6 @@ np.random.seed(seed)
 device = torch.device("cpu")
 
 def load_phi_and_params(exp_name=None, checkpoint_number=None):
-
 	if exp_name:
 		args = load_args("./log/%s/args.txt" % exp_name)
 		param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb"))
@@ -100,7 +99,7 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 
 
 def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, fnm=None, fldr_path=None):
-    	"""
+	"""
 	Plots invariant set and (if necessary) projected boundary samples in 2D
 	which_params: all or list of lists of length 2
 	"""
@@ -170,7 +169,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 			axs[i, j].set_aspect("equal")
 			# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
 			axs[i, j].contour(X, Y, np.reshape(phi_vals[:, -1], X.shape), levels=[0.0],
-			                 colors=('k',), linewidths=(2,))
+							 colors=('k',), linewidths=(2,))
 
 
 			## Plotting the sampled points
@@ -193,7 +192,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 	if fnm is None:
 		fnm = time.strftime('%m_%d_%H:%M:%S')
 	if fldr_path is None:
-    		fldr_path = "./log/boundary_sampling"
+			fldr_path = "./log/boundary_sampling"
 
 	# if fpth is not None:
 	# 	save_fpth = "./log/%s/%s.png" % (fpth, fnm)
@@ -241,6 +240,7 @@ def graph_losses(exp_name):
 	plt.clf()
 	plt.cla()
 
+	print(exp_name)
 	print("Min attack loss achieved (desired <= 0): %.5f" % np.min(train_attack_losses))
 	print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
 
@@ -378,26 +378,26 @@ if __name__ == "__main__":
 	### ****************************************************
 	########################################################
 	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
-		# graph_losses(exp_name)
+		graph_losses(exp_name)
+		plt.clf()
+		plt.close()
+
+		# phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+		#
+		# samples = load_attacks(exp_name, checkpoint_number)
+		#
+		# fldr_path = os.path.join("./log", exp_name)
+		# plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
+		#
 		# plt.clf()
 		# plt.close()
-
-		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
-
-		samples = load_attacks(exp_name, checkpoint_number)
-
-		fldr_path = os.path.join("./log", exp_name)
-		plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
-
-		plt.clf()
-		plt.close()
-
-		plot_invariant_set_slices(phi_fn, param_dict, samples=samples, fldr_path=fldr_path, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
-
-		# plot_cbf_3d_slices(phi_fn, param_dict, which_params = [["phi", "theta"]], fnm = "3d_viz_ckpt_%i" % checkpoint_number, fpth = exp_name)
-
-		plt.clf()
-		plt.close()
+		#
+		# plot_invariant_set_slices(phi_fn, param_dict, samples=samples, fldr_path=fldr_path, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
+		#
+		# # plot_cbf_3d_slices(phi_fn, param_dict, which_params = [["phi", "theta"]], fnm = "3d_viz_ckpt_%i" % checkpoint_number, fpth = exp_name)
+		#
+		# plt.clf()
+		# plt.close()
 
 		#################################################
 		#### Graphing other debug info ##################

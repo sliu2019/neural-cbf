@@ -19,73 +19,117 @@ def rotation_matrix(gamma, beta, alpha):
 	R[2, 2] = np.cos(beta) * np.cos(gamma)
 	return R
 
-def create_flying_pend_animation(rollout, param_dict, dt, save_fpth):
-	"""
-	:param rollout: (N_steps, 16)
-	:return:
-	"""
-	### Init
+# def create_flying_pend_animation(rollout, param_dict, dt, save_fpth):
+# 	"""
+# 	:param rollout: (N_steps, 16)
+# 	:return:
+# 	"""
+# 	### Init
+# 	fig = plt.figure()
+# 	ax = Axes3D.Axes3D(fig)
+# 	ax.set_xlim3d([-2.0, 2.0])
+# 	ax.set_xlabel('X')
+# 	ax.set_ylim3d([-2.0, 2.0])
+# 	ax.set_ylabel('Y')
+# 	ax.set_zlim3d([-2.0, 2.0])
+# 	ax.set_zlabel('Z')
+# 	ax.set_title('Quadcopter Simulation')
+#
+# 	quad = {}
+# 	quad['l1'], = ax.plot([], [], [], color='blue', linewidth=3, antialiased=False)
+# 	quad['l2'], = ax.plot([], [], [], color='red', linewidth=3, antialiased=False)
+# 	quad['hub'], = ax.plot([], [], [], marker='o', color='green', markersize=6, antialiased=False)
+# 	quad['pend'], = ax.plot([], [], [], color='orange', linewidth=3, antialiased=False)
+#
+# 	time_display = ax.text2D(0., 0.9, "red", color='red', transform=ax.transAxes)
+# 	state_display = ax.text2D(0.6, 0.9, "green", color='green', transform=ax.transAxes)
+#
+# 	time_elapsed = 0
+#
+# 	#########################
+# 	L = param_dict["l"]
+# 	i = param_dict["state_index_dict"]
+# 	Lp = param_dict["L_p"]
+# 	for j in range(rollout.shape[0]):
+# 		x = rollout[j]
+#
+# 		R = rotation_matrix(x[i["gamma"]], x[i["beta"]], x[i["alpha"]])
+# 		# Rotate frame
+# 		points = np.array([[-L, 0, 0], [L, 0, 0], [0, -L, 0], [0, L, 0], [0, 0, 0], [0, 0, 0]]).T
+# 		points = np.dot(R, points)
+# 		points[0, :] += x[i["x"]]
+# 		points[1, :] += x[i["y"]]
+# 		points[2, :] += x[i["z"]]
+# 		quad['l1'].set_data(points[0, 0:2], points[1, 0:2])
+# 		quad['l1'].set_3d_properties(points[2, 0:2])
+# 		quad['l2'].set_data(points[0, 2:4], points[1, 2:4])
+# 		quad['l2'].set_3d_properties(points[2, 2:4])
+# 		quad['hub'].set_data(points[0, 4:6], points[1, 4:6])
+# 		quad['hub'].set_3d_properties(points[2, 4:6])
+#
+# 		# print(x[i["phi"]])
+# 		# print(x[i["theta"]])
+# 		R_pend = rotation_matrix(x[i["phi"]], x[i["theta"]], 0.)
+# 		# Lp = L_p
+# 		pend_points = np.array([[0, 0, 0], [0, 0, Lp]]).T
+# 		pend_points = np.dot(R_pend, pend_points)
+# 		pend_points[0, :] += x[i["x"]]
+# 		pend_points[1, :] += x[i["y"]]
+# 		pend_points[2, :] += x[i["z"]]
+#
+# 		quad['pend'].set_data(pend_points[0, 0:2], pend_points[1, 0:2])
+# 		quad['pend'].set_3d_properties(pend_points[2, 0:2])
+#
+# 		time_elapsed += dt
+# 		time_display.set_text('Simulation time = %.1fs' % (time_elapsed))
+# 		state_display.set_text(
+# 			'Position of the quad: \n x = %.1fm y = %.1fm z = %.1fm' % (x[i["x"]], x[i["y"]], x[i["z"]]))
+#
+# 		plt.pause(0.000000000000001)
+
+def animate_flying_pend_rollout(rollout, param_dict, dt, save_fpth):
+
+
+
+
+def animate_rollout(x_rollout, save_fpth):
+	l = param_dict["l"]
+
+	# Animation utilities
 	fig = plt.figure()
-	ax = Axes3D.Axes3D(fig)
-	ax.set_xlim3d([-2.0, 2.0])
-	ax.set_xlabel('X')
-	ax.set_ylim3d([-2.0, 2.0])
-	ax.set_ylabel('Y')
-	ax.set_zlim3d([-2.0, 2.0])
-	ax.set_zlabel('Z')
-	ax.set_title('Quadcopter Simulation')
+	ax = fig.add_subplot(111, aspect='equal', xlim=(x_lim[0, 0], x_lim[0, 1]), ylim=(-1, 1),
+	                     title="Inverted Pendulum Simulation")
+	ax.grid()
 
-	quad = {}
-	quad['l1'], = ax.plot([], [], [], color='blue', linewidth=3, antialiased=False)
-	quad['l2'], = ax.plot([], [], [], color='red', linewidth=3, antialiased=False)
-	quad['hub'], = ax.plot([], [], [], marker='o', color='green', markersize=6, antialiased=False)
-	quad['pend'], = ax.plot([], [], [], color='orange', linewidth=3, antialiased=False)
+	# animation parameters
+	origin = [0.0, 0.0]
+	anim_dt = 0.02
 
-	time_display = ax.text2D(0., 0.9, "red", color='red', transform=ax.transAxes)
-	state_display = ax.text2D(0.6, 0.9, "green", color='green', transform=ax.transAxes)
+	pendulumArm = lines.Line2D(origin, origin, color='r')
+	cart = patches.Rectangle(origin, 0.5, 0.15, color='b')
 
-	time_elapsed = 0
+	def init():
+		ax.add_patch(cart)
+		ax.add_line(pendulumArm)
+		return pendulumArm, cart
 
-	#########################
-	L = param_dict["l"]
-	i = param_dict["state_index_dict"]
-	Lp = param_dict["L_p"]
-	for j in range(rollout.shape[0]):
-		x = rollout[j]
+	def animate(i):
+		xPos = x_rollout[i, 0]
+		theta = x_rollout[i, 1]
+		x = [origin[0] + xPos, origin[0] + xPos + l * np.sin(theta)]
+		y = [origin[1], origin[1] + l * np.cos(theta)]
+		pendulumArm.set_xdata(x)
+		pendulumArm.set_ydata(y)
 
-		R = rotation_matrix(x[i["gamma"]], x[i["beta"]], x[i["alpha"]])
-		# Rotate frame
-		points = np.array([[-L, 0, 0], [L, 0, 0], [0, -L, 0], [0, L, 0], [0, 0, 0], [0, 0, 0]]).T
-		points = np.dot(R, points)
-		points[0, :] += x[i["x"]]
-		points[1, :] += x[i["y"]]
-		points[2, :] += x[i["z"]]
-		quad['l1'].set_data(points[0, 0:2], points[1, 0:2])
-		quad['l1'].set_3d_properties(points[2, 0:2])
-		quad['l2'].set_data(points[0, 2:4], points[1, 2:4])
-		quad['l2'].set_3d_properties(points[2, 2:4])
-		quad['hub'].set_data(points[0, 4:6], points[1, 4:6])
-		quad['hub'].set_3d_properties(points[2, 4:6])
+		cartPos = [origin[0] + xPos - cart.get_width() / 2, origin[1] - cart.get_height()]
+		cart.set_xy(cartPos)
+		return pendulumArm, cart
 
-		# print(x[i["phi"]])
-		# print(x[i["theta"]])
-		R_pend = rotation_matrix(x[i["phi"]], x[i["theta"]], 0.)
-		# Lp = L_p
-		pend_points = np.array([[0, 0, 0], [0, 0, Lp]]).T
-		pend_points = np.dot(R_pend, pend_points)
-		pend_points[0, :] += x[i["x"]]
-		pend_points[1, :] += x[i["y"]]
-		pend_points[2, :] += x[i["z"]]
-
-		quad['pend'].set_data(pend_points[0, 0:2], pend_points[1, 0:2])
-		quad['pend'].set_3d_properties(pend_points[2, 0:2])
-
-		time_elapsed += dt
-		time_display.set_text('Simulation time = %.1fs' % (time_elapsed))
-		state_display.set_text(
-			'Position of the quad: \n x = %.1fm y = %.1fm z = %.1fm' % (x[i["x"]], x[i["y"]], x[i["z"]]))
-
-		plt.pause(0.000000000000001)
+	anim = animation.FuncAnimation(fig, animate, init_func=init, interval=1000 * anim_dt,
+	                               blit=True)  # interval: real time, interval between frames in ms
+	# plt.show()
+	FFwriter = animation.FFMpegWriter(fps=10)
+	anim.save(save_fpth, writer=FFwriter)
 
 if __name__ == "__main__":
     # pass
