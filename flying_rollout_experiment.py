@@ -17,7 +17,7 @@ torch.manual_seed(2022)
 np.random.seed(2022)
 
 def sample_x0s(param_dict, cbf_obj, N_samp):
-	"""
+		"""
 	Uses rejection sampling to sample uniformly in the invariant set
 
 	Note: assumes invariant set is defined as follows:
@@ -109,7 +109,7 @@ def sanity_check(info_dicts):
 		print("Which rollout_results had phi_star positive:", rollouts_any_phistar_pos)
 
 def simulate_rollout(env, x0, N_dt, cbf_controller):
-	# print("Inside simulate_rollout")
+		# print("Inside simulate_rollout")
 	# IPython.embed()
 
 	x = x0.copy()
@@ -153,7 +153,7 @@ def run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, log_fldr):
 			info_dicts = {key: value[None] for (key, value) in info_dicts.items()}
 		else:
 			info_dicts = {key: np.concatenate((value, info_dict[key][None]), axis=0) for (key, value) in
-			              info_dicts.items()}
+						  info_dicts.items()}
 
 	# Save data
 	save_fpth = os.path.join(log_fldr, "data.pkl")

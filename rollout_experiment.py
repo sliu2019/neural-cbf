@@ -179,12 +179,13 @@ def main(args):
 		cbf_obj = OurCBF(exp_name, checkpoint_number)
 	elif 'cmaes' in which_cbf:
 		config_path = "./rollout_cbf_classes/cma_es_config.yaml"
-		# params = run_cmaes(config_path) # TODO
+		# params = run_cmaes(config_path) # TODO 
 
-		# params = np.array([1., 0.1, 0.0])
+		# params = np.array([1.4, 0.2, 0.0])
+		params = np.array([1.0, 0.1, 0.0])
 		# params = np.array([1., 1, 0.0])
-		params = np.array([2.99443126, 0.06641364, 0.25343775])  # reg_weight=1
-
+		# params = np.array([1.06870235, 0.14911268, 0.09038379])  # reg_weight = 0.1, boundary eps = 1e-2
+		# params = np.array([2.04809693, 0.4586106, 0.06874261])
 		cbf_obj = SSA(env)
 		evaluator = CartPoleEvaluator()
 		evaluator.evaluate(params)

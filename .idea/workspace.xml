@@ -2,8 +2,35 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-03_00:17.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-03_00:22.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-03_00:25.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-03_00:29.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-11_16:27.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-11_16:28.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-11_17:09.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-11_17:17.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-11_17:18.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-11_17:20.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-11_17:25.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-11_17:26.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-11_17:27.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-11_18:17.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_logs/cart_pole_epoch:3_populate_num:50_elite_ratio:0.06_init_sigma_ratio:0.3_noise_ratio:0.01_date:02-11_18:22.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cbf_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/cbf_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/flying_plot_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/flying_plot_utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/flying_rollout_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/flying_rollout_experiment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_config.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_evaluator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/normal_ssa_newsi.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/normal_ssa_newsi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_envs/flying_inv_pend_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_envs/flying_inv_pend_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_experiment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_results/debug/cmaes_.pkl" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_results/debug/cmaes_.pkl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_results/debug/cmaes_exiting_trajectories.png" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_results/debug/cmaes_exiting_trajectories.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_results/debug/cmaes_invariant_set.png" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_results/debug/cmaes_invariant_set.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_results/debug/cmaes_trajectories.png" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_results/debug/cmaes_trajectories.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_results/debug/cmaes_x0s.png" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_results/debug/cmaes_x0s.png" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -113,7 +140,8 @@
       <workItem from="1644589811941" duration="1677000" />
       <workItem from="1644611075717" duration="51769000" />
       <workItem from="1645281835940" duration="2073000" />
-      <workItem from="1645401533014" duration="39990000" />
+      <workItem from="1645401533014" duration="41717000" />
+      <workItem from="1645801070901" duration="552000" />
     </task>
     <servers />
   </component>
