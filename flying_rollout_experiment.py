@@ -12,7 +12,6 @@ from flying_cbf_controller import CBFController
 from flying_plot_utils import load_phi_and_params, plot_invariant_set_slices
 from rollout_cbf_classes.flying_our_cbf_class import OurCBF
 
-
 # Fixed seed for repeatability
 torch.manual_seed(2022)
 np.random.seed(2022)
@@ -26,6 +25,7 @@ def sample_x0s(param_dict, cbf_obj, N_samp):
 	"""
 	# print("inside sample_x0s")
 	# IPython.embed()
+
 	# Define some variables
 	x_dim = param_dict["x_dim"]
 	x_lim = param_dict["x_lim"]
@@ -113,19 +113,14 @@ def simulate_rollout(env, x0, N_dt, cbf_controller):
 	# IPython.embed()
 
 	x = x0.copy()
-	# 	debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs":qp_rhs, "qp_lhs":qp_lhs, "phi_vals":phi_vals}
 	xs = [x]
 	us = []
 	dict = None
 
 	# IPython.embed()
 	for t in range(N_dt):
-		print("rollout, step %i" % t)
-		print(x)
-		# IPython.embed()
-		# if t == 10:
-		# 	IPython.embed()
-
+		# print("rollout, step %i" % t)
+		# print(x)
 		u, debug_dict = cbf_controller.compute_control(t, x)  # Define this
 		x_dot = env.x_dot_open_loop(x, u)
 		x = x + env.dt * x_dot
@@ -168,22 +163,17 @@ def run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, log_fldr):
 	return info_dicts
 
 def run_rollout_experiment(args):
-	# IPython.embed()
-	log_folder = args.log_folder
 	which_cbf = args.which_cbf
 	exp_name = args.exp_name
 	checkpoint_number = args.checkpoint_number
 
-	log_fldrpth = os.path.join("./rollout_results/flying", log_folder)
-	if not os.path.exists(log_fldrpth):
-		os.makedirs(log_fldrpth)
-	# save_prefix = "%s/%s_" % (log_fldrpth, which_cbf)
 
-	# TODO: Tianhao, Weiye, add clauses here
 	if which_cbf == "ours":
 		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 		cbf_obj = OurCBF(phi_fn, param_dict) # numpy wrapper
+		log_fldrpth = "./log/%s" % exp_name
 	else:
+		# TODO: Tianhao, Weiye, add clauses here
 		raise NotImplementedError
 		# Create your own cbf_obj
 		# Use the following to create param_dict
@@ -198,12 +188,9 @@ def run_rollout_experiment(args):
 	N_dt = int(T_max / env.dt)
 
 	cbf_controller = CBFController(env, cbf_obj, param_dict)
-	# x_lim = cbf_controller.env.x_lim
 
 	# Get x0's
 	x0s = sample_x0s(param_dict, cbf_obj, N_rollout)
-	# print("main file, ln 199")
-	# IPython.embed()
 
 	#####################################
 	# Plot x0 samples and invariant set
@@ -223,7 +210,6 @@ def run_rollout_experiment(args):
 	#####################################
 	# Sanity checks
 	#####################################
-	# IPython.embed()
 	sanity_check(info_dicts)
 
 	#####################################
@@ -259,14 +245,12 @@ def run_rollout_experiment(args):
 if __name__ == "__main__":
 	# TODO: something wrong with parser, prevents us from passing arguments in
 	parser = argparse.ArgumentParser(description='Rollout experiment for flying')
-	parser.add_argument('--log_folder', type=str, default="debug")
 	parser.add_argument('--which_cbf', type=str, default="ours")
 
 	parser.add_argument('--exp_name', type=str, default="flying_inv_pend_easier_env_iterated_beta", help="for our CBF") # flying_inv_pend_first_run
 	parser.add_argument('--checkpoint_number', type=int, default=500, help="for our CBF") # 3080
 
 	args = parser.parse_args()
-	# IPython.embed()
 	run_rollout_experiment(args)
 
 	# python flying_rollout_experiment.py --which_cbf ours --exp_name first_run --checkpoint_number 3080
