@@ -19,7 +19,7 @@ class GradientBatchWarmstartAttacker():
                  stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
                  lr=1e-3, \
                  p_reuse=0.7,\
-                 projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=3, verbose=False): # TODO: verbose
+                 projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=3.0, verbose=False): # TODO: verbose
         vars = locals()  # dict of local names
         self.__dict__.update(vars)  # __dict__ holds and object's attributes
         del self.__dict__["self"]  # don't need `self`
@@ -46,6 +46,7 @@ class GradientBatchWarmstartAttacker():
         self.n_times_called = 0
 
         # print(self.projection_tolerance)
+        # print(self.projection_time_limit)
         # IPython.embed()
 
     def _project(self, phi_fn, x):

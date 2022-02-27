@@ -52,7 +52,9 @@ def parser():
 	parser.add_argument('--train_attacker_max_n_steps', default=50, type=int) # TODO: 200?
 	parser.add_argument('--train_attacker_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"')
 	parser.add_argument('--train_attacker_projection_lr', default=1e-4, type=float)
+	parser.add_argument('--train_attacker_projection_time_limit', default=3.0, type=float)
 	parser.add_argument('--train_attacker_lr', default=1e-3, type=float)
+
 	# parser.add_argument('--train_attacker_adaptive_lr', action='store_true')
 	############################################################################
 	# Attacker: test

@@ -389,10 +389,11 @@ if __name__ == "__main__":
 	########################################################
 	#########     FILL OUT HERE !!!!   #####################
 	### ****************************************************
-
-	exp_names = ["flying_inv_pend_pend_5_beta_iterated", "flying_inv_pend_pend_3_beta_iterated_nn_128_128", "flying_inv_pend_pend_5_beta_flat_nn_128_128", "flying_inv_pend_pend_3_beta_iterated"]
+	exp_names = ["flying_inv_pend_reg_weight_1e-1", "flying_inv_pend_reg_weight_1", "flying_inv_pend_reg_weight_20", "flying_inv_pend_reg_weight_45", "flying_inv_pend_reg_weight_60", "flying_inv_pend_reg_weight_100"]
+	# exp_names = ["flying_inv_pend_pend_5_beta_iterated", "flying_inv_pend_pend_3_beta_iterated_nn_128_128", "flying_inv_pend_pend_5_beta_flat_nn_128_128", "flying_inv_pend_pend_3_beta_iterated"]
 	# checkpoint_numbers = [500, 1800, 800, 1800]
-	checkpoint_numbers = [1420, 1450, 430, 1370]
+	# checkpoint_numbers = [1420, 1450, 430, 1370]
+	checkpoint_numbers = [1000]*6
 	### ****************************************************
 	########################################################
 	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):

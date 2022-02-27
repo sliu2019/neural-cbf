@@ -420,7 +420,7 @@ def main(args):
 	elif args.train_attacker == "gradient_batch":
 		attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr)
 	elif args.train_attacker == "gradient_batch_warmstart":
-		attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr)
+		attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit)
 
 	# Create test attacker
 	if args.test_attacker == "basic":

@@ -133,21 +133,23 @@ class Trainer():
 			# print("Reg value: ", reg_value)
 			# print("Ln 135: grad mag")
 			# IPython.embed()
-			attack_value.backward()
-			grad_before_reg = p_dict["beta_net.0.weight"].grad
-			mag1 = torch.norm(grad_before_reg).item()
-			grad_mag_before_reg.append(mag1)
+			# attack_value.backward()
+			# grad_before_reg = p_dict["beta_net.0.weight"].grad
+			# mag1 = torch.norm(grad_before_reg).item()
+			# grad_mag_before_reg.append(mag1)
+			#
+			# reg_value.backward()
+			# grad_after_reg = p_dict["beta_net.0.weight"].grad
+			# mag2 = torch.norm(grad_after_reg).item()
+			# grad_mag_before_reg.append(mag2)
+			#
+			# objective_value = attack_value + reg_value # Just for record-keeping purposes
 
-			reg_value.backward()
-			grad_after_reg = p_dict["beta_net.0.weight"].grad
-			mag2 = torch.norm(grad_after_reg).item()
-			grad_mag_before_reg.append(mag2)
 
-			objective_value = attack_value + reg_value # Just for record-keeping purposes
 			# IPython.embed()
-			# objective_value = attack_value + reg_value
-			# objective_value.backward()
-			# optimizer.step()
+			objective_value = attack_value + reg_value
+			objective_value.backward()
+			optimizer.step()
 
 			with torch.no_grad():
 				# new_ci = ci - ci_lr*ci.grad
@@ -238,8 +240,8 @@ class Trainer():
 				times_to_compute_X_reg.append(tf_xreg-t0_xreg)
 				self.logger.info(f'reg, total time: {(tf_xreg-t0_xreg):.3f}s')
 				self.logger.info(f'reg, max dist: {max_dist_X_reg:.3f}')
-				self.logger.info(f'mag of grad without reg: {mag1:.3f}')
-				self.logger.info(f'with reg: {mag2:.3f}')
+				# self.logger.info(f'mag of grad without reg: {mag1:.3f}')
+				# self.logger.info(f'with reg: {mag2:.3f}')
 
 			# Saving at every _ iterations
 			if _iter % self.args.n_checkpoint_step == 0:
