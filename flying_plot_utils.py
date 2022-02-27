@@ -401,8 +401,15 @@ if __name__ == "__main__":
 		plt.clf()
 		plt.close()
 
-		# phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
-		#
+		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+
+		from flying_rollout_experiment import sample_inside_safe_set
+		from rollout_cbf_classes.flying_our_cbf_class import OurCBF
+		cbf_obj = OurCBF(phi_fn, param_dict)  # numpy wrapper
+		N_samp = 1000
+		_, percent_inside = sample_inside_safe_set(param_dict, cbf_obj, N_samp)
+		print("Monte-carlo volume approx: %.3f percent inside" % (percent_inside*100))
+
 		# samples = load_attacks(exp_name, checkpoint_number)
 		#
 		# fldr_path = os.path.join("./log", exp_name)

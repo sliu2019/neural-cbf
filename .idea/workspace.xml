@@ -6,9 +6,6 @@
       <change beforePath="$PROJECT_DIR$/flying_plot_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/flying_plot_utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/02_26_experiments.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/02_26_experiments.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/argument.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/argument.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/attacks/gradient_batch_attacker_warmstart.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/attacks/gradient_batch_attacker_warmstart.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trainer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

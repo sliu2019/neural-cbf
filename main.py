@@ -203,8 +203,7 @@ class Regularizer(nn.Module):
 
 		max_phi_values = torch.max(all_phi_values, dim=1)[0]
 		# reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values)) # TODO: Huh interesting, 0.3 factor stretches sigmoid out a lot; should we remove it?
-		reg = self.reg_weight*torch.mean(torch.sigmoid(max_phi_values)) # TODO: Huh interesting, 0.3 factor stretches sigmoid out a lot; should we remove it?
-
+		reg = self.reg_weight*torch.mean(torch.sigmoid(max_phi_values))
 		return reg
 
 def create_flying_param_dict(args=None):
