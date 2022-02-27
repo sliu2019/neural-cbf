@@ -66,7 +66,7 @@ class GradientBatchWarmstartAttacker():
             proj_opt.step()
 
             i += 1
-            print(i)
+            # print(i)
             t_now = time.perf_counter()
             if torch.max(loss) < self.projection_tolerance:
                 # if self.verbose:

@@ -202,7 +202,8 @@ class Regularizer(nn.Module):
 			all_phi_values = self.phi_fn(x)
 
 		max_phi_values = torch.max(all_phi_values, dim=1)[0]
-		reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values) - 0.5) # TODO: Huh interesting, 0.3 factor stretches sigmoid out a lot; should we remove it?
+		# reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values)) # TODO: Huh interesting, 0.3 factor stretches sigmoid out a lot; should we remove it?
+		reg = self.reg_weight*torch.mean(torch.sigmoid(max_phi_values)) # TODO: Huh interesting, 0.3 factor stretches sigmoid out a lot; should we remove it?
 
 		return reg
 
@@ -430,7 +431,7 @@ def main(args):
 		test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, max_n_steps=args.test_attacker_max_n_steps, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
 
 	# Create regularization helper
-	if args.reg_weight and reg_fn.A_samples:
+	if args.reg_weight and not reg_fn.A_samples:
 		reg_sample_keeper = RegSampleKeeper(x_lim, device, logger, n_samples=args.reg_n_samples)
 	else:
 		reg_sample_keeper = None

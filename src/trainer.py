@@ -85,6 +85,8 @@ class Trainer():
 		reg_sample_keeper_X = []
 		max_dists_X_reg = []
 		times_to_compute_X_reg = []
+		grad_mag_before_reg = []
+		grad_mag_after_reg = []
 
 		ci_lr = 1e-4
 		a_lr = 1e-4
@@ -129,9 +131,23 @@ class Trainer():
 				attack_value = objective_fn(x_batch)[0, 0]
 
 			# print("Reg value: ", reg_value)
-			objective_value = attack_value + reg_value
-			objective_value.backward()
-			optimizer.step()
+			# print("Ln 135: grad mag")
+			# IPython.embed()
+			attack_value.backward()
+			grad_before_reg = p_dict["beta_net.0.weight"].grad
+			mag1 = torch.norm(grad_before_reg).item()
+			grad_mag_before_reg.append(mag1)
+
+			reg_value.backward()
+			grad_after_reg = p_dict["beta_net.0.weight"].grad
+			mag2 = torch.norm(grad_after_reg).item()
+			grad_mag_before_reg.append(mag2)
+
+			objective_value = attack_value + reg_value # Just for record-keeping purposes
+			# IPython.embed()
+			# objective_value = attack_value + reg_value
+			# objective_value.backward()
+			# optimizer.step()
 
 			with torch.no_grad():
 				# new_ci = ci - ci_lr*ci.grad
@@ -212,14 +228,17 @@ class Trainer():
 
 			# Recording for reg sample keeper
 			if self.args.reg_weight and reg_fn.A_samples is None:
+				# print("storing reg debug info")
+				# IPython.embed()
 				phis_X_reg = phi_fn(X_reg)
-				max_dist_X_reg = torch.max(torch.abs(torch.max(phis_X_reg, axis=1)[0])).item()
+				max_dist_X_reg = torch.max(phis_X_reg).item() # TODO: is this an accurate measure of distance?
 				# max_dist_X_reg = max_dist_X_reg.detach().cpu().numpy()
 				max_dists_X_reg.append(max_dist_X_reg)
 				reg_sample_keeper_X.append(X_reg.detach().cpu().numpy())
 				times_to_compute_X_reg.append(tf_xreg-t0_xreg)
 				self.logger.info(f'reg, total time: {(tf_xreg-t0_xreg):.3f}s')
 				self.logger.info(f'reg, max dist: {max_dist_X_reg:.3f}')
+				self.logger.info(f'mag of grad without reg: {mag1:.3f}')
 
 			# Saving at every _ iterations
 			if _iter % self.args.n_checkpoint_step == 0:
@@ -227,11 +246,11 @@ class Trainer():
 				save_model(phi_fn, file_name)
 
 				# save data too
-				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "train_attack_X_phi_vals": train_attack_X_phi_vals, "grad_norms": grad_norms, "reg_sample_keeper_X": reg_sample_keeper_X}
+				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "train_attack_X_phi_vals": train_attack_X_phi_vals, "grad_norms": grad_norms}
 
 				additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse, "train_attack_X_init_random": train_attack_X_init_random, "train_attack_init_best_attack_value": train_attack_init_best_attack_value, "train_attack_final_best_attack_value": train_attack_final_best_attack_value,"train_attack_t_init": train_attack_t_init, "train_attack_t_grad_steps": train_attack_t_grad_steps, "train_attack_t_reproject": train_attack_t_reproject, "train_attack_t_total_opt": train_attack_t_total_opt}
 
-				reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg}
+				reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg, "reg_sample_keeper_X": reg_sample_keeper_X, "grad_mag_before_reg": grad_mag_before_reg, "grad_mag_after_reg": grad_mag_after_reg}
 
 				# save_dict = save_dict + additional_train_attack_dict
 				save_dict.update(additional_train_attack_dict)
