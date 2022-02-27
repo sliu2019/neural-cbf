@@ -239,6 +239,7 @@ class Trainer():
 				self.logger.info(f'reg, total time: {(tf_xreg-t0_xreg):.3f}s')
 				self.logger.info(f'reg, max dist: {max_dist_X_reg:.3f}')
 				self.logger.info(f'mag of grad without reg: {mag1:.3f}')
+				self.logger.info(f'with reg: {mag2:.3f}')
 
 			# Saving at every _ iterations
 			if _iter % self.args.n_checkpoint_step == 0:
