@@ -36,8 +36,8 @@ class RegSampleKeeper():
         # For warmstart
         self.X_saved = None
 
-        print("NEED TO PROOFREAD THIS IMPLEMENTATION REGSAMPLEKEEPER BEFORE USING IT")
-        sys.exit(0)
+        # print("NEED TO PROOFREAD THIS IMPLEMENTATION REGSAMPLEKEEPER BEFORE USING IT")
+        # sys.exit(0)
 
     def _project(self, phi_fn, x):
         # NOTE: it doesn't matter much for reg for the points to be exactly on the boundary!
@@ -55,7 +55,7 @@ class RegSampleKeeper():
 
         while True:
             proj_opt.zero_grad()
-            loss = torch.sum(torch.abs(torch.max(phi_fn(torch.cat(x_list), grad_x=True), axis=1)[0]))
+            loss = torch.sum(torch.abs(torch.max(phi_fn(torch.cat(x_list), grad_x=True), axis=1)[0])) # TODO
             loss.backward()
             proj_opt.step()
 
@@ -64,7 +64,8 @@ class RegSampleKeeper():
             if torch.max(loss) < self.projection_tolerance:
                 break
             elif (t_now - t1) > self.projection_time_limit:
-                # print("Reg: reprojection exited on timeout, max dist from =0 boundary: ", loss.item())
+                print("Reg: reprojection exited on timeout, max dist from =0 boundary: ", loss.item())
+                # print("Attack: reprojection exited on timeout, max dist from =0 boundary: ", torch.max(loss).item())
                 break
 
         for x_mem in x_list:
@@ -153,14 +154,19 @@ class RegSampleKeeper():
             t1 = time.perf_counter()
             if (t1-t0)>7:
                 # This clause is necessary for non-differentiable, continuous points (abrupt change)
-                print("Something is wrong in projection")
-                print(torch.abs(left_val - right_val))
-                print(left_weight, right_weight)
-                left_point = p1 + left_weight * diff
-                right_point = p1 + right_weight * diff
-                print(left_point, right_point)
+                print("Something is wrong in projection for RegSampleKeeper")
                 print(left_val, right_val)
-                print(mid_val, mid_point, mid_sign)
+                # print(torch.abs(left_val - right_val))
+                print(left_weight, right_weight)
+                print("p1:", p1)
+                print("p2:", p2)
+                # print(torch.abs(left_val - right_val))
+                # print(left_weight, right_weight)
+                # left_point = p1 + left_weight * diff
+                # right_point = p1 + right_weight * diff
+                # print(left_point, right_point)
+                # print(left_val, right_val)
+                # print(mid_val, mid_point, mid_sign)
                 # IPython.embed()
                 return None
 
