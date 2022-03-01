@@ -110,9 +110,19 @@ def extract_statistics(info_dicts, env):
 	on_not_on_transitions = np.logical_or(on_inside_transitions, on_outside_transitions)
 
 	percent_attempted_exits_blocked = float(np.sum(on_inside_transitions))/np.sum(on_not_on_transitions)
-	percent_attempted_exits_not_blocked = float(np.sum(on_outside_transitions))/np.sum(on_not_on_transitions)
-	stat_dict["percent_attempted_exits_blocked"] = percent_attempted_exits_blocked
-	stat_dict["percent_attempted_exits_not_blocked"] = percent_attempted_exits_not_blocked
+	# percent_attempted_exits_not_blocked = float(np.sum(on_outside_transitions))/np.sum(on_not_on_transitions)
+	stat_dict["percent_attempted_exits_blocked"] = percent_attempted_exits_blocked*100
+	stat_dict["number_attempted_exits"] = np.sum(on_not_on_transitions)
+	# stat_dict["percent_attempted_exits_not_blocked"] = percent_attempted_exits_not_blocked
+
+	IPython.embed()
+	rl_trunc = rollouts[:, :, :10]
+	# rl_trunc = np.reshape(rl_trunc, (-1, 10))
+	lb = env.x_lim[:, 0][None, None]
+	ub = env.x_lim[:, 1][None, None]
+	exited = np.logical_or(rl_trunc < lb, rl_trunc > ub)
+	n_rollouts_with_state_box_exits = np.sum(np.any(np.any(exited, axis=2), axis=1))
+	stat_dict["n_rollouts_with_state_box_exits"] = n_rollouts_with_state_box_exits
 
 	return stat_dict
 
@@ -192,7 +202,7 @@ def run_rollout_experiment(args):
 	env = FlyingInvertedPendulumEnv(param_dict)
 
 	# TODO: fill out run arguments
-	N_rollout = 50
+	N_rollout = 10
 	T_max = 0.075 #1.5  # in seconds
 	N_dt = int(T_max / env.dt)
 	print("Number of timesteps: %f" % N_dt)
@@ -272,8 +282,8 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Rollout experiment for flying')
 	parser.add_argument('--which_cbf', type=str, default="ours")
 
-	parser.add_argument('--exp_name', type=str, default="flying_inv_pend_pend_3_beta_iterated_nn_128_128", help="for our CBF") # flying_inv_pend_first_run
-	parser.add_argument('--checkpoint_number', type=int, default=1450, help="for our CBF")
+	parser.add_argument('--exp_name', type=str, default="flying_inv_pend_reg_weight_10", help="for our CBF") # flying_inv_pend_first_run
+	parser.add_argument('--checkpoint_number', type=int, default=510, help="for our CBF")
 
 	args = parser.parse_args()
 	run_rollout_experiment(args)

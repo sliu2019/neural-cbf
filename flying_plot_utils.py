@@ -245,9 +245,10 @@ def graph_losses(exp_name):
 		train_reg_losses = data["train_reg_losses"]
 		train_losses = data["train_losses"]
 
-		plt.plot(train_attack_losses[:1500], linewidth=0.5, label="train attack loss")
-		plt.plot(train_reg_losses[:1500], linewidth=0.5, label="train reg loss")
-		plt.plot(train_losses[:1500], linewidth=0.5, label="train total loss")
+		N_it = 1500
+		plt.plot(train_attack_losses[:N_it], linewidth=0.5, label="train attack loss")
+		plt.plot(train_reg_losses[:N_it], linewidth=0.5, label="train reg loss")
+		plt.plot(train_losses[:N_it], linewidth=0.5, label="train total loss")
 		plt.title("Losses for %s" % exp_name)
 
 	plt.xlabel("Optimization steps")
@@ -389,17 +390,14 @@ if __name__ == "__main__":
 	########################################################
 	#########     FILL OUT HERE !!!!   #####################
 	### ****************************************************
-	exp_names = ["flying_inv_pend_reg_weight_1e-1", "flying_inv_pend_reg_weight_1", "flying_inv_pend_reg_weight_20", "flying_inv_pend_reg_weight_45", "flying_inv_pend_reg_weight_60", "flying_inv_pend_reg_weight_100"]
-	# exp_names = ["flying_inv_pend_pend_5_beta_iterated", "flying_inv_pend_pend_3_beta_iterated_nn_128_128", "flying_inv_pend_pend_5_beta_flat_nn_128_128", "flying_inv_pend_pend_3_beta_iterated"]
-	# checkpoint_numbers = [500, 1800, 800, 1800]
-	# checkpoint_numbers = [1420, 1450, 430, 1370]
-	checkpoint_numbers = [1000]*6
+	exp_names = ["flying_inv_pend_reg_weight_1e-1", "flying_inv_pend_reg_weight_1", "flying_inv_pend_reg_weight_10", "flying_inv_pend_reg_weight_100"]
+	checkpoint_numbers = [1380, 100, 510, 230]
 	### ****************************************************
 	########################################################
 	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
-		graph_losses(exp_name)
-		plt.clf()
-		plt.close()
+		# graph_losses(exp_name)
+		# plt.clf()
+		# plt.close()
 
 		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 
