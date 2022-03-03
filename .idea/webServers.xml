@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="cc67b61f-1c38-4443-903b-871d7392f842" name="nsh1609_server5" url="http://128.237.99.229">
+        <fileTransfer rootFolder="/home/siminl" accessType="SFTP" host="128.237.99.229" port="22" sshConfigId="a4916944-bae5-4d9e-93ac-f7130410998f" sshConfig="nsh1609_server5" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

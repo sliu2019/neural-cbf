@@ -97,136 +97,6 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 
 	return phi_fn, param_dict
 
-
-def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, constants_for_other_params=None, fnm=None, fldr_path=None):
-	"""
-	Plots invariant set and (if necessary) projected boundary samples in 2D
-	which_params: all or list of lists of length 2
-	"""
-	if rollouts is not None:
-		print("Inside plot_invariant_set_slices() of fling_plot_utils")
-		print("Have never debugged traj plotting using this")
-		IPython.embed()
-
-	x_lim = param_dict["x_lim"]
-	x_dim = param_dict["x_dim"]
-	state_index_dict = param_dict["state_index_dict"]
-
-	if which_params is None:
-		# params_to_viz = [["theta", "phi"], ["dtheta", "dphi"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"], ["dbeta", "dalpha"], ["dgamma", "dbeta"], ["dgamma", "dalpha"]]
-		# Default is intelligent plotting
-		constants_for_other_params = []
-		params_to_viz = []
-
-		# Test
-		params_to_viz.append(["gamma", "phi"])
-		constants_for_other_params.append(np.zeros(16))
-
-		# Test 2: gamma v phi
-		params_to_viz.append(["gamma", "phi"])
-		constants_for_other_params.append(np.zeros(16))
-
-
-	else:
-		params_to_viz = which_params
-
-	# IPython.embed()
-	n_per_row = 3
-	n_row = math.ceil(len(params_to_viz)/float(n_per_row))
-
-	n_per_row = min(len(params_to_viz), n_per_row)
-	fig, axs = plt.subplots(n_row, n_per_row, squeeze=False)
-	# IPython.embed()
-	# axs[0, 0].plot(x, y)
-	for i in range(n_row):
-		for j in range(n_per_row):
-			if i*n_per_row + j >= len(params_to_viz):
-				break
-			# for param_pair in params_to_viz:
-			param_pair = params_to_viz[i*n_per_row + j]
-			param1, param2 = param_pair
-
-			ind1 = state_index_dict[param1]
-			ind2 = state_index_dict[param2]
-
-			delta = 0.01
-			x = np.arange(x_lim[ind1, 0], x_lim[ind1, 1], delta)
-			y = np.arange(x_lim[ind2, 0], x_lim[ind2, 1], delta)[::-1] # need to reverse it # TODO
-			X, Y = np.meshgrid(x, y)
-
-			###################################
-			##### Plotting ######
-			###################################
-			## Get phi values
-			input = np.zeros((X.size, x_dim))
-			input[:, ind1] = X.flatten()
-			input[:, ind2] = Y.flatten()
-
-			batch_size = int(X.size/5)
-			all_size = input.shape[0]
-
-			phi_vals = []
-			for k in range(math.ceil(all_size/batch_size)):
-				batch_input = input[k*batch_size: min(all_size, (k+1)*batch_size)]
-				batch_input = batch_input.astype("float32")
-				batch_input_torch = torch.from_numpy(batch_input)
-
-				batch_phi_vals = phi_fn(batch_input_torch)
-				phi_vals.append(batch_phi_vals.detach().cpu().numpy())
-
-			## Process phi values
-			phi_vals = np.concatenate((phi_vals), axis=0)
-			S_vals = np.max(phi_vals, axis=1)  # S = all phi_i <= 0
-			phi_signs = np.sign(S_vals)
-			phi_signs = np.reshape(phi_signs, X.shape)
-
-			# fig = plt.figure()
-			# ax = fig.add_subplot(111)
-			# IPython.embed()
-			axs[i, j].imshow(phi_signs, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
-			axs[i, j].set_aspect("equal")
-			# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
-			axs[i, j].contour(X, Y, np.reshape(phi_vals[:, -1], X.shape), levels=[0.0],
-							 colors=('k',), linewidths=(2,))
-
-
-			## Plotting the sampled points
-			if samples is not None:
-				axs[i, j].scatter(samples[:, ind1], samples[:, ind2], s=0.5) # projection (truncation)
-
-
-			## Plotting the included trajectories
-			if rollouts is not None:
-				N_rollout = len(rollouts) # rollouts is a ist
-				for i in range(N_rollout):
-					ith_rl = rollouts[i]
-					axs[i, j].plot(ith_rl[:, ind1], ith_rl[:, ind2])
-
-			## Title
-			# title = "%s vs. %s" % (param1, param2)
-			axs[i, j].set_xlabel(param1)
-			axs[i, j].set_ylabel(param2)
-
-	if fnm is None:
-		fnm = time.strftime('%m_%d_%H:%M:%S')
-	if fldr_path is None:
-			fldr_path = "./log/boundary_sampling"
-
-	# if fpth is not None:
-	# 	save_fpth = "./log/%s/%s.png" % (fpth, fnm)
-	# else:
-	# 	save_fpth = "./log/boundary_sampling/%s.png" % fnm
-	save_fpth = os.path.join(fldr_path, fnm + ".png")
-
-	print("Saved at: %s" % save_fpth)
-	plt.tight_layout(pad=0.5)
-	plt.title("From %s" % fldr_path)
-	plt.savefig(save_fpth, bbox_inches='tight')
-	# plt.clf()
-	# plt.close()
-
-	return fig, axs
-
 def load_attacks(exp_name, checkpoint_number):
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
@@ -361,6 +231,165 @@ def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth
 	plt.clf()
 	plt.close()
 
+def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, constants_for_other_params=None, fnm=None, fldr_path=None):
+	"""
+	Plots invariant set and (if necessary) projected boundary samples in 2D
+	which_params: all or list of lists of length 2
+	"""
+	if rollouts is not None:
+		print("Inside plot_invariant_set_slices() of fling_plot_utils")
+		print("Have never debugged traj plotting using this")
+		IPython.embed()
+
+	x_lim = param_dict["x_lim"]
+	x_dim = param_dict["x_dim"]
+	state_index_dict = param_dict["state_index_dict"]
+
+	if which_params is None:
+		# params_to_viz = [["theta", "phi"], ["dtheta", "dphi"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"], ["dbeta", "dalpha"], ["dgamma", "dbeta"], ["dgamma", "dalpha"]]
+		# Default is intelligent plotting
+		constants_for_other_params = []
+		params_to_viz = []
+
+		# Test: does it matter if pend angle and pend velocity are aligned?
+		params_to_viz.extend([["phi", "dphi"], ["theta", "dtheta"], ["gamma", "dgamma"], ["beta", "dbeta"]])
+		constants_for_other_params.extend([np.zeros(10)]*4)
+
+		# Test: does it matter if pend and quad angle are aligned/not aligned?
+		params_to_viz.append(["gamma", "phi"])
+		constants_for_other_params.append(np.zeros(10))
+
+		# More dangerous
+		params_to_viz.append(["gamma", "phi"])
+		x = np.zeros(10)
+		x[state_index_dict["dgamma"]] = 5
+		constants_for_other_params.append(x)
+
+		# params_to_viz.append(["gamma", "phi"])
+		# x = np.zeros(10)
+		# x[state_index_dict["dphi"]] = 5
+		# constants_for_other_params.append(x)
+
+		params_to_viz.append(["beta", "theta"])
+		constants_for_other_params.append(np.zeros(10))
+
+		# More dangerous
+		params_to_viz.append(["beta", "theta"])
+		x = np.zeros(10)
+		x[state_index_dict["dbeta"]] = 5
+		constants_for_other_params.append(x)
+	else:
+		params_to_viz = which_params
+
+	# IPython.embed()
+	n_per_row = 3
+	n_row = math.ceil(len(params_to_viz)/float(n_per_row))
+
+	n_per_row = min(len(params_to_viz), n_per_row)
+	fig, axs = plt.subplots(n_row, n_per_row, squeeze=False)
+	# IPython.embed()
+	# axs[0, 0].plot(x, y)
+	for i in range(n_row):
+		for j in range(n_per_row):
+			if i*n_per_row + j >= len(params_to_viz):
+				break
+			# for param_pair in params_to_viz:
+			param_pair = params_to_viz[i*n_per_row + j]
+			param1, param2 = param_pair
+
+			ind1 = state_index_dict[param1]
+			ind2 = state_index_dict[param2]
+
+			delta = 0.01
+			x = np.arange(x_lim[ind1, 0], x_lim[ind1, 1], delta)
+			y = np.arange(x_lim[ind2, 0], x_lim[ind2, 1], delta)[::-1] # need to reverse it # TODO
+			X, Y = np.meshgrid(x, y)
+
+			###################################
+			##### Plotting ######
+			###################################
+			## Get phi values
+			if constants_for_other_params:
+				# print("flying_plot_utils.py, ln 162")
+				# IPython.embed()
+				input = constants_for_other_params[i*n_per_row + j]
+				print(input)
+				input = np.reshape(input, (1, -1))
+				input = np.tile(input, (X.size, 1))
+			else:
+				input = np.zeros((X.size, x_dim))
+			input[:, ind1] = X.flatten()
+			input[:, ind2] = Y.flatten()
+
+			batch_size = int(X.size/5)
+			all_size = input.shape[0]
+
+			phi_vals = []
+			for k in range(math.ceil(all_size/batch_size)):
+				batch_input = input[k*batch_size: min(all_size, (k+1)*batch_size)]
+				batch_input = batch_input.astype("float32")
+				batch_input_torch = torch.from_numpy(batch_input)
+
+				batch_phi_vals = phi_fn(batch_input_torch)
+				phi_vals.append(batch_phi_vals.detach().cpu().numpy())
+
+			## Process phi values
+			phi_vals = np.concatenate((phi_vals), axis=0)
+			S_vals = np.max(phi_vals, axis=1)  # S = all phi_i <= 0
+			phi_signs = np.sign(S_vals)
+			phi_signs = np.reshape(phi_signs, X.shape)
+
+			# fig = plt.figure()
+			# ax = fig.add_subplot(111)
+			print(phi_signs)
+			# IPython.embed()
+			axs[i, j].imshow(phi_signs, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
+			axs[i, j].set_aspect("equal")
+			# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+			axs[i, j].contour(X, Y, np.reshape(phi_vals[:, -1], X.shape), levels=[0.0],
+							 colors=('k',), linewidths=(2,))
+
+
+			## Plotting the sampled points
+			if samples is not None:
+				axs[i, j].scatter(samples[:, ind1], samples[:, ind2], s=0.5) # projection (truncation)
+
+
+			## Plotting the included trajectories
+			if rollouts is not None:
+				N_rollout = len(rollouts) # rollouts is a ist
+				for i in range(N_rollout):
+					ith_rl = rollouts[i]
+					axs[i, j].plot(ith_rl[:, ind1], ith_rl[:, ind2])
+
+			## Title
+			# title = "%s vs. %s" % (param1, param2)
+			axs[i, j].set_xlabel(param1)
+			axs[i, j].set_ylabel(param2)
+			if constants_for_other_params:
+				const = constants_for_other_params[i * n_per_row + j]
+				axs[i, j].set_title(const)
+
+	if fnm is None:
+		fnm = time.strftime('%m_%d_%H:%M:%S')
+	if fldr_path is None:
+			fldr_path = "./log/boundary_sampling"
+
+	# if fpth is not None:
+	# 	save_fpth = "./log/%s/%s.png" % (fpth, fnm)
+	# else:
+	# 	save_fpth = "./log/boundary_sampling/%s.png" % fnm
+	save_fpth = os.path.join(fldr_path, fnm + ".png")
+
+	print("Saved at: %s" % save_fpth)
+	plt.tight_layout(pad=0.5)
+	plt.suptitle("From %s" % fldr_path)
+	plt.savefig(save_fpth, bbox_inches='tight')
+	# plt.clf()
+	# plt.close()
+
+	return fig, axs
+
 if __name__ == "__main__":
 	"""
 	Code to visualize samples (from RegSampleKeeper or Attacker)
@@ -390,31 +419,85 @@ if __name__ == "__main__":
 	########################################################
 	#########     FILL OUT HERE !!!!   #####################
 	### ****************************************************
-	exp_names = ["flying_inv_pend_reg_weight_1e-1", "flying_inv_pend_reg_weight_1", "flying_inv_pend_reg_weight_10", "flying_inv_pend_reg_weight_100"]
-	checkpoint_numbers = [1380, 100, 510, 230]
+	# exp_names = ["flying_inv_pend_reg_weight_1e-1", "flying_inv_pend_reg_weight_1", "flying_inv_pend_reg_weight_10", "flying_inv_pend_reg_weight_100"]
+	# checkpoint_numbers = [1380, 100, 510, 230]
+
+	exp_names = ["flying_inv_pend_reg_weight_1"]
+	checkpoint_numbers = [100]
 	### ****************************************************
 	########################################################
+	phi_fn, param_dict = load_phi_and_params(exp_names[0], checkpoint_numbers[0])
+	# for n, p in phi_fn.named_parameters():
+	# 	if "beta_net" in n:
+	# 		p.requires_grad = False
+	# 		new_p = torch.zeros_like(p)
+	# 		p.copy_(new_p)
+
+	# print(list(phi_fn.parameters()))
+	# IPython.embed()
+	# new_k0 = torch.maximum(new_k0, torch.zeros_like(new_k0))  # Project to all positive
+	# k0.copy_(new_k0)
+	which_params = [["phi", "dphi"], ["theta", "dtheta"], ["gamma", "dgamma"], ["beta", "dbeta"]]
+	fldr_path = os.path.join("./log", exp_names[0])
+
+	for which_param in which_params:
+		fnm = "debug_%s_vs_%s" % (which_param[0], which_param[1])
+		plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, fnm=fnm, which_params=[which_param])
+
 	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 		# graph_losses(exp_name)
 		# plt.clf()
 		# plt.close()
+		pass
+		# TODO: uncomment
+		# phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 
-		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+		# from flying_rollout_experiment import sample_inside_safe_set
+		# from rollout_cbf_classes.flying_our_cbf_class import OurCBF
+		# cbf_obj = OurCBF(phi_fn, param_dict)  # numpy wrapper
+		# N_samp = 1000
+		# _, percent_inside = sample_inside_safe_set(param_dict, cbf_obj, N_samp)
+		# print("Monte-carlo volume approx: %.3f percent inside" % (percent_inside*100))
 
-		from flying_rollout_experiment import sample_inside_safe_set
-		from rollout_cbf_classes.flying_our_cbf_class import OurCBF
-		cbf_obj = OurCBF(phi_fn, param_dict)  # numpy wrapper
-		N_samp = 1000
-		_, percent_inside = sample_inside_safe_set(param_dict, cbf_obj, N_samp)
-		print("Monte-carlo volume approx: %.3f percent inside" % (percent_inside*100))
-
-		# samples = load_attacks(exp_name, checkpoint_number)
-		#
+		##################################################################
 		# fldr_path = os.path.join("./log", exp_name)
 		# plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
 		#
 		# plt.clf()
 		# plt.close()
+		##################################################################
+
+		"""state_index_dict = param_dict["state_index_dict"]
+
+		# which_params = [["phi", "dphi"]]
+		# which_params = [["theta", "dtheta"]]
+		# which_params = [["beta", "dbeta"]]
+		# which_params = [["gamma", "dgamma"]]
+
+		# which_params = [["phi", "gamma"]]
+		which_params = [["theta", "beta"]]
+		x = np.zeros(10)
+		fnm = "theta_beta_w_other_angles_misaligned2"
+		# fnm = "phi_gamma_w_other_angles_misaligned_2"
+		# x[state_index_dict["beta"]] = math.pi/5
+		# x[state_index_dict["beta"]] = math.pi/7
+		# x[state_index_dict["theta"]] = -math.pi/7
+
+		# what if theta, beta were misaligned?
+		# fnm = "phi_gamma_for_theta_beta_misaligned"
+		x[state_index_dict["phi"]] = -math.pi/7
+		x[state_index_dict["gamma"]] = math.pi/7
+
+		constants_for_other_params = [x]
+
+		fldr_path = os.path.join("./log", exp_name)
+		plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=which_params, constants_for_other_params=constants_for_other_params, fnm=fnm)
+
+		plt.clf()
+		plt.close()"""
+
+
+		# samples = load_attacks(exp_name, checkpoint_number)
 		#
 		# plot_invariant_set_slices(phi_fn, param_dict, samples=samples, fldr_path=fldr_path, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
 		#
