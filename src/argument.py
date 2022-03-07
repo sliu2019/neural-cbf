@@ -7,7 +7,7 @@ def parser():
 	parser.add_argument('--problem', default='cartpole_reduced', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced"])
 
 	# h(x) (user-specified SI)
-	parser.add_argument('--h', type=str, choices=['max', 'sum'], help='For flying inv pend, chose the form of h(x)')
+	parser.add_argument('--h', type=str, default='sum', choices=['max', 'sum'], help='For flying inv pend, chose the form of h(x)')
 
 	# Phi
 	parser.add_argument('--phi_nn_dimension', default="64-64", type=str, help='specify the hidden dimension')

@@ -22,7 +22,8 @@ class FlyingInvertedPendulumEnv():
 	                     "dtheta", "x", "y", "z", "dx", "dy", "dz"]
 		state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
 		self.i = state_index_dict
-		self.dt = 0.00005 # same as cartpole
+		# self.dt = 0.00005 # same as cartpole
+		self.dt = 1e-6 # same as cartpole
 
 	def _f(self, x):
 		# print("Inside f")

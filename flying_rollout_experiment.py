@@ -17,6 +17,8 @@ torch.manual_seed(2022)
 np.random.seed(2022)
 
 def sample_inside_safe_set(param_dict, cbf_obj, N_samp):
+	# TODO; modify this somehow?
+	# Or can just increase n_samp for now? Or just find points close to boundary?
 	"""
 	Uses rejection sampling to sample uniformly in the invariant set
 
@@ -60,69 +62,81 @@ def sample_inside_safe_set(param_dict, cbf_obj, N_samp):
 	percent_inside = float(N_samp_found)/(M*i)
 	return x0s, percent_inside
 
-def extract_statistics(info_dicts, env):
-	# print("Inside extract_statistics")
-	# IPython.embed()
+"""
+TODO: 3/3
+1. No longer max length: just a generous length that if you hit it without applying safe control, discard the rollouts 
+a. Probably, as result, print the number of desired rollouts vs. actual collected rollouts 
+2. 
+TODO: add to stat dict things like dt, counts (not just percentages), so that you get shown what you want 
+"""
+
+def extract_statistics(info_dicts, env, param_dict):
+	# TODO: 3/3, for variable length rollouts
+	# TODO: proofread this!
+	print("Inside extract_statistics")
+	IPython.embed()
 
 	stat_dict = {}
+	x_lim = param_dict["x_lim"]
 
+	stat_dict["dt"] = env.dt
 	# for key, value in info_dicts.items():
 	# 	print(key, value.shape)
 	"""
 	1. Check how many rollouts didn't apply safe control; if too many, then increase T_max
 	2. For all rollouts that applied safe control, how many exited?
+	a. Count on-on: and how many inside/outside state box?
+	b. on-in: inside or outside state box?
+	c. on-out: inside or outside state box? 
 	3. For each time the boundary was hit, how many times did the safe control prevent exit?
 	"""
-	apply_u_safe = info_dicts["apply_u_safe"]  # (N_rollout, T_max)
-	N_rollout = apply_u_safe.shape[0]
-	rollouts_any_safe_ctrl = np.any(apply_u_safe, axis=1)
-	percent_rollouts_with_safe_ctrl = np.sum(rollouts_any_safe_ctrl)/float(N_rollout)
+	# How many rollouts applied safe control before they were terminated?
+	apply_u_safe = info_dicts["apply_u_safe"]  # list of len N_rollout; elem is array of size T_max
+	N_rollout = len(apply_u_safe)
+	stat_dict["N_rollout"] = N_rollout
+
+	# rollouts_any_safe_ctrl = np.any(apply_u_safe, axis=1)
+	safe_ctrl_rl = [np.any(rl) for rl in apply_u_safe]
+	percent_rollouts_with_safe_ctrl = np.sum(safe_ctrl_rl)/float(N_rollout)
 	stat_dict["percent_rollouts_with_safe_ctrl"] = percent_rollouts_with_safe_ctrl
 
-	phi_vals = info_dicts["phi_vals"]  # (N_rollout, T_max, r+1)
-	phi_max = np.max(phi_vals, axis=2)
-	rollouts_any_exits = np.any(phi_max > 0, axis=1)
-	percent_exits = float(np.sum(rollouts_any_exits))/np.sum(rollouts_any_safe_ctrl)
-	stat_dict["percent_exits"] = percent_exits
-
-	# how much did they exit by?
-	rollouts = info_dicts["x"] # n_rollouts, t_max, 16
-	rl_flattened = np.reshape(rollouts, (rollouts.shape[0]*rollouts.shape[1], -1))
-	M = 100
-	rl_h = np.empty((0, 1))
-	for i in range(math.ceil(rl_flattened.shape[0]/float(M))):
-		batch_h = env.h(rl_flattened[i*M: min((i+1)*M, rl_flattened.shape[0])])
-		rl_h = np.concatenate((rl_h, batch_h), axis=0)
-	rl_h = np.reshape(rl_h, (rollouts.shape[0], rollouts.shape[1]))
-
-	max_max_h = np.max(np.max(rl_h, axis=1)) # TODO: is this a bad measure? Highly dependent on the number of steps
-	mean_max_h = np.mean(np.max(rl_h, axis=1))
-	stat_dict["max_max_h"] = max_max_h
-	stat_dict["mean_max_h"] = mean_max_h
-
-	# number of times hit border and became safe again
+	# Count transitions
 	inside = info_dicts["inside_boundary"] # (n_rollouts, t_max)?
 	on = info_dicts["on_boundary"]
 	outside = info_dicts["outside_boundary"]
 
-	on_inside_transitions = on[:, :-1]*inside[:, 1:]
-	on_outside_transitions = on[:, :-1]*outside[:, 1:]
-	on_not_on_transitions = np.logical_or(on_inside_transitions, on_outside_transitions)
+	on_in_rl = [on[i][:-1]*inside[i][1:] for i in range(N_rollout)]
+	on_out_rl = [on[i][:-1]*outside[i][1:] for i in range(N_rollout)]
+	on_on_rl = [on[i][:-1]*on[i][1:] for i in range(N_rollout)]
 
-	percent_attempted_exits_blocked = float(np.sum(on_inside_transitions))/np.sum(on_not_on_transitions)
-	# percent_attempted_exits_not_blocked = float(np.sum(on_outside_transitions))/np.sum(on_not_on_transitions)
-	stat_dict["percent_attempted_exits_blocked"] = percent_attempted_exits_blocked*100
-	stat_dict["number_attempted_exits"] = np.sum(on_not_on_transitions)
-	# stat_dict["percent_attempted_exits_not_blocked"] = percent_attempted_exits_not_blocked
+	on_in_count = np.sum([np.sum(rl) for rl in on_in_rl])
+	on_out_count = np.sum([np.sum(rl) for rl in on_out_rl])
+	on_on_count = np.sum([np.sum(rl) for rl in on_on_rl])
 
-	IPython.embed()
-	rl_trunc = rollouts[:, :, :10]
-	# rl_trunc = np.reshape(rl_trunc, (-1, 10))
-	lb = env.x_lim[:, 0][None, None]
-	ub = env.x_lim[:, 1][None, None]
-	exited = np.logical_or(rl_trunc < lb, rl_trunc > ub)
-	n_rollouts_with_state_box_exits = np.sum(np.any(np.any(exited, axis=2), axis=1))
-	stat_dict["n_rollouts_with_state_box_exits"] = n_rollouts_with_state_box_exits
+	total_transitions = on_in_count + on_out_count + on_on_count
+	stat_dict["N_transitions"] = total_transitions
+	stat_dict["percent_on_in"] = on_in_count/float(total_transitions)
+	stat_dict["percent_on_out"] = on_out_count/float(total_transitions)
+	stat_dict["percent_on_on"] = on_on_count/float(total_transitions)
+
+	stat_dict["N_on_in"] = on_in_count
+	stat_dict["N_on_out"] = on_out_count
+	stat_dict["N_on_on"] = on_on_count
+
+	# Find out box exits
+	xs = info_dicts["x"]
+	outside_box_rl = [np.logical_or(np.any(rl < x_lim[:, 0], axis=1), np.any(rl > x_lim[:, 1], axis=1)) for rl in xs]
+	on_in_outside_box_rl = [np.logical_or(outside_box_rl[i], on_in_rl[i]) for i in range(N_rollout)]
+	on_out_outside_box_rl = [np.logical_or(outside_box_rl[i], on_out_rl[i]) for i in range(N_rollout)]
+	on_on_outside_box_rl = [np.logical_or(outside_box_rl[i], on_on_rl[i]) for i in range(N_rollout)]
+
+	on_in_outside_box_count = np.sum([np.sum(rl) for rl in on_in_outside_box_rl])
+	on_out_outside_box_count = np.sum([np.sum(rl) for rl in on_out_outside_box_rl])
+	on_on_outside_box_count = np.sum([np.sum(rl) for rl in on_on_outside_box_rl])
+
+	stat_dict["percent_on_in_outside_box"] = on_in_outside_box_count/float(on_in_count)
+	stat_dict["percent_on_out_outside_box"] = on_out_outside_box_count/float(on_out_count)
+	stat_dict["percent_on_on_outside_box"] = on_on_outside_box_count/float(on_on_count)
 
 	return stat_dict
 
@@ -136,7 +150,9 @@ def simulate_rollout(env, x0, N_dt, cbf_controller):
 	dict = None
 
 	# IPython.embed()
-	for t in range(N_dt):
+	u_safe_applied = False
+	t_since = 0
+	for t in range(N_dt): # TODO: end criteria should be different
 		# print("rollout, step %i" % t)
 		# print(x)
 		u, debug_dict = cbf_controller.compute_control(t, x)  # Define this
@@ -152,12 +168,21 @@ def simulate_rollout(env, x0, N_dt, cbf_controller):
 			for key, value in dict.items():
 				value.append(debug_dict[key])
 
+		# TODO: reread: should these be elif or if?
+		if debug_dict["apply_u_safe"]:
+			u_safe_applied = True
+		if u_safe_applied:
+			t_since += 1
+
+		if t_since > 2:
+			break
+
 	dict = {key: np.array(value) for (key, value) in dict.items()}
 	dict["x"] = np.array(xs)
 	dict["u"] = np.array(us)
 
-	# print("At the end of a rollout")
-	# IPython.embed()
+	print("At the end of a rollout")
+	IPython.embed()
 	return dict
 
 def run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, log_fldr):
@@ -169,16 +194,21 @@ def run_rollouts(env, N_rollout, x0s, N_dt, cbf_controller, log_fldr):
 		if info_dicts is None:
 			info_dicts = info_dict
 			# Dict comprehension is: dict_variable = {key: value for (key, value) in dictonary.items()}
-			info_dicts = {key: value[None] for (key, value) in info_dicts.items()}
+			# info_dicts = {key: value[None] for (key, value) in info_dicts.items()}
+			info_dicts = {key: [value] for (key, value) in info_dicts.items()} # TODO: 3/3
 		else:
-			info_dicts = {key: np.concatenate((value, info_dict[key][None]), axis=0) for (key, value) in
-						  info_dicts.items()}
-
+			# info_dicts = {key: np.concatenate((value, info_dict[key][None]), axis=0) for (key, value) in
+			# 			  info_dicts.items()}
+			# TODO: 3/3
+			for key, value in info_dicts.items():
+				value.append(info_dict[key])
 	# Save data
 	save_fpth = os.path.join(log_fldr, "data.pkl")
 	with open(save_fpth, 'wb') as handle:
 		pickle.dump(info_dicts, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+	print("At the end of all our rollouts")
+	IPython.embed()
 	return info_dicts
 
 def run_rollout_experiment(args):
@@ -231,7 +261,7 @@ def run_rollout_experiment(args):
 	#####################################
 	# Sanity checks
 	#####################################
-	stat_dict = extract_statistics(info_dicts, env)
+	stat_dict = extract_statistics(info_dicts, env, param_dict)
 
 	# Finally, approximate volume of invariant set
 	N_samp = 1000

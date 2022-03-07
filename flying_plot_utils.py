@@ -36,8 +36,10 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 		args = parser() # default
 
 		from main import create_flying_param_dict
-		param_dict = create_flying_param_dict() # default
+		param_dict = create_flying_param_dict(args) # default
 
+	args.random_seed = 10
+	# IPython.embed()
 	r = param_dict["r"]
 	x_dim = param_dict["x_dim"]
 	u_dim = param_dict["u_dim"]
@@ -342,6 +344,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 			# fig = plt.figure()
 			# ax = fig.add_subplot(111)
 			print(phi_signs)
+			print("Any negative phi in the box?: ", np.any(phi_signs < 0))
 			# IPython.embed()
 			axs[i, j].imshow(phi_signs, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
 			axs[i, j].set_aspect("equal")
@@ -423,10 +426,12 @@ if __name__ == "__main__":
 	# checkpoint_numbers = [1380, 100, 510, 230]
 
 	exp_names = ["flying_inv_pend_reg_weight_1"]
-	checkpoint_numbers = [100]
+	checkpoint_numbers = [0]
 	### ****************************************************
 	########################################################
-	phi_fn, param_dict = load_phi_and_params(exp_names[0], checkpoint_numbers[0])
+	# phi_fn, param_dict = load_phi_and_params(exp_names[0], checkpoint_numbers[0])
+
+	phi_fn, param_dict = load_phi_and_params()
 	# for n, p in phi_fn.named_parameters():
 	# 	if "beta_net" in n:
 	# 		p.requires_grad = False
@@ -441,8 +446,10 @@ if __name__ == "__main__":
 	fldr_path = os.path.join("./log", exp_names[0])
 
 	for which_param in which_params:
-		fnm = "debug_%s_vs_%s" % (which_param[0], which_param[1])
+		fnm = "debug_%s_vs_%s_random_phi_nn_seed_10" % (which_param[0], which_param[1])
 		plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, fnm=fnm, which_params=[which_param])
+		plt.clf()
+		plt.close()
 
 	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 		# graph_losses(exp_name)
