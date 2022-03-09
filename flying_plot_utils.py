@@ -1,24 +1,13 @@
-import numpy as np
-import IPython
-import re
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-from mpl_toolkits.mplot3d import axes3d
 import math
-from main import Phi, Objective, Regularizer
-# from src.argument import parser, print_args
-from src.utils import *
+from dotmap import DotMap
 import torch
 import pickle
-# from phi_baseline import PhiBaseline
-from src.attacks.gradient_batch_attacker import GradientBatchAttacker
-from src.attacks.gradient_batch_attacker_warmstart import GradientBatchWarmstartAttacker
-from src.reg_sample_keeper import RegSampleKeeper
-
 import time
-from torch.autograd import grad
-from torch import nn
-# from src.argument import parser, print_args
+import numpy as np
+
+from main import Phi, Objective, Regularizer
+from src.utils import *
 
 # Make numpy and torch deterministic (for rand phi and attack/reg sampling)
 seed = 3
@@ -29,7 +18,11 @@ device = torch.device("cpu")
 
 def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	if exp_name:
-		args = load_args("./log/%s/args.txt" % exp_name)
+		fnm = "./log/%s/args.txt" % exp_name
+		# args = load_args(fnm) # can't use, args conflicts with args in outer scope
+		with open(fnm, 'r') as f:
+			json_data = json.load(f)
+		args = DotMap(json_data)
 		param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb"))
 	else:
 		from src.argument import parser
@@ -38,14 +31,11 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 		from main import create_flying_param_dict
 		param_dict = create_flying_param_dict(args) # default
 
-	args.random_seed = 10
-	# IPython.embed()
 	r = param_dict["r"]
 	x_dim = param_dict["x_dim"]
 	u_dim = param_dict["u_dim"]
 	x_lim = param_dict["x_lim"]
 
-	# Create phi
 	from src.problems.flying_inv_pend import HMax, HSum, XDot, ULimitSetVertices
 	if args.h == "sum":
 		h_fn = HSum(param_dict)
@@ -59,15 +49,16 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 		x_e = torch.zeros(1, x_dim)
 	else:
 		x_e = None
+
 	# Send all modules to the correct device
 	h_fn = h_fn.to(device)
 	xdot_fn = xdot_fn.to(device)
-	uvertices_fn = uvertices_fn.to(device)
+	# uvertices_fn = uvertices_fn.to(device)
 	if x_e is not None:
 		x_e = x_e.to(device)
-	if A_samples is not None:
-		A_samples = A_samples.to(device)
-	x_lim = torch.tensor(x_lim).to(device)
+	# if A_samples is not None:
+	# 	A_samples = A_samples.to(device)
+	# x_lim = torch.tensor(x_lim).to(device)
 
 	# Create CBF, etc.
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
@@ -80,7 +71,6 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	# reg_fn = reg_fn.to(device)
 
 	print("Phi param before load:")
-	# print(list(phi_fn.parameters())[0])
 	print("k0, ci: ", phi_fn.k0, phi_fn.ci)
 
 	if exp_name:
@@ -88,8 +78,6 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 		phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
 		load_model(phi_fn, phi_load_fpth)
 	print("Phi param after load:")
-	# print(list(phi_fn.parameters())[0])
-
 	print("k0, ci: ", phi_fn.k0, phi_fn.ci)
 
 	# for name, param_info in phi_fn.named_parameters():
@@ -429,9 +417,9 @@ if __name__ == "__main__":
 	checkpoint_numbers = [0]
 	### ****************************************************
 	########################################################
-	# phi_fn, param_dict = load_phi_and_params(exp_names[0], checkpoint_numbers[0])
+	phi_fn, param_dict = load_phi_and_params(exp_names[0], checkpoint_numbers[0])
 
-	phi_fn, param_dict = load_phi_and_params()
+	# phi_fn, param_dict = load_phi_and_params()
 	# for n, p in phi_fn.named_parameters():
 	# 	if "beta_net" in n:
 	# 		p.requires_grad = False
