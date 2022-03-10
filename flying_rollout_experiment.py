@@ -11,6 +11,7 @@ from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 from flying_cbf_controller import CBFController
 from flying_plot_utils import load_phi_and_params, plot_invariant_set_slices
 from rollout_cbf_classes.flying_our_cbf_class import OurCBF
+import multiprocessing as mp
 
 # Fixed seed for repeatability
 torch.manual_seed(2022)
@@ -59,22 +60,12 @@ def sample_inside_safe_set(param_dict, cbf_obj, N_samp):
 	# IPython.embed()
 	# Could be more than N_samp currently; truncate to exactly N_samp
 	x0s = x0s[:N_samp]
-	percent_inside = float(N_samp_found)/(M*i)
+	percent_inside = (float(N_samp_found)/(M*i))*100
 	return x0s, percent_inside
 
-"""
-TODO: 3/3
-1. No longer max length: just a generous length that if you hit it without applying safe control, discard the rollouts 
-a. Probably, as result, print the number of desired rollouts vs. actual collected rollouts 
-2. TODO: make print out informative, so when Weiye/Tianhao runs, you can see all relevant info at a glance 
-TODO: also make sure that saved info is informative
-TODO: add to stat dict things like dt, counts (not just percentages), so that you get shown what you want 
-"""
 
 def extract_statistics(info_dicts, env, param_dict):
-	# TODO: 3/3, for variable length rollouts
-	# TODO: proofread this!
-	print("Inside extract_statistics")
+	# print("Inside extract_statistics")
 	# IPython.embed()
 
 	stat_dict = {}
@@ -83,47 +74,37 @@ def extract_statistics(info_dicts, env, param_dict):
 	# stat_dict["dt"] = env.dt
 	# for key, value in info_dicts.items():
 	# 	print(key, value.shape)
-	"""
-	1. Check how many rollouts didn't apply safe control; if too many, then increase T_max
-	2. For all rollouts that applied safe control, how many exited?
-	a. Count on-on: and how many inside/outside state box?
-	b. on-in: inside or outside state box?
-	c. on-out: inside or outside state box? 
-	3. For each time the boundary was hit, how many times did the safe control prevent exit?
-	"""
+
 	# How many rollouts applied safe control before they were terminated?
-	apply_u_safe = info_dicts["apply_u_safe"]  # list of len N_desired_rollout; elem is array of size T_max
-	N_desired_rollout = len(apply_u_safe)
-	stat_dict["N_desired_rollout"] = N_desired_rollout
-
-	"""safe_ctrl_rl = [np.any(rl) for rl in apply_u_safe]
-	percent_rollouts_with_safe_ctrl = np.sum(safe_ctrl_rl)/float(N_desired_rollout)
-	stat_dict["percent_rollouts_with_safe_ctrl"] = percent_rollouts_with_safe_ctrl"""
-
+	apply_u_safe = info_dicts["apply_u_safe"]  # list of len N_rollout; elem is array of size T_max
+	N_rollout = len(apply_u_safe)
 
 	# Count transitions
 	inside = info_dicts["inside_boundary"] # (n_rollouts, t_max)?
 	on = info_dicts["on_boundary"]
 	outside = info_dicts["outside_boundary"]
-	# IPython.embed()
 
-	on_in_rl = [on[i][:-1]*inside[i][1:] for i in range(N_desired_rollout)]
-	on_out_rl = [on[i][:-1]*outside[i][1:] for i in range(N_desired_rollout)]
-	on_on_rl = [on[i][:-1]*on[i][1:] for i in range(N_desired_rollout)]
+	on_in_rl = [on[i][:-1]*inside[i][1:] for i in range(N_rollout)]
+	on_out_rl = [on[i][:-1]*outside[i][1:] for i in range(N_rollout)]
+	on_on_rl = [on[i][:-1]*on[i][1:] for i in range(N_rollout)]
 
 	on_in_count = np.sum([np.sum(rl) for rl in on_in_rl])
 	on_out_count = np.sum([np.sum(rl) for rl in on_out_rl])
 	on_on_count = np.sum([np.sum(rl) for rl in on_on_rl])
-	# IPython.embed()
 
-	total_transitions = on_in_count + on_out_count + on_on_count
-	print("Total transitions, N desired rollout: ", total_transitions, N_desired_rollout)
-	assert total_transitions == N_desired_rollout # TODO
+	total_transitions = on_in_count + on_out_count # TODO
+	print("Total transitions, N rollout: ", total_transitions, N_rollout)
+	# Note: If we're counting on-on transitions, a single rollout can have multiple transitions.
+	# If not, then should have total_transitions == N_rollout
+	# TODO: but then, which transition counts?
+	# TOOD: perhaps we should only consider if the rollout ultimately ends up outside or inside...
+	# if total_transitions != N_desired_rollout:
+	# 	IPython.embed()
 
 	stat_dict["N_transitions"] = total_transitions
 	stat_dict["percent_on_in"] = (on_in_count/float(total_transitions))*100
 	stat_dict["percent_on_out"] = (on_out_count/float(total_transitions))*100
-	stat_dict["percent_on_on"] = (on_on_count/float(total_transitions))*100
+	# stat_dict["percent_on_on"] = (on_on_count/float(total_transitions))*100 # TODO
 	# IPython.embed()
 
 	stat_dict["N_on_in"] = on_in_count
@@ -133,14 +114,14 @@ def extract_statistics(info_dicts, env, param_dict):
 	# Find out box exits
 	xs = info_dicts["x"]
 	outside_box_rl = [np.logical_or(np.any(rl[:, :10] < x_lim[:, 0][None], axis=1), np.any(rl[:, :10] > x_lim[:, 1][None], axis=1)) for rl in xs]
-	on_in_outside_box_rl = [outside_box_rl[i][:-2]*on_in_rl[i] for i in range(N_desired_rollout)] # checks if x_i in x_i --> x_f transition is outside. This from [:-2]
-	on_out_outside_box_rl = [outside_box_rl[i][:-2]*on_out_rl[i] for i in range(N_desired_rollout)]
-	on_on_outside_box_rl = [outside_box_rl[i][:-2]*on_on_rl[i] for i in range(N_desired_rollout)]
+	on_in_outside_box_rl = [outside_box_rl[i][:-2]*on_in_rl[i] for i in range(N_rollout)] # checks if x_i in x_i --> x_f transition is outside. This from [:-2]
+	on_out_outside_box_rl = [outside_box_rl[i][:-2]*on_out_rl[i] for i in range(N_rollout)]
+	on_on_outside_box_rl = [outside_box_rl[i][:-2]*on_on_rl[i] for i in range(N_rollout)]
 	# IPython.embed()
 
-	on_in_outside_box_count = np.sum([np.any(rl) for rl in on_in_outside_box_rl]) # TODO: is any the right thing here?
-	on_out_outside_box_count = np.sum([np.any(rl) for rl in on_out_outside_box_rl])
-	on_on_outside_box_count = np.sum([np.any(rl) for rl in on_on_outside_box_rl])
+	on_in_outside_box_count = np.sum([np.sum(rl) for rl in on_in_outside_box_rl]) # TODO: is any the right thing here?
+	on_out_outside_box_count = np.sum([np.sum(rl) for rl in on_out_outside_box_rl])
+	on_on_outside_box_count = np.sum([np.sum(rl) for rl in on_on_outside_box_rl])
 
 	stat_dict["percent_on_in_outside_box"] = (on_in_outside_box_count/float(max(1, on_in_count)))*100
 	stat_dict["percent_on_out_outside_box"] = (on_out_outside_box_count/float(max(1, on_out_count)))*100
@@ -151,11 +132,17 @@ def extract_statistics(info_dicts, env, param_dict):
 	stat_dict["N_on_out_outside_box"] = on_out_outside_box_count
 	stat_dict["N_on_on_outside_box"] = on_on_outside_box_count
 
+	# print("at the end of compute_stats")
+	# IPython.embed()
 	return stat_dict
 
-def simulate_rollout(env, N_steps_max, cbf_controller):
+def simulate_rollout(env, N_steps_max, cbf_controller, random_seed=None):
+	# Random seed is for multiproc
 	# print("Inside simulate_rollout")
 	# IPython.embed()
+	if random_seed:
+		torch.manual_seed(random_seed)
+		np.random.seed(random_seed)
 
 	# Compute x0
 	x0, _ = sample_inside_safe_set(cbf_controller.param_dict, cbf_controller.cbf_obj, 1)
@@ -185,13 +172,16 @@ def simulate_rollout(env, N_steps_max, cbf_controller):
 			for key, value in dict.items():
 				value.append(debug_dict[key])
 
-		# TODO: reread: should these be elif or if?
 		if debug_dict["apply_u_safe"]:
 			u_safe_applied = True
-		if u_safe_applied:
-			t_since += 1
-		if t_since > 2: # 3 steps after first applying safe control
+		if u_safe_applied and (debug_dict["outside_boundary"] or debug_dict["inside_boundary"]): # TODO
 			break
+
+		# TODO
+		# if u_safe_applied:
+		# 	t_since += 1
+		# if t_since > 2: # 3 steps after first applying safe control
+		# 	break
 
 	dict = {key: np.array(value) for (key, value) in dict.items()}
 	dict["x"] = np.array(xs)
@@ -212,7 +202,7 @@ def run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller, log_fldr):
 		# print("inside run_rollouts()")
 		# IPython.embed()
 
-		if not np.any(info_dict["apply_u_safe"]):
+		if not (np.any(info_dict["apply_u_safe"]) and (info_dict["inside_boundary"][-1] or info_dict["outside_boundary"][-1])): # TODO
 			continue
 
 		# Store data
@@ -224,6 +214,54 @@ def run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller, log_fldr):
 
 		# Indicate this rollout has been recorded
 		N_rollout += 1
+
+	# Save data
+	save_fpth = os.path.join(log_fldr, "rollouts.pkl")
+	with open(save_fpth, 'wb') as handle:
+		pickle.dump(info_dicts, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+	# print("At the end of all our rollouts")
+	# IPython.embed()
+	return info_dicts
+
+def run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller, log_fldr):
+	info_dicts = None
+	N_rollout = 0
+	it = 0
+
+	n_cpu = mp.cpu_count()
+	random_seeds = np.arange(10*N_desired_rollout)
+	np.random.shuffle(random_seeds) # in place
+	pool = mp.Pool(n_cpu)
+
+	arg_tup = [env, N_steps_max, cbf_controller]
+	duplicated_arg = list([arg_tup] * n_cpu)
+
+	while N_rollout < N_desired_rollout:
+		batch_random_seeds = random_seeds[it*n_cpu:(it+1)*n_cpu]
+		final_arg = [duplicated_arg[i] + [batch_random_seeds[i]] for i in range(n_cpu)]
+		result = pool.starmap(simulate_rollout, final_arg)
+
+		for info_dict in result:
+			# if not (np.any(info_dict["apply_u_safe"]) and (np.any(info_dict["inside_boundary"]) or np.any(info_dict["outside_boundary"]))): # TODO
+			if not (np.any(info_dict["apply_u_safe"]) and (info_dict["inside_boundary"][-1] or info_dict["outside_boundary"][-1])):  # TODO
+				continue
+			if N_rollout == N_desired_rollout:
+				break
+
+			# Store data
+			if info_dicts is None:
+				info_dicts = {key: [value] for (key, value) in info_dict.items()}
+			else:
+				for key, value in info_dicts.items():
+					value.append(info_dict[key])
+
+			N_rollout += 1 		# Indicate this rollout has been recorded
+		it += 1
+
+	print("\n\n")
+	print("Desired rollouts: %i" % N_desired_rollout)
+	print("Number of collected rollouts: %i" % N_rollout)
 
 	# Save data
 	save_fpth = os.path.join(log_fldr, "rollouts.pkl")
@@ -265,7 +303,6 @@ def run_rollout_experiment(args):
 	# Experimental settings
 	N_desired_rollout = args.N_rollout
 	T_max = args.T_max
-	# T_max = 0.075
 	N_steps_max = int(T_max / args.dt)
 	# print("Number of timesteps: %f" % N_steps_max)
 
@@ -279,7 +316,10 @@ def run_rollout_experiment(args):
 	#####################################
 	# Run multiple rollout_results
 	#####################################
-	info_dicts = run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller, log_fldrpth)
+	if N_desired_rollout < 10:
+		info_dicts = run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller, log_fldrpth)
+	else:
+		info_dicts = run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller, log_fldrpth)
 
 	#####################################
 	# Compute numbers
@@ -297,6 +337,7 @@ def run_rollout_experiment(args):
 	for key, value in args.__dict__.items():
 		print(key, value)
 
+	print("\n")
 	# IPython.embed()
 	for key, value in stat_dict.items():
 		print("%s: %.3f" % (key, value))

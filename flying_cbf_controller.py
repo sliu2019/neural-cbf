@@ -77,6 +77,10 @@ class CBFController:
 		rhs = -phi_grad.T @ f_x - eps
 		rhs = rhs.item()  # scalar, not numpy array
 
+		# Saving data
+		qp_lhs = lhs
+		qp_rhs = rhs
+
 		# Computing control using QP
 		# Note, constraint may not always be satisfied, so we include a slack variable on the CBF input constraint
 		w = 1000.0  # slack weight
