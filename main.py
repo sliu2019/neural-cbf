@@ -1,5 +1,3 @@
-import numpy as np
-
 import torch
 from torch import nn
 from torch.autograd import grad
@@ -8,15 +6,16 @@ from src.attacks.basic_attacker import BasicAttacker
 from src.attacks.gradient_batch_attacker import GradientBatchAttacker
 from src.attacks.gradient_batch_attacker_warmstart import GradientBatchWarmstartAttacker
 from src.trainer import Trainer
-from src.reg_sample_keeper import RegSampleKeeper
+from src.reg_samplers.boundary import BoundaryRegSampler
+from src.reg_samplers.random import RandomRegSampler
+from src.reg_samplers.fixed import FixedRegSampler
+
+reg_samplers_name_to_class_dict = {"boundary": BoundaryRegSampler, "random": RandomRegSampler, "fixed": FixedRegSampler}
 from src.utils import *
 from src.argument import create_parser, print_args
 
-from scipy.linalg import pascal
-import os, sys
+import os
 import math
-import IPython
-import time
 import pickle
 
 # from global_settings import * # TODO: comment this out before a run
@@ -186,24 +185,17 @@ class Objective(nn.Module):
 		return result
 
 class Regularizer(nn.Module):
-	def __init__(self, phi_fn, device, reg_weight=0.0,
-	             A_samples=None):
+	def __init__(self, phi_fn, device, reg_weight=0.0):
 		super().__init__()
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
-
 		assert reg_weight >= 0.0
 
 	def forward(self, x):
-		if self.A_samples:
-			all_phi_values = self.phi_fn(self.A_samples)
-		else:
-			all_phi_values = self.phi_fn(x)
-
+		all_phi_values = self.phi_fn(x)
 		max_phi_values = torch.max(all_phi_values, dim=1)[0]
-		# reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values)) # TODO: Huh interesting, 0.3 factor stretches sigmoid out a lot; should we remove it?
-		reg = self.reg_weight*torch.mean(torch.sigmoid(max_phi_values))
+		reg = self.reg_weight*torch.mean(torch.sigmoid(0.3*max_phi_values))
 		return reg
 
 def create_flying_param_dict(args=None):
@@ -277,37 +269,7 @@ def main(args):
 	device = torch.device(dev)
 
 	# Selecting problem
-	if args.problem == "cartpole":
-		r = 2
-		x_dim = 4
-		u_dim = 1
-		x_lim = np.array([[-5, 5], [-math.pi/2.0, math.pi/2.0], [-10, 10], [-5, 5]], dtype=np.float32) # TODO
-
-		# Create phi
-		from src.problems.cartpole import H, XDot, ULimitSetVertices
-		param_dict = {
-			"I": 0.099,
-			"m": 0.2,
-			"M": 2,
-			"l": 0.5,
-			"max_theta": math.pi / 10.0,
-			"max_force": 1.0
-		}
-
-		h_fn = H(param_dict)
-		xdot_fn = XDot(param_dict)
-		uvertices_fn = ULimitSetVertices(param_dict, device)
-
-		# print("ln 167, main, check A sample creation")
-		# IPython.embed()
-		# n_samples = 50
-		# rnge = torch.tensor([param_dict["max_theta"], x_lim[1:x_dim, 0]])
-		# A_samples = torch.rand(n_samples, x_dim)*(2*rnge) - rnge # (n_samples, x_dim)
-		# A_samples = torch.rand(10, x_dim)
-
-		A_samples = None
-		x_e = torch.zeros(1, x_dim)
-	elif args.problem == "cartpole_reduced":
+	if args.problem == "cartpole_reduced":
 		r = 2
 		x_dim = 2
 		u_dim = 1
@@ -354,8 +316,9 @@ def main(args):
 		# n_mesh_grain = 0.75 # TODO: increase or decrease?
 		n_mesh_grain = args.reg_sample_distance
 		XXX = np.meshgrid(*[np.arange(r[0], r[1], n_mesh_grain) for r in x_lim])
-		A_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
-		A_samples = torch.from_numpy(A_samples.astype(np.float32))
+		reg_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
+		reg_samples = torch.from_numpy(reg_samples.astype(np.float32)).to(device)
+		reg_sampler = FixedRegSampler(x_lim, device, logger, samples=reg_samples)
 
 		if args.phi_include_xe:
 			x_e = torch.zeros(1, x_dim)
@@ -379,15 +342,14 @@ def main(args):
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
-		A_samples = None
+		reg_sampler = reg_samplers_name_to_class_dict[args.reg_sampler](x_lim, device, logger, n_samples=args.reg_n_samples)
+
 		if args.phi_include_xe:
 			x_e = torch.zeros(1, x_dim)
 		else:
 			x_e = None
 	else:
 		raise NotImplementedError
-		A_samples = None
-		x_e = None
 
 	# Save param_dict
 	with open(os.path.join(log_folder, "param_dict.pkl"), 'wb') as handle:
@@ -399,14 +361,12 @@ def main(args):
 	uvertices_fn = uvertices_fn.to(device)
 	if x_e is not None:
 		x_e = x_e.to(device)
-	if A_samples is not None:
-		A_samples = A_samples.to(device)
 	x_lim = torch.tensor(x_lim).to(device)
 
 	# Create CBF, etc.
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
-	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples)
+	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)
@@ -429,14 +389,8 @@ def main(args):
 	elif args.test_attacker == "gradient_batch_warmstart":
 		test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, max_n_steps=args.test_attacker_max_n_steps, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
 
-	# Create regularization helper
-	if args.reg_weight and not reg_fn.A_samples:
-		reg_sample_keeper = RegSampleKeeper(x_lim, device, logger, n_samples=args.reg_n_samples)
-	else:
-		reg_sample_keeper = None
-
 	# Pass everything to Trainer
-	trainer = Trainer(args, logger, attacker, test_attacker, reg_sample_keeper)
+	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler)
 	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################

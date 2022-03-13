@@ -30,7 +30,9 @@ def create_parser():
 
 	# Reg
 	parser.add_argument('--reg_weight', default=1.0, type=float, help='the weight on the volume term')
-	parser.add_argument('--reg_sample_distance', default=0.1, type=float)
+	parser.add_argument('--reg_sample_distance', default=0.1, type=float) # TODO: this should be property of specific reg sample keepr
+	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed'])
+	parser.add_argument('--reg_n_samples', type=int, default=250)
 	# parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
 
 	# parser.add_argument('--g_input_is_xy', action='store_true')
@@ -94,7 +96,7 @@ def create_parser():
 
 	# Misc
 	parser.add_argument('--gpu', '-g', default=0, type=int, help='which gpu to use')
-	return parser 
+	return parser
 	# return parser.parse_args()
 
 

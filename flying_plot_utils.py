@@ -402,7 +402,7 @@ if __name__ == "__main__":
 
 	# Make regularizer and viz
 	reg_sample_keeper = RegSampleKeeper(x_lim_torch, device, logger, n_samples=30)
-	samples = reg_sample_keeper.return_samples(phi_fn)
+	samples = reg_sample_keeper.get_samples(phi_fn)
 
 	# plot_invariant_set_slices(phi_fn, samples, param_dict, which_params=[["phi", "theta"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"]])
 	plot_invariant_set_slices(phi_fn, param_dict, samples, fnm="n30")

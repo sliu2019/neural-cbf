@@ -11,7 +11,7 @@ import datetime
 import pickle
 
 class Trainer():
-	def __init__(self, args, logger, attacker, test_attacker, reg_sample_keeper):
+	def __init__(self, args, logger, attacker, test_attacker, reg_sampler):
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
@@ -82,7 +82,7 @@ class Trainer():
 		grad_norms = []
 
 		# Debug reg sample keeper
-		reg_sample_keeper_X = []
+		reg_sampler_X = []
 		max_dists_X_reg = []
 		times_to_compute_X_reg = []
 		grad_mag_before_reg = []
@@ -107,14 +107,17 @@ class Trainer():
 			# k0.grad = None
 
 			t0_xreg = time.perf_counter()
-			if reg_fn.A_samples:
-				doesnt_matter = torch.tensor(0)
-				reg_value = reg_fn(doesnt_matter) # reg_fn depends on property A_samples, not the input
-			elif reg_fn.A_samples is None and self.args.reg_weight:
-				X_reg = self.reg_sample_keeper.return_samples(phi_fn)
-				reg_value = reg_fn(X_reg)
-			else:
-				reg_value = torch.tensor(0)
+			# TODO
+			# if reg_fn.A_samples:
+			# 	doesnt_matter = torch.tensor(0)
+			# 	reg_value = reg_fn(doesnt_matter) # reg_fn depends on property A_samples, not the input
+			# elif reg_fn.A_samples is None and self.args.reg_weight:
+			# 	X_reg = self.reg_sampler.get_samples(phi_fn)
+			# 	reg_value = reg_fn(X_reg)
+			# else:
+			# 	reg_value = torch.tensor(0)
+			X_reg = self.reg_sampler.get_samples(phi_fn)
+			reg_value = reg_fn(X_reg)
 			tf_xreg = time.perf_counter()
 
 			if self.args.trainer_average_gradients:
@@ -229,19 +232,20 @@ class Trainer():
 			train_loop_times.append(t_so_far)
 
 			# Recording for reg sample keeper
-			if self.args.reg_weight and reg_fn.A_samples is None:
+			# TODO: 3/13
+			"""if self.args.reg_weight and reg_fn.A_samples is None:
 				# print("storing reg debug info")
 				# IPython.embed()
 				phis_X_reg = phi_fn(X_reg)
 				max_dist_X_reg = torch.max(phis_X_reg).item() # TODO: is this an accurate measure of distance?
 				# max_dist_X_reg = max_dist_X_reg.detach().cpu().numpy()
 				max_dists_X_reg.append(max_dist_X_reg)
-				reg_sample_keeper_X.append(X_reg.detach().cpu().numpy())
+				reg_sampler_X.append(X_reg.detach().cpu().numpy())
 				times_to_compute_X_reg.append(tf_xreg-t0_xreg)
 				self.logger.info(f'reg, total time: {(tf_xreg-t0_xreg):.3f}s')
 				self.logger.info(f'reg, max dist: {max_dist_X_reg:.3f}')
 				# self.logger.info(f'mag of grad without reg: {mag1:.3f}')
-				# self.logger.info(f'with reg: {mag2:.3f}')
+				# self.logger.info(f'with reg: {mag2:.3f}')"""
 
 			# Saving at every _ iterations
 			if _iter % self.args.n_checkpoint_step == 0:
@@ -253,7 +257,7 @@ class Trainer():
 
 				additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse, "train_attack_X_init_random": train_attack_X_init_random, "train_attack_init_best_attack_value": train_attack_init_best_attack_value, "train_attack_final_best_attack_value": train_attack_final_best_attack_value,"train_attack_t_init": train_attack_t_init, "train_attack_t_grad_steps": train_attack_t_grad_steps, "train_attack_t_reproject": train_attack_t_reproject, "train_attack_t_total_opt": train_attack_t_total_opt}
 
-				reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg, "reg_sample_keeper_X": reg_sample_keeper_X, "grad_mag_before_reg": grad_mag_before_reg, "grad_mag_after_reg": grad_mag_after_reg}
+				reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg, "reg_sampler_X": reg_sampler_X, "grad_mag_before_reg": grad_mag_before_reg, "grad_mag_after_reg": grad_mag_after_reg}
 
 				# save_dict = save_dict + additional_train_attack_dict
 				save_dict.update(additional_train_attack_dict)

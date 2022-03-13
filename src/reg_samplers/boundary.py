@@ -9,13 +9,13 @@ import torch.optim as optim
 import time
 from src.utils import *
 
-class RegSampleKeeper():
+class BoundaryRegSampler():
     """
     Keeps points on the invariant set boundary to be used in the regularization term
     """
     # Note: this is not batch compliant.
 
-    def __init__(self, x_lim, device, logger, n_samples=50, \
+    def __init__(self, x_lim, device, logger, n_samples=250, \
                  projection_tolerance=1e-1, projection_lr=1e-2, projection_time_limit=3, verbose=False):
         vars = locals()  # dict of local names
         self.__dict__.update(vars)  # __dict__ holds and object's attributes
@@ -205,7 +205,7 @@ class RegSampleKeeper():
         # self.logger.info("Done with sampling points on the boundary...")
         return samples
 
-    def return_samples(self, phi_fn):
+    def get_samples(self, phi_fn):
         if self.X_saved is None:
             # print("sampling for the first time")
             self.X_saved = self._sample_invariant_set_boundary(phi_fn)
