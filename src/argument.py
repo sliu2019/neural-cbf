@@ -1,7 +1,7 @@
 import argparse
 import math
 
-def parser():
+def create_parser():
 	# Problem
 	parser = argparse.ArgumentParser(description='CBF synthesis')
 	parser.add_argument('--problem', default='cartpole_reduced', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced"])
@@ -94,8 +94,8 @@ def parser():
 
 	# Misc
 	parser.add_argument('--gpu', '-g', default=0, type=int, help='which gpu to use')
-
-	return parser.parse_args()
+	return parser 
+	# return parser.parse_args()
 
 
 def print_args(args, logger=None):

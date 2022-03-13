@@ -7,15 +7,15 @@ import mpl_toolkits.mplot3d.axes3d as Axes3D
 
 g = 9.81
 class FlyingInvertedPendulumEnv():
-	def __init__(self, param_dict=None):
-		if param_dict is None:
-			# Form a default param dict
-			sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-			from main import create_flying_param_dict
-			self.param_dict = create_flying_param_dict() # default
-		else:
-			self.param_dict = param_dict
-		self.__dict__.update(self.param_dict)
+	def __init__(self, param_dict):
+		# if param_dict is None:
+		# 	# Form a default param dict
+		# 	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+		# 	from main import create_flying_param_dict
+		# 	self.param_dict = create_flying_param_dict() # default
+		# else:
+		# self.param_dict = param_dict
+		self.__dict__.update(param_dict)
 
 		# Form here; do not use the state_index_dict in self.param_dict, which doesn't consider translational motion
 		state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",

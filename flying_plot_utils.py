@@ -25,8 +25,9 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 		args = DotMap(json_data)
 		param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb"))
 	else:
-		from src.argument import parser
-		args = parser() # default
+		from src.argument import create_parser
+		parser = create_parser() # default
+		args = parser.parse_args()
 
 		from main import create_flying_param_dict
 		param_dict = create_flying_param_dict(args) # default

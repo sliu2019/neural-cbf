@@ -47,6 +47,9 @@ class CBFController:
 		                                                                          x))  # in the absence of safe control, the next state
 		next_phi_val = self.cbf_obj.phi_fn(x_next)
 
+		dist_between_xs = np.linalg.norm(x_next - x)
+		phi_grad_mag = np.linalg.norm(phi_grad)
+
 		if phi_vals[0, -1] > 0:  # Outside
 			# print("STATUS: Outside") # TODO
 			eps = self.eps_outside
@@ -63,7 +66,7 @@ class CBFController:
 			inside_boundary = True
 			debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs": qp_rhs,
 			              "qp_lhs": qp_lhs, "phi_vals": phi_vals.flatten(), "impulses": impulses,
-			              "inside_boundary": inside_boundary, "on_boundary": on_boundary, "outside_boundary": outside_boundary}
+			              "inside_boundary": inside_boundary, "on_boundary": on_boundary, "outside_boundary": outside_boundary, "dist_between_xs": dist_between_xs, "phi_grad_mag": phi_grad_mag, "phi_grad": phi_grad}
 			return u_ref, debug_dict
 
 		# IPython.embed()
@@ -128,5 +131,5 @@ class CBFController:
 		impulses = sol_impulses
 		debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "phi_vals": phi_vals.flatten(),
 		              "qp_slack": qp_slack, "qp_rhs": qp_rhs, "qp_lhs": qp_lhs, "impulses": impulses,
-		             "inside_boundary": inside_boundary, "on_boundary": on_boundary, "outside_boundary": outside_boundary}
+		             "inside_boundary": inside_boundary, "on_boundary": on_boundary, "outside_boundary": outside_boundary, "dist_between_xs": dist_between_xs, "phi_grad_mag": phi_grad_mag, "phi_grad": phi_grad}
 		return u_safe, debug_dict

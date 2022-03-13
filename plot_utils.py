@@ -9,7 +9,7 @@ import matplotlib as mpl
 from mpl_toolkits.mplot3d import axes3d
 import math
 from main import Phi, Objective, Regularizer
-from src.argument import parser, print_args
+# from src.argument import parser, print_args
 from src.utils import *
 import torch
 import pickle

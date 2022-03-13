@@ -8,9 +8,11 @@ from torch.autograd import grad
 class SSA:
     def __init__(self, param_dict):
         self.delta_max = param_dict['delta_safety_limit']
-        self.c1 = 1
-        self.c2 = 0.02 # safety index hand design rule
-        # self.c2 = 1
+        # self.c1 = 1 # TODO: has been fixed
+        self.c2 = 1.0 # weight on first derivative
+        self.c3 = 0.0
+        # self.c2 = 0.02 # TODO: Weiye's original setting
+        # self.params = {"c2": self.c2, "c3": self.c3} # TODO: could be useful for printing
 
     def phi_fn(self, x):
         ''' safety index
@@ -57,13 +59,12 @@ class SSA:
         # phi 1
         phi_1 = phi_0 + self.c2*dot_phi_0
         # beta
-        phi_beta = delta**2 - self.delta_max**2 + gamma**2 + beta**2
+        phi_beta = delta**2 - self.delta_max**2 + gamma**2 + beta**2 + self.c3 # TODO: reshaping
         phi_star = phi_1 - phi_0 + phi_beta
         # final result
         result = np.hstack((phi_0, phi_1, phi_star))
 
         return result
-
 
     def phi_star_torch(self, x):
         ''' safety index
@@ -102,9 +103,24 @@ class SSA:
         # phi 1
         phi_1 = phi_0 + self.c2*dot_phi_0
         # beta
-        phi_beta = delta**2 - self.delta_max**2 + gamma**2 + beta**2
+        # phi_beta = delta**2 - self.delta_max**2 + gamma**2 + beta**2
+        phi_beta = delta**2 - self.delta_max**2 + gamma**2 + beta**2 + self.c3 # TODO: reshaping
         phi_star = phi_1 - phi_0 + phi_beta
 
+        """# phi 0
+        phi_0 = torch.pow(delta, 2) - self.delta_max**2 + torch.pow(gamma, 2) + torch.pow(beta, 2)
+        # dot phi 0
+        dot_phi_0 = 2*delta*ddelta + 2*gamma*dgamma + 2*beta*dbeta
+        # phi 1
+        phi_1 = phi_0 + self.c2*dot_phi_0
+        # beta
+        # phi_beta = delta**2 - self.delta_max**2 + gamma**2 + beta**2
+        # phi_beta = delta**2 - self.delta_max**2 + gamma**2 + beta**2 + self.c3 # TODO: reshaping
+        phi_beta = torch.pow(delta, 2) - self.delta_max**2 + torch.pow(gamma, 2) + torch.pow(beta, 2) + self.c3
+        phi_star = phi_1 - phi_0 + phi_beta"""
+
+        # print("inside torch")
+        # IPython.embed()
         return phi_star
 
 
@@ -146,14 +162,30 @@ class SSA:
 
         return gradient
 
-
 if __name__ == "__main__":
+    import IPython
+
     param_dict = {}
-    param_dict['delta_safety_limit'] = 0.1
+    param_dict['delta_safety_limit'] = math.pi/4
     ssa = SSA(param_dict)
-    x = np.ones((5,16))
-    x[1,:] *= 2
-    x[2,:] *= 3
-    phi = ssa.phi_grad(x)
+
+    # x = np.ones((5,16))
+    # x[1,:] *= 2
+    # x[2,:] *= 3
+
+
+    # phi = ssa.phi_grad(x)
     # import ipdb; ipdb.set_trace()
-    print(phi)
+    # print(phi)
+
+    # x = np.random.normal(size=16)
+    # print(ssa.phi_fn(x))
+    #
+    # x_torch = torch.from_numpy(x.astype("float32"))
+    # print(ssa.phi_star_torch(x_torch))
+    #
+    # phi_grad = ssa.phi_grad(x)
+    # print(phi_grad)
+    #
+    # print(x)
+    # IPython.embed()

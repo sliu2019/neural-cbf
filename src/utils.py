@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import IPython
 
-from src.argument import parser, print_args
+from src.argument import create_parser, print_args
 
 def create_logger(save_path='', file_type='', level='debug'):
 
@@ -49,7 +49,9 @@ def save_args(args, file_name):
         json.dump(args.__dict__, f, indent=2)
 
 def load_args(file_name):
-    args = parser()
+    parser = create_parser()
+    args = parser.parse_args()
+    # args = parser() # TODO
     with open(file_name, 'r') as f:
         args.__dict__ = json.load(f)
     return args

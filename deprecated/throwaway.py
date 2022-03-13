@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
 import math
 from main import Phi, Objective, Regularizer
-from src.argument import parser, print_args
+# from src.argument import parser, print_args
 from src.utils import *
 import torch
 import pickle
@@ -141,7 +141,8 @@ def plot_phi_2d_level_curve_over_training():
 	"""
 	Hard-coded for visualizing cartpole-default training
 	"""
-	args = parser()
+	args = None # TODO
+	# args = parser()
 
 	r = 2
 	x_dim = 4

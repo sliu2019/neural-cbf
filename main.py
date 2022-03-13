@@ -10,7 +10,7 @@ from src.attacks.gradient_batch_attacker_warmstart import GradientBatchWarmstart
 from src.trainer import Trainer
 from src.reg_sample_keeper import RegSampleKeeper
 from src.utils import *
-from src.argument import parser, print_args
+from src.argument import create_parser, print_args
 
 from scipy.linalg import pascal
 import os, sys
@@ -456,7 +456,8 @@ def main(args):
 
 
 if __name__ == "__main__":
-	args = parser()
+	parser = create_parser()
+	args = parser.parse_args()
 	torch.manual_seed(args.random_seed)
 	np.random.seed(args.random_seed)
 	main(args)
