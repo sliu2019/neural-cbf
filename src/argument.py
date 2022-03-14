@@ -30,7 +30,7 @@ def create_parser():
 
 	# Reg
 	parser.add_argument('--reg_weight', default=1.0, type=float, help='the weight on the volume term')
-	parser.add_argument('--reg_sample_distance', default=0.1, type=float) # TODO: this should be property of specific reg sample keepr
+	parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task')
 	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed'])
 	parser.add_argument('--reg_n_samples', type=int, default=250)
 	# parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
@@ -41,8 +41,8 @@ def create_parser():
 	parser.add_argument('--no_softplus_on_obj', action='store_true', help='removes softplus on the objective')
 
 	###################################################################################################################################
-	# Reg sample keeper
-	parser.add_argument('--reg_n_samples', default=50, type=int)
+	# # Reg sample keeper
+	# parser.add_argument('--reg_n_samples', default=50, type=int)
 
 	###################################################################################################################################
 	# Attacker: train

@@ -93,7 +93,7 @@ class EarlyStoppingBatch():
     Like EarlyStopping, but stops when all members of batch meet the individual stopping criteria.
     Note: this is used for attacks, so loss is being maximized
     """
-    def __init__(self, bs, patience=3, min_delta=0):
+    def __init__(self, bs, patience=3, min_delta=1e-1):
         """
         :param patience: how many epochs to wait before stopping when loss is
                not improving

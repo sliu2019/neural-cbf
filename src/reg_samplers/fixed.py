@@ -22,12 +22,12 @@ class FixedRegSampler():
         self.x_dim = x_lim.shape[0]
         self.x_lim_interval_sizes = np.reshape(x_lim[:, 1] - x_lim[:, 0], (1, self.x_dim))
 
-        print("Fixed, get_samples")
-        print("Also check init")
-        IPython.embed()
+        # print("Fixed, get_samples")
+        # print("Also check init")
+        # IPython.embed()
 
         if self.samples is None:
-            samp_numpy = np.random.uniform(size=(self.n_samples, self.x_dim)) * self.x_lim_interval_sizes + self.x_lim[:, [0]]
+            samp_numpy = np.random.uniform(size=(self.n_samples, self.x_dim)) * self.x_lim_interval_sizes + self.x_lim[:, [0]].T
             samp_torch = torch.from_numpy(samp_numpy.astype("float32")).to(self.device)
             self.samples = samp_torch
 

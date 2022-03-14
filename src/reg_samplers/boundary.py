@@ -21,6 +21,7 @@ class BoundaryRegSampler():
         self.__dict__.update(vars)  # __dict__ holds and object's attributes
         del self.__dict__["self"]  # don't need `self`
 
+        self.x_lim = torch.tensor(x_lim).to(device)
         self.x_dim = self.x_lim.shape[0]
 
         # Compute 2n facets volume of n-dim hypercube (actually n facets because they come in pairs)

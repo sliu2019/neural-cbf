@@ -148,7 +148,6 @@ class Trainer():
 			#
 			# objective_value = attack_value + reg_value # Just for record-keeping purposes
 
-
 			# IPython.embed()
 			objective_value = attack_value + reg_value
 			objective_value.backward()
@@ -227,6 +226,18 @@ class Trainer():
 			# IPython.embed()
 			k0_grad.append(k0.grad.detach().cpu().numpy())
 			ci_grad.append(ci.grad.detach().cpu().numpy())
+
+			# TODO: reg weight tuning
+			# avg_grad_norm = 0
+			# n_param = 0
+			# for n, p in phi_fn.named_parameters():
+			# 	if n not in ["ci", "k0"]:
+			# 		print(n)
+			# 		avg_grad_norm += torch.linalg.norm(p.grad).item()
+			# 		n_param += 1
+			# avg_grad = avg_grad_norm/n_param
+			# grad_norms.append(avg_grad)
+			# self.logger.info(f'Grad norm: {avg_grad:.3f}')
 
 			# Timing debug
 			train_loop_times.append(t_so_far)

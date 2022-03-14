@@ -25,10 +25,10 @@ class RandomRegSampler():
         self.x_lim_interval_sizes = np.reshape(x_lim[:, 1] - x_lim[:, 0], (1, self.x_dim))
 
     def get_samples(self, phi_fn):
-        print("Random, get_samples")
-        print("Also check init")
-        IPython.embed()
-        samp_numpy = np.random.uniform(size=(self.n_samples, self.x_dim))*self.x_lim_interval_sizes + self.x_lim[:, [0]]
+        # print("Random, get_samples")
+        # print("Also check init")
+        # IPython.embed()
+        samp_numpy = np.random.uniform(size=(self.n_samples, self.x_dim))*self.x_lim_interval_sizes + self.x_lim[:, [0]].T
         samp_torch = torch.from_numpy(samp_numpy.astype("float32")).to(self.device)
         return samp_torch
 

@@ -312,8 +312,6 @@ def main(args):
 		xdot_fn = XDot(param_dict)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
-
-		# n_mesh_grain = 0.75 # TODO: increase or decrease?
 		n_mesh_grain = args.reg_sample_distance
 		XXX = np.meshgrid(*[np.arange(r[0], r[1], n_mesh_grain) for r in x_lim])
 		reg_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
@@ -342,6 +340,8 @@ def main(args):
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
+		# print("main.py, creating regsampler")
+		# IPython.embed()
 		reg_sampler = reg_samplers_name_to_class_dict[args.reg_sampler](x_lim, device, logger, n_samples=args.reg_n_samples)
 
 		if args.phi_include_xe:
@@ -389,6 +389,7 @@ def main(args):
 	elif args.test_attacker == "gradient_batch_warmstart":
 		test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, max_n_steps=args.test_attacker_max_n_steps, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
 
+	# IPython.embed()
 	# Pass everything to Trainer
 	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler)
 	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
