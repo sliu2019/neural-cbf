@@ -9,9 +9,10 @@ from torch.autograd import grad
 from src.utils import *
 import datetime
 import pickle
+import math
 
 class Trainer():
-	def __init__(self, args, logger, attacker, test_attacker, reg_sampler):
+	def __init__(self, args, logger, attacker, test_attacker, reg_sampler, param_dict, device):
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
@@ -19,6 +20,12 @@ class Trainer():
 		self.save_folder = '%s_%s' % (self.args.problem, self.args.affix)
 		self.log_folder = os.path.join(self.args.log_root, self.save_folder)
 		self.data_save_fpth = os.path.join(self.log_folder, "data.pkl")
+
+		# For approximating volume
+		x_lim = param_dict["x_lim"]
+		self.x_lim = x_lim
+		self.x_dim = x_lim.shape[0]
+		self.x_lim_interval_sizes = np.reshape(x_lim[:, 1] - x_lim[:, 0], (1, self.x_dim))
 
 	def train(self, objective_fn, reg_fn, phi_fn, xdot_fn):
 		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
@@ -88,6 +95,7 @@ class Trainer():
 		grad_mag_before_reg = []
 		grad_mag_after_reg = []
 
+		V_approx_list = []
 		ci_lr = 1e-4
 		a_lr = 1e-4
 
@@ -98,8 +106,8 @@ class Trainer():
 		# save_model(phi_fn, file_name)
 		while True:
 			# Inner max
-			# X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode)
-			x, debug_dict = self.attacker.opt(objective_fn, phi_fn, debug=True)
+			# X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode) # TODO
+			x, debug_dict = self.attacker.opt(objective_fn, phi_fn, _iter, debug=True)
 			X = debug_dict["X"]
 
 			optimizer.zero_grad()
@@ -180,6 +188,7 @@ class Trainer():
 			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(self.args.gpu), torch.cuda.memory_reserved(self.args.gpu)))
 
 			# IPython.embed()
+			# TODO: there's gotta be a cleaner way to implement this data collection at the bottom here
 			# Gather data
 			train_attack_losses.append(attack_value.item()) # Have to use .item() to detach from graph, otherwise we retain each graph from each iteration
 			train_reg_losses.append(reg_value.item())
@@ -263,8 +272,25 @@ class Trainer():
 				file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 				save_model(phi_fn, file_name)
 
+				# Check volume + log it. Different samples every time
+				# print("ln 274, train.py")
+				# IPython.embed()
+				N_volume_samples = 5000
+				samp_numpy = np.random.uniform(size=(N_volume_samples, self.x_dim)) * self.x_lim_interval_sizes + self.x_lim[:, [0]].T
+				samp_torch = torch.from_numpy(samp_numpy.astype("float32")).to(self.device)
+				M = 100
+
+				# with torch.no_grad():
+				N_samples_inside = 0
+				for k in range(math.ceil(N_volume_samples/float(M))):
+					phi_vals_batch = phi_fn(samp_torch[k*M: min((k+1)*M, N_volume_samples)])
+					N_samples_inside += torch.sum(torch.max(phi_vals_batch, axis=1)[0] <= 0.0)
+				V_approx = N_samples_inside*100/float(N_volume_samples)
+				V_approx = V_approx.item()
+				V_approx_list.append(V_approx)
+
 				# save data too
-				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "train_attack_X_phi_vals": train_attack_X_phi_vals, "grad_norms": grad_norms}
+				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "train_attack_X_phi_vals": train_attack_X_phi_vals, "grad_norms": grad_norms, "V_approx_list": V_approx_list}
 
 				additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse, "train_attack_X_init_random": train_attack_X_init_random, "train_attack_init_best_attack_value": train_attack_init_best_attack_value, "train_attack_final_best_attack_value": train_attack_final_best_attack_value,"train_attack_t_init": train_attack_t_init, "train_attack_t_grad_steps": train_attack_t_grad_steps, "train_attack_t_reproject": train_attack_t_reproject, "train_attack_t_total_opt": train_attack_t_total_opt}
 
@@ -275,9 +301,9 @@ class Trainer():
 				save_dict.update(reg_debug_dict)
 
 				# IPython.embed()
-
 				self.logger.info(f'train loss: {objective_value:.3f}%')
 				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
+				self.logger.info(f'v approx: {V_approx:.3f}% of volume')
 
 				print("Saving at: ", self.data_save_fpth)
 				with open(self.data_save_fpth, 'wb') as handle:
@@ -316,9 +342,9 @@ class Trainer():
 
 			_iter += 1
 
-	def test(self, phi_fn, objective_fn):
-		# Inner min
-		x = self.test_attacker.opt(objective_fn, phi_fn, mode=self.args.train_mode)
-		objective_value = objective_fn(x.view(1, -1))[0, 0]
-
-		return objective_value
+	# def test(self, phi_fn, objective_fn):
+	# 	# Inner min
+	# 	x = self.test_attacker.opt(objective_fn, phi_fn, mode=self.args.train_mode)
+	# 	objective_value = objective_fn(x.view(1, -1))[0, 0]
+	#
+	# 	return objective_value

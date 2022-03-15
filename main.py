@@ -18,7 +18,8 @@ import os
 import math
 import pickle
 
-# from global_settings import * # TODO: comment this out before a run
+# TODO: comment this out before a run
+# from global_settings import *
 
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
@@ -132,9 +133,6 @@ class Phi(nn.Module):
 
 		result = torch.cat((result, phi_r_minus_1_star), dim=1)
 
-		# print(phi_r_minus_1_star)
-		# print(result)
-		# IPython.embed()
 		return result
 
 class Objective(nn.Module):
@@ -145,7 +143,6 @@ class Objective(nn.Module):
 		del self.__dict__["self"]  # don't need `self`
 
 	def forward(self, x):
-		# IPython.embed()
 		# The way these are implemented should be batch compliant
 		u_lim_set_vertices = self.uvertices_fn(x) # (bs, n_vertices, u_dim), can be a function of x_batch
 		n_vertices = u_lim_set_vertices.size()[1]
@@ -155,7 +152,6 @@ class Objective(nn.Module):
 		X = (x.unsqueeze(1)).repeat(1, n_vertices, 1) # (bs, n_vertices, x_dim)
 		X = torch.reshape(X, (-1, self.x_dim)) # (bs x n_vertices, x_dim)
 
-		# IPython.embed()
 		xdot = self.xdot_fn(X, U)
 
 		orig_req_grad_setting = x.requires_grad
@@ -171,12 +167,9 @@ class Objective(nn.Module):
 		phidot_cand = xdot.unsqueeze(1).bmm(grad_phi.unsqueeze(2))
 		phidot_cand = torch.reshape(phidot_cand, (-1, n_vertices)) # bs x n_vertices
 
-		# print(phidot_cand)
 		phidot, _ = torch.min(phidot_cand, 1)
 
 		if self.args.no_softplus_on_obj:
-			# print("ln 176, creating objective")
-			# IPython.embed()
 			result = phidot
 		else:
 			result = nn.functional.softplus(phidot) # using softplus on loss!!!
@@ -236,8 +229,6 @@ def create_flying_param_dict(args=None):
 	# write args into the param_dict
 	param_dict["L_p"] = args.pend_length
 
-	# print("creating param_dict in main")
-	# IPython.embed()
 	return param_dict
 
 def main(args):
@@ -278,13 +269,6 @@ def main(args):
 
 		# Create phi
 		from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
-
-		# param_dict = {
-		# 	"I": 0.021,
-		# 	"m": 0.25,
-		# 	"M": 1.00,
-		# 	"l": 0.5
-		# }
 
 		if args.physical_difficulty == 'easy': # medium length pole
 			param_dict = {
@@ -340,8 +324,6 @@ def main(args):
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
-		# print("main.py, creating regsampler")
-		# IPython.embed()
 		reg_sampler = reg_samplers_name_to_class_dict[args.reg_sampler](x_lim, device, logger, n_samples=args.reg_n_samples)
 
 		if args.phi_include_xe:
@@ -379,35 +361,25 @@ def main(args):
 	elif args.train_attacker == "gradient_batch":
 		attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr)
 	elif args.train_attacker == "gradient_batch_warmstart":
-		attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit)
+		attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule)
 
 	# Create test attacker
-	if args.test_attacker == "basic":
-		test_attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
-	elif args.test_attacker == "gradient_batch":
-		test_attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
-	elif args.test_attacker == "gradient_batch_warmstart":
-		test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, max_n_steps=args.test_attacker_max_n_steps, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
+	test_attacker = None
+	# if args.test_attacker == "basic":
+	# 	test_attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
+	# elif args.test_attacker == "gradient_batch":
+	# 	test_attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
+	# elif args.test_attacker == "gradient_batch_warmstart":
+	# 	test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, max_n_steps=args.test_attacker_max_n_steps, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
 
-	# IPython.embed()
 	# Pass everything to Trainer
-	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler)
+	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)
 	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
 
-	# 2.20 bug
-	# x_rand = torch.rand(1, 10).to(device)
-	# phi_vals = phi_fn(x_rand)
-	# # IPython.embed()
-	# obj = phi_vals[0, -1]
-	# obj.backward()
-	#
-	# for n, p in phi_fn.named_parameters():
-	# 	print(n, p.grad)
-	# # IPython.embed()
-
+	### Fill out ####
 
 
 if __name__ == "__main__":

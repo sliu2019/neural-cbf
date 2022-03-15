@@ -83,7 +83,9 @@ class OurCBF:
         x_torch.requires_grad = True
 
         # Compute phi grad
-        phi_vals = self.torch_phi_fn(x_torch)
+        print("Inside flying_our_cbf_class.py, ln 86: check out a change that was made but not verified on 3/14")
+        IPython.embed()
+        phi_vals = self.torch_phi_fn(x_torch, grad_x=True) # TODO: 3/14 changed grad_x to true, does that affect anything? Toggle it on and off to try
         phi_val = phi_vals[0, -1]
         phi_grad = grad([phi_val], x_torch)[0]
 

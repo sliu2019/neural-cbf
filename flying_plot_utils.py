@@ -103,16 +103,22 @@ def graph_losses(exp_name):
 		data = pickle.load(handle)
 
 		train_attack_losses = data["train_attack_losses"]
-		train_reg_losses = data["train_reg_losses"]
-		train_losses = data["train_losses"]
+		# train_reg_losses = data["train_reg_losses"]
+		# train_losses = data["train_losses"]
+		approx_v = data["V_approx_list"]
 
-		N_it = 1500
-		plt.plot(train_attack_losses[:N_it], linewidth=0.5, label="train attack loss")
-		plt.plot(train_reg_losses[:N_it], linewidth=0.5, label="train reg loss")
-		plt.plot(train_losses[:N_it], linewidth=0.5, label="train total loss")
-		plt.title("Losses for %s" % exp_name)
+		# N_it = 1500
+		args = load_args("./log/%s/args.txt" % exp_name)
+		N_it = len(train_attack_losses)
 
-	plt.xlabel("Optimization steps")
+		plt.plot(train_attack_losses, linewidth=0.5, label="train attack loss")
+		# plt.plot(train_reg_losses[:N_it], linewidth=0.5, label="train reg loss")
+		# plt.plot(train_losses, linewidth=0.5, label="train total loss")
+		plt.plot(np.arange(0, N_it, args.n_checkpoint_step), approx_v, linewidth=0.5, label="v approx")
+
+		plt.title("Training metrics for %s" % exp_name)
+
+	plt.xlabel("Iterations") # aka opt. steps
 	plt.legend(loc="upper right")
 
 
@@ -121,8 +127,14 @@ def graph_losses(exp_name):
 	plt.cla()
 
 	print(exp_name)
-	print("Min attack loss achieved (desired <= 0): %.5f" % np.min(train_attack_losses))
-	print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
+	min_attack_ind = np.argmin(train_attack_losses)
+	print("Total iterations (so far): %i" % N_it)
+	print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (np.min(train_attack_losses), min_attack_ind, approx_v[round(min_attack_ind/float(args.n_checkpoint_step))]))
+	print("Average approx volume: %.3f" % (np.mean(approx_v)))
+	# print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
+	print("\n")
+
+	return min_attack_ind
 
 def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
 	"""
@@ -411,43 +423,24 @@ if __name__ == "__main__":
 	########################################################
 	#########     FILL OUT HERE !!!!   #####################
 	### ****************************************************
-	# exp_names = ["flying_inv_pend_reg_weight_1e-1", "flying_inv_pend_reg_weight_1", "flying_inv_pend_reg_weight_10", "flying_inv_pend_reg_weight_100"]
-	# checkpoint_numbers = [1380, 100, 510, 230]
+	exp_names = ["flying_inv_pend_reg_weight_1e-1", "flying_inv_pend_reg_weight_1", "flying_inv_pend_reg_weight_10", "flying_inv_pend_reg_weight_50", "flying_inv_pend_reg_weight_150", "flying_inv_pend_reg_weight_200", "flying_inv_pend_reg_weight_1e-1_phi_dim_64_64", "flying_inv_pend_reg_weight_1_phi_dim_64_64"]
 
-	exp_names = ["flying_inv_pend_reg_weight_1"]
-	checkpoint_numbers = [0]
+	# exp_names = ["flying_inv_pend_reg_weight_100"] # TODO: server 4
+	checkpoint_numbers = []
+	# checkpoint_numbers = [0]*len(exp_names) # doesn't matter
 	### ****************************************************
 	########################################################
-	phi_fn, param_dict = load_phi_and_params(exp_names[0], checkpoint_numbers[0])
 
-	# phi_fn, param_dict = load_phi_and_params()
-	# for n, p in phi_fn.named_parameters():
-	# 	if "beta_net" in n:
-	# 		p.requires_grad = False
-	# 		new_p = torch.zeros_like(p)
-	# 		p.copy_(new_p)
-
-	# print(list(phi_fn.parameters()))
-	# IPython.embed()
-	# new_k0 = torch.maximum(new_k0, torch.zeros_like(new_k0))  # Project to all positive
-	# k0.copy_(new_k0)
-	which_params = [["phi", "dphi"], ["theta", "dtheta"], ["gamma", "dgamma"], ["beta", "dbeta"]]
-	fldr_path = os.path.join("./log", exp_names[0])
-
-	for which_param in which_params:
-		fnm = "debug_%s_vs_%s_random_phi_nn_seed_10" % (which_param[0], which_param[1])
-		plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, fnm=fnm, which_params=[which_param])
-		plt.clf()
-		plt.close()
+	for exp_name in exp_names:
+		min_attack_loss_ind = graph_losses(exp_name)
+		checkpoint_numbers.append(min_attack_loss_ind)
 
 	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
-		# graph_losses(exp_name)
-		# plt.clf()
-		# plt.close()
-		pass
-		# TODO: uncomment
-		# phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 
+		# TODO: uncomment
+		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+
+		# TODO: don't need this anymore, recording during training. Delete.
 		# from flying_rollout_experiment import sample_inside_safe_set
 		# from rollout_cbf_classes.flying_our_cbf_class import OurCBF
 		# cbf_obj = OurCBF(phi_fn, param_dict)  # numpy wrapper
@@ -463,7 +456,7 @@ if __name__ == "__main__":
 		# plt.close()
 		##################################################################
 
-		"""state_index_dict = param_dict["state_index_dict"]
+		state_index_dict = param_dict["state_index_dict"]
 
 		# which_params = [["phi", "dphi"]]
 		# which_params = [["theta", "dtheta"]]
@@ -490,7 +483,7 @@ if __name__ == "__main__":
 		plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=which_params, constants_for_other_params=constants_for_other_params, fnm=fnm)
 
 		plt.clf()
-		plt.close()"""
+		plt.close()
 
 
 		# samples = load_attacks(exp_name, checkpoint_number)
@@ -501,47 +494,3 @@ if __name__ == "__main__":
 		#
 		# plt.clf()
 		# plt.close()
-
-		#################################################
-		#### Graphing other debug info ##################
-
-		# with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
-		# 	data = pickle.load(handle)
-		#
-		# 	train_attack_losses = data["train_attack_losses"]
-		# 	train_reg_losses = data["train_reg_losses"]
-		# 	train_losses = data["train_losses"]
-		#
-		# 	plt.plot(train_attack_losses[:1000], linewidth=0.5, label="train attack loss")
-		# 	plt.plot(train_reg_losses[:1000], linewidth=0.5, label="train reg loss")
-		# 	plt.plot(train_losses[:1000], linewidth=0.5, label="train total loss")
-		# 	plt.title("Losses for %s" % exp_name)
-		#
-		# plt.xlabel("Optimization steps")
-		# plt.legend(loc="upper right")
-		#
-		# plt.savefig("./log/%s/%s_loss.png" % (exp_name, exp_name))
-		# plt.clf()
-		# plt.cla()
-		#
-		# print("Min attack loss achieved (desired <= 0): %.5f" % np.min(train_attack_losses))
-		# print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
-		#
-		# save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses,
-		#              "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times,
-		#              "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init,
-		#              "train_attack_X_final": train_attack_X_final, "k0_grad": k0_grad, "ci_grad": ci_grad,
-		#              "train_losses": train_losses, "train_attack_losses": train_attack_losses,
-		#              "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals,
-		#              "grad_norms": grad_norms, "reg_sample_keeper_X": reg_sample_keeper_X}
-		#
-		# additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse,
-		#                                 "train_attack_X_init_random": train_attack_X_init_random,
-		#                                 "train_attack_init_best_attack_value": train_attack_init_best_attack_value,
-		#                                 "train_attack_final_best_attack_value": train_attack_final_best_attack_value,
-		#                                 "train_attack_t_init": train_attack_t_init,
-		#                                 "train_attack_t_grad_steps": train_attack_t_grad_steps,
-		#                                 "train_attack_t_reproject": train_attack_t_reproject,
-		#                                 "train_attack_t_total_opt": train_attack_t_total_opt}
-		#
-		# reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg}
