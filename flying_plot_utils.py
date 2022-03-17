@@ -401,50 +401,84 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 
 	return fig, axs
 
-def debug_loss_spikes(exp_name):
+def debug(exp_name):
+	"""
+	Debugging:
+	- train loss spikes
+	- counterexamples (are they consistently close to the boundary? are they on dS, as well as phi(x) = 0?)
+	- regularization (is reg grad magnitude proportional to volume?)
+	"""
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
 
-		train_attack_losses = data["train_attack_losses"]
-		# train_reg_losses = data["train_reg_losses"]
-		# train_losses = data["train_losses"]
-		approx_v = data["V_approx_list"]
+		# IPython.embed()
+		train_attack_losses = np.array(data["train_attack_losses"])
+		train_attack_X_obj_vals = data["train_attack_X_obj_vals"]
+		train_attack_X_phi_vals = data["train_attack_X_phi_vals"]
+		train_attack_X_init_random = data["train_attack_X_init_random"]
+		train_attack_X_init_reuse = data["train_attack_X_init_reuse"]
 
-		# N_it = 1500
-		args = load_args("./log/%s/args.txt" % exp_name)
-		N_it = len(train_attack_losses)
-		n_checkpoint_step = args.n_checkpoint_step
+		# Debug train loss spikes
+		std = np.std(train_attack_losses)
+		diff = train_attack_losses[1:] - train_attack_losses[:-1]
+		spike_inds = np.argwhere(diff > std).flatten() # 68=95=99 std dev confidence interval rule
 
-		plt.plot(train_attack_losses, linewidth=0.5, label="train attack loss")
-		# plt.plot(train_reg_losses[:N_it], linewidth=0.5, label="train reg loss")
-		# plt.plot(train_losses, linewidth=0.5, label="train total loss")
-		plt.plot(np.arange(0, N_it, args.n_checkpoint_step), approx_v, linewidth=0.5, label="v approx")
+		n_random_best = 0
+		n_random = train_attack_X_init_random[1].shape[0]
+		# print(n_random)
+		for spike_ind in spike_inds:
+			obj_vals = train_attack_X_obj_vals[spike_ind]
+			# print(obj_vals.shape)
+			max_ind = np.argmax(obj_vals)
+			# print(max_ind)
+			if max_ind < n_random:
+				n_random_best += 1
 
-		plt.title("Training metrics for %s" % exp_name)
+		percent_random_best = n_random_best*100.0/float(len(spike_inds))
 
-	plt.xlabel("Iterations") # aka opt. steps
-	plt.legend(loc="upper right")
+		print("Percent of spikes caused by newly sampled counterexamples: %.3f" % percent_random_best)
+
+		# Debug counterexamples: are they consistently close to the boundary? Are they on dS, as well as phi(x) = 0?
+
+		# Find ind of best
+		ind_best_X_over_rollout = [np.argmax(x) for x in train_attack_X_obj_vals]
+
+		max_dist_from_boundary_over_rollout = [np.max(np.abs(x[:, -1])) for x in train_attack_X_phi_vals] # THIS IS THE PHI=0 boundary that we're talking about here
+		dist_from_boundary_over_rollout_for_X_best = []
+		for i, ind in enumerate(ind_best_X_over_rollout):
+			dist = np.abs(train_attack_X_phi_vals[i][ind, -1])
+			dist_from_boundary_over_rollout_for_X_best.append(dist)
+
+		# Graphing
+		plt.plot(max_dist_from_boundary_over_rollout, linewidth=0.5, label="max dist over all counterexamples")
+		plt.plot(dist_from_boundary_over_rollout_for_X_best, linewidth=0.5, label="dist for best counterex")
+		plt.title("Distances of counterexamples from phi(x) = 0")
+		plt.legend(loc="upper right")
+		plt.savefig("./log/%s/dist_of_counterexamples_from_boundary.png" % (exp_name))
+		plt.clf()
+
+		max_dist_from_dS_over_rollout = [np.max(np.abs(np.max(x, axis=1))) for x in train_attack_X_phi_vals]
+		dist_from_dS_over_rollout_for_X_best = []
+		for i, ind in enumerate(ind_best_X_over_rollout):
+			dist = np.abs(np.max(train_attack_X_phi_vals[i][ind]))
+			dist_from_dS_over_rollout_for_X_best.append(dist)
+
+		# Graphing
+		plt.plot(max_dist_from_dS_over_rollout, linewidth=0.5, label="max dist over all counterexamples")
+		plt.plot(dist_from_dS_over_rollout_for_X_best, linewidth=0.5, label="dist for best counterex")
+		plt.title("Distances of counterexamples from dS")
+		plt.legend(loc="upper right")
+		plt.savefig("./log/%s/dist_of_counterexamples_from_dS.png" % (exp_name))
+		plt.clf()
 
 
-	plt.savefig("./log/%s/%s_loss.png" % (exp_name, exp_name))
-	plt.clf()
-	plt.cla()
+"""
+save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "train_attack_X_phi_vals": train_attack_X_phi_vals, "grad_norms": grad_norms, "V_approx_list": V_approx_list}
 
-	print(exp_name)
-	min_attack_ind = np.argmin(train_attack_losses)
-	print("Total iterations (so far): %i" % N_it)
-	print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (np.min(train_attack_losses), min_attack_ind, approx_v[round(min_attack_ind/float(args.n_checkpoint_step))]))
-	print("Average approx volume: %.3f" % (np.mean(approx_v)))
+additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse, "train_attack_X_init_random": train_attack_X_init_random, "train_attack_init_best_attack_value": train_attack_init_best_attack_value, "train_attack_final_best_attack_value": train_attack_final_best_attack_value,"train_attack_t_init": train_attack_t_init, "train_attack_t_grad_steps": train_attack_t_grad_steps, "train_attack_t_reproject": train_attack_t_reproject, "train_attack_t_total_opt": train_attack_t_total_opt}
 
-	# IPython.embed()
-	min_attack_ind_w_checkpoint = np.argmin(np.array(train_attack_losses)[::n_checkpoint_step])*n_checkpoint_step
-	print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (train_attack_losses[min_attack_ind_w_checkpoint], min_attack_ind_w_checkpoint, approx_v[int(min_attack_ind_w_checkpoint/n_checkpoint_step)]))
-	# print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
-	print("\n")
-
-	# print(train_attack_losses)
-	# IPython.embed()
-	return min_attack_ind_w_checkpoint # cause we're loading this checkpoint
+reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg, "reg_sampler_X": reg_sampler_X, "grad_mag_before_reg": grad_mag_before_reg, "grad_mag_after_reg": grad_mag_after_reg}
+"""
 
 if __name__ == "__main__":
 	"""
@@ -484,10 +518,12 @@ if __name__ == "__main__":
 	# checkpoint_numbers = [0]*len(exp_names) # doesn't matter
 	### ****************************************************
 	########################################################
-
 	for exp_name in exp_names:
-		min_attack_loss_ind = graph_losses(exp_name)
-		checkpoint_numbers.append(min_attack_loss_ind)
+		debug(exp_name)
+
+	# for exp_name in exp_names:
+	# 	min_attack_loss_ind = graph_losses(exp_name)
+	# 	checkpoint_numbers.append(min_attack_loss_ind)
 
 	# for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 	#
