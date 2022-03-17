@@ -110,6 +110,7 @@ def graph_losses(exp_name):
 		# N_it = 1500
 		args = load_args("./log/%s/args.txt" % exp_name)
 		N_it = len(train_attack_losses)
+		n_checkpoint_step = args.n_checkpoint_step
 
 		plt.plot(train_attack_losses, linewidth=0.5, label="train attack loss")
 		# plt.plot(train_reg_losses[:N_it], linewidth=0.5, label="train reg loss")
@@ -131,10 +132,16 @@ def graph_losses(exp_name):
 	print("Total iterations (so far): %i" % N_it)
 	print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (np.min(train_attack_losses), min_attack_ind, approx_v[round(min_attack_ind/float(args.n_checkpoint_step))]))
 	print("Average approx volume: %.3f" % (np.mean(approx_v)))
+
+	# IPython.embed()
+	min_attack_ind_w_checkpoint = np.argmin(np.array(train_attack_losses)[::n_checkpoint_step])*n_checkpoint_step
+	print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (train_attack_losses[min_attack_ind_w_checkpoint], min_attack_ind_w_checkpoint, approx_v[int(min_attack_ind_w_checkpoint/n_checkpoint_step)]))
 	# print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
 	print("\n")
 
-	return min_attack_ind
+	# print(train_attack_losses)
+	# IPython.embed()
+	return min_attack_ind_w_checkpoint # cause we're loading this checkpoint
 
 def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
 	"""
@@ -394,6 +401,51 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 
 	return fig, axs
 
+def debug_loss_spikes(exp_name):
+	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+		data = pickle.load(handle)
+
+		train_attack_losses = data["train_attack_losses"]
+		# train_reg_losses = data["train_reg_losses"]
+		# train_losses = data["train_losses"]
+		approx_v = data["V_approx_list"]
+
+		# N_it = 1500
+		args = load_args("./log/%s/args.txt" % exp_name)
+		N_it = len(train_attack_losses)
+		n_checkpoint_step = args.n_checkpoint_step
+
+		plt.plot(train_attack_losses, linewidth=0.5, label="train attack loss")
+		# plt.plot(train_reg_losses[:N_it], linewidth=0.5, label="train reg loss")
+		# plt.plot(train_losses, linewidth=0.5, label="train total loss")
+		plt.plot(np.arange(0, N_it, args.n_checkpoint_step), approx_v, linewidth=0.5, label="v approx")
+
+		plt.title("Training metrics for %s" % exp_name)
+
+	plt.xlabel("Iterations") # aka opt. steps
+	plt.legend(loc="upper right")
+
+
+	plt.savefig("./log/%s/%s_loss.png" % (exp_name, exp_name))
+	plt.clf()
+	plt.cla()
+
+	print(exp_name)
+	min_attack_ind = np.argmin(train_attack_losses)
+	print("Total iterations (so far): %i" % N_it)
+	print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (np.min(train_attack_losses), min_attack_ind, approx_v[round(min_attack_ind/float(args.n_checkpoint_step))]))
+	print("Average approx volume: %.3f" % (np.mean(approx_v)))
+
+	# IPython.embed()
+	min_attack_ind_w_checkpoint = np.argmin(np.array(train_attack_losses)[::n_checkpoint_step])*n_checkpoint_step
+	print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (train_attack_losses[min_attack_ind_w_checkpoint], min_attack_ind_w_checkpoint, approx_v[int(min_attack_ind_w_checkpoint/n_checkpoint_step)]))
+	# print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
+	print("\n")
+
+	# print(train_attack_losses)
+	# IPython.embed()
+	return min_attack_ind_w_checkpoint # cause we're loading this checkpoint
+
 if __name__ == "__main__":
 	"""
 	Code to visualize samples (from RegSampleKeeper or Attacker)
@@ -423,7 +475,9 @@ if __name__ == "__main__":
 	########################################################
 	#########     FILL OUT HERE !!!!   #####################
 	### ****************************************************
-	exp_names = ["flying_inv_pend_reg_weight_1e-1", "flying_inv_pend_reg_weight_1", "flying_inv_pend_reg_weight_10", "flying_inv_pend_reg_weight_50", "flying_inv_pend_reg_weight_150", "flying_inv_pend_reg_weight_200", "flying_inv_pend_reg_weight_1e-1_phi_dim_64_64", "flying_inv_pend_reg_weight_1_phi_dim_64_64"]
+	# exp_names = ["flying_inv_pend_reg_weight_1e-1", "flying_inv_pend_reg_weight_1", "flying_inv_pend_reg_weight_10", "flying_inv_pend_reg_weight_50", "flying_inv_pend_reg_weight_150", "flying_inv_pend_reg_weight_200", "flying_inv_pend_reg_weight_1e-1_phi_dim_64_64", "flying_inv_pend_reg_weight_1_phi_dim_64_64"]
+
+	exp_names = ["flying_inv_pend_reg_weight_50", "flying_inv_pend_reg_weight_150", "flying_inv_pend_reg_weight_200"]
 
 	# exp_names = ["flying_inv_pend_reg_weight_100"] # TODO: server 4
 	checkpoint_numbers = []
@@ -435,62 +489,74 @@ if __name__ == "__main__":
 		min_attack_loss_ind = graph_losses(exp_name)
 		checkpoint_numbers.append(min_attack_loss_ind)
 
-	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
-
-		# TODO: uncomment
-		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
-
-		# TODO: don't need this anymore, recording during training. Delete.
-		# from flying_rollout_experiment import sample_inside_safe_set
-		# from rollout_cbf_classes.flying_our_cbf_class import OurCBF
-		# cbf_obj = OurCBF(phi_fn, param_dict)  # numpy wrapper
-		# N_samp = 1000
-		# _, percent_inside = sample_inside_safe_set(param_dict, cbf_obj, N_samp)
-		# print("Monte-carlo volume approx: %.3f percent inside" % (percent_inside*100))
-
-		##################################################################
-		# fldr_path = os.path.join("./log", exp_name)
-		# plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
-		#
-		# plt.clf()
-		# plt.close()
-		##################################################################
-
-		state_index_dict = param_dict["state_index_dict"]
-
-		# which_params = [["phi", "dphi"]]
-		# which_params = [["theta", "dtheta"]]
-		# which_params = [["beta", "dbeta"]]
-		# which_params = [["gamma", "dgamma"]]
-
-		# which_params = [["phi", "gamma"]]
-		which_params = [["theta", "beta"]]
-		x = np.zeros(10)
-		fnm = "theta_beta_w_other_angles_misaligned2"
-		# fnm = "phi_gamma_w_other_angles_misaligned_2"
-		# x[state_index_dict["beta"]] = math.pi/5
-		# x[state_index_dict["beta"]] = math.pi/7
-		# x[state_index_dict["theta"]] = -math.pi/7
-
-		# what if theta, beta were misaligned?
-		# fnm = "phi_gamma_for_theta_beta_misaligned"
-		x[state_index_dict["phi"]] = -math.pi/7
-		x[state_index_dict["gamma"]] = math.pi/7
-
-		constants_for_other_params = [x]
-
-		fldr_path = os.path.join("./log", exp_name)
-		plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=which_params, constants_for_other_params=constants_for_other_params, fnm=fnm)
-
-		plt.clf()
-		plt.close()
-
-
-		# samples = load_attacks(exp_name, checkpoint_number)
-		#
-		# plot_invariant_set_slices(phi_fn, param_dict, samples=samples, fldr_path=fldr_path, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
-		#
-		# # plot_cbf_3d_slices(phi_fn, param_dict, which_params = [["phi", "theta"]], fnm = "3d_viz_ckpt_%i" % checkpoint_number, fpth = exp_name)
-		#
-		# plt.clf()
-		# plt.close()
+	# for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
+	#
+	# 	phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+	#
+	# 	##################################################################
+	# 	# Slice visualization, with multiple subplots per plot
+	# 	# fldr_path = os.path.join("./log", exp_name)
+	# 	# plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
+	# 	# plt.clf()
+	# 	# plt.close()
+	# 	##################################################################
+	# 	# Slice visualization, one plot at a time
+	#
+	# 	params_to_viz_list = []
+	# 	constants_for_other_params_list = []
+	# 	fnms = []
+	#
+	# 	params_to_viz_list.extend([["phi", "dphi"], ["theta", "dtheta"], ["gamma", "dgamma"], ["beta", "dbeta"]])
+	# 	constants_for_other_params_list.extend([np.zeros(10)]*4)
+	# 	fnms.extend(["phi_dphi", "theta_dtheta", "gamma_dgamma", "beta_dbeta"])
+	#
+	# 	state_index_dict = param_dict["state_index_dict"]
+	#
+	# 	angle = math.pi/5 # [pi/5-pi/7] is a popular range of choices
+	#
+	# 	params_to_viz_list.append(["theta", "beta"]) # aligned, misaligned
+	# 	x = np.zeros(10)
+	# 	x[state_index_dict["phi"]] = -angle
+	# 	x[state_index_dict["gamma"]] = angle
+	# 	constants_for_other_params_list.append(x)
+	# 	fnms.append("theta_beta_misaligned")
+	#
+	# 	params_to_viz_list.append(["theta", "beta"]) # aligned, misaligned
+	# 	x = np.zeros(10)
+	# 	x[state_index_dict["phi"]] = angle
+	# 	x[state_index_dict["gamma"]] = angle
+	# 	constants_for_other_params_list.append(x)
+	# 	fnms.append("theta_beta_aligned")
+	#
+	#
+	# 	params_to_viz_list.append(["phi", "gamma"]) # aligned, misaligned
+	# 	x = np.zeros(10)
+	# 	x[state_index_dict["theta"]] = -angle
+	# 	x[state_index_dict["beta"]] = angle
+	# 	constants_for_other_params_list.append(x)
+	# 	fnms.append("phi_gamma_misaligned")
+	#
+	# 	params_to_viz_list.append(["phi", "gamma"]) # aligned, misaligned
+	# 	x = np.zeros(10)
+	# 	x[state_index_dict["theta"]] = angle
+	# 	x[state_index_dict["beta"]] = angle
+	# 	constants_for_other_params_list.append(x)
+	# 	fnms.append("phi_gamma_aligned")
+	#
+	# 	for params_to_viz, constants_for_other_params, fnm in zip(params_to_viz_list, constants_for_other_params_list, fnms):
+	# 		fldr_path = os.path.join("./log", exp_name)
+	# 		plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=[params_to_viz], constants_for_other_params=[constants_for_other_params], fnm=fnm)
+	#
+	# 		plt.clf()
+	# 		plt.close()
+	#
+	#
+	# 	# Other plotting: samples on 2D slices, 3D slices, etc.
+	# 	# samples = load_attacks(exp_name, checkpoint_number)
+	# 	#
+	# 	# plot_invariant_set_slices(phi_fn, param_dict, samples=samples, fldr_path=fldr_path, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
+	# 	#
+	# 	# # plot_cbf_3d_slices(phi_fn, param_dict, which_params = [["phi", "theta"]], fnm = "3d_viz_ckpt_%i" % checkpoint_number, fpth = exp_name)
+	# 	#
+	# 	# plt.clf()
+	# 	# plt.close()
