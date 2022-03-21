@@ -57,7 +57,10 @@ class GradientBatchWarmstartAttacker():
 
         while True:
             proj_opt.zero_grad()
+            # print("Inside _project, check out surface_fn")
+            # IPython.embed()
             loss = torch.sum(torch.abs(surface_fn(torch.cat(x_list), grad_x=True)))
+            # loss = torch.sum(torch.abs(surface_fn(torch.cat(x_list))))
             loss.backward()
             proj_opt.step()
 
@@ -100,6 +103,8 @@ class GradientBatchWarmstartAttacker():
 
         # phi_val = surface_fn(x_batch)
         # normal_to_manifold = grad([torch.sum(phi_val[:, -1])], x_batch)[0]
+        # print("Inside step, check surface_fn")
+        # IPython.embed()
         normal_to_manifold = grad([torch.sum(surface_fn(x_batch))], x_batch)[0]
         normal_to_manifold = normal_to_manifold/torch.norm(normal_to_manifold, dim=1)[:, None] # normalize
         x_batch.requires_grad = False
@@ -110,6 +115,7 @@ class GradientBatchWarmstartAttacker():
         x_new = x - self.lr*proj_obj_grad
         tf_grad_step = time.perf_counter()
 
+        # print("Reproj after step")
         x_new = self._project(surface_fn, x_new)
         tf_reproject = time.perf_counter()
         # Hard-coded angle wraparound for reduced cartpole (in case surface crawling moves us outside of interval)
@@ -157,12 +163,14 @@ class GradientBatchWarmstartAttacker():
 
         left_weight = 0.0
         right_weight = 1.0
-        left_val = surface_fn(p1.view(1, -1))[0, -1]
-        right_val = surface_fn(p2.view(1, -1))[0, -1]
-        # left_val = surface_fn(p1.view(1, -1)).item()
-        # right_val = surface_fn(p2.view(1, -1)).item()
-        left_sign = torch.sign(left_val)
-        right_sign = torch.sign(right_val)
+        # left_val = surface_fn(p1.view(1, -1))[0, -1]
+        # right_val = surface_fn(p2.view(1, -1))[0, -1]
+        # print("inside _intersect_segment_with_manifold")
+        # IPython.embed()
+        left_val = surface_fn(p1.view(1, -1)).item()
+        right_val = surface_fn(p2.view(1, -1)).item()
+        left_sign = np.sign(left_val)
+        right_sign = np.sign(right_val)
 
         if left_sign*right_sign > 0:
             # print("does not intersect")
@@ -175,9 +183,9 @@ class GradientBatchWarmstartAttacker():
             mid_weight = (left_weight + right_weight)/2.0
             mid_point = p1 + mid_weight*diff
 
-            mid_val = surface_fn(mid_point.view(1, -1))[0, -1]
-            # mid_val = surface_fn(mid_point.view(1, -1)).item()
-            mid_sign = torch.sign(mid_val)
+            # mid_val = surface_fn(mid_point.view(1, -1))[0, -1]
+            mid_val = surface_fn(mid_point.view(1, -1)).item()
+            mid_sign = np.sign(mid_val)
             if mid_sign*left_sign < 0:
                 # go to the left side
                 right_weight = mid_weight
@@ -272,6 +280,7 @@ class GradientBatchWarmstartAttacker():
             n_random_samples= self.n_samples - n_reuse_samples
             # print("Actual percentage reuse: %f" % ((n_reuse_samples/self.n_samples)*100))
             X_reuse_init = self.X_saved[torch.tensor(inds_distinct)]
+            print("Reprojecting")
             X_reuse_init = self._project(surface_fn, X_reuse_init) # reproject, since phi changed
 
             # print("Sampling points on boundary")

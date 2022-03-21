@@ -108,7 +108,11 @@ class Trainer():
 		while True:
 			# Inner max
 			# X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode) # TODO
-			x, debug_dict = self.attacker.opt(objective_fn, phi_fn, _iter, debug=True)
+			# TODO: you can define surface_fn differently
+			def surface_fn(x, grad_x=False):
+				return phi_fn(x, grad_x=grad_x)[:, -1]
+			# surface_fn = lambda x: phi_fn(x)[:, -1]
+			x, debug_dict = self.attacker.opt(objective_fn, surface_fn, _iter, debug=True)
 			X = debug_dict["X"]
 
 			optimizer.zero_grad()
