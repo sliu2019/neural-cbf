@@ -94,6 +94,7 @@ class Trainer():
 		times_to_compute_X_reg = []
 		grad_mag_before_reg = []
 		grad_mag_after_reg = []
+		reg_grad_norms = []
 
 		V_approx_list = []
 		ci_lr = 1e-4
@@ -157,8 +158,29 @@ class Trainer():
 			# objective_value = attack_value + reg_value # Just for record-keeping purposes
 
 			# IPython.embed()
+
 			objective_value = attack_value + reg_value
-			objective_value.backward()
+
+			# TODO: option 1
+			# objective_value.backward()
+
+			# TODO: option 2
+			reg_value.backward()
+			# Check reg gradient
+			avg_grad_norm = 0
+			n_param = 0
+			for n, p in phi_fn.named_parameters():
+				if n not in ["ci", "k0"]:
+					# print(n)
+					avg_grad_norm += torch.linalg.norm(p.grad).item()
+					n_param += 1
+			avg_grad = avg_grad_norm/n_param
+			reg_grad_norms.append(avg_grad)
+			# self.logger.info(f'Reg grad norm: {avg_grad:.3f}')
+			attack_value.backward()
+
+			########## End ############
+
 			optimizer.step()
 
 			with torch.no_grad():
@@ -233,8 +255,9 @@ class Trainer():
 
 			# Gradient debug
 			# IPython.embed()
-			k0_grad.append(k0.grad.detach().cpu().numpy())
-			ci_grad.append(ci.grad.detach().cpu().numpy())
+			# TODO: removing, sometimes ci is none (i.e. phi_format is 0)
+			# k0_grad.append(k0.grad.detach().cpu().numpy())
+			# ci_grad.append(ci.grad.detach().cpu().numpy())
 
 			# TODO: reg weight tuning
 			# avg_grad_norm = 0
@@ -294,7 +317,8 @@ class Trainer():
 
 				additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse, "train_attack_X_init_random": train_attack_X_init_random, "train_attack_init_best_attack_value": train_attack_init_best_attack_value, "train_attack_final_best_attack_value": train_attack_final_best_attack_value,"train_attack_t_init": train_attack_t_init, "train_attack_t_grad_steps": train_attack_t_grad_steps, "train_attack_t_reproject": train_attack_t_reproject, "train_attack_t_total_opt": train_attack_t_total_opt}
 
-				reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg, "reg_sampler_X": reg_sampler_X, "grad_mag_before_reg": grad_mag_before_reg, "grad_mag_after_reg": grad_mag_after_reg}
+				reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg, "reg_sampler_X": reg_sampler_X, "grad_mag_before_reg": grad_mag_before_reg, "grad_mag_after_reg": grad_mag_after_reg, "reg_grad_norms": reg_grad_norms}
+
 
 				# save_dict = save_dict + additional_train_attack_dict
 				save_dict.update(additional_train_attack_dict)
@@ -304,6 +328,7 @@ class Trainer():
 				self.logger.info(f'train loss: {objective_value:.3f}%')
 				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
 				self.logger.info(f'v approx: {V_approx:.3f}% of volume')
+				self.logger.info(f'Reg grad norm: {avg_grad:.4f}')
 
 				print("Saving at: ", self.data_save_fpth)
 				with open(self.data_save_fpth, 'wb') as handle:

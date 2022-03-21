@@ -16,8 +16,16 @@ def create_parser():
 	# parser.add_argument('--phi_k0_init_min', default=0.0, type=float)
 	# parser.add_argument('--phi_k0_init_max', default=1.0, type=float)
 	parser.add_argument('--phi_include_xe', action='store_true')
+
 	# TODO
-	parser.add_argument('--phi_include_beta_deriv', action='store_true')
+	# parser.add_argument('--phi_include_beta_deriv', action='store_true')
+	parser.add_argument('--phi_format', type=int, default=0, choices=[0, 1, 2])
+	"""
+	Style 0: phi = phi_0 + gnn 
+	Style 1: phi = phi_0_star + k_1 dot(phi_0)
+	Style 2: phi = phi_0_star + k_1 dot(phi_0_star)
+	"""
+	parser.add_argument('--phi_nn_inputs', type=str, default="all", choices=["all", "angles_no_yaw", "angles_derivs_no_yaw"], help='which subset of states to pass into nn component; all means all 10')
 
 	# Parameters for cartpole only
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole')
