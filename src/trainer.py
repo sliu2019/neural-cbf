@@ -103,8 +103,8 @@ class Trainer():
 		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
 
 		# TODO: remove (optional)
-		# file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
-		# save_model(phi_fn, file_name)
+		file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
+		save_model(phi_fn, file_name)
 		while True:
 			# Inner max
 			# X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode) # TODO
@@ -254,7 +254,7 @@ class Trainer():
 			train_attack_t_total_opt.append(t_total_opt)
 			self.logger.info(f'train attack init time: {t_init:.3f}s')
 			self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_step):.3f}s')
-			self.logger.info(f'train attack avg reroj time: {np.mean(t_reproject):.3f}s')
+			self.logger.info(f'train attack avg reproj time: {np.mean(t_reproject):.3f}s')
 			self.logger.info(f'train attack total time: {t_total_opt:.3f}s')
 
 			# Gradient debug

@@ -280,7 +280,7 @@ class GradientBatchWarmstartAttacker():
             n_random_samples= self.n_samples - n_reuse_samples
             # print("Actual percentage reuse: %f" % ((n_reuse_samples/self.n_samples)*100))
             X_reuse_init = self.X_saved[torch.tensor(inds_distinct)]
-            print("Reprojecting")
+            # print("Reprojecting")
             X_reuse_init = self._project(surface_fn, X_reuse_init) # reproject, since phi changed
 
             # print("Sampling points on boundary")
