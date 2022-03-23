@@ -32,24 +32,65 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 		from main import create_flying_param_dict
 		param_dict = create_flying_param_dict(args) # default
 
+	# r = param_dict["r"]
+	# x_dim = param_dict["x_dim"]
+	# u_dim = param_dict["u_dim"]
+	# x_lim = param_dict["x_lim"]
+	#
+	# from src.problems.flying_inv_pend import HMax, HSum, XDot, ULimitSetVertices
+	# if args.h == "sum":
+	# 	h_fn = HSum(param_dict)
+	# elif args.h == "max":
+	# 	h_fn = HMax(param_dict)
+	# xdot_fn = XDot(param_dict, device)
+	# uvertices_fn = ULimitSetVertices(param_dict, device)
+	#
+	# A_samples = None
+	# if args.phi_include_xe:
+	# 	x_e = torch.zeros(1, x_dim)
+	# else:
+	# 	x_e = None
+
+	# param_dict = create_flying_param_dict(args)
+
+	# TODO: hacky way to implement different CBF formats
+	include_beta_deriv = False
+	if args.phi_format == 0:
+		param_dict["r"] = 1
+	elif args.phi_format == 1:
+		include_beta_deriv = True
+
 	r = param_dict["r"]
 	x_dim = param_dict["x_dim"]
 	u_dim = param_dict["u_dim"]
 	x_lim = param_dict["x_lim"]
 
+	# Create phi
 	from src.problems.flying_inv_pend import HMax, HSum, XDot, ULimitSetVertices
 	if args.h == "sum":
 		h_fn = HSum(param_dict)
 	elif args.h == "max":
 		h_fn = HMax(param_dict)
+
 	xdot_fn = XDot(param_dict, device)
 	uvertices_fn = ULimitSetVertices(param_dict, device)
 
-	A_samples = None
+	# reg_sampler = reg_samplers_name_to_class_dict[args.reg_sampler](x_lim, device, logger, n_samples=args.reg_n_samples)
+
 	if args.phi_include_xe:
 		x_e = torch.zeros(1, x_dim)
 	else:
 		x_e = None
+
+	# Passing in subset of state to NN
+	state_index_dict = param_dict["state_index_dict"]
+	if args.phi_nn_inputs == "all":
+		nn_ind = np.arange(x_dim)
+	elif args.phi_nn_inputs == "angles_no_yaw":
+		nn_ind = [state_index_dict[name] for name in ["gamma", "beta", "phi", "theta"]]
+	elif args.phi_nn_inputs == "angles_derivs_no_yaw":
+		nn_ind = [state_index_dict[name] for name in ["gamma", "dgamma", "beta", "dbeta", "phi", "dphi", "theta", "dtheta"]]
+	nn_inputs = np.sort(nn_ind)
 
 	# Send all modules to the correct device
 	h_fn = h_fn.to(device)
@@ -62,7 +103,8 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	# x_lim = torch.tensor(x_lim).to(device)
 
 	# Create CBF, etc.
-	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_inputs=nn_inputs, include_beta_deriv=include_beta_deriv)
+	# phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
 	# objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
 	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples)
 
@@ -143,11 +185,20 @@ def graph_losses(exp_name):
 
 	# Balancing volume and train loss
 	train_attack_losses_at_checkpoints = train_attack_losses[::n_checkpoint_step]
+	m = len(train_attack_losses_at_checkpoints)
 	ind_sort_train_loss = np.argsort(train_attack_losses_at_checkpoints)
-	ind_sort_volume = np.argsort(-approx_v)
+	rank_train_loss = np.zeros(m)
+	rank_train_loss[ind_sort_train_loss] = np.arange(m)
+	rank_train_loss = rank_train_loss.astype(int)
 
-	ind_sum = ind_sort_volume + ind_sort_train_loss
-	best_balanced_ind = np.argmin(ind_sum)
+	ind_sort_volume = np.argsort(-approx_v)
+	rank_volume = np.zeros(m)
+	rank_volume[ind_sort_volume] = np.arange(m)
+	rank_volume = rank_volume.astype(int)
+
+	# rank_sum = rank_volume + rank_train_loss # TODO: checkpoint selection criteria
+	rank_sum = rank_train_loss
+	best_balanced_ind = np.argmin(rank_sum)
 
 	checkpoint_ind = best_balanced_ind*n_checkpoint_step
 
@@ -555,10 +606,14 @@ if __name__ == "__main__":
 	# exp_names = ["flying_inv_pend_reg_weight_50", "flying_inv_pend_reg_weight_150", "flying_inv_pend_reg_weight_200"]
 
 	# 3/17 batch
-	exp_names = ["flying_inv_pend_reg_weight_250_reg_n_samples_500_no_softplus_on_obj_seed_0", "flying_inv_pend_reg_weight_250_reg_n_samples_500_no_softplus_on_obj_seed_1", "flying_inv_pend_reg_weight_250_reg_n_samples_500_no_softplus_on_obj_seed_2", "flying_inv_pend_reg_weight_300_reg_n_samples_500_no_softplus_on_obj_seed_0", "flying_inv_pend_reg_weight_300_reg_n_samples_500_no_softplus_on_obj_seed_1", "flying_inv_pend_reg_weight_300_reg_n_samples_500_no_softplus_on_obj_seed_2"]
-	checkpoint_numbers = []
+	# exp_names = ["flying_inv_pend_reg_weight_250_reg_n_samples_500_no_softplus_on_obj_seed_0", "flying_inv_pend_reg_weight_250_reg_n_samples_500_no_softplus_on_obj_seed_1", "flying_inv_pend_reg_weight_250_reg_n_samples_500_no_softplus_on_obj_seed_2", "flying_inv_pend_reg_weight_300_reg_n_samples_500_no_softplus_on_obj_seed_0", "flying_inv_pend_reg_weight_300_reg_n_samples_500_no_softplus_on_obj_seed_1", "flying_inv_pend_reg_weight_300_reg_n_samples_500_no_softplus_on_obj_seed_2"]
+	# checkpoint_numbers = []
 
 	# checkpoint_numbers = [0]*len(exp_names) # doesn't matter
+
+	# 3/21 batch
+	exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1", "flying_inv_pend_phi_format_1_seed_0", "flying_inv_pend_phi_format_1_seed_1", "flying_inv_pend_phi_format_2_seed_0", "flying_inv_pend_phi_format_2_seed_1"]
+	checkpoint_numbers = []
 	### ****************************************************
 	########################################################
 	# for exp_name in exp_names:

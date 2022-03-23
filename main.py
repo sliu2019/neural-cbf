@@ -148,6 +148,8 @@ class Phi(nn.Module):
 
 		result = torch.cat((result, phi_r_minus_1_star), dim=1)
 
+		# print("inside Phi's forward")
+		# IPython.embed()
 		return result
 
 class Objective(nn.Module):
@@ -412,13 +414,16 @@ def main(args):
 
 	# Pass everything to Trainer
 	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)
-	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
+	# trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
 
 	### Fill out ####
 	# IPython.embed()
+
+	x_rand = torch.rand((5, 10)).to(device)
+	phi_vals = phi_fn(x_rand)
 
 if __name__ == "__main__":
 	parser = create_parser()
