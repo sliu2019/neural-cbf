@@ -363,11 +363,11 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 		params_to_viz = which_params
 
 	# IPython.embed()
-	n_per_row = 3
+	n_per_row = 2 # TODO
 	n_row = math.ceil(len(params_to_viz)/float(n_per_row))
 
 	n_per_row = min(len(params_to_viz), n_per_row)
-	fig, axs = plt.subplots(n_row, n_per_row, squeeze=False)
+	fig, axs = plt.subplots(n_row, n_per_row, squeeze=False, figsize=(6, 16)) # TODO: remove figsize
 	# IPython.embed()
 	# axs[0, 0].plot(x, y)
 	for i in range(n_row):
@@ -464,7 +464,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 	save_fpth = os.path.join(fldr_path, fnm + ".png")
 
 	print("Saved at: %s" % save_fpth)
-	plt.tight_layout(pad=0.5)
+	# plt.tight_layout(pad=0.5)
 	plt.suptitle("From %s" % fldr_path)
 	plt.savefig(save_fpth, bbox_inches='tight')
 	# plt.clf()
@@ -486,6 +486,7 @@ def debug(exp_name):
 		train_attack_losses = np.array(data["train_attack_losses"])
 		train_attack_X_obj_vals = data["train_attack_X_obj_vals"]
 		train_attack_X_phi_vals = data["train_attack_X_phi_vals"]
+		# train_attack_X_phi_vals = [np.reshape(x, (x.shape[0], 1)) for x in train_attack_X_phi_vals] # TODO
 		train_attack_X_init_random = data["train_attack_X_init_random"]
 		train_attack_X_init_reuse = data["train_attack_X_init_reuse"]
 
@@ -509,7 +510,7 @@ def debug(exp_name):
 		# IPython.embed()
 		print(exp_name)
 		print("We define spikes as outside 2 std dev")
-		percent_random_best = n_random_best*100.0/float(len(spike_inds))
+		percent_random_best = n_random_best*100.0/float(max(1, len(spike_inds)))
 
 		print("Percent of spikes caused by newly sampled counterexamples: %.3f" % percent_random_best)
 
@@ -518,7 +519,9 @@ def debug(exp_name):
 		# Find ind of best
 		ind_best_X_over_rollout = [np.argmax(x) for x in train_attack_X_obj_vals]
 
+		# TODO: replace
 		max_dist_from_boundary_over_rollout = [np.max(np.abs(x[:, -1])) for x in train_attack_X_phi_vals] # THIS IS THE PHI=0 boundary that we're talking about here
+		# max_dist_from_boundary_over_rollout = [np.max(np.abs(x)) for x in train_attack_X_phi_vals] # THIS IS THE PHI=0 boundary that we're talking about here
 		dist_from_boundary_over_rollout_for_X_best = []
 		for i, ind in enumerate(ind_best_X_over_rollout):
 			dist = np.abs(train_attack_X_phi_vals[i][ind, -1])
@@ -558,9 +561,11 @@ def debug(exp_name):
 
 		n_overlap = np.sum(spike_bools*spike_bools_dS)
 		print("Number of overlaps between dS and train loss spikes: %i" % n_overlap)
-		print("As a percentage of n_spikes for train loss: %.3f" % (n_overlap*100.0/np.sum(spike_bools)))
+		print("As a percentage of n_spikes for train loss: %.3f" % (n_overlap*100.0/max(1, np.sum(spike_bools))))
 		# Blurry overlap
 		# TODO
+
+		print("\n")
 
 
 
@@ -612,16 +617,19 @@ if __name__ == "__main__":
 	# checkpoint_numbers = [0]*len(exp_names) # doesn't matter
 
 	# 3/21 batch
-	exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1", "flying_inv_pend_phi_format_1_seed_0", "flying_inv_pend_phi_format_1_seed_1", "flying_inv_pend_phi_format_2_seed_0", "flying_inv_pend_phi_format_2_seed_1"]
-	checkpoint_numbers = []
+	# exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1", "flying_inv_pend_phi_format_1_seed_0", "flying_inv_pend_phi_format_1_seed_1", "flying_inv_pend_phi_format_2_seed_0", "flying_inv_pend_phi_format_2_seed_1"]
+
+	# Plotting slices over time
+	checkpoint_numbers = np.arange(0, 1000, 50)
+	exp_names = ["flying_inv_pend_phi_format_2_seed_1"]*len(checkpoint_numbers)
 	### ****************************************************
 	########################################################
 	# for exp_name in exp_names:
 	# 	debug(exp_name)
 
-	for exp_name in exp_names:
-		min_attack_loss_ind = graph_losses(exp_name)
-		checkpoint_numbers.append(min_attack_loss_ind)
+	# for exp_name in exp_names:
+	# 	min_attack_loss_ind = graph_losses(exp_name)
+		# checkpoint_numbers.append(min_attack_loss_ind) # TODO
 
 	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 
@@ -681,13 +689,20 @@ if __name__ == "__main__":
 
 		# IPython.embed()
 
-		for params_to_viz, constants_for_other_params, fnm in zip(params_to_viz_list, constants_for_other_params_list, fnms):
-			fldr_path = os.path.join("./log", exp_name)
-			plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=[params_to_viz], constants_for_other_params=[constants_for_other_params], fnm=fnm)
+		# TODO
+		# for params_to_viz, constants_for_other_params, fnm in zip(params_to_viz_list, constants_for_other_params_list, fnms):
+		# 	fldr_path = os.path.join("./log", exp_name)
+		# 	plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=[params_to_viz], constants_for_other_params=[constants_for_other_params], fnm=fnm)
+		#
+		# 	plt.clf()
+		# 	plt.close()
 
-			plt.clf()
-			plt.close()
-
+		# TODO: plotting multiple slices at a time
+		fldr_path = os.path.join("./log", exp_name)
+		fnm = "slices_ckpt_%i" % checkpoint_number
+		plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list, constants_for_other_params=constants_for_other_params_list, fnm=fnm)
+		plt.clf()
+		plt.close()
 
 		# Other plotting: samples on 2D slices, 3D slices, etc.
 		# samples = load_attacks(exp_name, checkpoint_number)
