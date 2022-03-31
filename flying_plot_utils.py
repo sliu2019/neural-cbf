@@ -154,6 +154,7 @@ def graph_losses(exp_name):
 		N_it = len(train_attack_losses)
 		n_checkpoint_step = args.n_checkpoint_step
 
+		plt.plot([0, N_it], [0, 0])
 		plt.plot(train_attack_losses, linewidth=0.5, label="train attack loss")
 		# plt.plot(train_reg_losses[:N_it], linewidth=0.5, label="train reg loss")
 		# plt.plot(train_losses, linewidth=0.5, label="train total loss")
@@ -196,8 +197,8 @@ def graph_losses(exp_name):
 	rank_volume[ind_sort_volume] = np.arange(m)
 	rank_volume = rank_volume.astype(int)
 
-	# rank_sum = rank_volume + rank_train_loss # TODO: checkpoint selection criteria
-	rank_sum = rank_train_loss
+	rank_sum = rank_volume + rank_train_loss # TODO: checkpoint selection criteria
+	# rank_sum = rank_train_loss
 	best_balanced_ind = np.argmin(rank_sum)
 
 	checkpoint_ind = best_balanced_ind*n_checkpoint_step
@@ -634,7 +635,12 @@ if __name__ == "__main__":
 	# exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1",
 	#              "flying_inv_pend_phi_format_2_seed_0", "flying_inv_pend_phi_format_2_seed_1"]
 
-	base_exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1", "flying_inv_pend_phi_format_1_seed_0", "flying_inv_pend_phi_format_1_seed_1", "flying_inv_pend_phi_format_2_seed_0", "flying_inv_pend_phi_format_2_seed_1"]
+	exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1", "flying_inv_pend_phi_format_1_seed_0", "flying_inv_pend_phi_format_1_seed_1", "flying_inv_pend_phi_format_2_seed_0", "flying_inv_pend_phi_format_2_seed_1"]
+
+	# exp_names = ["flying_inv_pend_phi_format_0_seed_1"]
+
+	"""
+	base_exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1"]
 
 	exp_names = []
 	checkpoint_numbers = []
@@ -646,43 +652,58 @@ if __name__ == "__main__":
 			n_it_rounded = (n_it//10)*10
 			# print(n_it, n_it_rounded)
 
-		nums = list(np.arange(0, n_it_rounded, 10))
+		nums = list(np.arange(0, n_it_rounded, 50))
 		checkpoint_numbers.extend(nums)
 
 		exp_names.extend([exp_name]*len(nums))
 
-		# IPython.embed()
+		# IPython.embed()"""
 
 	### ****************************************************
 	########################################################
 	# for exp_name in exp_names:
 	# 	debug(exp_name)
 
-	# for exp_name in exp_names:
-	# 	min_attack_loss_ind = graph_losses(exp_name)
-	# 	# checkpoint_numbers.append(min_attack_loss_ind) # TODO
+	# TODO: check training progress
+	for exp_name in exp_names:
+		min_attack_loss_ind = graph_losses(exp_name)
+		# checkpoint_numbers.append(min_attack_loss_ind)
 
-	# TODO
-	# with open("./log/%s/data.pkl" % "flying_inv_pend_phi_format_2_seed_1", 'rb') as handle:
+	# TODO: manually check attacks
+	# with open("./log/%s/data.pkl" % "flying_inv_pend_phi_format_1_seed_0", 'rb') as handle:
 	# 	data = pickle.load(handle)
 	# 	train_attacks = data["train_attacks"]
+	# 	# IPython.embed()
+	# 	n_it = len(train_attacks)
+	# 	for i in np.arange(0, n_it, 50):
+	# 		print("It %i" % i)
+	# 		attack = train_attacks[i]
+	# 		# print(train_attacks[i])
+	# 		print("gamma: %.2f, %.2f \t\t phi: %.2f, %.2f" % (attack[0], attack[3], attack[6], attack[8]))
+	# 		print("beta: %.2f, %.2f \t\t theta: %.2f, %.2f" % (attack[1], attack[4], attack[7], attack[9]))
+	# 		print("alpha: %.2f, %.2f" % (attack[2], attack[5]))
+	# 		print("\n")
+	#
 	# 	IPython.embed()
 
 	# TODO; plot ci values
-	# exp_name = "flying_inv_pend_phi_format_2_seed_1"
-	# k0_list = []
-	# k1_list = []
-	# for checkpoint_number in np.arange(0, 1000, 10):
-	# 	phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
-	# 	# IPython.embed()
-	# 	k0_list.append(phi_fn.k0.detach().cpu().numpy().item())
-	# 	k1_list.append(phi_fn.ci.detach().cpu().numpy().item())
-	# plt.plot(np.arange(0, 1000, 10), k0_list, label="k0")
-	# plt.plot(np.arange(0, 1000, 10), k1_list, label="k1")
-	# plt.title("k0, k1 over training iterations")
-	# plt.legend(loc="upper left")
-	# plt.savefig("./log/%s/k0_k1_plot" % exp_name)
+	"""exp_name = "flying_inv_pend_phi_format_1_seed_1"
+	k0_list = []
+	k1_list = []
+	n_it = 4000
+	for checkpoint_number in np.arange(0, n_it, 10):
+		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+		# IPython.embed()
+		k0_list.append(phi_fn.k0.detach().cpu().numpy().item())
+		k1_list.append(phi_fn.ci.detach().cpu().numpy().item())
+	plt.plot(np.arange(0, n_it, 10), k0_list, label="k0")
+	plt.plot(np.arange(0, n_it, 10), k1_list, label="k1")
+	plt.title("k0, k1 over training iterations")
+	plt.legend(loc="upper left")
+	plt.savefig("./log/%s/k0_k1_plot" % exp_name)"""
 
+	# TODO: plot pages of slices over many iterations
+	"""
 	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 
 			phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
@@ -775,4 +796,4 @@ if __name__ == "__main__":
 			# # plot_cbf_3d_slices(phi_fn, param_dict, which_params = [["phi", "theta"]], fnm = "3d_viz_ckpt_%i" % checkpoint_number, fpth = exp_name)
 			#
 			# plt.clf()
-			# plt.close()
+			# plt.close()"""

@@ -13,6 +13,7 @@ from flying_plot_utils import load_phi_and_params, plot_invariant_set_slices
 from rollout_cbf_classes.flying_our_cbf_class import OurCBF
 import multiprocessing as mp
 
+from decimal import Decimal
 # Fixed seed for repeatability
 torch.manual_seed(2022)
 np.random.seed(2022)
@@ -169,17 +170,21 @@ def extract_statistics(info_dicts, env, param_dict):
 	# Debug box exits
 	# Which states are we exiting on?
 	outside_box_states = [np.logical_or(rl[:, :10] < x_lim[:, 0][None], rl[:, :10] > x_lim[:, 1][None]) for rl in xs]
+
 	state_ind = [np.argwhere(rl)[:, 1] for rl in outside_box_states]
 	state_ind = np.concatenate(state_ind)
 	values, counts = np.unique(state_ind, return_counts=True)
 
 	state_index_dict = param_dict['state_index_dict']
+	state_index_value_to_key_dict = dict(zip(state_index_dict.values(), state_index_dict.keys()))
 	for i in range(len(values)):
-		stat_dict["N_count_exit_on_%i" % values[i]] = counts[i]
+		# stat_dict["N_count_exit_on_%i" % values[i]] = counts[i]
+		stat_dict["N_count_exit_on_%s" % state_index_value_to_key_dict[values[i]]] = counts[i]
 
 	# which rollouts exited?
-	outside_box_any_rl = [np.sum(rl) for rl in outside_box_rl]
-	which_rl = np.argwhere(outside_box_any_rl).flatten()
+	# outside_box_any_rl = [np.sum(rl) for rl in outside_box_rl]
+	# which_rl = np.argwhere(outside_box_any_rl).flatten()
+
 	# print("at the end of compute_stats")
 	# IPython.embed()
 	return stat_dict
@@ -243,6 +248,7 @@ def simulate_rollout(env, N_steps_max, cbf_controller, random_seed=None):
 		if t_since > 1:
 			break
 
+	# IPython.embed()
 	dict = {key: np.array(value) for (key, value) in dict.items()}
 	dict["x"] = np.array(xs)
 	dict["u"] = np.array(us)
@@ -351,7 +357,7 @@ def run_rollout_experiment(args):
 	if which_cbf == "ours":
 		phi_fn, param_dict = load_phi_and_params(exp_name_to_load, checkpoint_number_to_load)
 		cbf_obj = OurCBF(phi_fn, param_dict) # numpy wrapper
-		log_fldrpth = os.path.join(log_fldr_base, "exp_%s_ckpt_%i" % (exp_name_to_load, checkpoint_number_to_load))
+		log_fldrpth = os.path.join(log_fldr_base, "exp_%s_ckpt_%i_nrollout_%i_dt_%s" % (exp_name_to_load, checkpoint_number_to_load, args.N_rollout, '%.2E' % Decimal(args.dt)))
 	if which_cbf == "low":
 		# from main import create_flying_param_dict
 		# param_dict = create_flying_param_dict(args)
@@ -490,7 +496,7 @@ if __name__ == "__main__":
 
 	# IPython.embed()
 	run_rollout_experiment(args)
-	"""
+	""" 
 	Example command:
 	python flying_rollout_experiment.py --which_cbf ours --exp_name_to_load flying_inv_pend_reg_weight_1 --checkpoint_number_to_load 1380 --N_rollout 2
 	
@@ -505,6 +511,10 @@ if __name__ == "__main__":
 	
 	Investigating box exits:
 	python flying_rollout_experiment.py --which_cbf low --low_c2 0.1 --N_rollout 250
+	
+	
+	python flying_rollout_experiment.py --which_cbf ours --exp_name_to_load flying_inv_pend_phi_format_1_seed_0 --checkpoint_number_to_load 60 --N_rollout 2 --N_samp_volume 10
+	python flying_rollout_experiment.py --which_cbf ours --exp_name_to_load flying_inv_pend_phi_format_0_seed_0 --checkpoint_number_to_load 3370 --N_rollout 1000 --N_samp_volume 10
 	"""
 
 
