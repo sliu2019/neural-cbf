@@ -23,7 +23,7 @@ import pickle
 
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
-	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, nn_inputs=None, x_e=None, include_beta_deriv=False):
+	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, nn_input_modifier=None, x_e=None, include_beta_deriv=False):
 		"""
 		:param h_fn:
 		:param xdot_fn:
@@ -32,7 +32,7 @@ class Phi(nn.Module):
 		:param u_dim:
 		:param device:
 		:param args:
-		:param nn_inputs: list of indices for indexing vector x
+		:param nn_input_modifier:
 		:param x_e:
 		"""
 		# Later: args specifying how beta is parametrized
@@ -60,24 +60,32 @@ class Phi(nn.Module):
 		#############################################################
 		hidden_dims = args.phi_nn_dimension.split("-")
 		hidden_dims = [int(h) for h in hidden_dims]
+		hidden_dims.append(1)
+
+		# Input dim:
+		if self.nn_input_modifier is None:
+			prev_dim = x_dim
+		else:
+			prev_dim = self.nn_input_modifier.output_dim
+
+		# phi_nnl = args_dict.get("phi_nnl", "relu") # return relu if var "phi_nnl" not on namespace
+		phi_nnl = args.phi_nnl.split("-")
+		assert len(phi_nnl) == len(hidden_dims) + 1
 
 		net_layers = []
-		# Input dim:
-		# TODO
-		if self.nn_inputs is None:
-			self.nn_inputs = np.arange(self.x_dim)
-		prev_dim = len(self.nn_inputs)
-
-		phi_nnl = args_dict.get("phi_nnl", "relu") # return relu if var "phi_nnl" not on namespace
 		for hidden_dim in hidden_dims:
 			net_layers.append(nn.Linear(prev_dim, hidden_dim))
 			if phi_nnl == "relu":
 				net_layers.append(nn.ReLU())
 			elif phi_nnl == "tanh":
 				net_layers.append(nn.Tanh())
+			elif phi_nnl == "softplus":
+				net_layers.append(nn.Softplus())
 			prev_dim = hidden_dim
-		net_layers.append(nn.Linear(prev_dim, 1))
+		# net_layers.append(nn.Linear(prev_dim, 1))
 		self.beta_net = nn.Sequential(*net_layers)
+		print("Phi init")
+		IPython.embed()
 
 	def forward(self, x, grad_x=False):
 		# The way these are implemented should be batch compliant
@@ -115,11 +123,11 @@ class Phi(nn.Module):
 			x.requires_grad = True
 
 		if self.x_e is None:
-			beta_net_value = self.beta_net(x[:, self.nn_inputs])
+			beta_net_value = self.beta_net(self.nn_input_modifier(x))
 			new_h = nn.functional.softplus(beta_net_value) + k0*self.h_fn(x)
 		else:
-			beta_net_value = self.beta_net(x[:, self.nn_inputs])
-			beta_net_xe_value = self.beta_net(self.x_e[:, self.nn_inputs])
+			beta_net_value = self.beta_net(self.nn_input_modifier(x))
+			beta_net_xe_value = self.beta_net(self.nn_input_modifier(self.x_e))
 			new_h = torch.square(beta_net_value - beta_net_xe_value) + k0*self.h_fn(x)
 
 		if self.include_beta_deriv:
@@ -205,8 +213,10 @@ class Regularizer(nn.Module):
 	def forward(self, x):
 		all_phi_values = self.phi_fn(x)
 		max_phi_values = torch.max(all_phi_values, dim=1)[0]
-		transform_of_max_phi = nn.functional.softplus(max_phi_values) # TODO 3/21: if this works, you can tune it later
-		# transform_of_max_phi = torch.sigmoid(0.3*max_phi_values) # TODO 3/21
+
+		# TODO: softplus or sigmoid?
+		transform_of_max_phi = nn.functional.softplus(max_phi_values)
+		# transform_of_max_phi = torch.sigmoid(0.3*max_phi_values)
 		reg = self.reg_weight*torch.mean(transform_of_max_phi)
 		return reg
 
@@ -326,12 +336,11 @@ def main(args):
 		else:
 			x_e = None
 
-		nn_inputs = np.arange(x_dim)
+		nn_input_modifier = None
 		include_beta_deriv = False
 	elif args.problem == "flying_inv_pend":
 		param_dict = create_flying_param_dict(args)
 
-		# TODO: hacky way to implement different CBF formats
 		include_beta_deriv = False
 		if args.phi_format == 0:
 			param_dict["r"] = 1
@@ -361,14 +370,16 @@ def main(args):
 			x_e = None
 
 		# Passing in subset of state to NN
+		from src.utils import IndexNNInput, TransformEucNNInput
 		state_index_dict = param_dict["state_index_dict"]
 		if args.phi_nn_inputs == "all":
-			nn_ind = np.arange(x_dim)
-		elif args.phi_nn_inputs == "angles_no_yaw":
-			nn_ind = [state_index_dict[name] for name in ["gamma", "beta", "phi", "theta"]]
-		elif args.phi_nn_inputs == "angles_derivs_no_yaw":
-			nn_ind = [state_index_dict[name] for name in ["gamma", "dgamma", "beta", "dbeta", "phi", "dphi", "theta", "dtheta"]]
-		nn_inputs = np.sort(nn_ind)
+			nn_input_modifier = None
+		if args.phi_nn_inputs == "no_derivs":
+			nn_ind = [state_index_dict[name] for name in ["gamma", "beta", "alpha", "phi", "theta"]]
+			nn_ind = np.sort(nn_ind)
+			nn_input_modifier = IndexNNInput(nn_ind)
+		elif args.phi_nn_inputs == "euc":
+			nn_input_modifier = TransformEucNNInput(state_index_dict)
 	else:
 		raise NotImplementedError
 
@@ -385,7 +396,7 @@ def main(args):
 	x_lim = torch.tensor(x_lim).to(device)
 
 	# Create CBF, etc.
-	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_inputs=nn_inputs, include_beta_deriv=include_beta_deriv)
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier, include_beta_deriv=include_beta_deriv)
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
 	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight)
 

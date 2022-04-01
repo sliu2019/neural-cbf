@@ -86,11 +86,13 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	state_index_dict = param_dict["state_index_dict"]
 	if args.phi_nn_inputs == "all":
 		nn_ind = np.arange(x_dim)
-	elif args.phi_nn_inputs == "angles_no_yaw":
-		nn_ind = [state_index_dict[name] for name in ["gamma", "beta", "phi", "theta"]]
-	elif args.phi_nn_inputs == "angles_derivs_no_yaw":
-		nn_ind = [state_index_dict[name] for name in ["gamma", "dgamma", "beta", "dbeta", "phi", "dphi", "theta", "dtheta"]]
-	nn_inputs = np.sort(nn_ind)
+	elif args.phi_nn_inputs == "no_derivs":
+		nn_ind = [state_index_dict[name] for name in ["gamma", "beta", "alpha", "phi", "theta"]]
+	# elif args.phi_nn_inputs == "angles_no_yaw":
+	# 	nn_ind = [state_index_dict[name] for name in ["gamma", "beta", "phi", "theta"]]
+	# elif args.phi_nn_inputs == "angles_derivs_no_yaw":
+	# 	nn_ind = [state_index_dict[name] for name in ["gamma", "dgamma", "beta", "dbeta", "phi", "dphi", "theta", "dtheta"]]
+	# nn_inputs = np.sort(nn_ind)
 
 	# Send all modules to the correct device
 	h_fn = h_fn.to(device)
