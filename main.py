@@ -23,7 +23,7 @@ import pickle
 
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
-	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, nn_input_modifier=None, x_e=None, include_beta_deriv=False):
+	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, nn_input_modifier=None, x_e=None, phi_reshape_dh=False):
 		"""
 		:param h_fn:
 		:param xdot_fn:
@@ -58,18 +58,27 @@ class Phi(nn.Module):
 
 		print("At initialization: k0 is %f" % self.k0.item())
 		#############################################################
-		hidden_dims = args.phi_nn_dimension.split("-")
+		self.net_reshape_h = self._create_net()
+
+		# if phi_reshape_dh:
+		# 	self.net_reshape_dh = self._create_net()
+
+		print("Phi init")
+		IPython.embed()
+
+	def _create_net(self):
+		hidden_dims = self.args.phi_nn_dimension.split("-")
 		hidden_dims = [int(h) for h in hidden_dims]
 		hidden_dims.append(1)
 
 		# Input dim:
 		if self.nn_input_modifier is None:
-			prev_dim = x_dim
+			prev_dim = self.x_dim
 		else:
 			prev_dim = self.nn_input_modifier.output_dim
 
 		# phi_nnl = args_dict.get("phi_nnl", "relu") # return relu if var "phi_nnl" not on namespace
-		phi_nnl = args.phi_nnl.split("-")
+		phi_nnl = self.args.phi_nnl.split("-")
 		assert len(phi_nnl) == len(hidden_dims) + 1
 
 		net_layers = []
@@ -82,10 +91,8 @@ class Phi(nn.Module):
 			elif phi_nnl == "softplus":
 				net_layers.append(nn.Softplus())
 			prev_dim = hidden_dim
-		# net_layers.append(nn.Linear(prev_dim, 1))
-		self.beta_net = nn.Sequential(*net_layers)
-		print("Phi init")
-		IPython.embed()
+		net = nn.Sequential(*net_layers)
+		return net
 
 	def forward(self, x, grad_x=False):
 		# The way these are implemented should be batch compliant
@@ -123,17 +130,17 @@ class Phi(nn.Module):
 			x.requires_grad = True
 
 		if self.x_e is None:
-			beta_net_value = self.beta_net(self.nn_input_modifier(x))
+			beta_net_value = self.net_reshape_h(self.nn_input_modifier(x))
 			new_h = nn.functional.softplus(beta_net_value) + k0*self.h_fn(x)
 		else:
-			beta_net_value = self.beta_net(self.nn_input_modifier(x))
-			beta_net_xe_value = self.beta_net(self.nn_input_modifier(self.x_e))
+			beta_net_value = self.net_reshape_h(self.nn_input_modifier(x))
+			beta_net_xe_value = self.net_reshape_h(self.nn_input_modifier(self.x_e))
 			new_h = torch.square(beta_net_value - beta_net_xe_value) + k0*self.h_fn(x)
 
-		if self.include_beta_deriv:
-			h_ith_deriv = new_h  # bs x 1, the zeroth derivative
-		else:
-			h_ith_deriv = self.h_fn(x) # bs x 1, the zeroth derivative
+		# if self.phi_reshape_dh:
+		# 	h_ith_deriv = new_h  # bs x 1, the zeroth derivative
+		# else:
+		h_ith_deriv = self.h_fn(x) # bs x 1, the zeroth derivative
 
 		h_derivs = h_ith_deriv # bs x 1
 		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device)) # bs x x_dim
@@ -149,10 +156,11 @@ class Phi(nn.Module):
 		#####################################################################
 		# Turn gradient tracking off for x
 		result = h_derivs.mm(ki_all.t())
-		if self.include_beta_deriv:
-			phi_r_minus_1_star = result[:, [-1]]
-		else:
-			phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_h
+		# if self.phi_reshape_dh:
+		# 	phi_r_minus_1_star = result[:, [-1]]
+		# else:
+		# 	phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_h
+		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_h
 
 		result = torch.cat((result, phi_r_minus_1_star), dim=1)
 
@@ -337,15 +345,16 @@ def main(args):
 			x_e = None
 
 		nn_input_modifier = None
-		include_beta_deriv = False
+		# phi_reshape_dh = False
+		# phi_reshape_h = True
 	elif args.problem == "flying_inv_pend":
 		param_dict = create_flying_param_dict(args)
 
-		include_beta_deriv = False
-		if args.phi_format == 0:
-			param_dict["r"] = 1
-		elif args.phi_format == 1:
-			include_beta_deriv = True
+		phi_reshape_dh = False
+		# if args.phi_format == 0:
+		# 	param_dict["r"] = 1
+		# elif args.phi_format == 1:
+		# 	phi_reshape_dh = True
 
 		r = param_dict["r"]
 		x_dim = param_dict["x_dim"]
@@ -380,6 +389,9 @@ def main(args):
 			nn_input_modifier = IndexNNInput(nn_ind)
 		elif args.phi_nn_inputs == "euc":
 			nn_input_modifier = TransformEucNNInput(state_index_dict)
+
+		# phi_reshape_dh = args.phi_reshape_dh
+		# phi_reshape_h = args.phi_reshape_h
 	else:
 		raise NotImplementedError
 
@@ -396,7 +408,7 @@ def main(args):
 	x_lim = torch.tensor(x_lim).to(device)
 
 	# Create CBF, etc.
-	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier, include_beta_deriv=include_beta_deriv)
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
 	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight)
 

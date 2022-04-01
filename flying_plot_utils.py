@@ -17,6 +17,8 @@ np.random.seed(seed)
 device = torch.device("cpu")
 
 def load_phi_and_params(exp_name=None, checkpoint_number=None):
+
+	# TODO: STOP BEFORE UPDATING THIS! YOU'LL NEED IT TO LOAD OLD RUNS (THOSE WITH FORMAT 0/1/2 TAGS)
 	if exp_name:
 		fnm = "./log/%s/args.txt" % exp_name
 		# args = load_args(fnm) # can't use, args conflicts with args in outer scope

@@ -33,7 +33,7 @@ class Trainer():
 		params_no_proj = [tup[1] for tup in phi_fn.named_parameters() if tup[0] not in proj_params]
 		ci = p_dict["ci"]
 		k0 = p_dict["k0"]
-		beta_net_0_weight = p_dict["beta_net.0.weight"]
+		# beta_net_0_weight = p_dict["beta_net.0.weight"]
 
 		# if self.args.trainer_type == "Adam":
 		# 	# TODO: need to fix this for projected parameters
@@ -109,6 +109,7 @@ class Trainer():
 			# Inner max
 			# X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode) # TODO
 			# TODO: you can define surface_fn differently
+
 			def surface_fn(x, grad_x=False):
 				return phi_fn(x, grad_x=grad_x)[:, -1]
 			# surface_fn = lambda x: phi_fn(x)[:, -1]
