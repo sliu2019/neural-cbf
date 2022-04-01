@@ -349,8 +349,9 @@ class GradientBatchWarmstartAttacker():
             t_total_opt = tf_opt - t0_opt
 
             # TODO
-            phi_vals = surface_fn(X.view(-1, self.x_dim))
-            debug_dict = {"X_init": X_init, "X_reuse_init": X_reuse_init, "X_random_init": X_random_init, "X": X, "obj_vals": obj_vals, "phi_vals": phi_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_step": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt}
+            # phi_vals = surface_fn(X.view(-1, self.x_dim))
+            # TODO: do not change the names in the dict here! Names are matched to trainer.py
+            debug_dict = {"X_init": X_init, "X_init_reuse": X_reuse_init, "X_init_random": X_random_init, "X_final": X, "X_obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_steps": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt}
 
             # # TODO:
             # debug_dict = {"X_init": X_init, "X_reuse_init": X_reuse_init, "X_random_init": X_random_init, "X": X, "obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_step": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt}

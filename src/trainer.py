@@ -28,118 +28,90 @@ class Trainer():
 		self.x_lim_interval_sizes = np.reshape(x_lim[:, 1] - x_lim[:, 0], (1, self.x_dim))
 
 	def train(self, objective_fn, reg_fn, phi_fn, xdot_fn):
-		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
-		proj_params = ["ci", "k0"]
-		params_no_proj = [tup[1] for tup in phi_fn.named_parameters() if tup[0] not in proj_params]
-		ci = p_dict["ci"]
-		k0 = p_dict["k0"]
-		# beta_net_0_weight = p_dict["beta_net.0.weight"]
+		##################################
+		######### Set up saving ##########
+		##################################
 
-		# if self.args.trainer_type == "Adam":
-		# 	# TODO: need to fix this for projected parameters
-		# 	# optimizer = optim.Adam(params_no_proj) # old
-		# 	optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
-		# elif self.args.trainer_type == "LinearLR":
-		# 	optimizer = optim.SGD(phi_fn.parameters(), self.args.trainer_lr)
-		# 	scheduler = optim.LinearLR(optimizer, start_factor=1.0, end_factor=0.1, total_iters=1000, verbose=True)
-		# 	# TODO: total_iters set experimentally
-		# elif self.args.trainer_type == "ExponentialLR":
-		# 	optimizer = optim.SGD(phi_fn.parameters(), self.args.trainer_lr)
-		# 	gamma = 0.997
-		# 	scheduler = optim.ExponentialLR(optimizer, gamma, verbose=True)
+		data_dict = {
+			"test_losses": [],
+			"test_attack_losses": [],
+			"test_reg_losses": [],
+			"k0_grad": [],
+			"ci_grad": [],
+			"train_loop_times": [],
+			"train_losses": [],
+			"train_attack_losses": [],
+			"train_reg_losses": [],
+			"grad_norms": [],
+			"V_approx_list": []}
+
+		train_attack_dict = {"train_attacks": [],
+			"train_attack_X_init": [],
+			"train_attack_X_init_reuse": [],
+			"train_attack_X_init_random": [],
+			"train_attack_X_final": [],
+			"train_attack_X_obj_vals": [],
+			"train_attack_X_phi_vals": [],
+			"train_attack_init_best_attack_value": [],
+			"train_attack_final_best_attack_value": [],
+			"train_attack_t_init": [],
+			"train_attack_t_grad_steps": [],
+			"train_attack_t_reproject": [],
+			"train_attack_t_total_opt": []}
+
+		data_dict.update(train_attack_dict)
+
+		reg_debug_dict = {"reg_grad_norms": []}
+		"""
+		"max_dists_X_reg": [], "times_to_compute_X_reg": [],
+		                  "reg_sampler_X": [], "grad_mag_before_reg": [],
+		                  "grad_mag_after_reg": [],
+		"""
+		data_dict.update(reg_debug_dict)
+
+		###########  Done  ###########
+		##############################
+		pos_param_names = ["ci", "k0"] # TODO: fill out, especially if you change variable names
+		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
+		pos_params = [p_dict[name] for name in pos_param_names]
 
 		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
+
+		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
 
 		_iter = 0
 		t0 = time.perf_counter()
 
-		# Set up saving
-		# All these lists should be the same length
-		test_attack_losses = []
-		test_reg_losses = []
-		test_losses = []
-
-		# Debug losses and overall timing
-		train_attack_losses = []
-		train_reg_losses = []
-		train_losses = []
-		train_loop_times = [] # in seconds
-
-		# Debug attacks
-		train_attacks = [] # lists of 1D numpy tensors
-		train_attack_X_init = []
-		train_attack_X_init_reuse = []
-		train_attack_X_init_random = []
-		train_attack_X_final = []
-		train_attack_X_obj_vals = []
-		train_attack_X_phi_vals = []
-
-		train_attack_init_best_attack_value = []
-		train_attack_final_best_attack_value = []
-
-		# Debug attack timing
-		train_attack_t_init = []
-		train_attack_t_grad_steps = []
-		train_attack_t_reproject = []
-		train_attack_t_total_opt = []
-
-		# Debug PGD on params + grad norms
-		ci_grad = []
-		k0_grad = []
-		grad_norms = []
-
-		# Debug reg sample keeper
-		reg_sampler_X = []
-		max_dists_X_reg = []
-		times_to_compute_X_reg = []
-		grad_mag_before_reg = []
-		grad_mag_after_reg = []
-		reg_grad_norms = []
-
-		V_approx_list = []
-		ci_lr = 1e-4
-		a_lr = 1e-4
-
-		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
-
-		# TODO: remove (optional)
 		file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 		save_model(phi_fn, file_name)
 		while True:
-			# Inner max
-			# X_init, X, x, X_obj_vals = self.attacker.opt(objective_fn, phi_fn, debug=True, mode=self.args.train_mode) # TODO
-			# TODO: you can define surface_fn differently
+			iteration_info_dict = {}
 
 			def surface_fn(x, grad_x=False):
 				return phi_fn(x, grad_x=grad_x)[:, -1]
-			# surface_fn = lambda x: phi_fn(x)[:, -1]
 			x, debug_dict = self.attacker.opt(objective_fn, surface_fn, _iter, debug=True)
-			X = debug_dict["X"]
+			X = debug_dict["X_final"]
 
 			optimizer.zero_grad()
-			# ci.grad = None
-			# k0.grad = None
 
-			t0_xreg = time.perf_counter()
-			# TODO
-			# if reg_fn.A_samples:
-			# 	doesnt_matter = torch.tensor(0)
-			# 	reg_value = reg_fn(doesnt_matter) # reg_fn depends on property A_samples, not the input
-			# elif reg_fn.A_samples is None and self.args.reg_weight:
-			# 	X_reg = self.reg_sampler.get_samples(phi_fn)
-			# 	reg_value = reg_fn(X_reg)
-			# else:
-			# 	reg_value = torch.tensor(0)
+			# t0_xreg = time.perf_counter()
 			X_reg = self.reg_sampler.get_samples(phi_fn)
 			reg_value = reg_fn(X_reg)
-			tf_xreg = time.perf_counter()
+			# tf_xreg = time.perf_counter()
 
 			if self.args.trainer_average_gradients:
 				# Outer max
-				obj = objective_fn(X)
 				c = 0.1
+
+				# TODO: SIMIN
+				print("Made change in trainer.py, for trainer_average_gradients = True")
+				print("Check the change! Change is: mask_neg")
+				IPython.embed()
+				obj = objective_fn(X)
+				mask_neg = obj >= 0 # zeros out entries where obj < 0
 				with torch.no_grad():
 					w = torch.exp(c*obj)
+					w = w*mask_neg
 					w = w/torch.sum(w)
 				attack_value = torch.dot(w.flatten(), obj.flatten())
 			else:
@@ -147,62 +119,45 @@ class Trainer():
 				x_batch = x.view(1, -1)
 				attack_value = objective_fn(x_batch)[0, 0]
 
-			# print("Reg value: ", reg_value)
-			# print("Ln 135: grad mag")
-			# IPython.embed()
-			# attack_value.backward()
-			# grad_before_reg = p_dict["beta_net.0.weight"].grad
-			# mag1 = torch.norm(grad_before_reg).item()
-			# grad_mag_before_reg.append(mag1)
-			#
-			# reg_value.backward()
-			# grad_after_reg = p_dict["beta_net.0.weight"].grad
-			# mag2 = torch.norm(grad_after_reg).item()
-			# grad_mag_before_reg.append(mag2)
-			#
-			# objective_value = attack_value + reg_value # Just for record-keeping purposes
-
-			# IPython.embed()
-
 			objective_value = attack_value + reg_value
 
-			# TODO: option 1
-			# objective_value.backward()
+			#######################################################
+			############# Now, taking the gradients ###############
+			#######################################################
 
-			# TODO: option 2
 			reg_value.backward()
-			# Check reg gradient
+
+			##### Check reg gradient #####
 			avg_grad_norm = 0
 			n_param = 0
 			for n, p in phi_fn.named_parameters():
 				if n not in ["ci", "k0"]:
-					# print(n)
 					avg_grad_norm += torch.linalg.norm(p.grad).item()
 					n_param += 1
 			avg_grad = avg_grad_norm/n_param
-			reg_grad_norms.append(avg_grad)
-			# self.logger.info(f'Reg grad norm: {avg_grad:.3f}')
-			attack_value.backward()
+			iteration_info_dict["reg_grad_norms"] = avg_grad
+			self.logger.info(f'Reg grad norm: {avg_grad:.3f}')
+			#*****************************
 
-			########## End ############
+			attack_value.backward()
 
 			optimizer.step()
 
 			with torch.no_grad():
-				# new_ci = ci - ci_lr*ci.grad
-				new_ci = ci
-				new_ci = torch.maximum(new_ci, torch.zeros_like(new_ci)) # Project to all positive
-				ci.copy_(new_ci) # proper way to update
+				for param in pos_params:
+					# pos_param = param
+					pos_param = torch.maximum(param, torch.zeros_like(param))
+					param.copy_(pos_param)
 
-				# new_k0 = k0 - k0_lr*k0.grad
-				new_k0 = k0
-				new_k0 = torch.maximum(new_k0, torch.zeros_like(new_k0)) # Project to all positive
-				k0.copy_(new_k0) # proper way to update
+				print("Checking that pos params are thresholded to be positive, in trainer.py")
+				IPython.embed()
 
 			tnow = time.perf_counter()
 
-			# Logging for debugging
-			# Make sure you detach before logging, otherwise you will accumulate memory over iterations and get an OOM
+			#######################################################
+			############## Logging and appending data #############
+			#######################################################
+			# TODO: Make sure you detach before logging, otherwise you will accumulate memory over iterations and get an OOM
 			self.logger.info('\n' + '=' * 20 + f' evaluation at iteration: {_iter} ' \
 			                 + '=' * 20)
 
@@ -210,92 +165,49 @@ class Trainer():
 			self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
 			t_so_far = tnow-t0
 			t_so_far_str = str(datetime.timedelta(seconds=t_so_far))
-			self.logger.info('time spent training so far: %s' % t_so_far_str)
+			self.logger.info(f'train attack loss increase: {(debug_dict["final_best_attack_value"]-debug_dict["init_best_attack_value"]):.3f}')
 
-			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(self.args.gpu), torch.cuda.memory_reserved(self.args.gpu)))
 
-			# IPython.embed()
-			# TODO: there's gotta be a cleaner way to implement this data collection at the bottom here
-			# Gather data
-			train_attack_losses.append(attack_value.item()) # Have to use .item() to detach from graph, otherwise we retain each graph from each iteration
-			train_reg_losses.append(reg_value.item())
-			train_losses.append(objective_value.item())
-
-			# Debug attacks
-			X_init = debug_dict["X_init"]
-			X_reuse_init = debug_dict["X_reuse_init"]
-			X_random_init = debug_dict["X_random_init"]
-			obj_vals = debug_dict["obj_vals"]
-			init_best_attack_value = debug_dict["init_best_attack_value"]
-			final_best_attack_value = debug_dict["final_best_attack_value"]
-			X_phi_vals = debug_dict["phi_vals"]
-
-			train_attack_X_init.append(X_init.detach().cpu().numpy())
-			train_attack_X_final.append(X.detach().cpu().numpy())
-			train_attack_X_obj_vals.append(obj_vals.detach().cpu().numpy())
-			train_attack_X_phi_vals.append(X_phi_vals.detach().cpu().numpy())
-			train_attack_numpy = x.detach().cpu().numpy()
-			train_attacks.append(train_attack_numpy)
-			train_attack_X_init_reuse.append(X_reuse_init.detach().cpu().numpy())
-			train_attack_X_init_random.append(X_random_init.detach().cpu().numpy())
-			train_attack_init_best_attack_value.append(init_best_attack_value)
-			train_attack_final_best_attack_value.append(final_best_attack_value)
-
-			self.logger.info(f'train attack loss increase: {final_best_attack_value-init_best_attack_value:.3f}')
-
-			# Debug attack timing
+			# Timing logging + saving
 			t_init = debug_dict["t_init"]
 			t_grad_step = debug_dict["t_grad_step"]
 			t_reproject = debug_dict["t_reproject"]
 			t_total_opt = debug_dict["t_total_opt"]
 
-			train_attack_t_init.append(t_init)
-			train_attack_t_grad_steps.append(t_grad_step)
-			train_attack_t_reproject.append(t_reproject)
-			train_attack_t_total_opt.append(t_total_opt)
+			self.logger.info('time spent training so far: %s' % t_so_far_str)
 			self.logger.info(f'train attack init time: {t_init:.3f}s')
 			self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_step):.3f}s')
 			self.logger.info(f'train attack avg reproj time: {np.mean(t_reproject):.3f}s')
 			self.logger.info(f'train attack total time: {t_total_opt:.3f}s')
 
-			# Gradient debug
-			# IPython.embed()
-			# TODO: removing, sometimes ci is none (i.e. phi_format is 0)
-			# k0_grad.append(k0.grad.detach().cpu().numpy())
-			# ci_grad.append(ci.grad.detach().cpu().numpy())
+			iteration_info_dict["train_loop_times"] = t_so_far
 
-			# TODO: reg weight tuning
-			# avg_grad_norm = 0
-			# n_param = 0
-			# for n, p in phi_fn.named_parameters():
-			# 	if n not in ["ci", "k0"]:
-			# 		print(n)
-			# 		avg_grad_norm += torch.linalg.norm(p.grad).item()
-			# 		n_param += 1
-			# avg_grad = avg_grad_norm/n_param
-			# grad_norms.append(avg_grad)
-			# self.logger.info(f'Grad norm: {avg_grad:.3f}')
+			# Mem leak logging
+			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(self.args.gpu), torch.cuda.memory_reserved(self.args.gpu)))
 
-			# Timing debug
-			train_loop_times.append(t_so_far)
+			# Losses saving
+			iteration_info_dict["train_attack_losses"] = attack_value
+			iteration_info_dict["train_reg_losses"] = reg_value
+			iteration_info_dict["train_losses"] = objective_value
 
-			# Recording for reg sample keeper
-			# TODO: 3/13
-			"""if self.args.reg_weight and reg_fn.A_samples is None:
-				# print("storing reg debug info")
-				# IPython.embed()
-				phis_X_reg = phi_fn(X_reg)
-				max_dist_X_reg = torch.max(phis_X_reg).item() # TODO: is this an accurate measure of distance?
-				# max_dist_X_reg = max_dist_X_reg.detach().cpu().numpy()
-				max_dists_X_reg.append(max_dist_X_reg)
-				reg_sampler_X.append(X_reg.detach().cpu().numpy())
-				times_to_compute_X_reg.append(tf_xreg-t0_xreg)
-				self.logger.info(f'reg, total time: {(tf_xreg-t0_xreg):.3f}s')
-				self.logger.info(f'reg, max dist: {max_dist_X_reg:.3f}')
-				# self.logger.info(f'mag of grad without reg: {mag1:.3f}')
-				# self.logger.info(f'with reg: {mag2:.3f}')"""
+			# Train attack saving
+			iteration_info_dict["train_attacks"] = x
+			iteration_info_dict["train_attack_X_phi_vals"] = phi_fn(X)
+			debug_dict = {"train_attack_" + key: value for key, value in debug_dict.items()}
 
-			# Saving at every _ iterations
+			iteration_info_dict.update(debug_dict)
+
+			# Merge into info_dict
+			print("ln 213 in trainer.py, check info_dict formation and the following merge")
+			IPython.embed()
+			for key, value in iteration_info_dict.items():
+				if torch.is_tensor(value):
+					value = value.detach().cpu().numpy()
+				data_dict[key].append(value)
+
+			#######################################################
+			##############    Saving data   #######################
+			#######################################################
 			if _iter % self.args.n_checkpoint_step == 0:
 				file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 				save_model(phi_fn, file_name)
@@ -303,41 +215,42 @@ class Trainer():
 				# Check volume + log it. Different samples every time
 				# print("ln 274, train.py")
 				# IPython.embed()
+
+
+
+				##############################
+				######### Save data ##########
+				##############################
+				print("Saving at: ", self.data_save_fpth)
+				with open(self.data_save_fpth, 'wb') as handle:
+					pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+				##########################################
+				######### Log stats to terminal ##########
+				##########################################
+
+				self.logger.info(f'train loss: {objective_value:.3f}%')
+				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
+				self.logger.info(f'v approx: {V_approx:.3f}% of volume')
+				self.logger.info(f'Reg grad norm: {avg_grad:.4f}')
+
+			#######################################################
+			##############   Compute test stats   #################
+			#######################################################
+			if _iter % self.args.n_test_loss_step == 0: # TODO: the fact that this is not = self.args.n_checkpoint_step necessarily means that you might have to refactor stuff in flying_rollout_experiment
+
 				N_volume_samples = 5000
 				samp_numpy = np.random.uniform(size=(N_volume_samples, self.x_dim)) * self.x_lim_interval_sizes + self.x_lim[:, [0]].T
 				samp_torch = torch.from_numpy(samp_numpy.astype("float32")).to(self.device)
 				M = 100
 
-				# with torch.no_grad():
 				N_samples_inside = 0
 				for k in range(math.ceil(N_volume_samples/float(M))):
 					phi_vals_batch = phi_fn(samp_torch[k*M: min((k+1)*M, N_volume_samples)])
 					N_samples_inside += torch.sum(torch.max(phi_vals_batch, axis=1)[0] <= 0.0)
 				V_approx = N_samples_inside*100/float(N_volume_samples)
 				V_approx = V_approx.item()
-				V_approx_list.append(V_approx)
-
-				# save data too
-				save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "train_attack_X_phi_vals": train_attack_X_phi_vals, "grad_norms": grad_norms, "V_approx_list": V_approx_list}
-
-				additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse, "train_attack_X_init_random": train_attack_X_init_random, "train_attack_init_best_attack_value": train_attack_init_best_attack_value, "train_attack_final_best_attack_value": train_attack_final_best_attack_value,"train_attack_t_init": train_attack_t_init, "train_attack_t_grad_steps": train_attack_t_grad_steps, "train_attack_t_reproject": train_attack_t_reproject, "train_attack_t_total_opt": train_attack_t_total_opt}
-
-				reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg, "reg_sampler_X": reg_sampler_X, "grad_mag_before_reg": grad_mag_before_reg, "grad_mag_after_reg": grad_mag_after_reg, "reg_grad_norms": reg_grad_norms}
-
-
-				# save_dict = save_dict + additional_train_attack_dict
-				save_dict.update(additional_train_attack_dict)
-				save_dict.update(reg_debug_dict)
-
-				# IPython.embed()
-				self.logger.info(f'train loss: {objective_value:.3f}%')
-				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
-				self.logger.info(f'v approx: {V_approx:.3f}% of volume')
-				self.logger.info(f'Reg grad norm: {avg_grad:.4f}')
-
-				print("Saving at: ", self.data_save_fpth)
-				with open(self.data_save_fpth, 'wb') as handle:
-					pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+				data_dict["V_approx_list"].append(V_approx)
 
 			# TODO: test loss is not being computed
 			# if (self.args.n_test_loss_step > 0) and (_iter % self.args.n_test_loss_step == 0):
@@ -356,6 +269,8 @@ class Trainer():
 			# 	test_attack_losses.append(test_attack_loss.item())
 			# 	test_reg_losses.append(test_reg_loss.item())
 			# 	test_losses.append(test_loss.item())
+
+			# TODO: SIMIN YOU ARE HERE!!! YOU HAVEN'T REVIEWED THE REST AT THE BOTTOM HERE
 
 			# Rest of print output
 			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')

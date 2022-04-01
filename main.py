@@ -23,7 +23,7 @@ import pickle
 
 class Phi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
-	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, nn_input_modifier=None, x_e=None, phi_reshape_dh=False):
+	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, nn_input_modifier=None, x_e=None):
 		"""
 		:param h_fn:
 		:param xdot_fn:
@@ -350,7 +350,7 @@ def main(args):
 	elif args.problem == "flying_inv_pend":
 		param_dict = create_flying_param_dict(args)
 
-		phi_reshape_dh = False
+		# phi_reshape_dh = False
 		# if args.phi_format == 0:
 		# 	param_dict["r"] = 1
 		# elif args.phi_format == 1:
@@ -381,14 +381,15 @@ def main(args):
 		# Passing in subset of state to NN
 		from src.utils import IndexNNInput, TransformEucNNInput
 		state_index_dict = param_dict["state_index_dict"]
-		if args.phi_nn_inputs == "all":
+		if args.phi_nn_inputs == "spherical":
 			nn_input_modifier = None
-		if args.phi_nn_inputs == "no_derivs":
-			nn_ind = [state_index_dict[name] for name in ["gamma", "beta", "alpha", "phi", "theta"]]
-			nn_ind = np.sort(nn_ind)
-			nn_input_modifier = IndexNNInput(nn_ind)
 		elif args.phi_nn_inputs == "euc":
 			nn_input_modifier = TransformEucNNInput(state_index_dict)
+
+		# if args.phi_nn_inputs == "no_derivs":
+		# 	nn_ind = [state_index_dict[name] for name in ["gamma", "beta", "alpha", "phi", "theta"]]
+		# 	nn_ind = np.sort(nn_ind)
+		# 	nn_input_modifier = IndexNNInput(nn_ind)
 
 		# phi_reshape_dh = args.phi_reshape_dh
 		# phi_reshape_h = args.phi_reshape_h

@@ -16,7 +16,7 @@ def create_parser():
 	# parser.add_argument('--phi_k0_init_min', default=0.0, type=float)
 	# parser.add_argument('--phi_k0_init_max', default=1.0, type=float)
 	parser.add_argument('--phi_include_xe', action='store_true')
-	parser.add_argument('--phi_nn_inputs', type=str, default="all", choices=["all", "no_derivs", "euc"], help='which subset of states to pass into nn component; all means all 10')
+	parser.add_argument('--phi_nn_inputs', type=str, default="spherical", choices=["spherical", "euc"], help='which coordinates? spherical or euclidean')
 
 	# parser.add_argument('--phi_reshape_h', action='store_true', help='reshape h')
 	# parser.add_argument('--phi_reshape_dh', action='store_true', help="reshape dh by setting dh = d/dt(h + reshape). h will be reshape independently by default")
@@ -99,7 +99,7 @@ def create_parser():
 	parser.add_argument('--model_root', default='checkpoint', help='the directory to save the models')
 	parser.add_argument('--n_checkpoint_step', type=int, default=10,
 	                    help='number of iterations to save a checkpoint')
-	parser.add_argument('--n_test_loss_step', type=int, default=-1,
+	parser.add_argument('--n_test_loss_step', type=int, default=10,
 	                    help='number of iterations to compute test loss; if negative, then never')
 
 	# TODO: add lr for ci or Adam option; also for projection, etc.
