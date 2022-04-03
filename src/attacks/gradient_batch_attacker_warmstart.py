@@ -8,8 +8,8 @@ import torch.optim as optim
 import time
 from src.utils import *
 import IPython
+import multiprocessing as mp
 
-# TODO: surface_fn: the surface is defined as where surface_fn= 0. Note, we assume surface_fncan be positive or negative  
 class GradientBatchWarmstartAttacker():
     """
     Gradient-based attack, but parallelized across many initializations
@@ -130,21 +130,27 @@ class GradientBatchWarmstartAttacker():
         debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step)}
         return x_new, debug_dict
 
-    def _sample_in_cube(self):
+    def _sample_in_cube(self, random_seed=None):
         """
         Samples uniformly in state space hypercube
         Returns 1 sample
         """
+        if random_seed:
+            torch.manual_seed(random_seed)
+            np.random.seed(random_seed)
         # samples = np.random.uniform(low=self.x_lim[:, 0], high=self.x_lim[:, 1])
         unif = torch.rand(self.x_dim).to(self.device)
         sample = unif*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
         return sample
 
-    def _sample_on_cube(self):
+    def _sample_on_cube(self, random_seed=None):
         """
         Samples uniformly on state space hypercube
         Returns 1 sample
         """
+        if random_seed:
+            torch.manual_seed(random_seed)
+            np.random.seed(random_seed)
         # https://math.stackexchange.com/questions/2687807/uniquely-identify-hypercube-faces
         which_facet_pair = np.random.choice(np.arange(self.x_dim), p=self.vols)
         which_facet = np.random.choice([0, 1])
@@ -219,6 +225,14 @@ class GradientBatchWarmstartAttacker():
         # print("success")
         return intersection_point
 
+    def _sample_segment_intersect_boundary(self, surface_fn, random_seed=None):
+        outer = self._sample_on_cube(random_seed=random_seed)
+        center = self._sample_in_cube(random_seed=random_seed)
+
+        intersection = self._intersect_segment_with_manifold(center, outer, surface_fn)
+
+        return intersection
+
     def _sample_points_on_boundary(self, surface_fn, n_samples):
         """
         Returns torch array of size (self.n_samples, self.x_dim)
@@ -226,25 +240,33 @@ class GradientBatchWarmstartAttacker():
         # Everything done in torch
         samples = []
         n_remaining_to_sample = n_samples
+        # n_segments_sampled = 0
 
-        center = self._sample_in_cube()
-        n_segments_sampled = 0
+        n_cpu = mp.cpu_count()
+        pool = mp.Pool(n_cpu)
+
+        random_seeds = np.arange(100 * n_samples) # This should be enough. If it isn't, code will error out
+        np.random.shuffle(random_seeds)  # in place
+
+        arg_tup = [surface_fn]
+        duplicated_arg = list([arg_tup] * n_cpu)
+
+        it = 0
         while n_remaining_to_sample > 0:
-            # print(n_remaining_to_sample, n_segments_sampled)
-            outer = self._sample_on_cube()
+            batch_random_seeds = random_seeds[it * n_cpu:(it + 1) * n_cpu]
+            final_arg = [duplicated_arg[i] + [batch_random_seeds[i]] for i in range(n_cpu)]
+            result = pool.starmap(self._sample_segment_intersect_boundary, final_arg)
 
-            intersection = self._intersect_segment_with_manifold(center, outer, surface_fn)
-            # valid = False
-            if intersection is not None:
-                samples.append(intersection.view(1, -1))
-                n_remaining_to_sample -= 1
+            for intersection in result:
+                if intersection is not None:
+                    samples.append(intersection.view(1, -1))
+                    n_remaining_to_sample -= 1 # could go negative!
 
-            # if not valid:
-            center = self._sample_in_cube()
-            n_segments_sampled += 1
-            # self.logger.info("%i segments" % n_segments_sampled)
+            # n_segments_sampled += n_cpu
+            it += 1
+            self.logger.info("%i segments sampled" % (it*n_cpu))
 
-        samples = torch.cat(samples, dim=0)
+        samples = torch.cat(samples[:n_samples], dim=0)
         # self.logger.info("Done with sampling points on the boundary...")
         return samples
 
