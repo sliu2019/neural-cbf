@@ -155,10 +155,8 @@ class GradientBatchWarmstartAttacker():
         sample[which_facet_pair] = self.x_lim[which_facet_pair, which_facet]
         return sample
 
-    def _intersect_segment_with_manifold(self, p1, p2, surface_fn, rtol=1e-5, atol=1e-3):
-        """
-        Atol? Reltol?
-        """
+    def _intersect_segment_with_manifold(self, p1, p2, surface_fn):
+
         diff = p2-p1
 
         left_weight = 0.0
@@ -203,7 +201,7 @@ class GradientBatchWarmstartAttacker():
                 intersection_point = p1 + left_weight*diff
                 break
             t1 = time.perf_counter()
-            if (t1-t0)>7: # TODO: set back to 7
+            if (t1-t0)>7: # an arbitrary time limit
                 # This clause is necessary for non-differentiable, continuous points (abrupt change)
                 print("Something is wrong in projection")
                 print(left_val, right_val)
@@ -224,7 +222,6 @@ class GradientBatchWarmstartAttacker():
     def _sample_points_on_boundary(self, surface_fn, n_samples):
         """
         Returns torch array of size (self.n_samples, self.x_dim)
-        Mode between "dG", "dG+dS", "dG/dS"
         """
         # Everything done in torch
         samples = []
@@ -282,11 +279,9 @@ class GradientBatchWarmstartAttacker():
             X_reuse_init = self.X_saved[torch.tensor(inds_distinct)]
             # print("Reprojecting")
             X_reuse_init = self._project(surface_fn, X_reuse_init) # reproject, since phi changed
-
             # print("Sampling points on boundary")
             X_random_init = self._sample_points_on_boundary(surface_fn, n_random_samples)
             # print("Done")
-
             X_init = torch.cat([X_random_init, X_reuse_init], axis=0)
 
         tf_init = time.perf_counter()
@@ -297,22 +292,20 @@ class GradientBatchWarmstartAttacker():
         # logging
         t_grad_step = []
         t_reproject = []
+        obj_vals = objective_fn(X.view(-1, self.x_dim))
+        init_best_attack_value = torch.max(obj_vals).item()
 
         # train_attacker_use_n_step_schedule
         max_n_steps = self.max_n_steps
         if self.train_attacker_use_n_step_schedule:
-            # print("here!!!")
-            # IPython.embed()
             max_n_steps = (2*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
             print("Max_n_steps: %i" % max_n_steps)
         while True:
             # print("Inner max step #%i" % i)
             X, step_debug_dict = self._step(objective_fn, surface_fn, X) # Take gradient steps on all candidate attacks
-            obj_vals = objective_fn(X.view(-1, self.x_dim))
+            # obj_vals = objective_fn(X.view(-1, self.x_dim))
 
             # Logging
-            if i == 0:
-                init_best_attack_value = torch.max(obj_vals).item()
             t_grad_step.append(step_debug_dict["t_grad_step"])
             t_reproject.append(step_debug_dict["t_reproject"])
 
@@ -320,19 +313,23 @@ class GradientBatchWarmstartAttacker():
             if self.stopping_condition == "n_steps":
                 if (i > max_n_steps):
                     break
-            elif self.stopping_condition == "early_stopping": # Note: the stopping criteria is so strict that this is effectively the same as using n_steps = 400
-                early_stopping(obj_vals)
-                if early_stopping.early_stop:
-                    break
-                elif i > 400: # Hard-coded n_{max iter}
-                    print("Attacker exceeded time limit")
-                    break
+            elif self.stopping_condition == "early_stopping":
+                print("Not recommended to use this option; it will run for hundreds of steps before stopping")
+                raise NotImplementedError
+            # elif self.stopping_condition == "early_stopping": # Note: the stopping criteria is so strict that this is effectively the same as using n_steps = 400
+            #     early_stopping(obj_vals)
+            #     if early_stopping.early_stop:
+            #         break
+            #     elif i > 400: # Hard-coded n_{max iter}
+            #         print("Attacker exceeded time limit")
+            #         break
             i += 1
 
         tf_opt = time.perf_counter()
 
         # Save for warmstart
         self.X_saved = X
+        obj_vals = objective_fn(X.view(-1, self.x_dim))
         self.obj_vals_saved = obj_vals
 
         # Returning a single attack
@@ -348,12 +345,9 @@ class GradientBatchWarmstartAttacker():
             t_init = tf_init - t0_opt
             t_total_opt = tf_opt - t0_opt
 
-            # TODO
-            # phi_vals = surface_fn(X.view(-1, self.x_dim))
             # TODO: do not change the names in the dict here! Names are matched to trainer.py
             debug_dict = {"X_init": X_init, "X_init_reuse": X_reuse_init, "X_init_random": X_random_init, "X_final": X, "X_obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_steps": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt}
 
-            # # TODO:
             # debug_dict = {"X_init": X_init, "X_reuse_init": X_reuse_init, "X_random_init": X_random_init, "X": X, "obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_step": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt}
 
             return x, debug_dict

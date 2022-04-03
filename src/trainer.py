@@ -252,6 +252,9 @@ class Trainer():
 				V_approx = V_approx.item()
 				data_dict["V_approx_list"].append(V_approx)
 
+				# TODO: compute some sort of test metric
+
+
 			# TODO: test loss is not being computed
 			# if (self.args.n_test_loss_step > 0) and (_iter % self.args.n_test_loss_step == 0):
 			# 	# compute test loss
@@ -270,7 +273,6 @@ class Trainer():
 			# 	test_reg_losses.append(test_reg_loss.item())
 			# 	test_losses.append(test_loss.item())
 
-			# TODO: SIMIN YOU ARE HERE!!! YOU HAVEN'T REVIEWED THE REST AT THE BOTTOM HERE
 
 			# Rest of print output
 			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')
@@ -278,6 +280,9 @@ class Trainer():
 			# Check for stopping
 			if self.args.trainer_stopping_condition == "early_stopping":
 				# early_stopping(test_loss) # TODO: should technically use test_loss, but we're not computing it
+				# TODO: early stopper almost does the opposite of what we want.
+				# We'd like to end training after loss does not increase (spike) in a while
+				# Instead of ending training after loss does not improve for a while
 				early_stopping(objective_value)
 				if early_stopping.early_stop:
 					break
