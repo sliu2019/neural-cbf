@@ -5,6 +5,7 @@ from torch.autograd import grad
 from src.attacks.basic_attacker import BasicAttacker
 from src.attacks.gradient_batch_attacker import GradientBatchAttacker
 from src.attacks.gradient_batch_attacker_warmstart import GradientBatchWarmstartAttacker
+from src.attacks.gradient_batch_attacker_warmstart_2 import GradientBatchWarmstartAttacker2
 from src.trainer import Trainer
 from src.reg_samplers.boundary import BoundaryRegSampler
 from src.reg_samplers.random import RandomRegSampler
@@ -425,9 +426,11 @@ def main(args):
 		attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr)
 	elif args.train_attacker == "gradient_batch_warmstart":
 		attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule)
+	elif args.train_attacker == "gradient_batch_warmstart2":
+		attacker = GradientBatchWarmstartAttacker2(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule, proj_tactic=args.gradient_batch_warmstart2_proj_tactic)
 
 	# Create test attacker
-	test_attacker = None
+	test_attacker = GradientBatchWarmstartAttacker2(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule, proj_tactic=args.gradient_batch_warmstart2_proj_tactic)
 
 	# if args.test_attacker == "basic":
 	# 	test_attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
@@ -438,7 +441,7 @@ def main(args):
 
 	# Pass everything to Trainer
 	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)
-	# trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
+	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
@@ -446,8 +449,8 @@ def main(args):
 	### Fill out ####
 	# IPython.embed()
 
-	x_rand = torch.rand((5, 10)).to(device)
-	phi_vals = phi_fn(x_rand)
+	# x_rand = torch.rand((5, 10)).to(device)
+	# phi_vals = phi_fn(x_rand)
 
 if __name__ == "__main__":
 	parser = create_parser()

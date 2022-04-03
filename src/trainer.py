@@ -43,7 +43,9 @@ class Trainer():
 			"train_attack_losses": [],
 			"train_reg_losses": [],
 			"grad_norms": [],
-			"V_approx_list": []}
+			"V_approx_list": [],
+			"boundary_samples_obj_values": []
+		}
 
 		train_attack_dict = {"train_attacks": [],
 			"train_attack_X_init": [],
@@ -57,7 +59,8 @@ class Trainer():
 			"train_attack_t_init": [],
 			"train_attack_t_grad_steps": [],
 			"train_attack_t_reproject": [],
-			"train_attack_t_total_opt": []}
+			"train_attack_t_total_opt": [],
+		    "train_attack_diff_after_proj": []}
 
 		data_dict.update(train_attack_dict)
 
@@ -253,7 +256,13 @@ class Trainer():
 				data_dict["V_approx_list"].append(V_approx)
 
 				# TODO: compute some sort of test metric
-
+				N_boundary_samples = 1000
+				def surface_fn(x, grad_x=False):
+					return phi_fn(x, grad_x=grad_x)[:, -1]
+				boundary_samples = self.test_attacker._sample_points_on_boundary(surface_fn, N_boundary_samples)
+				boundary_samples_obj_value = objective_fn(boundary_samples)
+				boundary_samples_obj_value = boundary_samples_obj_value.detach().cpu().numpy()
+				data_dict["boundary_samples_obj_values"].append(boundary_samples_obj_value)
 
 			# TODO: test loss is not being computed
 			# if (self.args.n_test_loss_step > 0) and (_iter % self.args.n_test_loss_step == 0):

@@ -55,7 +55,9 @@ def create_parser():
 
 	###################################################################################################################################
 	# Attacker: train
-	parser.add_argument('--train_attacker', default='gradient_batch_warmstart', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart'])
+	parser.add_argument('--train_attacker', default='gradient_batch_warmstart', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart2'])
+	# TODO: new below
+	parser.add_argument('--gradient_batch_warmstart2_proj_tactic', choices=['gd_step_timeout', 'adam_ba'])
 
 	# Gradient batch attacker
 	parser.add_argument('--train_attacker_n_samples', default=60, type=int)

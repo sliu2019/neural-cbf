@@ -10,17 +10,20 @@ from src.utils import *
 import IPython
 import multiprocessing as mp
 
-class GradientBatchWarmstartAttacker():
+class GradientBatchWarmstartAttacker2():
     """
-    Gradient-based attack, but parallelized across many initializations
-    """
-    # Note: this is not batch compliant.
+    Faster and better than V1?
 
+    Upgrades:
+	1. Multi-processing for speed-up on boundary sampling
+	2. Segment sampling by a different protocol (for improved uniformity)
+	3. Different projection routines
+    """
     def __init__(self, x_lim, device, logger, n_samples=20, \
                  stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
                  lr=1e-3, \
                  p_reuse=0.7,\
-                 projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=3.0, verbose=False, train_attacker_use_n_step_schedule=False): # TODO: verbose
+                 projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=3.0, verbose=False, train_attacker_use_n_step_schedule=False, proj_tactic="gd_step_timeout"): # TODO: verbose
         vars = locals()  # dict of local names
         self.__dict__.update(vars)  # __dict__ holds and object's attributes
         del self.__dict__["self"]  # don't need `self`
@@ -43,23 +46,127 @@ class GradientBatchWarmstartAttacker():
         self.X_saved = None
         self.obj_vals_saved = None
 
+        # For projection, adamBA
+        self.n_vector_samples = 10
+        self.torch_cpu = torch.device("cpu")
 
-    def _project(self, surface_fn, x):
+    def _adamBA_subroutine(self, surface_fn, x, special_vector=None):
+        """
+        Everything done in torch, on the CPU
+        """
+        print("Inside _adamBA_subroutine")
+        print("Check by seeing if dot product between special_vector and sampled_vectors is positive, near 1")
+        IPython.embed()
+
+        ###### Sample vectors
+        special_vector_orth1 = torch.torch([-special_vector[1], special_vector[0], 0])
+        special_vector_orth2 = torch.cross(special_vector, special_vector_orth1)
+
+        sampled_eps_vectors = np.random.multivariate_normal(np.zeros(2), np.eye(2), size=(self.n_vector_samples)) # n x 2
+        sampled_eps_vectors = torch.from_numpy(sampled_eps_vectors)
+        # sampled_eps_vectors = np.concatenate((sampled_eps_vectors, np.zeros(self.n_vector_samples, 1)), axis=1)
+
+        proj_matrix = torch.cat((special_vector_orth1[:, None], special_vector_orth2[:, None]), axis=1) # 3 x 2
+        # project to zero-centered plane orthogonal to special_vector
+        sampled_eps_vectors = (proj_matrix@sampled_eps_vectors.T).T # n x 3
+
+        sampled_vectors = special_vector[None, :] + sampled_eps_vectors
+        sampled_vectors = torch.cat((sampled_vectors, special_vector))  # include special vector
+        sampled_vectors = sampled_vectors/torch.norm(sampled_vectors, axis=1) # all length 1
+
+        vectors = x + sampled_vectors
+        surface_other_end = surface_fn(x)
+        sign_other_end = torch.sign(surface_other_end)
+        while vectors.size >= 0:
+            # Check if intersecting with boundary
+            surface_one_end = surface_fn(vectors)
+
+            signs = torch.sign(surface_one_end)*sign_other_end
+            inds = np.argwhere(signs <= 0)
+
+            if len(inds) > 0:
+                closest_proj = None
+                closest_proj_dist = float("inf")
+                for ind in inds:
+                    rv = self._intersect_segment_with_manifold(x, vectors[ind], surface_fn)
+                    proj_dist = torch.norm(rv-x)
+                    if proj_dist < closest_proj_dist:
+                        closest_proj = rv
+                        closest_proj_dist = proj_dist
+                return closest_proj
+
+            # Are any exiting box? Remove now
+            exit_inds = np.argwhere(np.logical_or(vectors <= self.x_lim[:, 0], vectors >= self.x_lim[:, 1], axis=1))
+            vectors = np.delete(vectors, exit_inds, axis=0) # TODO: check axis
+
+            # For the remaining, double in length
+            vectors = vectors*2.0
+
+        # Failed
+        # Later, can do something more sophisticated in this case
+        return None
+
+    def _project_adamBA(self, surface_fn, X):
+        """
+        CPU multiprocessing
+        Sampled line search projection
+        Naturally times out: with success or no success (none of lines intersected with surface)
+
+        Have projections return a debug dictionary that we accumulate, instead of print outs
+        """
+        print("inside project_adamBA")
+        print("check which device everything is on")
+        print("also check whether the devices are consistent")
+        IPython.embed()
+
+        # compute gradients here, using GPU (prolly faster)
+        X.requires_grad = True
+        gradient = grad([torch.sum(torch.abs(surface_fn(X)))], X)[0]
+        X.requires_grad = False
+
+        # use mp to call adamBA
+        gradient_cpu = gradient.to(self.torch_cpu)
+        X_cpu = X.to(self.torch_cpu)
+
+        # n_cpu = mp.cpu_count()
+        # pool = mp.Pool(n_cpu)
+        n_points = X.shape[0]
+        pool = mp.Pool(n_points)
+
+        final_arg = [[surface_fn, X_cpu[i], gradient_cpu[i]] for i in range(n_points)]
+        result_cpu = pool.starmap(self._adamBA_subroutine, final_arg) # projected x's or None
+        result = result_cpu.to(self.device)
+
+        # For now, if projection unsuccessful, do nothing
+        # Perhaps later, if None then call subroutine until RV is not None
+        for i in range(n_points):
+            if result[i] is None:
+                result[i] = X[i]
+
+        X_projected = torch.cat(result, dim=0)
+        return X_projected
+
+    def _project(self, surface_fn, X, projection_n_grad_steps=None):
+        """
+        GPU batched
+        GD-based projection
+        With timeout
+        """
         # Until convergence
         i = 0
         t1 = time.perf_counter()
 
-        x_list = list(x)
-        x_list = [x_mem.view(-1, self.x_dim) for x_mem in x_list] # TODO
-        for x_mem in x_list:
-            x_mem.requires_grad = True
-        proj_opt = optim.Adam(x_list, lr=self.projection_lr)
+        X_list = list(X)
+        X_list = [X_mem.view(-1, self.x_dim) for X_mem in X_list] # TODO
+        for X_mem in X_list:
+            X_mem.requires_grad = True
+        proj_opt = optim.Adam(X_list, lr=self.projection_lr)
 
         while True:
             proj_opt.zero_grad()
             # print("Inside _project, check out surface_fn")
             # IPython.embed()
-            loss = torch.sum(torch.abs(surface_fn(torch.cat(x_list), grad_x=True)))
+            loss = torch.sum(torch.abs(surface_fn(torch.cat(X_list), grad_x=True)))
             # loss = torch.sum(torch.abs(surface_fn(torch.cat(x_list))))
             loss.backward()
             proj_opt.step()
@@ -71,16 +178,21 @@ class GradientBatchWarmstartAttacker():
                 # if self.verbose:
                 #     print("reprojection exited before timeout in %i steps" % i)
                 break
-            elif (t_now - t1) > self.projection_time_limit:
-                # print("reprojection exited on timeout")
-                print("Attack: reprojection exited on timeout, max dist from =0 boundary: ", torch.max(loss).item())
-                break
+
+            if projection_n_grad_steps is not None: # use step number limit
+                if i == projection_n_grad_steps:
+                    break
+            else: # else, use time limit
+                if (t_now - t1) > self.projection_time_limit:
+                    # print("reprojection exited on timeout")
+                    print("Attack: reprojection exited on timeout, max dist from =0 boundary: ", torch.max(loss).item())
+                    break
 
             # print((t_now - t1), torch.max(loss))
 
-        for x_mem in x_list:
-            x_mem.requires_grad = False
-        rv_x = torch.cat(x_list)
+        for X_mem in X_list:
+            X_mem.requires_grad = False
+        rv_X = torch.cat(X_list)
 
         if self.verbose:
             # if torch.max(loss) < self.projection_tolerance:
@@ -89,35 +201,41 @@ class GradientBatchWarmstartAttacker():
             if torch.max(loss) > self.projection_tolerance:
                 print("Not on manifold, %f" % (torch.max(loss).item()))
         # IPython.embed()
-        return rv_x
+        return rv_X
 
-    def _step(self, objective_fn, surface_fn, x):
+    def _step(self, objective_fn, surface_fn, X):
         # It makes less sense to use an adaptive LR method here, if you think about it
         t0_step = time.perf_counter()
 
-        x_batch = x.view(-1, self.x_dim)
-        x_batch.requires_grad = True
+        X_batch = X.view(-1, self.x_dim)
+        X_batch.requires_grad = True
 
-        obj_val = -objective_fn(x_batch) # maximizing
-        obj_grad = grad([torch.sum(obj_val)], x_batch)[0]
+        obj_val = -objective_fn(X_batch) # maximizing
+        obj_grad = grad([torch.sum(obj_val)], X_batch)[0]
 
-        normal_to_manifold = grad([torch.sum(surface_fn(x_batch))], x_batch)[0]
+        normal_to_manifold = grad([torch.sum(surface_fn(X_batch))], X_batch)[0]
         normal_to_manifold = normal_to_manifold/torch.norm(normal_to_manifold, dim=1)[:, None] # normalize
-        x_batch.requires_grad = False
+        X_batch.requires_grad = False
         weights = obj_grad.unsqueeze(1).bmm(normal_to_manifold.unsqueeze(2))[:, 0]
         proj_obj_grad = obj_grad - weights*normal_to_manifold
 
         # Take a step
-        x_new = x - self.lr*proj_obj_grad
+        X_new = X - self.lr*proj_obj_grad
         tf_grad_step = time.perf_counter()
 
-        x_new = self._project(surface_fn, x_new)
+        dist_before_proj = torch.mean(torch.abs(surface_fn(X_new)))
+        if self.proj_tactic == 'gd_step_timeout':
+            X_new = self._project(surface_fn, X_new, projection_n_grad_steps=5) # TODO: set projection_n_grad_steps
+        elif self.proj_tactic == 'adam_ba':
+            X_new = self._project_adamBA(surface_fn, X)
+        dist_after_proj = torch.mean(torch.abs(surface_fn(X_new)))
+
         tf_reproject = time.perf_counter()
 
         # Wrap-around in state domain
-        x_new = torch.minimum(torch.maximum(x_new, self.x_lim[:, 0]), self.x_lim[:, 1])
-        debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step)}
-        return x_new, debug_dict
+        X_new = torch.minimum(torch.maximum(X_new, self.x_lim[:, 0]), self.x_lim[:, 1])
+        debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step), "diff_after_proj": (dist_after_proj-dist_before_proj)}
+        return X_new, debug_dict
 
     def _sample_in_cube(self, random_seed=None):
         """
@@ -214,6 +332,14 @@ class GradientBatchWarmstartAttacker():
         # print("success")
         return intersection_point
 
+    def _sample_segment_intersect_boundary(self, surface_fn, random_seed=None):
+        outer = self._sample_on_cube(random_seed=random_seed)
+        center = self._sample_in_cube(random_seed=random_seed)
+
+        intersection = self._intersect_segment_with_manifold(center, outer, surface_fn)
+
+        return intersection
+
     def _sample_points_on_boundary(self, surface_fn, n_samples):
         """
         Returns torch array of size (self.n_samples, self.x_dim)
@@ -221,24 +347,34 @@ class GradientBatchWarmstartAttacker():
         # Everything done in torch
         samples = []
         n_remaining_to_sample = n_samples
+        # n_segments_sampled = 0
 
-        n_segments_sampled = 0
+        n_cpu = mp.cpu_count()
+        pool = mp.Pool(n_cpu)
+
+        random_seeds = np.arange(100 * n_samples) # This should be enough. If it isn't, code will error out
+        np.random.shuffle(random_seeds)  # in place
+
+        arg_tup = [surface_fn]
+        duplicated_arg = list([arg_tup] * n_cpu)
+
+        it = 0
         while n_remaining_to_sample > 0:
-            # print(n_remaining_to_sample, n_segments_sampled)
-            outer = self._sample_on_cube()
-            center = self._sample_in_cube()
+            batch_random_seeds = random_seeds[it * n_cpu:(it + 1) * n_cpu]
+            final_arg = [duplicated_arg[i] + [batch_random_seeds[i]] for i in range(n_cpu)]
+            result = pool.starmap(self._sample_segment_intersect_boundary, final_arg)
 
-            intersection = self._intersect_segment_with_manifold(center, outer, surface_fn)
-            if intersection is not None:
-                samples.append(intersection.view(1, -1))
-                n_remaining_to_sample -= 1
+            for intersection in result:
+                if intersection is not None:
+                    samples.append(intersection.view(1, -1))
+                    n_remaining_to_sample -= 1 # could go negative!
 
-            n_segments_sampled += 1
-            # self.logger.info("%i segments" % n_segments_sampled)
+            # n_segments_sampled += n_cpu
+            it += 1
+            self.logger.info("%i segments sampled" % (it*n_cpu))
 
-        samples = torch.cat(samples, dim=0)
+        samples = torch.cat(samples[:n_samples], dim=0)
         # self.logger.info("Done with sampling points on the boundary...")
-
         return samples
 
     def opt(self, objective_fn, surface_fn, iteration, debug=False):
@@ -285,6 +421,7 @@ class GradientBatchWarmstartAttacker():
         # logging
         t_grad_step = []
         t_reproject = []
+        diff_after_proj = []
         obj_vals = objective_fn(X.view(-1, self.x_dim))
         init_best_attack_value = torch.max(obj_vals).item()
 
@@ -301,6 +438,7 @@ class GradientBatchWarmstartAttacker():
             # Logging
             t_grad_step.append(step_debug_dict["t_grad_step"])
             t_reproject.append(step_debug_dict["t_reproject"])
+            diff_after_proj.append(step_debug_dict["diff_after_proj"])
 
             # Loop break condition
             if self.stopping_condition == "n_steps":
