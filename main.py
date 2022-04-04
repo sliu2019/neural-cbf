@@ -64,10 +64,10 @@ class Phi(nn.Module):
 		# if phi_reshape_dh:
 		# 	self.net_reshape_dh = self._create_net()
 
-		print("Phi init")
-		IPython.embed()
-
 	def _create_net(self):
+		# print("create_net")
+		# IPython.embed()
+
 		hidden_dims = self.args.phi_nn_dimension.split("-")
 		hidden_dims = [int(h) for h in hidden_dims]
 		hidden_dims.append(1)
@@ -79,11 +79,11 @@ class Phi(nn.Module):
 			prev_dim = self.nn_input_modifier.output_dim
 
 		# phi_nnl = args_dict.get("phi_nnl", "relu") # return relu if var "phi_nnl" not on namespace
-		phi_nnl = self.args.phi_nnl.split("-")
-		assert len(phi_nnl) == len(hidden_dims) + 1
+		phi_nnls = self.args.phi_nnl.split("-")
+		assert len(phi_nnls) == len(hidden_dims)
 
 		net_layers = []
-		for hidden_dim in hidden_dims:
+		for hidden_dim, phi_nnl in zip(hidden_dims, phi_nnls):
 			net_layers.append(nn.Linear(prev_dim, hidden_dim))
 			if phi_nnl == "relu":
 				net_layers.append(nn.ReLU())
@@ -346,16 +346,8 @@ def main(args):
 			x_e = None
 
 		nn_input_modifier = None
-		# phi_reshape_dh = False
-		# phi_reshape_h = True
 	elif args.problem == "flying_inv_pend":
 		param_dict = create_flying_param_dict(args)
-
-		# phi_reshape_dh = False
-		# if args.phi_format == 0:
-		# 	param_dict["r"] = 1
-		# elif args.phi_format == 1:
-		# 	phi_reshape_dh = True
 
 		r = param_dict["r"]
 		x_dim = param_dict["x_dim"]
@@ -386,14 +378,6 @@ def main(args):
 			nn_input_modifier = None
 		elif args.phi_nn_inputs == "euc":
 			nn_input_modifier = TransformEucNNInput(state_index_dict)
-
-		# if args.phi_nn_inputs == "no_derivs":
-		# 	nn_ind = [state_index_dict[name] for name in ["gamma", "beta", "alpha", "phi", "theta"]]
-		# 	nn_ind = np.sort(nn_ind)
-		# 	nn_input_modifier = IndexNNInput(nn_ind)
-
-		# phi_reshape_dh = args.phi_reshape_dh
-		# phi_reshape_h = args.phi_reshape_h
 	else:
 		raise NotImplementedError
 
@@ -432,25 +416,22 @@ def main(args):
 	# Create test attacker
 	test_attacker = GradientBatchWarmstartAttacker2(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule, proj_tactic=args.gradient_batch_warmstart2_proj_tactic)
 
-	# if args.test_attacker == "basic":
-	# 	test_attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
-	# elif args.test_attacker == "gradient_batch":
-	# 	test_attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
-	# elif args.test_attacker == "gradient_batch_warmstart":
-	# 	test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.test_attacker_n_samples, stopping_condition=args.test_attacker_stopping_condition, max_n_steps=args.test_attacker_max_n_steps, lr=args.test_attacker_lr, projection_tolerance=args.test_attacker_projection_tolerance, projection_lr=args.test_attacker_projection_lr)
+	# print("Inside main.py")
+	# IPython.embed()
 
 	# Pass everything to Trainer
 	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)
-	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
+	# trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
 
-	### Fill out ####
+	### Fill out ###
 	# IPython.embed()
 
-	# x_rand = torch.rand((5, 10)).to(device)
-	# phi_vals = phi_fn(x_rand)
+	x_rand = torch.rand((5, 10)).to(device)
+	phi_vals = phi_fn(x_rand)
+	print(phi_vals)
 
 if __name__ == "__main__":
 	parser = create_parser()

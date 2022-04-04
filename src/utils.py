@@ -144,11 +144,12 @@ class IndexNNInput(nn.Module):
 
 
 class TransformEucNNInput(nn.Module):
-	# TODO: this is specific to FlyingInvPend
+	# Note: this is specific to FlyingInvPend
 	def __init__(self, state_index_dict):
 		"""
 		:param which_ind: flat numpy array
 		"""
+		super().__init__()
 		self.state_index_dict = state_index_dict
 		self.output_dim = 12
 
@@ -167,8 +168,8 @@ class TransformEucNNInput(nn.Module):
 		dphi = x[:, self.state_index_dict["dphi"]]
 		dtheta = x[:, self.state_index_dict["dtheta"]]
 
-		print("inside TransformEucNNInput's forward()")
-		IPython.embed()
+		# print("inside TransformEucNNInput's forward()")
+		# IPython.embed()
 
 		x_quad = torch.cos(alpha)*torch.sin(beta)*torch.cos(gamma) + torch.sin(alpha)*torch.sin(gamma)
 		y_quad = torch.sin(alpha)*torch.sin(beta)*torch.cos(gamma) - torch.cos(alpha)*torch.sin(gamma)
@@ -194,5 +195,5 @@ class TransformEucNNInput(nn.Module):
 		v_y_pend = dphi*torch.cos(phi)
 		v_z_pend = dtheta*torch.sin(theta)*torch.cos(phi) + dphi*torch.cos(theta)*torch.sin(phi)
 
-		rv = torch.cat([x_quad, y_quad, z_quad, v_x_quad, v_y_quad, v_z_quad, x_pend, y_pend, z_pend, v_x_pend, v_y_pend, v_z_pend], dim=1)
+		rv = torch.cat([x_quad[:, None], y_quad[:, None], z_quad[:, None], v_x_quad[:, None], v_y_quad[:, None], v_z_quad[:, None], x_pend[:, None], y_pend[:, None], z_pend[:, None], v_x_pend[:, None], v_y_pend[:, None], v_z_pend[:, None]], dim=1)
 		return rv
