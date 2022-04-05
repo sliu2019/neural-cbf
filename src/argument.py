@@ -4,7 +4,7 @@ import math
 def create_parser():
 	# Problem
 	parser = argparse.ArgumentParser(description='CBF synthesis')
-	parser.add_argument('--problem', default='cartpole_reduced', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced"])
+	parser.add_argument('--problem', default='flying_inv_pend', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced"])
 
 	# h(x) (user-specified SI)
 	parser.add_argument('--h', type=str, default='sum', choices=['max', 'sum'], help='For flying inv pend, chose the form of h(x)')
@@ -38,7 +38,7 @@ def create_parser():
 	parser.add_argument('--box_ang_vel_limit', default=20.0, type=float)
 
 	# Reg
-	parser.add_argument('--reg_weight', default=1.0, type=float, help='the weight on the volume term')
+	parser.add_argument('--reg_weight', default=0.0, type=float, help='the weight on the volume term')
 	parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task')
 	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed'])
 	parser.add_argument('--reg_n_samples', type=int, default=250)
@@ -47,7 +47,10 @@ def create_parser():
 	# parser.add_argument('--g_input_is_xy', action='store_true')
 
 	# Objective
-	parser.add_argument('--no_softplus_on_obj', action='store_true', help='removes softplus on the objective')
+	# parser.add_argument('--no_softplus_on_obj', action='store_true', help='removes softplus on the objective')
+	# parser.add_argument('--trainer_average_gradients', action='store_true')
+
+	parser.add_argument('--objective_option', type=str, default='regular', choices=['regular', 'softplus', 'weighted_average'])
 
 	###################################################################################################################################
 	# # Reg sample keeper
@@ -84,12 +87,11 @@ def create_parser():
 	###################################################################################################################################
 
 	# Trainer
-	parser.add_argument('--trainer_stopping_condition', default=['early_stopping'], choices=['n_steps', 'early_stopping'])
+	parser.add_argument('--trainer_stopping_condition', default=['n_steps'], choices=['n_steps', 'early_stopping'])
 	parser.add_argument('--trainer_early_stopping_patience', default=100, type=int)
 	parser.add_argument('--trainer_n_steps', default=3000, type=int, help='if stopping condition is n_steps, specify the number here')
 	parser.add_argument('--trainer_lr', default=1e-3, type=float)
-	parser.add_argument('--train_mode', default='dG', choices=['dG', 'dS'])
-	parser.add_argument('--trainer_average_gradients', action='store_true')
+	# parser.add_argument('--train_mode', default='dG', choices=['dG', 'dS'])
 	# parser.add_argument('--trainer_type', type=str, default="Adam")
 
 	# Saving/logging
@@ -98,9 +100,9 @@ def create_parser():
 	parser.add_argument('--log_root', default='log',
 	                    help='the directory to save the logs or other imformations (e.g. images)')
 	parser.add_argument('--model_root', default='checkpoint', help='the directory to save the models')
-	parser.add_argument('--n_checkpoint_step', type=int, default=10,
+	parser.add_argument('--n_checkpoint_step', type=int, default=5,
 	                    help='number of iterations to save a checkpoint')
-	parser.add_argument('--n_test_loss_step', type=int, default=10,
+	parser.add_argument('--n_test_loss_step', type=int, default=25,
 	                    help='number of iterations to compute test loss; if negative, then never')
 
 	# TODO: add lr for ci or Adam option; also for projection, etc.

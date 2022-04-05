@@ -8,7 +8,13 @@ import torch.optim as optim
 import time
 from src.utils import *
 import IPython
-import multiprocessing as mp
+# import multiprocessing as mp
+
+import torch.multiprocessing as mp
+try:
+     mp.set_start_method('spawn')
+except RuntimeError:
+    pass
 
 class GradientBatchWarmstartAttacker2():
     """
@@ -16,8 +22,7 @@ class GradientBatchWarmstartAttacker2():
 
     Upgrades:
 	1. Multi-processing for speed-up on boundary sampling
-	2. Segment sampling by a different protocol (for improved uniformity)
-	3. Different projection routines
+	2. Different projection routines
     """
     def __init__(self, x_lim, device, logger, n_samples=20, \
                  stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
@@ -49,6 +54,10 @@ class GradientBatchWarmstartAttacker2():
         # For projection, adamBA
         self.n_vector_samples = 10
         self.torch_cpu = torch.device("cpu")
+
+        # For multiproc
+        # Otherwise, do not set this variable
+        # self._surface_fn = None
 
     def _adamBA_subroutine(self, surface_fn, x, special_vector=None):
         """
@@ -131,9 +140,14 @@ class GradientBatchWarmstartAttacker2():
         # n_cpu = mp.cpu_count()
         # pool = mp.Pool(n_cpu)
         n_points = X.shape[0]
-        pool = mp.Pool(n_points)
+        pool = mp.Pool(n_points) # TODO: mp
 
         final_arg = [[surface_fn, X_cpu[i], gradient_cpu[i]] for i in range(n_points)]
+
+        # TODO: remove, merely for debug
+        self._adamBA_subroutine(surface_fn, X_cpu[0], special_vector=gradient_cpu[0])
+        print("ln 141")
+        IPython.embed()
         result_cpu = pool.starmap(self._adamBA_subroutine, final_arg) # projected x's or None
         result = result_cpu.to(self.device)
 
@@ -235,6 +249,9 @@ class GradientBatchWarmstartAttacker2():
         # Wrap-around in state domain
         X_new = torch.minimum(torch.maximum(X_new, self.x_lim[:, 0]), self.x_lim[:, 1])
         debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step), "diff_after_proj": (dist_after_proj-dist_before_proj)}
+
+        print("Inside _step, line 242")
+        IPython.embed()
         return X_new, debug_dict
 
     def _sample_in_cube(self, random_seed=None):
@@ -269,6 +286,8 @@ class GradientBatchWarmstartAttacker2():
         return sample
 
     def _intersect_segment_with_manifold(self, p1, p2, surface_fn):
+        # if surface_fn is None:
+        #     surface_fn = self._surface_fn
 
         diff = p2-p1
 
@@ -344,24 +363,27 @@ class GradientBatchWarmstartAttacker2():
         """
         Returns torch array of size (self.n_samples, self.x_dim)
         """
+        # self._surface_fn = surface_fn # cheat way to pass to child processes
         # Everything done in torch
         samples = []
         n_remaining_to_sample = n_samples
         # n_segments_sampled = 0
 
         n_cpu = mp.cpu_count()
-        pool = mp.Pool(n_cpu)
+        pool = mp.Pool(n_cpu) # torch pool
 
         random_seeds = np.arange(100 * n_samples) # This should be enough. If it isn't, code will error out
         np.random.shuffle(random_seeds)  # in place
 
-        arg_tup = [surface_fn]
-        duplicated_arg = list([arg_tup] * n_cpu)
+        # arg_tup = [surface_fn]
+        # duplicated_arg = list([arg_tup] * n_cpu)
 
+        # IPython.embed()
         it = 0
         while n_remaining_to_sample > 0:
             batch_random_seeds = random_seeds[it * n_cpu:(it + 1) * n_cpu]
-            final_arg = [duplicated_arg[i] + [batch_random_seeds[i]] for i in range(n_cpu)]
+            # final_arg = [duplicated_arg[i] + [batch_random_seeds[i]] for i in range(n_cpu)]
+            final_arg = [[surface_fn, batch_random_seeds[i]] for i in range(n_cpu)]
             result = pool.starmap(self._sample_segment_intersect_boundary, final_arg)
 
             for intersection in result:
@@ -373,6 +395,8 @@ class GradientBatchWarmstartAttacker2():
             it += 1
             self.logger.info("%i segments sampled" % (it*n_cpu))
 
+        print("sample points on boundary")
+        IPython.embed()
         samples = torch.cat(samples[:n_samples], dim=0)
         # self.logger.info("Done with sampling points on the boundary...")
         return samples
@@ -481,5 +505,7 @@ class GradientBatchWarmstartAttacker2():
 
             # debug_dict = {"X_init": X_init, "X_reuse_init": X_reuse_init, "X_random_init": X_random_init, "X": X, "obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_step": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt}
 
+            print("check before returning from opt")
+            IPython.embed()
             return x, debug_dict
 

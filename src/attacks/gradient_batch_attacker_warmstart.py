@@ -44,7 +44,7 @@ class GradientBatchWarmstartAttacker():
         self.obj_vals_saved = None
 
 
-    def _project(self, surface_fn, x):
+    def _project(self, surface_fn, x, projection_n_grad_steps=None):
         # Until convergence
         i = 0
         t1 = time.perf_counter()
@@ -71,6 +71,10 @@ class GradientBatchWarmstartAttacker():
                 # if self.verbose:
                 #     print("reprojection exited before timeout in %i steps" % i)
                 break
+
+            if projection_n_grad_steps is not None:  # use step number limit
+                if i == projection_n_grad_steps:
+                    break
             elif (t_now - t1) > self.projection_time_limit:
                 # print("reprojection exited on timeout")
                 print("Attack: reprojection exited on timeout, max dist from =0 boundary: ", torch.max(loss).item())
@@ -111,6 +115,7 @@ class GradientBatchWarmstartAttacker():
         x_new = x - self.lr*proj_obj_grad
         tf_grad_step = time.perf_counter()
 
+        # x_new = self._project(surface_fn, x_new, projection_n_grad_steps=5) # TODO
         x_new = self._project(surface_fn, x_new)
         tf_reproject = time.perf_counter()
 
@@ -291,7 +296,7 @@ class GradientBatchWarmstartAttacker():
         # train_attacker_use_n_step_schedule
         max_n_steps = self.max_n_steps
         if self.train_attacker_use_n_step_schedule:
-            max_n_steps = (2*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
+            max_n_steps = (0.5*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
             print("Max_n_steps: %i" % max_n_steps)
         while True:
             # print("Inner max step #%i" % i)

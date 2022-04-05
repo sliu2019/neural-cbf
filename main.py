@@ -131,11 +131,19 @@ class Phi(nn.Module):
 			x.requires_grad = True
 
 		if self.x_e is None:
-			beta_net_value = self.net_reshape_h(self.nn_input_modifier(x))
+			if self.nn_input_modifier is None:
+				beta_net_value = self.net_reshape_h(x)
+			else:
+				beta_net_value = self.net_reshape_h(self.nn_input_modifier(x))
 			new_h = nn.functional.softplus(beta_net_value) + k0*self.h_fn(x)
 		else:
-			beta_net_value = self.net_reshape_h(self.nn_input_modifier(x))
-			beta_net_xe_value = self.net_reshape_h(self.nn_input_modifier(self.x_e))
+			if self.nn_input_modifier is None:
+				beta_net_value = self.net_reshape_h(x)
+				beta_net_xe_value = self.net_reshape_h(self.x_e)
+			else:
+				beta_net_value = self.net_reshape_h(self.nn_input_modifier(x))
+				beta_net_xe_value = self.net_reshape_h(self.nn_input_modifier(self.x_e))
+
 			new_h = torch.square(beta_net_value - beta_net_xe_value) + k0*self.h_fn(x)
 
 		# if self.phi_reshape_dh:
@@ -203,10 +211,11 @@ class Objective(nn.Module):
 
 		phidot, _ = torch.min(phidot_cand, 1)
 
-		if self.args.no_softplus_on_obj:
-			result = phidot
-		else:
-			result = nn.functional.softplus(phidot) # using softplus on loss!!!
+		# if self.args.no_softplus_on_obj:
+		# 	result = phidot
+		# else:
+		# 	result = nn.functional.softplus(phidot) # using softplus on loss!!!
+		result = phidot
 		result = result.view(-1, 1) # ensures bs x 1
 
 		return result
@@ -295,6 +304,7 @@ def main(args):
 		print("Using GPU device: %s" % dev)
 	else:
 		dev = "cpu"
+	# dev = "cpu"
 	device = torch.device(dev)
 
 	# Selecting problem
@@ -414,24 +424,33 @@ def main(args):
 		attacker = GradientBatchWarmstartAttacker2(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule, proj_tactic=args.gradient_batch_warmstart2_proj_tactic)
 
 	# Create test attacker
-	test_attacker = GradientBatchWarmstartAttacker2(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule, proj_tactic=args.gradient_batch_warmstart2_proj_tactic)
+	test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples,
+	                                          stopping_condition=args.train_attacker_stopping_condition,
+	                                          max_n_steps=args.train_attacker_max_n_steps, lr=args.train_attacker_lr,
+	                                          projection_tolerance=args.train_attacker_projection_tolerance,
+	                                          projection_lr=args.train_attacker_projection_lr,
+	                                          projection_time_limit=args.train_attacker_projection_time_limit,
+	                                          train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule)
 
-	# print("Inside main.py")
+	# print("before calling train in main.py")
 	# IPython.embed()
-
 	# Pass everything to Trainer
 	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)
-	# trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
+	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
 
 	### Fill out ###
-	# IPython.embed()
 
-	x_rand = torch.rand((5, 10)).to(device)
-	phi_vals = phi_fn(x_rand)
-	print(phi_vals)
+	# Testing gradient_batch_attacker_warmstart_2
+	# cpu_handle = torch.device("cpu")
+	# cpu_phi_fn = phi_fn.to(cpu_handle)
+
+	# def surface_fn(x, grad_x=False):
+	# 	return phi_fn(x, grad_x=grad_x)[:, -1]
+	#
+	# attacker.opt(objective_fn, phi_fn, 0, debug=True)
 
 if __name__ == "__main__":
 	parser = create_parser()

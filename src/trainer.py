@@ -1,6 +1,7 @@
 import torch
-
+from torch import nn
 import torch.optim as optim
+
 from src.utils import save_model
 import os
 import time
@@ -87,6 +88,7 @@ class Trainer():
 
 		file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 		save_model(phi_fn, file_name)
+
 		while True:
 			iteration_info_dict = {}
 
@@ -102,25 +104,32 @@ class Trainer():
 			reg_value = reg_fn(X_reg)
 			# tf_xreg = time.perf_counter()
 
-			if self.args.trainer_average_gradients:
-				# Outer max
-				c = 0.1
-
-				# TODO: SIMIN
-				print("Made change in trainer.py, for trainer_average_gradients = True")
-				print("Check the change! Change is: mask_neg")
-				IPython.embed()
-				obj = objective_fn(X)
-				mask_neg = obj >= 0 # zeros out entries where obj < 0
-				with torch.no_grad():
-					w = torch.exp(c*obj)
-					w = w*mask_neg
-					w = w/torch.sum(w)
-				attack_value = torch.dot(w.flatten(), obj.flatten())
-			else:
-				# Outer max
+			"""
+			parser.add_argument('--objective_option', type=str, default='regular', choices=['regular', 'softplus', 'weighted_average'])
+			"""
+			if self.args.objective_option == "regular":
 				x_batch = x.view(1, -1)
 				attack_value = objective_fn(x_batch)[0, 0]
+			elif self.args.objective_option == "softplus":
+				x_batch = x.view(1, -1)
+				attack_value = nn.functional.softplus(objective_fn(x_batch)[0, 0])
+			elif self.args.objective_option == "weighted_average":
+				c = 0.1
+
+				obj = objective_fn(X)
+				mask_neg = obj >= 0 # zeros out entries where obj < 0: actually, just use softplus on the objective
+				with torch.no_grad():
+					if torch.any(mask_neg):
+						w = torch.exp(c*obj)
+						w = w*mask_neg
+						w = w/torch.sum(w)
+					else:
+						w = torch.zeros_like(obj)
+				attack_value = torch.dot(w.flatten(), obj.flatten())
+
+			# For logging
+			x_batch = x.view(1, -1)
+			max_value = objective_fn(x_batch)[0, 0]
 
 			objective_value = attack_value + reg_value
 
@@ -139,7 +148,7 @@ class Trainer():
 					n_param += 1
 			avg_grad = avg_grad_norm/n_param
 			iteration_info_dict["reg_grad_norms"] = avg_grad
-			self.logger.info(f'Reg grad norm: {avg_grad:.3f}')
+			# self.logger.info(f'Reg grad norm: {avg_grad:.3f}')
 			#*****************************
 
 			attack_value.backward()
@@ -152,8 +161,10 @@ class Trainer():
 					pos_param = torch.maximum(param, torch.zeros_like(param))
 					param.copy_(pos_param)
 
-				print("Checking that pos params are thresholded to be positive, in trainer.py")
-				IPython.embed()
+				# print("Are these positive")
+				# print(pos_params)
+				# print("Checking that pos params are thresholded to be positive, in trainer.py")
+				# IPython.embed()
 
 			tnow = time.perf_counter()
 
@@ -164,32 +175,35 @@ class Trainer():
 			self.logger.info('\n' + '=' * 20 + f' evaluation at iteration: {_iter} ' \
 			                 + '=' * 20)
 
-			self.logger.info(f'train loss: {objective_value:.3f}%')
-			self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
+			self.logger.info(f'train total loss: {objective_value:.3f}%')
+			self.logger.info(f'train max loss: {max_value:.3f}%, reg loss: {reg_value:.3f}%')
 			t_so_far = tnow-t0
 			t_so_far_str = str(datetime.timedelta(seconds=t_so_far))
-			self.logger.info(f'train attack loss increase: {(debug_dict["final_best_attack_value"]-debug_dict["init_best_attack_value"]):.3f}')
 
 
 			# Timing logging + saving
 			t_init = debug_dict["t_init"]
-			t_grad_step = debug_dict["t_grad_step"]
+			t_grad_steps = debug_dict["t_grad_steps"]
 			t_reproject = debug_dict["t_reproject"]
 			t_total_opt = debug_dict["t_total_opt"]
 
 			self.logger.info('time spent training so far: %s' % t_so_far_str)
-			self.logger.info(f'train attack init time: {t_init:.3f}s')
-			self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_step):.3f}s')
-			self.logger.info(f'train attack avg reproj time: {np.mean(t_reproject):.3f}s')
 			self.logger.info(f'train attack total time: {t_total_opt:.3f}s')
+			self.logger.info(f'train attack init time: {t_init:.3f}s')
+			self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_steps):.3f}s')
+			self.logger.info(f'train attack avg reproj time: {np.mean(t_reproject):.3f}s')
 
 			iteration_info_dict["train_loop_times"] = t_so_far
 
-			# Mem leak logging
+			# debug logging
+			self.logger.info("\n")
+			self.logger.info(f'train attack loss increase over inner max: {(debug_dict["final_best_attack_value"]-debug_dict["init_best_attack_value"]):.3f}')
+			# mem leak logging
 			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(self.args.gpu), torch.cuda.memory_reserved(self.args.gpu)))
 
+
 			# Losses saving
-			iteration_info_dict["train_attack_losses"] = attack_value
+			iteration_info_dict["train_attack_losses"] = max_value # TODO
 			iteration_info_dict["train_reg_losses"] = reg_value
 			iteration_info_dict["train_losses"] = objective_value
 
@@ -201,25 +215,32 @@ class Trainer():
 			iteration_info_dict.update(debug_dict)
 
 			# Merge into info_dict
-			print("ln 213 in trainer.py, check info_dict formation and the following merge")
-			IPython.embed()
+			# print("ln 213 in trainer.py, check info_dict formation and the following merge")
+			# IPython.embed()
 			for key, value in iteration_info_dict.items():
 				if torch.is_tensor(value):
 					value = value.detach().cpu().numpy()
 				data_dict[key].append(value)
-
+			"""
+			Things that were not filled out:
+			test_losses
+			test_attack_losses
+			test_reg_losses
+			k0_grad
+			ci_grad
+			grad_norms
+			V_approx_list
+			boundary_samples_obj_values
+			train_attack_diff_after_proj
+			"""
+			# Rest of print output
+			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')
 			#######################################################
 			##############    Saving data   #######################
 			#######################################################
 			if _iter % self.args.n_checkpoint_step == 0:
 				file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 				save_model(phi_fn, file_name)
-
-				# Check volume + log it. Different samples every time
-				# print("ln 274, train.py")
-				# IPython.embed()
-
-
 
 				##############################
 				######### Save data ##########
@@ -232,15 +253,19 @@ class Trainer():
 				######### Log stats to terminal ##########
 				##########################################
 
-				self.logger.info(f'train loss: {objective_value:.3f}%')
-				self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
-				self.logger.info(f'v approx: {V_approx:.3f}% of volume')
-				self.logger.info(f'Reg grad norm: {avg_grad:.4f}')
+				# self.logger.info('\n' + '=' * 20 + f' saving data ' \
+				#                  + '=' * 20)
+				# self.logger.info(f'train loss: {objective_value:.3f}%')
+				# self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
+				# self.logger.info(f'Reg grad norm: {avg_grad:.4f}')
 
 			#######################################################
 			##############   Compute test stats   #################
 			#######################################################
-			if _iter % self.args.n_test_loss_step == 0: # TODO: the fact that this is not = self.args.n_checkpoint_step necessarily means that you might have to refactor stuff in flying_rollout_experiment
+			if _iter % self.args.n_test_loss_step == 0:
+				# print("computing test stats")
+				# IPython.embed()
+				# TODO: the fact that this is not = self.args.n_checkpoint_step necessarily means that you might have to refactor stuff in flying_rollout_experiment
 
 				N_volume_samples = 5000
 				samp_numpy = np.random.uniform(size=(N_volume_samples, self.x_dim)) * self.x_lim_interval_sizes + self.x_lim[:, [0]].T
@@ -255,8 +280,9 @@ class Trainer():
 				V_approx = V_approx.item()
 				data_dict["V_approx_list"].append(V_approx)
 
-				# TODO: compute some sort of test metric
-				N_boundary_samples = 1000
+				# IPython.embed()
+
+				N_boundary_samples = 5000
 				def surface_fn(x, grad_x=False):
 					return phi_fn(x, grad_x=grad_x)[:, -1]
 				boundary_samples = self.test_attacker._sample_points_on_boundary(surface_fn, N_boundary_samples)
@@ -264,28 +290,20 @@ class Trainer():
 				boundary_samples_obj_value = boundary_samples_obj_value.detach().cpu().numpy()
 				data_dict["boundary_samples_obj_values"].append(boundary_samples_obj_value)
 
-			# TODO: test loss is not being computed
-			# if (self.args.n_test_loss_step > 0) and (_iter % self.args.n_test_loss_step == 0):
-			# 	# compute test loss
-			# 	t1 = time.perf_counter()
-			# 	test_attack_loss = self.test(phi_fn, objective_fn)
-			# 	test_reg_loss = reg_fn(X_reg) # TODO: this won't work if self.args.reg_weight = 0
-			# 	test_loss = test_attack_loss + test_reg_loss
-			# 	t2 = time.perf_counter()
-			#
-			# 	# IPython.embed()
-			# 	self.logger.info(f'test loss: {test_loss:.3f}%, time spent testing: {t2 - t1:.3f} s')
-			# 	self.logger.info(f'test attack loss: {test_attack_loss:.3f}%, reg loss: {test_reg_loss:.3f}%')
-			#
-			# 	# Update save data
-			# 	test_attack_losses.append(test_attack_loss.item())
-			# 	test_reg_losses.append(test_reg_loss.item())
-			# 	test_losses.append(test_loss.item())
+				self.logger.info('\n' + '+' * 20 + f' computing test stats ' \
+				                 + '+' * 20)
+				self.logger.info(f'v approx: {V_approx:.3f}% of volume')
+				percent_infeas_at_boundary = np.sum(boundary_samples_obj_value > 0)*100/boundary_samples_obj_value.size
+				self.logger.info(f'percentage infeasible at boundary: {percent_infeas_at_boundary:.2f}%')
+				infeas_values = (boundary_samples_obj_value > 0)*boundary_samples_obj_value
+				average_infeas_amount = np.mean(infeas_values)
+				std_infeas_amount = np.std(infeas_values)
+				self.logger.info(f'mean, std amount infeasible at boundary: {average_infeas_amount:.2f} +/- {std_infeas_amount:.2f}')
+				self.logger.info(f'max amount infeasible at boundary: {np.max(infeas_values):.2f}')
 
+				self.logger.info('\n' + '+' * 80)
 
-			# Rest of print output
-			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')
-
+			# IPython.embed()
 			# Check for stopping
 			if self.args.trainer_stopping_condition == "early_stopping":
 				# early_stopping(test_loss) # TODO: should technically use test_loss, but we're not computing it
@@ -300,6 +318,10 @@ class Trainer():
 					break
 
 			_iter += 1
+
+			# print("at ln 304")
+			# print("check if all the data is being populated")
+			# IPython.embed()
 
 	# def test(self, phi_fn, objective_fn):
 	# 	# Inner min
