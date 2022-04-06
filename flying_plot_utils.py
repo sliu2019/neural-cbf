@@ -17,8 +17,6 @@ np.random.seed(seed)
 device = torch.device("cpu")
 
 def load_phi_and_params(exp_name=None, checkpoint_number=None):
-
-	# TODO: STOP BEFORE UPDATING THIS! YOU'LL NEED IT TO LOAD OLD RUNS (THOSE WITH FORMAT 0/1/2 TAGS)
 	if exp_name:
 		fnm = "./log/%s/args.txt" % exp_name
 		# args = load_args(fnm) # can't use, args conflicts with args in outer scope
@@ -33,34 +31,6 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 
 		from main import create_flying_param_dict
 		param_dict = create_flying_param_dict(args) # default
-
-	# r = param_dict["r"]
-	# x_dim = param_dict["x_dim"]
-	# u_dim = param_dict["u_dim"]
-	# x_lim = param_dict["x_lim"]
-	#
-	# from src.problems.flying_inv_pend import HMax, HSum, XDot, ULimitSetVertices
-	# if args.h == "sum":
-	# 	h_fn = HSum(param_dict)
-	# elif args.h == "max":
-	# 	h_fn = HMax(param_dict)
-	# xdot_fn = XDot(param_dict, device)
-	# uvertices_fn = ULimitSetVertices(param_dict, device)
-	#
-	# A_samples = None
-	# if args.phi_include_xe:
-	# 	x_e = torch.zeros(1, x_dim)
-	# else:
-	# 	x_e = None
-
-	# param_dict = create_flying_param_dict(args)
-
-	# TODO: hacky way to implement different CBF formats
-	include_beta_deriv = False
-	if args.phi_format == 0:
-		param_dict["r"] = 1
-	elif args.phi_format == 1:
-		include_beta_deriv = True
 
 	r = param_dict["r"]
 	x_dim = param_dict["x_dim"]
@@ -85,32 +55,25 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 		x_e = None
 
 	# Passing in subset of state to NN
+	from src.utils import IndexNNInput, TransformEucNNInput
 	state_index_dict = param_dict["state_index_dict"]
-	if args.phi_nn_inputs == "all":
-		nn_ind = np.arange(x_dim)
-	elif args.phi_nn_inputs == "no_derivs":
-		nn_ind = [state_index_dict[name] for name in ["gamma", "beta", "alpha", "phi", "theta"]]
-	# elif args.phi_nn_inputs == "angles_no_yaw":
-	# 	nn_ind = [state_index_dict[name] for name in ["gamma", "beta", "phi", "theta"]]
-	# elif args.phi_nn_inputs == "angles_derivs_no_yaw":
-	# 	nn_ind = [state_index_dict[name] for name in ["gamma", "dgamma", "beta", "dbeta", "phi", "dphi", "theta", "dtheta"]]
-	# nn_inputs = np.sort(nn_ind)
+	if args.phi_nn_inputs == "spherical":
+		nn_input_modifier = None
+	elif args.phi_nn_inputs == "euc":
+		nn_input_modifier = TransformEucNNInput(state_index_dict)
 
 	# Send all modules to the correct device
 	h_fn = h_fn.to(device)
 	xdot_fn = xdot_fn.to(device)
-	# uvertices_fn = uvertices_fn.to(device)
+	uvertices_fn = uvertices_fn.to(device)
 	if x_e is not None:
 		x_e = x_e.to(device)
-	# if A_samples is not None:
-	# 	A_samples = A_samples.to(device)
 	# x_lim = torch.tensor(x_lim).to(device)
 
 	# Create CBF, etc.
-	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_inputs=nn_inputs, include_beta_deriv=include_beta_deriv)
-	# phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e)
-	# objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger)
-	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, A_samples=A_samples)
+	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
+	# objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
+	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)
@@ -144,80 +107,153 @@ def load_attacks(exp_name, checkpoint_number):
 
 	return attacks
 
-def graph_losses(exp_name):
+def graph_losses(exp_name, debug=True):
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
 
-		train_attack_losses = np.array(data["train_attack_losses"])
-		# train_reg_losses = data["train_reg_losses"]
-		# train_losses = data["train_losses"]
-		approx_v = np.array(data["V_approx_list"])
+	args = load_args("./log/%s/args.txt" % exp_name)
 
-		# N_it = 1500
-		args = load_args("./log/%s/args.txt" % exp_name)
-		N_it = len(train_attack_losses)
-		n_checkpoint_step = args.n_checkpoint_step
+	# IPython.embed()
 
-		plt.plot([0, N_it], [0, 0])
-		plt.plot(train_attack_losses, linewidth=0.5, label="train attack loss")
-		# plt.plot(train_reg_losses[:N_it], linewidth=0.5, label="train reg loss")
-		# plt.plot(train_losses, linewidth=0.5, label="train total loss")
-		plt.plot(np.arange(0, N_it, args.n_checkpoint_step), approx_v, linewidth=0.5, label="v approx")
+	n_it_so_far = len(data["train_losses"]) - 1
+	fig, axs = plt.subplots(2, sharex=True)
+	fig.suptitle('Metrics for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps))
 
-		plt.title("Training metrics for %s" % exp_name)
+	#############################################
+	axs[0].set_title("Train metrics")
+	axs[0].plot(data["train_losses"], label="objective value", linewidth=0.5)
+	axs[0].plot(data["train_attack_losses"], label="worst attack value", linewidth=0.5)
+	axs[0].plot(data["train_reg_losses"], label="reg value", linewidth=0.5)
+
+	axs[0].legend(loc="upper right")
+	#############################################
+	axs[1].set_title("Test metrics")
+	per_n_iterations = args.n_test_loss_step
+	test_iterations = np.arange(0, n_it_so_far, per_n_iterations)
+
+	axs[1].plot(test_iterations, data["V_approx_list"], label="approx. volume", linewidth=0.5)
+
+	boundary_samples_obj_values = data["boundary_samples_obj_values"]
+	percent_infeas_at_boundary = [np.sum(boundary_samples_obj_value > 0) * 100 / boundary_samples_obj_value.size for boundary_samples_obj_value in boundary_samples_obj_values]
+	infeas_values_list = [(boundary_samples_obj_value > 0) * boundary_samples_obj_value for boundary_samples_obj_value in boundary_samples_obj_values]
+	average_infeas_amount = [np.mean(infeas_values) for infeas_values in infeas_values_list]
+	average_infeas_amount = np.array(average_infeas_amount)
+	std_infeas_amount = [np.std(infeas_values) for infeas_values in infeas_values_list]
+	std_infeas_amount = np.array(std_infeas_amount)
+
+	max_infeas_amount = [np.max(infeas_values) for infeas_values in infeas_values_list]
+
+	axs[1].plot(test_iterations, percent_infeas_at_boundary, label="% infeas. at boundary", linewidth=0.5)
+	axs[1].fill_between(test_iterations, average_infeas_amount - std_infeas_amount, average_infeas_amount + std_infeas_amount, label="average infeas.", alpha=0.5, color="orange")
+	axs[1].plot(test_iterations, average_infeas_amount, label="average infeas.", linewidth=0.5, color="orange")
+
+	axs[1].plot(test_iterations, max_infeas_amount, label="max infeas.", linewidth=0.5)
+
+	axs[1].legend(loc="upper right")
 
 	plt.xlabel("Iterations") # aka opt. steps
-	plt.legend(loc="upper right")
-
 
 	plt.savefig("./log/%s/%s_loss.png" % (exp_name, exp_name))
 	plt.clf()
 	plt.cla()
 
-	print(exp_name)
+	#############################################
+	#############################################
+	"""
+	dict_keys(['test_losses', 'test_attack_losses', 'test_reg_losses', 'k0_grad', 'ci_grad', 'train_loop_times', 'train_losses', 'train_attack_losses', 'train_reg_losses', 'grad_norms', 'V_approx_list', 'boundary_samples_obj_values', 'train_attacks', 'train_attack_X_init', 'train_attack_X_init_reuse', 'train_attack_X_init_random', 'train_attack_X_final', 'train_attack_X_obj_vals', 'train_attack_X_phi_vals', 'train_attack_init_best_attack_value', 'train_attack_final_best_attack_value', 'train_attack_t_init', 'train_attack_t_grad_steps', 'train_attack_t_reproject', 'train_attack_t_total_opt', 'train_attack_diff_after_proj', 'reg_grad_norms'])
+	"""
+	if debug == True:
+		# IPython.embed()
+		n_it_so_far = len(data["train_losses"])
+		fig, axs = plt.subplots(3, sharex=True)
+		fig.suptitle('Debug for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps))
+
+		# ax0 = plt.subplot(1)
+		# ax1 = plt.subplot(2, sharex=ax0)
+
+		#############################################
+		axs[0].set_title("Timing metrics")
+		axs[0].plot(data["train_attack_t_total_opt"], label="Total time for counterex", linewidth=0.5)
+		axs[0].legend(loc="upper right")
+
+		#############################################
+		axs[1].set_title("More timing metrics")
+		axs[1].plot(data["train_attack_t_init"], label="Time to init", linewidth=0.5)
+		train_attack_t_grad_steps = data["train_attack_t_grad_steps"]
+		avg_t_grad_steps = [np.mean(x) for x in train_attack_t_grad_steps]
+		axs[1].plot(avg_t_grad_steps, label="Avg time for grad steps", linewidth=0.5)
+		train_attack_t_reproject = data["train_attack_t_reproject"]
+		avg_t_reproject = [np.mean(x) for x in train_attack_t_reproject]
+		axs[1].plot(avg_t_reproject, label="Avg time to reproject", linewidth=0.5)
+
+		axs[1].legend(loc="upper right")
+		#############################################
+		axs[2].set_title("Other debug metrics")
+		diff = np.array(data["train_attack_final_best_attack_value"]) - np.array(data["train_attack_init_best_attack_value"])
+		axs[2].plot(diff, label="Counterexample obj increase after opt.", linewidth=0.5)
+		axs[2].plot([0, n_it_so_far], [0, 0], c="red", linewidth=0.5)
+
+		axs[2].legend(loc="upper right")
+
+		plt.xlabel("Iterations") # aka opt. steps
+
+		plt.savefig("./log/%s/%s_debug.png" % (exp_name, exp_name))
+		plt.clf()
+		plt.cla()
+
+	#############################################
+	train_attack_losses = np.array(data["train_attack_losses"])
+	approx_v = np.array(data["V_approx_list"])
+	N_it = len(train_attack_losses)
+	n_checkpoint_step = args.n_checkpoint_step
+
+	print("For experiment %s, at iteration %i/%i" % (exp_name, n_it_so_far, args.trainer_n_steps))
 	min_attack_ind = np.argmin(train_attack_losses)
-	print("Total iterations (so far): %i" % N_it)
+
+	# print("Total iterations (so far): %i" % N_it)
 	print("Average approx volume: %.3f" % (np.mean(approx_v)))
 
 	# IPython.embed()
-	print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (np.min(train_attack_losses), min_attack_ind, approx_v[round(min_attack_ind/float(args.n_checkpoint_step))]))
-	min_attack_ind_w_checkpoint = np.argmin(np.array(train_attack_losses)[::n_checkpoint_step])*n_checkpoint_step
-	print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (train_attack_losses[min_attack_ind_w_checkpoint], min_attack_ind_w_checkpoint, approx_v[int(min_attack_ind_w_checkpoint/n_checkpoint_step)]))
-	# print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
-	# checkpoint_ind = min_attack_ind_w_checkpoint # TODO
+	print(np.min(train_attack_losses))
+	# print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (np.min(train_attack_losses), min_attack_ind, approx_v[round(min_attack_ind/float(args.n_checkpoint_step))]))
+	# min_attack_ind_w_checkpoint = np.argmin(np.array(train_attack_losses)[::n_checkpoint_step])*n_checkpoint_step
+	# print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (train_attack_losses[min_attack_ind_w_checkpoint], min_attack_ind_w_checkpoint, approx_v[int(min_attack_ind_w_checkpoint/n_checkpoint_step)]))
+	# # print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
+	# # checkpoint_ind = min_attack_ind_w_checkpoint # TODO
+	#
+	# # Trying different tactics to select a training iteration
+	#
+	# # Balancing volume and train loss
+	# train_attack_losses_at_checkpoints = train_attack_losses[::n_checkpoint_step]
+	# m = len(train_attack_losses_at_checkpoints)
+	# ind_sort_train_loss = np.argsort(train_attack_losses_at_checkpoints)
+	# rank_train_loss = np.zeros(m)
+	# rank_train_loss[ind_sort_train_loss] = np.arange(m)
+	# rank_train_loss = rank_train_loss.astype(int)
+	#
+	# ind_sort_volume = np.argsort(-approx_v)
+	# rank_volume = np.zeros(m)
+	# rank_volume[ind_sort_volume] = np.arange(m)
+	# rank_volume = rank_volume.astype(int)
+	#
+	# rank_sum = rank_volume + rank_train_loss # TODO: checkpoint selection criteria
+	# # rank_sum = rank_train_loss
+	# best_balanced_ind = np.argmin(rank_sum)
+	#
+	# checkpoint_ind = best_balanced_ind*n_checkpoint_step
+	#
+	# # IPython.embed()
+	# # print(train_attack_losses)
+	# # IPython.embed()
+	# # return min_attack_ind_w_checkpoint # cause we're loading this checkpoint
+	#
+	# checkpoint_ind = int(checkpoint_ind)
+	# print("At selected checkpoint %i: %.3f loss, %.3f volume" % (checkpoint_ind, train_attack_losses[checkpoint_ind], approx_v[int(checkpoint_ind/n_checkpoint_step)]))
+	#
+	# print("\n")
+	# return checkpoint_ind
 
-	# Trying different tactics to select a training iteration
-
-	# Balancing volume and train loss
-	train_attack_losses_at_checkpoints = train_attack_losses[::n_checkpoint_step]
-	m = len(train_attack_losses_at_checkpoints)
-	ind_sort_train_loss = np.argsort(train_attack_losses_at_checkpoints)
-	rank_train_loss = np.zeros(m)
-	rank_train_loss[ind_sort_train_loss] = np.arange(m)
-	rank_train_loss = rank_train_loss.astype(int)
-
-	ind_sort_volume = np.argsort(-approx_v)
-	rank_volume = np.zeros(m)
-	rank_volume[ind_sort_volume] = np.arange(m)
-	rank_volume = rank_volume.astype(int)
-
-	rank_sum = rank_volume + rank_train_loss # TODO: checkpoint selection criteria
-	# rank_sum = rank_train_loss
-	best_balanced_ind = np.argmin(rank_sum)
-
-	checkpoint_ind = best_balanced_ind*n_checkpoint_step
-
-	# IPython.embed()
-	# print(train_attack_losses)
-	# IPython.embed()
-	# return min_attack_ind_w_checkpoint # cause we're loading this checkpoint
-
-	checkpoint_ind = int(checkpoint_ind)
-	print("At selected checkpoint %i: %.3f loss, %.3f volume" % (checkpoint_ind, train_attack_losses[checkpoint_ind], approx_v[int(checkpoint_ind/n_checkpoint_step)]))
-
-	print("\n")
-
-	return checkpoint_ind
+	return None
 
 def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
 	"""
@@ -317,11 +353,12 @@ def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth
 	plt.clf()
 	plt.close()
 
-def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, constants_for_other_params=None, fnm=None, fldr_path=None):
+def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, constants_for_other_params=None, fnm=None, fldr_path=None, checkpoint=None):
 	"""
 	Plots invariant set and (if necessary) projected boundary samples in 2D
 	which_params: all or list of lists of length 2
 	"""
+	# IPython.embed()
 	if rollouts is not None:
 		print("Inside plot_invariant_set_slices() of fling_plot_utils")
 		print("Have never debugged traj plotting using this")
@@ -399,7 +436,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 				# print("flying_plot_utils.py, ln 162")
 				# IPython.embed()
 				input = constants_for_other_params[i*n_per_row + j]
-				print(input)
+				# print(input)
 				input = np.reshape(input, (1, -1))
 				input = np.tile(input, (X.size, 1))
 			else:
@@ -427,7 +464,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 
 			# fig = plt.figure()
 			# ax = fig.add_subplot(111)
-			print(phi_signs)
+			# print(phi_signs)
 			print("Any negative phi in the box?: ", np.any(phi_signs < 0))
 			# IPython.embed()
 			axs[i, j].imshow(phi_signs, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]], vmin=-1.0, vmax=1.0)
@@ -470,7 +507,14 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 
 	print("Saved at: %s" % save_fpth)
 	# plt.tight_layout(pad=0.5)
-	plt.suptitle("From %s" % fldr_path)
+
+	ki_str = "k0 = %.4f, k1 = %.4f" % (phi_fn.k0, phi_fn.ci[0])
+	# fig.title(ki_str) # doesn't work, title goes on last subfigure
+	if checkpoint: # little messy, little hacky, doesn't matter tho
+		plt.suptitle("From %s, ckpt %i \n %s" % (fldr_path, checkpoint, ki_str))
+	else:
+		plt.suptitle("From %s \n %s" % (fldr_path, ki_str))
+
 	plt.savefig(save_fpth, bbox_inches='tight')
 	# plt.clf()
 	# plt.close()
@@ -573,75 +617,47 @@ def debug(exp_name):
 		print("\n")
 
 
-
-"""
-save_dict = {"test_losses": test_losses, "test_attack_losses": test_attack_losses, "test_reg_losses": test_reg_losses, "train_loop_times": train_loop_times, "train_attacks": train_attacks, "train_attack_X_init": train_attack_X_init, "train_attack_X_final": train_attack_X_final, "k0_grad":k0_grad, "ci_grad":ci_grad, "train_losses":train_losses, "train_attack_losses": train_attack_losses, "train_reg_losses": train_reg_losses, "train_attack_X_obj_vals": train_attack_X_obj_vals, "train_attack_X_phi_vals": train_attack_X_phi_vals, "grad_norms": grad_norms, "V_approx_list": V_approx_list}
-
-additional_train_attack_dict = {"train_attack_X_init_reuse": train_attack_X_init_reuse, "train_attack_X_init_random": train_attack_X_init_random, "train_attack_init_best_attack_value": train_attack_init_best_attack_value, "train_attack_final_best_attack_value": train_attack_final_best_attack_value,"train_attack_t_init": train_attack_t_init, "train_attack_t_grad_steps": train_attack_t_grad_steps, "train_attack_t_reproject": train_attack_t_reproject, "train_attack_t_total_opt": train_attack_t_total_opt}
-
-reg_debug_dict = {"max_dists_X_reg": max_dists_X_reg, "times_to_compute_X_reg": times_to_compute_X_reg, "reg_sampler_X": reg_sampler_X, "grad_mag_before_reg": grad_mag_before_reg, "grad_mag_after_reg": grad_mag_after_reg}
-"""
-
 if __name__ == "__main__":
-	"""
-	Code to visualize samples (from RegSampleKeeper or Attacker)
-	phi_fn, param_dict = load_phi_and_params()
-
-	# Make attacker and viz
-	logger = create_logger("./log/discard", 'train', 'info')
-	x_lim_torch = torch.tensor(x_lim).to(device)
-	args = parser()
-	# attacker = GradientBatchWarmstartAttacker(x_lim_torch, device, logger, n_samples=args.train_attacker_n_samples,
-	#                                           stopping_condition=args.train_attacker_stopping_condition,
-	#                                           max_n_steps=args.train_attacker_max_n_steps, lr=args.train_attacker_lr,
-	#                                           projection_tolerance=args.train_attacker_projection_tolerance,
-	#                                           projection_lr=args.train_attacker_projection_lr)
-	# n_samples = 50
-	# samples = attacker._sample_points_on_boundary(phi_fn, n_samples)
-
-
-	# Make regularizer and viz
-	reg_sample_keeper = RegSampleKeeper(x_lim_torch, device, logger, n_samples=30)
-	samples = reg_sample_keeper.get_samples(phi_fn)
-
-	# plot_invariant_set_slices(phi_fn, samples, param_dict, which_params=[["phi", "theta"], ["theta", "dtheta"], ["phi", "dphi"], ["beta", "alpha"], ["gamma", "beta"], ["gamma", "alpha"]])
-	plot_invariant_set_slices(phi_fn, param_dict, samples, fnm="n30")
-	"""
-
 	########################################################
 	#########     FILL OUT HERE !!!!   #####################
 	### ****************************************************
-	# exp_names = ["flying_inv_pend_reg_weight_1e-1", "flying_inv_pend_reg_weight_1", "flying_inv_pend_reg_weight_10", "flying_inv_pend_reg_weight_50", "flying_inv_pend_reg_weight_150", "flying_inv_pend_reg_weight_200", "flying_inv_pend_reg_weight_1e-1_phi_dim_64_64", "flying_inv_pend_reg_weight_1_phi_dim_64_64"]
 
-	# exp_names = ["flying_inv_pend_reg_weight_50", "flying_inv_pend_reg_weight_150", "flying_inv_pend_reg_weight_200"]
+	# spherical, server 4
+	base_exp_names = ["flying_inv_pend_sphere_seed_0", "flying_inv_pend_sphere_seed_1", "flying_inv_pend_sphere_seed_2", "flying_inv_pend_sphere_softplus_seed_0", "flying_inv_pend_sphere_softplus_seed_1", "flying_inv_pend_sphere_softplus_seed_2"]
 
-	# 3/17 batch
-	# exp_names = ["flying_inv_pend_reg_weight_250_reg_n_samples_500_no_softplus_on_obj_seed_0", "flying_inv_pend_reg_weight_250_reg_n_samples_500_no_softplus_on_obj_seed_1", "flying_inv_pend_reg_weight_250_reg_n_samples_500_no_softplus_on_obj_seed_2", "flying_inv_pend_reg_weight_300_reg_n_samples_500_no_softplus_on_obj_seed_0", "flying_inv_pend_reg_weight_300_reg_n_samples_500_no_softplus_on_obj_seed_1", "flying_inv_pend_reg_weight_300_reg_n_samples_500_no_softplus_on_obj_seed_2"]
-	# checkpoint_numbers = []
+	# euclidean, server 5
+	# base_exp_names = ["flying_inv_pend_euc_seed_0", "flying_inv_pend_euc_seed_1", "flying_inv_pend_euc_seed_2", "flying_inv_pend_euc_softplus_seed_0", "flying_inv_pend_euc_softplus_seed_1", "flying_inv_pend_euc_softplus_seed_2", "flying_inv_pend_euc_softplus_weighted_avg_seed_0", "flying_inv_pend_euc_softplus_weighted_avg_seed_1"]
 
-	# checkpoint_numbers = [0]*len(exp_names) # doesn't matter
+	"""checkpoint_numbers = list(np.arange(0, 825, 50)) + [825]
+	exp_names = ["flying_inv_pend_euc_softplus_seed_1"]*len(checkpoint_numbers)
 
-	# 3/21 batch
-	# exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1", "flying_inv_pend_phi_format_1_seed_0", "flying_inv_pend_phi_format_1_seed_1", "flying_inv_pend_phi_format_2_seed_0", "flying_inv_pend_phi_format_2_seed_1"]
+	checkpoint_numbers = list(np.arange(0, 140, 25)) + [140]
+	exp_names = ["flying_inv_pend_euc_softplus_weighted_avg_seed_1"]*len(checkpoint_numbers)"""
 
-	# checkpoint_numbers = np.arange(0, 1100, 50)
-	# exp_names = ["flying_inv_pend_phi_format_0_seed_0"]*len(checkpoint_numbers)
-	# checkpoint_numbers = np.arange(0, 750, 50)
-	# exp_names = ["flying_inv_pend_phi_format_0_seed_1"]*len(checkpoint_numbers)
+	checkpoint_numbers = []
+	exp_names = []
+	for base_exp_name in base_exp_names:
+		data = pickle.load(open("./log/%s/data.pkl" % base_exp_name, 'rb'))
+		train_losses = data["train_losses"]
+		n_it_so_far = len(train_losses)
 
-	# checkpoint_numbers = np.arange(0, 4000, 250)
-	# exp_names = ["flying_inv_pend_phi_format_1_seed_1"]*len(checkpoint_numbers)
+		# TODO: hardcoded checkpoint save frequency
+		it_per_slice = ((n_it_so_far/15.0)//5)*5
+		print(base_exp_name)
+		print("it_per_slice: %i" % it_per_slice)
 
-	# Plotting slices over time
-	# checkpoint_numbers = np.arange(0, 1000, 50)
-	# exp_names = ["flying_inv_pend_phi_format_2_seed_0"]*len(checkpoint_numbers)
+		iterations = list(np.arange(0, n_it_so_far, it_per_slice).astype("int"))
+		last_it = (n_it_so_far//5)*5
+		if iterations[-1] < last_it:
+			iterations.append(last_it)
+		print(iterations)
 
-	# exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1",
-	#              "flying_inv_pend_phi_format_2_seed_0", "flying_inv_pend_phi_format_2_seed_1"]
+		checkpoint_numbers.extend(iterations)
+		exp_names.extend([base_exp_name]*len(iterations))
 
-	exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1", "flying_inv_pend_phi_format_1_seed_0", "flying_inv_pend_phi_format_1_seed_1", "flying_inv_pend_phi_format_2_seed_0", "flying_inv_pend_phi_format_2_seed_1"]
-
-	# exp_names = ["flying_inv_pend_phi_format_0_seed_1"]
+	# IPython.embed()
+	# IPython.embed()
+	# exp_names = [exp_names[0]]
 
 	"""
 	base_exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1"]
@@ -669,9 +685,9 @@ if __name__ == "__main__":
 	# 	debug(exp_name)
 
 	# TODO: check training progress
-	for exp_name in exp_names:
-		min_attack_loss_ind = graph_losses(exp_name)
-		# checkpoint_numbers.append(min_attack_loss_ind)
+	# for exp_name in exp_names:
+	# 	min_attack_loss_ind = graph_losses(exp_name)
+	# 	# checkpoint_numbers.append(min_attack_loss_ind)
 
 	# TODO: manually check attacks
 	# with open("./log/%s/data.pkl" % "flying_inv_pend_phi_format_1_seed_0", 'rb') as handle:
@@ -707,7 +723,7 @@ if __name__ == "__main__":
 	plt.savefig("./log/%s/k0_k1_plot" % exp_name)"""
 
 	# TODO: plot pages of slices over many iterations
-	"""
+
 	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 
 			phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
@@ -788,7 +804,7 @@ if __name__ == "__main__":
 			# TODO: plotting multiple slices at a time
 			fldr_path = os.path.join("./log", exp_name)
 			fnm = "slices_ckpt_%i" % checkpoint_number
-			plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list, constants_for_other_params=constants_for_other_params_list, fnm=fnm)
+			plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list, constants_for_other_params=constants_for_other_params_list, fnm=fnm, checkpoint=checkpoint_number)
 			plt.clf()
 			plt.close()
 
