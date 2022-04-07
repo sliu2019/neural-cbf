@@ -40,8 +40,9 @@ def create_parser():
 	# Reg
 	parser.add_argument('--reg_weight', default=0.0, type=float, help='the weight on the volume term')
 	parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task')
-	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed'])
+	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed', 'random_inside'])
 	parser.add_argument('--reg_n_samples', type=int, default=250)
+	parser.add_argument('--reg_transform', type=str, default="sigmoid", choices=["sigmoid", "softplus"])
 	# parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
 
 	# parser.add_argument('--g_input_is_xy', action='store_true')

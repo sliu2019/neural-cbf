@@ -91,6 +91,11 @@ class Trainer():
 
 		while True:
 			iteration_info_dict = {}
+			# t0_xreg = time.perf_counter()
+			X_reg = self.reg_sampler.get_samples(phi_fn)
+			reg_value = reg_fn(X_reg)
+			# tf_xreg = time.perf_counter()
+
 
 			def surface_fn(x, grad_x=False):
 				return phi_fn(x, grad_x=grad_x)[:, -1]
@@ -98,12 +103,6 @@ class Trainer():
 			X = debug_dict["X_final"]
 
 			optimizer.zero_grad()
-
-			# t0_xreg = time.perf_counter()
-			X_reg = self.reg_sampler.get_samples(phi_fn)
-			reg_value = reg_fn(X_reg)
-			# tf_xreg = time.perf_counter()
-
 			"""
 			parser.add_argument('--objective_option', type=str, default='regular', choices=['regular', 'softplus', 'weighted_average'])
 			"""
@@ -148,7 +147,7 @@ class Trainer():
 					n_param += 1
 			avg_grad = avg_grad_norm/n_param
 			iteration_info_dict["reg_grad_norms"] = avg_grad
-			# self.logger.info(f'Reg grad norm: {avg_grad:.3f}')
+			self.logger.info(f'Reg grad norm: {avg_grad:.3f}')
 			#*****************************
 
 			attack_value.backward()

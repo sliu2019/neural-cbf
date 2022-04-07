@@ -10,8 +10,9 @@ from src.trainer import Trainer
 from src.reg_samplers.boundary import BoundaryRegSampler
 from src.reg_samplers.random import RandomRegSampler
 from src.reg_samplers.fixed import FixedRegSampler
+from src.reg_samplers.random_inside import RandomInsideRegSampler
 
-reg_samplers_name_to_class_dict = {"boundary": BoundaryRegSampler, "random": RandomRegSampler, "fixed": FixedRegSampler}
+reg_samplers_name_to_class_dict = {"boundary": BoundaryRegSampler, "random": RandomRegSampler, "fixed": FixedRegSampler, "random_inside": RandomInsideRegSampler}
 from src.utils import *
 from src.argument import create_parser, print_args
 
@@ -221,7 +222,7 @@ class Objective(nn.Module):
 		return result
 
 class Regularizer(nn.Module):
-	def __init__(self, phi_fn, device, reg_weight=0.0):
+	def __init__(self, phi_fn, device, reg_weight=0.0, reg_transform="sigmoid"):
 		super().__init__()
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
@@ -232,9 +233,10 @@ class Regularizer(nn.Module):
 		all_phi_values = self.phi_fn(x)
 		max_phi_values = torch.max(all_phi_values, dim=1)[0]
 
-		# TODO: softplus or sigmoid?
-		transform_of_max_phi = nn.functional.softplus(max_phi_values)
-		# transform_of_max_phi = torch.sigmoid(0.3*max_phi_values)
+		if self.reg_transform == "sigmoid":
+			transform_of_max_phi = nn.functional.sigmoid(0.3*max_phi_values)
+		elif self.reg_transform == "softplus":
+			transform_of_max_phi = nn.functional.softplus(max_phi_values)
 		reg = self.reg_weight*torch.mean(transform_of_max_phi)
 		return reg
 
@@ -406,7 +408,7 @@ def main(args):
 	# Create CBF, etc.
 	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
-	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight)
+	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, reg_transform=args.reg_transform)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)

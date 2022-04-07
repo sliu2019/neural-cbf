@@ -11,7 +11,7 @@ from src.utils import *
 
 class RandomRegSampler():
     """
-    Keeps points on the invariant set boundary to be used in the regularization term
+    Samples uniformly in state domain
     """
     # Note: this is not batch compliant.
 
