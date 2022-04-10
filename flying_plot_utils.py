@@ -1,9 +1,11 @@
+import os
+
 import matplotlib.pyplot as plt
 import math
 from dotmap import DotMap
 import torch
 import pickle
-import time
+import time, os, glob, re
 import numpy as np
 
 from main import Phi, Objective, Regularizer
@@ -613,8 +615,19 @@ def debug(exp_name):
 		print("As a percentage of n_spikes for train loss: %.3f" % (n_overlap*100.0/max(1, np.sum(spike_bools))))
 		# Blurry overlap
 		# TODO
-
 		print("\n")
+
+def find_attacker_n_reuse(exp_name):
+	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+		data = pickle.load(handle)
+
+		train_attack_X_init_reuse = data["train_attack_X_init_reuse"]
+		train_attack_X_init_random = data["train_attack_X_init_random"]
+
+		# IPython.embed()
+
+		for i in range(len(train_attack_X_init_reuse)):
+			print(train_attack_X_init_reuse[i].shape[0])
 
 
 if __name__ == "__main__":
@@ -628,17 +641,21 @@ if __name__ == "__main__":
 	# euclidean, server 5
 	# base_exp_names = ["flying_inv_pend_euc_seed_0", "flying_inv_pend_euc_seed_1", "flying_inv_pend_euc_seed_2", "flying_inv_pend_euc_softplus_seed_0", "flying_inv_pend_euc_softplus_seed_1", "flying_inv_pend_euc_softplus_seed_2", "flying_inv_pend_euc_softplus_weighted_avg_seed_0", "flying_inv_pend_euc_softplus_weighted_avg_seed_1"]
 
+	# base_exp_names = ["flying_inv_pend_euc_seed_0"]
+
 	# base_exp_names = ["flying_inv_pend_euc_softplus_seed_1"]
 
 	# server 4
-	# base_exp_names = ["flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_150", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_200", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_150", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_200", "flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_150"]
+	base_exp_names = ["flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_150", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_200", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_150", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_200", "flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_150"]
+
+	find_attacker_n_reuse("flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50")
 
 	# base_exp_names = ["flying_inv_pend_ESG_reg_softplus_random_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_150", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_200"]
 
 	# base_exp_names = ["flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_150"]
 
 	# server 5
-	base_exp_names = ["flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_200"]
+	# base_exp_names = ["flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_200"]
 
 	"""checkpoint_numbers = list(np.arange(0, 825, 50)) + [825]
 	exp_names = ["flying_inv_pend_euc_softplus_seed_1"]*len(checkpoint_numbers)
@@ -646,7 +663,9 @@ if __name__ == "__main__":
 	checkpoint_numbers = list(np.arange(0, 140, 25)) + [140]
 	exp_names = ["flying_inv_pend_euc_softplus_weighted_avg_seed_1"]*len(checkpoint_numbers)"""
 
-	checkpoint_numbers = []
+
+	# To visualize slices for a new experiment
+	"""checkpoint_numbers = []
 	exp_names = []
 	for base_exp_name in base_exp_names:
 		data = pickle.load(open("./log/%s/data.pkl" % base_exp_name, 'rb'))
@@ -666,6 +685,43 @@ if __name__ == "__main__":
 
 		checkpoint_numbers.extend(iterations)
 		exp_names.extend([base_exp_name]*len(iterations))
+		#"""
+
+	# To visualize slices for an ongoing experiment (already has slices visualized)
+	"""checkpoint_numbers = []
+	exp_names = []
+	for base_exp_name in base_exp_names:
+		# IPython.embed()
+		search_dir = "./log/%s/" % base_exp_name
+		files = list(filter(os.path.isfile, glob.glob(search_dir + "*")))
+		files = [x for x in files if "slices" in x]
+		files.sort(key=lambda x: os.path.getmtime(x))
+
+		regex = re.compile('ckpt_([0-9]*)')
+		last_ind = int(regex.findall(files[-1])[0])
+		minus1_ind = int(regex.findall(files[-2])[0])
+		minus2_ind = int(regex.findall(files[-3])[0])
+
+		diff = minus1_ind - minus2_ind
+
+		data = pickle.load(open("./log/%s/data.pkl" % base_exp_name, 'rb'))
+		train_losses = data["train_losses"]
+		n_it_so_far = len(train_losses)
+
+		# TODO: hardcoded checkpoint save frequency
+		it_per_slice = diff
+		print(base_exp_name)
+		print("it_per_slice: %i" % it_per_slice)
+
+		iterations = list(np.arange(last_ind, n_it_so_far, it_per_slice).astype("int"))
+		last_it = (n_it_so_far // 5) * 5
+		if iterations[-1] < last_it:
+			iterations.append(last_it)
+		print(iterations)
+
+		checkpoint_numbers.extend(iterations)
+		exp_names.extend([base_exp_name] * len(iterations))
+		# IPython.embed()
 		#"""
 
 	# IPython.embed()
@@ -698,9 +754,9 @@ if __name__ == "__main__":
 	# 	debug(exp_name)
 
 	# TODO: check training progress
-	for exp_name in base_exp_names:
-		min_attack_loss_ind = graph_losses(exp_name)
-		# checkpoint_numbers.append(min_attack_loss_ind)
+	# for exp_name in base_exp_names:
+	# 	min_attack_loss_ind = graph_losses(exp_name)
+	# 	# checkpoint_numbers.append(min_attack_loss_ind)
 
 	# TODO: manually check attacks
 	# with open("./log/%s/data.pkl" % "flying_inv_pend_phi_format_1_seed_0", 'rb') as handle:
@@ -737,7 +793,7 @@ if __name__ == "__main__":
 
 	# TODO: plot pages of slices over many iterations
 
-	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
+	"""for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 
 			phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 

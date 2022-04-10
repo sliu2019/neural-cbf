@@ -45,7 +45,9 @@ class Trainer():
 			"train_reg_losses": [],
 			"grad_norms": [],
 			"V_approx_list": [],
-			"boundary_samples_obj_values": []
+			"boundary_samples_obj_values": [],
+			"ci_list": [],
+			"k0_list": []
 		}
 
 		train_attack_dict = {"train_attacks": [],
@@ -152,6 +154,18 @@ class Trainer():
 
 			attack_value.backward()
 
+			##### Check total gradient #####
+			avg_grad_norm = 0
+			n_param = 0
+			for n, p in phi_fn.named_parameters():
+				if n not in ["ci", "k0"]:
+					avg_grad_norm += torch.linalg.norm(p.grad).item()
+					n_param += 1
+			avg_grad = avg_grad_norm/n_param
+			iteration_info_dict["grad_norms"] = avg_grad
+			self.logger.info(f'total grad norm: {avg_grad:.3f}')
+			#*****************************
+
 			optimizer.step()
 
 			with torch.no_grad():
@@ -179,7 +193,6 @@ class Trainer():
 			t_so_far = tnow-t0
 			t_so_far_str = str(datetime.timedelta(seconds=t_so_far))
 
-
 			# Timing logging + saving
 			t_init = debug_dict["t_init"]
 			t_grad_steps = debug_dict["t_grad_steps"]
@@ -200,7 +213,6 @@ class Trainer():
 			# mem leak logging
 			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(self.args.gpu), torch.cuda.memory_reserved(self.args.gpu)))
 
-
 			# Losses saving
 			iteration_info_dict["train_attack_losses"] = max_value # TODO
 			iteration_info_dict["train_reg_losses"] = reg_value
@@ -213,6 +225,10 @@ class Trainer():
 
 			iteration_info_dict.update(debug_dict)
 
+			# Misc saving
+			iteration_info_dict["ci_list"] = phi_fn.ci
+			iteration_info_dict["k0_list"] = phi_fn.k0
+
 			# Merge into info_dict
 			# print("ln 213 in trainer.py, check info_dict formation and the following merge")
 			# IPython.embed()
@@ -220,6 +236,9 @@ class Trainer():
 				if torch.is_tensor(value):
 					value = value.detach().cpu().numpy()
 				data_dict[key].append(value)
+
+			print("ln 236, check dict is filled out with grad_norms, ci_list, k0_list")
+			IPython.embed()
 			"""
 			Things that were not filled out:
 			test_losses

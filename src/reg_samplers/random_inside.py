@@ -26,6 +26,7 @@ class RandomInsideRegSampler():
         self.bs = 100 # for evaluating on phi_fn
 
     def get_samples(self, phi_fn):
+        # TODO: assuming phi_fn(x)[:, 0] is h(x)!!!! If it is not, this will not work
         # print("inside RandomInside sampler, get_ssamples")
         # IPython.embed()
 
@@ -41,10 +42,13 @@ class RandomInsideRegSampler():
             candidate_samples_torch = torch.from_numpy(candidate_samples_numpy.astype("float32")).to(self.device)
 
             phi_vals = phi_fn(candidate_samples_torch)
-            max_phi_vals = torch.max(phi_vals, dim=1)[0]
+            # TODO: bug
+            # max_phi_vals = torch.max(phi_vals, dim=1)[0]
+            # ind = torch.nonzero(max_phi_vals <= 0).flatten()
+            h_vals = phi_vals[:, 0]
+            ind = torch.nonzero(h_vals <= 0).flatten()
 
             # Save good candidate_samples
-            ind = torch.nonzero(max_phi_vals <= 0).flatten()
             samples_inside = candidate_samples_torch[ind]
             samples = torch.cat((samples, samples_inside), dim=0)
 
