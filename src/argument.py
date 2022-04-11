@@ -59,8 +59,10 @@ def create_parser():
 
 	###################################################################################################################################
 	# Attacker: train
-	parser.add_argument('--train_attacker', default='gradient_batch_warmstart', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart2'])
-	parser.add_argument('--gradient_batch_warmstart2_proj_tactic', choices=['gd_step_timeout', 'adam_ba'])
+	parser.add_argument('--train_attacker', default='gradient_batch_warmstart', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart_faster'])
+	# parser.add_argument('--gradient_batch_warmstart2_proj_tactic', choices=['gd_step_timeout', 'adam_ba'])
+	parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"])
+	parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="uniform", choices=["uniform", "gaussian"])
 
 	# Gradient batch attacker
 	parser.add_argument('--train_attacker_n_samples', default=60, type=int)

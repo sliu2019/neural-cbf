@@ -99,9 +99,10 @@ class Trainer():
 			# tf_xreg = time.perf_counter()
 
 
-			def surface_fn(x, grad_x=False):
-				return phi_fn(x, grad_x=grad_x)[:, -1]
-			x, debug_dict = self.attacker.opt(objective_fn, surface_fn, _iter, debug=True)
+			# TODO: SIMIN, this won't work for the regular attacker
+			# def surface_fn(x, grad_x=False):
+			# 	return phi_fn(x, grad_x=grad_x)[:, -1]
+			x, debug_dict = self.attacker.opt(objective_fn, phi_fn, _iter, debug=True)
 			X = debug_dict["X_final"]
 
 			optimizer.zero_grad()

@@ -5,7 +5,8 @@ from torch.autograd import grad
 from src.attacks.basic_attacker import BasicAttacker
 from src.attacks.gradient_batch_attacker import GradientBatchAttacker
 from src.attacks.gradient_batch_attacker_warmstart import GradientBatchWarmstartAttacker
-from src.attacks.gradient_batch_attacker_warmstart_2 import GradientBatchWarmstartAttacker2
+# from src.attacks.gradient_batch_attacker_warmstart_2 import GradientBatchWarmstartAttacker2
+from src.attacks.gradient_batch_attacker_warmstart_faster import GradientBatchWarmstartFasterAttacker
 from src.trainer import Trainer
 from src.reg_samplers.boundary import BoundaryRegSampler
 from src.reg_samplers.random import RandomRegSampler
@@ -301,9 +302,9 @@ def main(args):
 
 	# Device
 	if torch.cuda.is_available():
-		os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
+		# os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 		dev = "cuda:%i" % (args.gpu)
-		print("Using GPU device: %s" % dev)
+		# print("Using GPU device: %s" % dev)
 	else:
 		dev = "cpu"
 	# dev = "cpu"
@@ -422,8 +423,19 @@ def main(args):
 		attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr)
 	elif args.train_attacker == "gradient_batch_warmstart":
 		attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule)
-	elif args.train_attacker == "gradient_batch_warmstart2":
-		attacker = GradientBatchWarmstartAttacker2(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule, proj_tactic=args.gradient_batch_warmstart2_proj_tactic)
+	elif args.train_attacker == "gradient_batch_warmstart_faster":
+		attacker = GradientBatchWarmstartFasterAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples,
+		                                                stopping_condition=args.train_attacker_stopping_condition,
+		                                                max_n_steps=args.train_attacker_max_n_steps,
+		                                                lr=args.train_attacker_lr,
+		                                                projection_tolerance=args.train_attacker_projection_tolerance,
+		                                                projection_lr=args.train_attacker_projection_lr,
+		                                                projection_time_limit=args.train_attacker_projection_time_limit,
+		                                                train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule,
+		                                                boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method, boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method)
+	# elif args.train_attacker == "gradient_batch_warmstart2":
+	# 	attacker = GradientBatchWarmstartAttacker2(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule, proj_tactic=args.gradient_batch_warmstart2_proj_tactic)
+
 
 	# Create test attacker
 	test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples,
@@ -435,7 +447,17 @@ def main(args):
 	                                          train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule)
 
 	# print("before calling train in main.py")
+	print("before actually running, remove this")
 	# IPython.embed()
+	phi_params = list(phi_fn.parameters())
+	# print(phi_params[0], phi_params[1], phi_params[2])
+	exp_name = "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_150"
+	checkpoint_number = 340
+	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+	load_model(phi_fn, phi_load_fpth)
+	# print(phi_params[0], phi_params[1], phi_params[2])
+	# IPython.embed()
+
 	# Pass everything to Trainer
 	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)
 	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
