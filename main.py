@@ -451,6 +451,7 @@ def main(args):
 	# print("before actually running, remove this")
 	# IPython.embed()
 
+	"""
 	# phi_params = list(phi_fn.parameters())
 	# print(phi_params[0], phi_params[1], phi_params[2])
 	exp_name = "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_150"

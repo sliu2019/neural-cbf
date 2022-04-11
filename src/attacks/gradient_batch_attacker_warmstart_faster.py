@@ -13,19 +13,14 @@ import math
 import torch.multiprocessing as mp
 
 
-"""
-TODO's:
-1. Record debug data that you'd like to save during training, and record it from within trainer.py 
-"""
-
 class GradientBatchWarmstartFasterAttacker():
     """
     We apply speed-ups to boundary sampling.
-    The aim is to still sample quickly when the safe set is smal.
+    The aim is to still sample quickly when the safe set is small.
 
     Upgrades:
 	1. Multi-processing for speed-up on boundary sampling
-	2. Different projection routines
+	2. Different boundary sampling routines
     """
     def __init__(self, x_lim, device, logger, n_samples=20, \
                  stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
@@ -526,46 +521,3 @@ class GradientBatchWarmstartFasterAttacker():
             print("check before returning from opt")
             IPython.embed()
             return x, debug_dict
-
-
-if __name__ == "__main__":
-    pass
-
-    # if torch.cuda.is_available():
-    #     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
-    #     dev = "cuda:%i" % (args.gpu)
-    #     print("Using GPU device: %s" % dev)
-    # else:
-    #     dev = "cpu"
-    # # dev = "cpu"
-    # device = torch.device(dev)
-    #
-    # ub = 20 #args.box_ang_vel_limit
-    # thresh = np.array([math.pi / 3, math.pi / 3, math.pi, ub, ub, ub, math.pi / 3, math.pi / 3, ub, ub],
-    #                   dtype=np.float32)  # angular velocities bounds probably much higher in reality (~10-20 for drone, which can do 3 flips in 1 sec).
-    # x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
-    #
-    # attacker = GradientBatchWarmstartFasterAttacker(x_lim)
-    # class GradientBatchWarmstartFasterAttacker():
-    #     """
-    #     We apply speed-ups to boundary sampling.
-    #     The aim is to still sample quickly when the safe set is smal.
-    #
-    #     Upgrades:
-    # 	1. Multi-processing for speed-up on boundary sampling
-    # 	2. Different projection routines
-    #     """
-    #
-    #     def __init__(self, x_lim, device, logger, n_samples=20, \
-    #                  stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3,
-    #                  early_stopping_patience=50, \
-    #                  lr=1e-3, \
-    #                  p_reuse=0.7, \
-    #                  projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=3.0, verbose=False,
-    #                  train_attacker_use_n_step_schedule=False, \
-    #                  boundary_sampling_speedup_method="sequential", boundary_sampling_method="uniform"):
-
-
-    # Create attacker
-    # Load saved phi
-    # Call opt and time
