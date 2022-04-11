@@ -63,7 +63,11 @@ class Trainer():
 			"train_attack_t_grad_steps": [],
 			"train_attack_t_reproject": [],
 			"train_attack_t_total_opt": [],
-		    "train_attack_diff_after_proj": []}
+		    "train_attack_diff_after_proj": [],
+			"train_attack_t_sample_boundary": [],
+		    "train_attack_n_segments_sampled": [],
+		    "train_attack_dist_diff_after_proj": []
+		    }
 
 		data_dict.update(train_attack_dict)
 

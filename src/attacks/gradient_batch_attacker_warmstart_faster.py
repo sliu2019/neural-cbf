@@ -32,7 +32,7 @@ class GradientBatchWarmstartFasterAttacker():
                  lr=1e-3, \
                  p_reuse=0.7,\
                  projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=3.0, verbose=False, train_attacker_use_n_step_schedule=False,\
-                 boundary_sampling_speedup_method="sequential", boundary_sampling_method="uniform"):
+                 boundary_sampling_speedup_method="sequential", boundary_sampling_method="uniform", gaussian_t=1.0):
         # boundary_sampling_option: ["sequential", "gpu_parallelized", "cpu_parallelized"]
         # boundary_sampling_method; ["uniform", "gaussian"]
 
@@ -168,7 +168,7 @@ class GradientBatchWarmstartFasterAttacker():
 
         # Wrap-around in state domain
         X_new = torch.minimum(torch.maximum(X_new, self.x_lim[:, 0]), self.x_lim[:, 1])
-        debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step), "diff_after_proj": (dist_after_proj-dist_before_proj)}
+        debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step), "dist_diff_after_proj": (dist_after_proj-dist_before_proj)}
 
         # print("Inside _step, line 242")
         # IPython.embed()
@@ -204,6 +204,50 @@ class GradientBatchWarmstartFasterAttacker():
         sample = unif*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
         sample[which_facet_pair] = self.x_lim[which_facet_pair, which_facet]
         return sample
+
+    def _sample_in_safe_set(self, phi_fn, random_seed=None):
+        # print("inside sample_in_safe_set")
+        # print("debug the whole function")
+        # print("is rv on device")
+        # print("check that the dimensions returns are correct (flat)")
+        # IPython.embed()
+
+        if random_seed:
+            torch.manual_seed(random_seed)
+            np.random.seed(random_seed)
+
+        bs = 100 # TODO: assuming this can use GPU
+        N_samp = 1 # 1 sample desired
+        N_samp_found = 0
+        i = 0 # TODO: maybe record i*bs?
+        while N_samp_found < N_samp:
+            # Sample in box
+            unif = torch.rand((bs, self.x_dim)).to(self.device)
+            samples_torch = unif*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
+
+            # Check if samples in invariant set
+            phi_vals = phi_fn(samples_torch)
+            max_phi_vals = torch.max(phi_vals, dim=1)[0]
+
+            # Save good samples
+            ind = torch.argwhere(max_phi_vals <= 0).flatten()
+            samples_torch_inside = samples_torch[ind]
+            N_samp_found += len(ind)
+            i += 1
+
+        # Could be more than N_samp currently; truncate to exactly N_samp
+        # rv = samples_torch_inside[:N_samp]
+        rv = samples_torch_inside[0] # is flat shape already
+        return rv
+
+    def _sample_in_gaussian(self, safe_set_sample):
+        # print("inside sample_in_gaussian, check dims and output (print)")
+        # print("is rv on device")
+        # IPython.embed()
+        cov = 2*self.gaussian_t*torch.eye(self.x_dim).to(self.device)
+        m = torch.distributions.MultivariateNormal(safe_set_sample, cov)
+        sample_torch = m.sample()
+        return sample_torch
 
     def _intersect_segment_with_manifold(self, p1, p2, phi_fn):
         diff = p2-p1
@@ -267,17 +311,22 @@ class GradientBatchWarmstartFasterAttacker():
         return intersection_point
 
     def _sample_segment_intersect_boundary(self, phi_fn, random_seed=None):
-        outer = self._sample_on_cube(random_seed=random_seed)
-        center = self._sample_in_cube(random_seed=random_seed)
+        # boundary_sampling_method; ["uniform", "gaussian"]
+        if self.boundary_sampling_method == "uniform":
+            outer = self._sample_on_cube(random_seed=random_seed)
+            center = self._sample_in_cube(random_seed=random_seed)
+        elif self.boundary_sampling_method == "gaussian":
+            center = self._sample_in_safe_set(phi_fn, random_seed=random_seed)
+            outer = self._sample_in_gaussian(center)
 
         intersection = self._intersect_segment_with_manifold(center, outer, phi_fn)
-
         return intersection
 
     def _sample_points_on_boundary_sequential(self, phi_fn, n_samples):
         """
         Returns torch array of size (self.n_samples, self.x_dim)
         """
+        t0 = time.perf_counter()
         # Everything done in torch
         samples = []
         n_remaining_to_sample = n_samples
@@ -295,14 +344,17 @@ class GradientBatchWarmstartFasterAttacker():
 
         samples = torch.cat(samples, dim=0)
         # self.logger.info("Done with sampling points on the boundary...")
-
-        return samples
+        tf = time.perf_counter()
+        debug_dict = {"t_sample_boundary": (tf- t0), "n_segments_sampled": n_segments_sampled}
+        # print("done")
+        # IPython.embed()
+        return samples, debug_dict
 
     def _sample_points_on_boundary_gpu_parallelized(self, phi_fn, n_samples):
         # print("Inside _sample_points_on_boundary_gpu_parallelized()")
         # IPython.embed()
         # self._phi_fn = phi_fn # cheat way to pass to child processes
-
+        t0 = time.perf_counter()
         phi_fn.share_memory() # Adds to Queue, which is shared between processes?
 
         # Everything done in torch
@@ -310,7 +362,9 @@ class GradientBatchWarmstartFasterAttacker():
         n_remaining_to_sample = n_samples
         # n_segments_sampled = 0
 
-        random_seeds = np.arange(100 * n_samples) # This should be enough. If it isn't, code will error out
+        random_start = 0
+        random_bs = 1000
+        random_seeds = np.arange(random_start, random_start + random_bs * n_samples) # This should be enough. If it isn't, code will error out
         np.random.shuffle(random_seeds)  # in place
 
         # arg_tup = [phi_fn]
@@ -320,6 +374,13 @@ class GradientBatchWarmstartFasterAttacker():
         it = 0
         while n_remaining_to_sample > 0:
             batch_random_seeds = random_seeds[it * self.n_gpu:(it + 1) * self.n_gpu]
+            if batch_random_seeds.size < self.n_gpu:
+                # need more random seeds
+                random_start = random_start + random_bs * n_samples
+                random_seeds = np.arange(random_start,
+                                         random_start + random_bs * n_samples)  # This should be enough. If it isn't, code will error out
+                np.random.shuffle(random_seeds)
+
             # final_arg = [duplicated_arg[i] + [batch_random_seeds[i]] for i in range(self.n_cpu)]
             final_arg = [[phi_fn, batch_random_seeds[i]] for i in range(self.n_gpu)]
             result = self.pool.starmap(self._sample_segment_intersect_boundary, final_arg)
@@ -331,13 +392,18 @@ class GradientBatchWarmstartFasterAttacker():
 
             # n_segments_sampled += self.n_cpu
             it += 1
-            self.logger.info("%i segments sampled" % (it*self.n_gpu))
+            # self.logger.info("%i segments sampled" % (it*self.n_gpu))
 
 
         samples = torch.cat(samples[:n_samples], dim=0)
         # IPython.embed()
         # self.logger.info("Done with sampling points on the boundary...")
-        return samples
+        tf = time.perf_counter()
+        debug_dict = {"t_sample_boundary": (tf- t0), "n_segments_sampled": (it*self.n_gpu)}
+
+        # print("done")
+        # IPython.embed()
+        return samples, debug_dict
 
     def _sample_points_on_boundary(self, phi_fn, n_samples):
         """
@@ -346,19 +412,19 @@ class GradientBatchWarmstartFasterAttacker():
         # boundary_sampling_method; ["uniform", "gaussian"]
         """
         if self.boundary_sampling_speedup_method == "gpu_parallelized":
-            samples = self._sample_points_on_boundary_gpu_parallelized(phi_fn, n_samples)
+            samples, debug_dict = self._sample_points_on_boundary_gpu_parallelized(phi_fn, n_samples)
         elif self.boundary_sampling_speedup_method == "sequential":
-            samples = self._sample_points_on_boundary_sequential(phi_fn, n_samples)
+            samples, debug_dict = self._sample_points_on_boundary_sequential(phi_fn, n_samples)
         elif self.boundary_sampling_speedup_method == "cpu_parallelized":
             print("self.boundary_sampling_option == cpu_parallelized hasn't been implemented....")
             raise NotImplementedError
-        return samples
+        return samples, debug_dict
 
     def opt(self, objective_fn, phi_fn, iteration, debug=False):
         t0_opt = time.perf_counter()
 
         if self.X_saved is None:
-            X_init = self._sample_points_on_boundary(phi_fn, self.n_samples)
+            X_init, boundary_sample_debug_dict = self._sample_points_on_boundary(phi_fn, self.n_samples)
 
             X_reuse_init = torch.zeros((0, self.x_dim))
             X_random_init = X_init
@@ -386,7 +452,7 @@ class GradientBatchWarmstartFasterAttacker():
             # print("Reprojecting")
             X_reuse_init = self._project(phi_fn, X_reuse_init) # reproject, since phi changed
             # print("Sampling points on boundary")
-            X_random_init = self._sample_points_on_boundary(phi_fn, n_random_samples)
+            X_random_init, boundary_sample_debug_dict = self._sample_points_on_boundary(phi_fn, n_random_samples)
             # print("Done")
             X_init = torch.cat([X_random_init, X_reuse_init], axis=0)
 
@@ -398,7 +464,7 @@ class GradientBatchWarmstartFasterAttacker():
         # logging
         t_grad_step = []
         t_reproject = []
-        diff_after_proj = []
+        dist_diff_after_proj = []
         obj_vals = objective_fn(X.view(-1, self.x_dim))
         init_best_attack_value = torch.max(obj_vals).item()
 
@@ -415,7 +481,7 @@ class GradientBatchWarmstartFasterAttacker():
             # Logging
             t_grad_step.append(step_debug_dict["t_grad_step"])
             t_reproject.append(step_debug_dict["t_reproject"])
-            diff_after_proj.append(step_debug_dict["diff_after_proj"])
+            dist_diff_after_proj.append(step_debug_dict["dist_diff_after_proj"])
 
             # Loop break condition
             if self.stopping_condition == "n_steps":
@@ -454,9 +520,8 @@ class GradientBatchWarmstartFasterAttacker():
             t_total_opt = tf_opt - t0_opt
 
             # TODO: do not change the names in the dict here! Names are matched to trainer.py
-            debug_dict = {"X_init": X_init, "X_init_reuse": X_reuse_init, "X_init_random": X_random_init, "X_final": X, "X_obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_steps": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt}
-
-            # debug_dict = {"X_init": X_init, "X_reuse_init": X_reuse_init, "X_random_init": X_random_init, "X": X, "obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_step": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt}
+            debug_dict = {"X_init": X_init, "X_init_reuse": X_reuse_init, "X_init_random": X_random_init, "X_final": X, "X_obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_steps": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt, "dist_diff_after_proj": dist_diff_after_proj}
+            debug_dict.update(boundary_sample_debug_dict) #  {"t_sample_boundary": (tf- t0), "n_segments_sampled": n_segments_sampled}
 
             print("check before returning from opt")
             IPython.embed()
