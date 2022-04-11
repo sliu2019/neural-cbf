@@ -53,23 +53,17 @@ class GradientBatchWarmstartFasterAttacker():
         self.X_saved = None
         self.obj_vals_saved = None
 
-        # For projection, adamBA
-        self.n_vector_samples = 10
-        self.torch_cpu = torch.device("cpu")
-
         # For multiproc
-        # Otherwise, do not set this variable
-        # self._surface_fn = None
         try:
             mp.set_start_method('spawn')
         except RuntimeError:
             print("Couldn't set start_method as spawn, in init")
             IPython.embed()
-        # self.n_cpu = mp.cpu_count()
         self.n_gpu = torch.cuda.device_count()
-        self.pool = mp.Pool(self.n_gpu) # torch pool
+        if self.boundary_sampling_speedup_method == "gpu_parallelized":
+            self.pool = mp.Pool(self.n_gpu) # torch pool
 
-    def __getstate__(self): # can't pickle pool object
+    def __getstate__(self): # can't pickle pool object; creating threads will pickle self
         self_dict = self.__dict__.copy()
         del self_dict['pool']
         return self_dict
@@ -201,11 +195,6 @@ class GradientBatchWarmstartFasterAttacker():
         return sample
 
     def _sample_in_safe_set(self, phi_fn, random_seed=None):
-        # print("inside sample_in_safe_set")
-        # print("debug the whole function")
-        # print("is rv on device")
-        # print("check that the dimensions returns are correct (flat)")
-        # IPython.embed()
 
         if random_seed:
             torch.manual_seed(random_seed)
@@ -214,7 +203,7 @@ class GradientBatchWarmstartFasterAttacker():
         bs = 100 # TODO: assuming this can use GPU
         N_samp = 1 # 1 sample desired
         N_samp_found = 0
-        i = 0 # TODO: maybe record i*bs?
+        i = 0
         while N_samp_found < N_samp:
             # Sample in box
             unif = torch.rand((bs, self.x_dim)).to(self.device)
@@ -231,14 +220,10 @@ class GradientBatchWarmstartFasterAttacker():
             i += 1
 
         # Could be more than N_samp currently; truncate to exactly N_samp
-        # rv = samples_torch_inside[:N_samp]
         rv = samples_torch_inside[0] # is flat shape already
         return rv
 
     def _sample_in_gaussian(self, safe_set_sample):
-        # print("inside sample_in_gaussian, check dims and output (print)")
-        # print("is rv on device")
-        # IPython.embed()
         cov = 2*self.gaussian_t*torch.eye(self.x_dim).to(self.device)
         m = torch.distributions.MultivariateNormal(safe_set_sample, cov)
         sample_torch = m.sample()
@@ -341,31 +326,22 @@ class GradientBatchWarmstartFasterAttacker():
         # self.logger.info("Done with sampling points on the boundary...")
         tf = time.perf_counter()
         debug_dict = {"t_sample_boundary": (tf- t0), "n_segments_sampled": n_segments_sampled}
-        # print("done")
-        # IPython.embed()
         return samples, debug_dict
 
     def _sample_points_on_boundary_gpu_parallelized(self, phi_fn, n_samples):
-        # print("Inside _sample_points_on_boundary_gpu_parallelized()")
-        # IPython.embed()
-        # self._phi_fn = phi_fn # cheat way to pass to child processes
+
         t0 = time.perf_counter()
         phi_fn.share_memory() # Adds to Queue, which is shared between processes?
 
         # Everything done in torch
         samples = []
         n_remaining_to_sample = n_samples
-        # n_segments_sampled = 0
 
         random_start = 0
         random_bs = 1000
         random_seeds = np.arange(random_start, random_start + random_bs * n_samples) # This should be enough. If it isn't, code will error out
         np.random.shuffle(random_seeds)  # in place
 
-        # arg_tup = [phi_fn]
-        # duplicated_arg = list([arg_tup] * self.n_cpu)
-
-        # IPython.embed()
         it = 0
         while n_remaining_to_sample > 0:
             batch_random_seeds = random_seeds[it * self.n_gpu:(it + 1) * self.n_gpu]
@@ -376,7 +352,6 @@ class GradientBatchWarmstartFasterAttacker():
                                          random_start + random_bs * n_samples)  # This should be enough. If it isn't, code will error out
                 np.random.shuffle(random_seeds)
 
-            # final_arg = [duplicated_arg[i] + [batch_random_seeds[i]] for i in range(self.n_cpu)]
             final_arg = [[phi_fn, batch_random_seeds[i]] for i in range(self.n_gpu)]
             result = self.pool.starmap(self._sample_segment_intersect_boundary, final_arg)
 
@@ -385,19 +360,14 @@ class GradientBatchWarmstartFasterAttacker():
                     samples.append(intersection.view(1, -1))
                     n_remaining_to_sample -= 1 # could go negative!
 
-            # n_segments_sampled += self.n_cpu
             it += 1
             # self.logger.info("%i segments sampled" % (it*self.n_gpu))
 
 
         samples = torch.cat(samples[:n_samples], dim=0)
-        # IPython.embed()
         # self.logger.info("Done with sampling points on the boundary...")
         tf = time.perf_counter()
         debug_dict = {"t_sample_boundary": (tf- t0), "n_segments_sampled": (it*self.n_gpu)}
-
-        # print("done")
-        # IPython.embed()
         return samples, debug_dict
 
     def _sample_points_on_boundary(self, phi_fn, n_samples):
@@ -518,6 +488,6 @@ class GradientBatchWarmstartFasterAttacker():
             debug_dict = {"X_init": X_init, "X_init_reuse": X_reuse_init, "X_init_random": X_random_init, "X_final": X, "X_obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_steps": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt, "dist_diff_after_proj": dist_diff_after_proj}
             debug_dict.update(boundary_sample_debug_dict) #  {"t_sample_boundary": (tf- t0), "n_segments_sampled": n_segments_sampled}
 
-            print("check before returning from opt")
-            IPython.embed()
+            # print("check before returning from opt")
+            # IPython.embed()
             return x, debug_dict
