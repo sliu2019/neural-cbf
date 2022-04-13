@@ -33,13 +33,6 @@ class Trainer():
 		######### Set up saving ##########
 		##################################
 
-		# Deprecated
-		# "test_losses": [],
-		# "test_attack_losses": [],
-		# "test_reg_losses": [],
-		# "k0_grad": [],
-		# "ci_grad": [],
-
 		data_dict = {
 			"train_loop_times": [],
 			"train_losses": [],
@@ -76,11 +69,7 @@ class Trainer():
 		data_dict.update(train_attack_dict)
 
 		reg_debug_dict = {"reg_grad_norms": []}
-		"""
-		"max_dists_X_reg": [], "times_to_compute_X_reg": [],
-		                  "reg_sampler_X": [], "grad_mag_before_reg": [],
-		                  "grad_mag_after_reg": [],
-		"""
+
 		data_dict.update(reg_debug_dict)
 
 		###########  Done  ###########
@@ -114,9 +103,7 @@ class Trainer():
 			X = debug_dict["X_final"]
 
 			optimizer.zero_grad()
-			"""
-			parser.add_argument('--objective_option', type=str, default='regular', choices=['regular', 'softplus', 'weighted_average'])
-			"""
+
 			if self.args.objective_option == "regular":
 				x_batch = x.view(1, -1)
 				attack_value = objective_fn(x_batch)[0, 0]
@@ -183,11 +170,6 @@ class Trainer():
 					pos_param = torch.maximum(param, torch.zeros_like(param))
 					param.copy_(pos_param)
 
-				# print("Are these positive")
-				# print(pos_params)
-				# print("Checking that pos params are thresholded to be positive, in trainer.py")
-				# IPython.embed()
-
 			tnow = time.perf_counter()
 
 			#######################################################
@@ -239,27 +221,11 @@ class Trainer():
 			iteration_info_dict["k0_list"] = phi_fn.k0
 
 			# Merge into info_dict
-			# print("ln 213 in trainer.py, check info_dict formation and the following merge")
-			# IPython.embed()
 			for key, value in iteration_info_dict.items():
 				if torch.is_tensor(value):
 					value = value.detach().cpu().numpy()
 				data_dict[key].append(value)
 
-			# print("ln 236, check dict is filled out with grad_norms, ci_list, k0_list")
-			# IPython.embed()
-			"""
-			Things that were not filled out:
-			test_losses
-			test_attack_losses
-			test_reg_losses
-			k0_grad
-			ci_grad
-			grad_norms
-			V_approx_list
-			boundary_samples_obj_values
-			train_attack_diff_after_proj
-			"""
 			# Rest of print output
 			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')
 			#######################################################
@@ -276,26 +242,14 @@ class Trainer():
 				with open(self.data_save_fpth, 'wb') as handle:
 					pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-				##########################################
-				######### Log stats to terminal ##########
-				##########################################
-
-				# self.logger.info('\n' + '=' * 20 + f' saving data ' \
-				#                  + '=' * 20)
-				# self.logger.info(f'train loss: {objective_value:.3f}%')
-				# self.logger.info(f'train attack loss: {attack_value:.3f}%, reg loss: {reg_value:.3f}%')
-				# self.logger.info(f'Reg grad norm: {avg_grad:.4f}')
 
 			#######################################################
 			##############   Compute test stats   #################
 			#######################################################
+			# TODO: the fact that this is not = self.args.n_checkpoint_step necessarily means that you might have to refactor stuff in flying_rollout_experiment
 			if _iter % self.args.n_test_loss_step == 0:
 				t0_test = time.perf_counter()
-				# print("computing test stats")
-				# IPython.embed()
-				# TODO: the fact that this is not = self.args.n_checkpoint_step necessarily means that you might have to refactor stuff in flying_rollout_experiment
 
-				# self.args.test_N_volume_samples = 5000
 				samp_numpy = np.random.uniform(size=(self.args.test_N_volume_samples, self.x_dim)) * self.x_lim_interval_sizes + self.x_lim[:, [0]].T
 				samp_torch = torch.from_numpy(samp_numpy.astype("float32")).to(self.device)
 				M = 100
@@ -308,10 +262,7 @@ class Trainer():
 				V_approx = V_approx.item()
 				data_dict["V_approx_list"].append(V_approx)
 
-				# IPython.embed()
-				# self.args.test_N_boundary_samples = 5000
-				# def surface_fn(x, grad_x=False):
-				# 	return phi_fn(x, grad_x=grad_x)[:, -1]
+				# Sample on boundary
 				t0_test_boundary = time.perf_counter()
 				boundary_samples = self.test_attacker._sample_points_on_boundary(phi_fn, self.args.test_N_boundary_samples) # test_attacker now using "faster" version
 				boundary_samples_obj_value = objective_fn(boundary_samples)
@@ -328,7 +279,6 @@ class Trainer():
 				std_infeas_amount = np.std(infeas_values)
 				self.logger.info(f'mean, std amount infeasible at boundary: {average_infeas_amount:.2f} +/- {std_infeas_amount:.2f}')
 				self.logger.info(f'max amount infeasible at boundary: {np.max(infeas_values):.2f}')
-
 				self.logger.info('\n' + '+' * 80)
 
 				tf_test = time.perf_counter()
@@ -336,8 +286,6 @@ class Trainer():
 				data_dict["test_t_total"].append(tf_test-t0_test)
 				data_dict["test_t_boundary"].append(tf_test-t0_test_boundary)
 
-			# IPython.embed()
-			# Check for stopping
 			if self.args.trainer_stopping_condition == "early_stopping":
 				# early_stopping(test_loss) # TODO: should technically use test_loss, but we're not computing it
 				# TODO: early stopper almost does the opposite of what we want.
@@ -352,13 +300,3 @@ class Trainer():
 
 			_iter += 1
 
-			# print("at ln 304")
-			# print("check if all the data is being populated")
-			# IPython.embed()
-
-	# def test(self, phi_fn, objective_fn):
-	# 	# Inner min
-	# 	x = self.test_attacker.opt(objective_fn, phi_fn, mode=self.args.train_mode)
-	# 	objective_value = objective_fn(x.view(1, -1))[0, 0]
-	#
-	# 	return objective_value
