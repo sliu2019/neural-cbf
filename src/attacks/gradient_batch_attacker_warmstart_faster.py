@@ -436,7 +436,7 @@ class GradientBatchWarmstartFasterAttacker():
         # train_attacker_use_n_step_schedule
         max_n_steps = self.max_n_steps
         if self.train_attacker_use_n_step_schedule:
-            max_n_steps = (2*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
+            max_n_steps = (0.5*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
             print("Max_n_steps: %i" % max_n_steps)
         while True:
             # print("Inner max step #%i" % i)

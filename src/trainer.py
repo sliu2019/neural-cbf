@@ -242,8 +242,8 @@ class Trainer():
 					value = value.detach().cpu().numpy()
 				data_dict[key].append(value)
 
-			print("ln 236, check dict is filled out with grad_norms, ci_list, k0_list")
-			IPython.embed()
+			# print("ln 236, check dict is filled out with grad_norms, ci_list, k0_list")
+			# IPython.embed()
 			"""
 			Things that were not filled out:
 			test_losses

@@ -1,4 +1,5 @@
 
+# Scripts to debug new code
 # Trying to use multiprocessing for boundary sampling
 
 # 	parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"])

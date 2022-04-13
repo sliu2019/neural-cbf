@@ -302,7 +302,7 @@ def main(args):
 
 	# Device
 	if torch.cuda.is_available():
-		# os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
+		os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 		dev = "cuda:%i" % (args.gpu)
 		# print("Using GPU device: %s" % dev)
 	else:
