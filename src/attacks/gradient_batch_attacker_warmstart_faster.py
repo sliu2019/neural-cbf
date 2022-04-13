@@ -157,7 +157,8 @@ class GradientBatchWarmstartFasterAttacker():
 
         # Wrap-around in state domain
         X_new = torch.minimum(torch.maximum(X_new, self.x_lim[:, 0]), self.x_lim[:, 1])
-        debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step), "dist_diff_after_proj": (dist_after_proj-dist_before_proj)}
+        dist_diff_after_proj = (dist_after_proj-dist_before_proj).detach().cpu().numpy()
+        debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step), "dist_diff_after_proj": dist_diff_after_proj}
 
         # print("Inside _step, line 242")
         # IPython.embed()
@@ -485,7 +486,7 @@ class GradientBatchWarmstartFasterAttacker():
             t_total_opt = tf_opt - t0_opt
 
             # TODO: do not change the names in the dict here! Names are matched to trainer.py
-            debug_dict = {"X_init": X_init, "X_init_reuse": X_reuse_init, "X_init_random": X_random_init, "X_final": X, "X_obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_steps": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt, "dist_diff_after_proj": dist_diff_after_proj}
+            debug_dict = {"X_init": X_init, "X_init_reuse": X_reuse_init, "X_init_random": X_random_init, "X_final": X, "X_obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_steps": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt, "dist_diff_after_proj": dist_diff_after_proj, "n_opt_steps": max_n_steps}
             debug_dict.update(boundary_sample_debug_dict) #  {"t_sample_boundary": (tf- t0), "n_segments_sampled": n_segments_sampled}
 
             # print("check before returning from opt")

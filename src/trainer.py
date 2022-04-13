@@ -33,12 +33,14 @@ class Trainer():
 		######### Set up saving ##########
 		##################################
 
+		# Deprecated
+		# "test_losses": [],
+		# "test_attack_losses": [],
+		# "test_reg_losses": [],
+		# "k0_grad": [],
+		# "ci_grad": [],
+
 		data_dict = {
-			"test_losses": [],
-			"test_attack_losses": [],
-			"test_reg_losses": [],
-			"k0_grad": [],
-			"ci_grad": [],
 			"train_loop_times": [],
 			"train_losses": [],
 			"train_attack_losses": [],
@@ -47,7 +49,9 @@ class Trainer():
 			"V_approx_list": [],
 			"boundary_samples_obj_values": [],
 			"ci_list": [],
-			"k0_list": []
+			"k0_list": [].
+			"test_t_total": [],
+			"test_t_boundary": []
 		}
 
 		train_attack_dict = {"train_attacks": [],
@@ -63,10 +67,10 @@ class Trainer():
 			"train_attack_t_grad_steps": [],
 			"train_attack_t_reproject": [],
 			"train_attack_t_total_opt": [],
-		    "train_attack_diff_after_proj": [],
 			"train_attack_t_sample_boundary": [],
 		    "train_attack_n_segments_sampled": [],
-		    "train_attack_dist_diff_after_proj": []
+		    "train_attack_dist_diff_after_proj": [],
+		    "train_attack_n_opt_steps": []
 		    }
 
 		data_dict.update(train_attack_dict)
@@ -286,29 +290,30 @@ class Trainer():
 			##############   Compute test stats   #################
 			#######################################################
 			if _iter % self.args.n_test_loss_step == 0:
+				t0_test = time.perf_counter()
 				# print("computing test stats")
 				# IPython.embed()
 				# TODO: the fact that this is not = self.args.n_checkpoint_step necessarily means that you might have to refactor stuff in flying_rollout_experiment
 
-				N_volume_samples = 5000
-				samp_numpy = np.random.uniform(size=(N_volume_samples, self.x_dim)) * self.x_lim_interval_sizes + self.x_lim[:, [0]].T
+				# self.args.test_N_volume_samples = 5000
+				samp_numpy = np.random.uniform(size=(self.args.test_N_volume_samples, self.x_dim)) * self.x_lim_interval_sizes + self.x_lim[:, [0]].T
 				samp_torch = torch.from_numpy(samp_numpy.astype("float32")).to(self.device)
 				M = 100
 
 				N_samples_inside = 0
-				for k in range(math.ceil(N_volume_samples/float(M))):
-					phi_vals_batch = phi_fn(samp_torch[k*M: min((k+1)*M, N_volume_samples)])
+				for k in range(math.ceil(self.args.test_N_volume_samples/float(M))):
+					phi_vals_batch = phi_fn(samp_torch[k*M: min((k+1)*M, self.args.test_N_volume_samples)])
 					N_samples_inside += torch.sum(torch.max(phi_vals_batch, axis=1)[0] <= 0.0)
-				V_approx = N_samples_inside*100/float(N_volume_samples)
+				V_approx = N_samples_inside*100/float(self.args.test_N_volume_samples)
 				V_approx = V_approx.item()
 				data_dict["V_approx_list"].append(V_approx)
 
 				# IPython.embed()
-
-				N_boundary_samples = 5000
-				def surface_fn(x, grad_x=False):
-					return phi_fn(x, grad_x=grad_x)[:, -1]
-				boundary_samples = self.test_attacker._sample_points_on_boundary(surface_fn, N_boundary_samples)
+				# self.args.test_N_boundary_samples = 5000
+				# def surface_fn(x, grad_x=False):
+				# 	return phi_fn(x, grad_x=grad_x)[:, -1]
+				t0_test_boundary = time.perf_counter()
+				boundary_samples = self.test_attacker._sample_points_on_boundary(phi_fn, self.args.test_N_boundary_samples) # test_attacker now using "faster" version
 				boundary_samples_obj_value = objective_fn(boundary_samples)
 				boundary_samples_obj_value = boundary_samples_obj_value.detach().cpu().numpy()
 				data_dict["boundary_samples_obj_values"].append(boundary_samples_obj_value)
@@ -325,6 +330,11 @@ class Trainer():
 				self.logger.info(f'max amount infeasible at boundary: {np.max(infeas_values):.2f}')
 
 				self.logger.info('\n' + '+' * 80)
+
+				tf_test = time.perf_counter()
+
+				data_dict["test_t_total"].append(tf_test-t0_test)
+				data_dict["test_t_boundary"].append(tf_test-t0_test_boundary)
 
 			# IPython.embed()
 			# Check for stopping

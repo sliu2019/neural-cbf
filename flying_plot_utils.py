@@ -219,6 +219,7 @@ def graph_losses(exp_name, debug=True):
 	# Out[24]: dict_keys(['test_losses', 'test_attack_losses', 'test_reg_losses', 'k0_grad', 'ci_grad', 'train_loop_times', 'train_losses', 'train_attack_losses', 'train_reg_losses', 'grad_norms', 'V_approx_list', 'boundary_samples_obj_values', 'ci_list', 'k0_list', 'train_attacks', 'train_attack_X_init', 'train_attack_X_init_reuse', 'train_attack_X_init_random', 'train_attack_X_final', 'train_attack_X_obj_vals', 'train_attack_X_phi_vals', 'train_attack_init_best_attack_value', 'train_attack_final_best_attack_value', 'train_attack_t_init', 'train_attack_t_grad_steps', 'train_attack_t_reproject', 'train_attack_t_total_opt', 'train_attack_diff_after_proj', 'train_attack_t_sample_boundary', 'train_attack_n_segments_sampled', 'train_attack_dist_diff_after_proj', 'reg_grad_norms'])
 
 	print(np.min(train_attack_losses))
+	IPython.embed()
 	# print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (np.min(train_attack_losses), min_attack_ind, approx_v[round(min_attack_ind/float(args.n_checkpoint_step))]))
 	# min_attack_ind_w_checkpoint = np.argmin(np.array(train_attack_losses)[::n_checkpoint_step])*n_checkpoint_step
 	# print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (train_attack_losses[min_attack_ind_w_checkpoint], min_attack_ind_w_checkpoint, approx_v[int(min_attack_ind_w_checkpoint/n_checkpoint_step)]))

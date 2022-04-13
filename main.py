@@ -439,13 +439,18 @@ def main(args):
 
 
 	# Create test attacker
-	test_attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples,
-	                                          stopping_condition=args.train_attacker_stopping_condition,
-	                                          max_n_steps=args.train_attacker_max_n_steps, lr=args.train_attacker_lr,
-	                                          projection_tolerance=args.train_attacker_projection_tolerance,
-	                                          projection_lr=args.train_attacker_projection_lr,
-	                                          projection_time_limit=args.train_attacker_projection_time_limit,
-	                                          train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule)
+	# Note: doesn't matter that we're passing train params. We're only using test_attacker to sample on boundary
+	test_attacker = GradientBatchWarmstartFasterAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples,
+	                                                stopping_condition=args.train_attacker_stopping_condition,
+	                                                max_n_steps=args.train_attacker_max_n_steps,
+	                                                lr=args.train_attacker_lr,
+	                                                projection_tolerance=args.train_attacker_projection_tolerance,
+	                                                projection_lr=args.train_attacker_projection_lr,
+	                                                projection_time_limit=args.train_attacker_projection_time_limit,
+	                                                train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule,
+	                                                boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method,
+	                                                boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
+	                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t)
 
 	# print("before calling train in main.py")
 	# print("before actually running, remove this")

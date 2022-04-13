@@ -88,6 +88,9 @@ def create_parser():
 	# parser.add_argument('--test_attacker_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"')
 	# parser.add_argument('--test_attacker_projection_lr', default=1e-4, type=float)
 	# parser.add_argument('--test_attacker_lr', default=1e-3, type=float)
+
+	parser.add_argument('--test_N_volume_samples', default=2500, type=int)
+	parser.add_argument('--test_N_boundary_samples', default=2500, type=int)
 	###################################################################################################################################
 
 	# Trainer
