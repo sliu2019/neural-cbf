@@ -116,24 +116,25 @@ def graph_losses(exp_name, debug=True):
 	args = load_args("./log/%s/args.txt" % exp_name)
 
 	# IPython.embed()
-
+	suptitle_size = 8 # default is 10
 	n_it_so_far = len(data["train_losses"]) - 1
 	fig, axs = plt.subplots(2, sharex=True)
-	fig.suptitle('Metrics for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps))
+	fig.suptitle('Metrics for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps), fontsize=suptitle_size)
 
 	#############################################
 	axs[0].set_title("Train metrics")
 	axs[0].plot(data["train_losses"], label="objective value", linewidth=0.5)
 	axs[0].plot(data["train_attack_losses"], label="worst attack value", linewidth=0.5)
 	axs[0].plot(data["train_reg_losses"], label="reg value", linewidth=0.5)
+	axs[0].plot([0, n_it_so_far], [0, 0], color="k", linewidth=0.5)
 
-	axs[0].legend(loc="upper right")
+	axs[0].legend(loc=(1.04,0))
 	#############################################
 	axs[1].set_title("Test metrics")
 	per_n_iterations = args.n_test_loss_step
 	test_iterations = np.arange(0, n_it_so_far, per_n_iterations)
 
-	axs[1].plot(test_iterations, data["V_approx_list"], label="approx. volume", linewidth=0.5)
+	axs[1].plot(test_iterations, data["V_approx_list"], label="approx. volume", color="green", linewidth=1.0)
 
 	boundary_samples_obj_values = data["boundary_samples_obj_values"]
 	percent_infeas_at_boundary = [np.sum(boundary_samples_obj_value > 0) * 100 / boundary_samples_obj_value.size for boundary_samples_obj_value in boundary_samples_obj_values]
@@ -145,14 +146,16 @@ def graph_losses(exp_name, debug=True):
 
 	max_infeas_amount = [np.max(infeas_values) for infeas_values in infeas_values_list]
 
-	axs[1].plot(test_iterations, percent_infeas_at_boundary, label="% infeas. at boundary", linewidth=0.5)
-	axs[1].fill_between(test_iterations, average_infeas_amount - std_infeas_amount, average_infeas_amount + std_infeas_amount, label="average infeas.", alpha=0.5, color="orange")
+	axs[1].plot(test_iterations, percent_infeas_at_boundary, label="% infeas. at boundary", color="blue", linewidth=1.0)
+	axs[1].fill_between(test_iterations, average_infeas_amount - std_infeas_amount, average_infeas_amount + std_infeas_amount, alpha=0.5, color="orange")
 	axs[1].plot(test_iterations, average_infeas_amount, label="average infeas.", linewidth=0.5, color="orange")
 
-	axs[1].plot(test_iterations, max_infeas_amount, label="max infeas.", linewidth=0.5)
+	# axs[1].plot(test_iterations, max_infeas_amount, label="max infeas.", linewidth=0.5)
 
-	axs[1].legend(loc="upper right")
+	axs[1].set_ylim([-5, 40])
+	axs[1].legend(loc=(1.04,0))
 
+	fig.tight_layout()
 	plt.xlabel("Iterations") # aka opt. steps
 
 	plt.savefig("./log/%s/%s_loss.png" % (exp_name, exp_name))
@@ -161,25 +164,23 @@ def graph_losses(exp_name, debug=True):
 
 	#############################################
 	#############################################
-	"""
-	dict_keys(['test_losses', 'test_attack_losses', 'test_reg_losses', 'k0_grad', 'ci_grad', 'train_loop_times', 'train_losses', 'train_attack_losses', 'train_reg_losses', 'grad_norms', 'V_approx_list', 'boundary_samples_obj_values', 'train_attacks', 'train_attack_X_init', 'train_attack_X_init_reuse', 'train_attack_X_init_random', 'train_attack_X_final', 'train_attack_X_obj_vals', 'train_attack_X_phi_vals', 'train_attack_init_best_attack_value', 'train_attack_final_best_attack_value', 'train_attack_t_init', 'train_attack_t_grad_steps', 'train_attack_t_reproject', 'train_attack_t_total_opt', 'train_attack_diff_after_proj', 'reg_grad_norms'])
-	"""
 	if debug == True:
 		# IPython.embed()
+		###################################
+		########## Timing debug ###########
+		###################################
 		n_it_so_far = len(data["train_losses"])
 		fig, axs = plt.subplots(3, sharex=True)
-		fig.suptitle('Debug for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps))
-
-		# ax0 = plt.subplot(1)
-		# ax1 = plt.subplot(2, sharex=ax0)
+		fig.suptitle('Timing debug for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps), fontsize=suptitle_size)
 
 		#############################################
 		axs[0].set_title("Timing metrics")
-		axs[0].plot(data["train_attack_t_total_opt"], label="Total time for counterex", linewidth=0.5)
-		axs[0].legend(loc="upper right")
+		axs[0].plot(test_iterations, data["test_t_total"], label="Time to compute test metric", linewidth=0.5)
+		axs[0].legend(loc=(1.04,0))
 
 		#############################################
-		axs[1].set_title("More timing metrics")
+		axs[1].set_title("Attack timing metrics")
+		axs[1].plot(data["train_attack_t_total_opt"], label="Total time for counterex", linewidth=0.5)
 		axs[1].plot(data["train_attack_t_init"], label="Time to init", linewidth=0.5)
 		train_attack_t_grad_steps = data["train_attack_t_grad_steps"]
 		avg_t_grad_steps = [np.mean(x) for x in train_attack_t_grad_steps]
@@ -188,14 +189,52 @@ def graph_losses(exp_name, debug=True):
 		avg_t_reproject = [np.mean(x) for x in train_attack_t_reproject]
 		axs[1].plot(avg_t_reproject, label="Avg time to reproject", linewidth=0.5)
 
-		axs[1].legend(loc="upper right")
+		axs[1].legend(loc=(1.04,0))
 		#############################################
-		axs[2].set_title("Other debug metrics")
-		diff = np.array(data["train_attack_final_best_attack_value"]) - np.array(data["train_attack_init_best_attack_value"])
-		axs[2].plot(diff, label="Counterexample obj increase after opt.", linewidth=0.5)
-		axs[2].plot([0, n_it_so_far], [0, 0], c="red", linewidth=0.5)
+		axs[2].set_title("Attack other metrics")
+		axs[2].plot(data["train_attack_n_segments_sampled"], label="N seg sampled", linewidth=0.5)
+		axs[2].plot(data["train_attack_n_opt_steps"], label="N opt steps", linewidth=0.5)
+		axs[2].legend(loc=(1.04,0))
 
-		axs[2].legend(loc="upper right")
+		fig.tight_layout()
+		plt.xlabel("Iterations") # aka opt. steps
+		plt.savefig("./log/%s/%s_timing_debug.png" % (exp_name, exp_name))
+		plt.clf()
+		plt.cla()
+
+		###################################
+		########## Other debug ###########
+		###################################
+		fig, axs = plt.subplots(4, sharex=True)
+		fig.suptitle('Debug for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps), fontsize=suptitle_size)
+
+		#############################################
+		axs[0].set_title("Attack improvement after opt.")
+		diff = np.array(data["train_attack_final_best_attack_value"]) - np.array(data["train_attack_init_best_attack_value"])
+		axs[0].plot(diff, linewidth=0.5)
+		axs[0].plot([0, n_it_so_far], [0, 0], c="red", linewidth=0.5)
+
+		#############################################
+		axs[1].set_title("Attack constraint improv. after reproj.")
+		dist_after_reproj = [np.mean(x) for x in data["train_attack_dist_diff_after_proj"]]
+		axs[1].plot(dist_after_reproj, linewidth=0.5)
+
+		#############################################
+		axs[2].set_title("CBF gradient magnitudes")
+		axs[2].plot(data["reg_grad_norms"], linewidth=0.5, label="From reg loss")
+		axs[2].plot(data["grad_norms"], linewidth=0.5, label="From combined loss")
+		axs[2].legend(loc=(1.04,0))
+
+		#############################################
+		axs[3].set_title("k0, ci over iterations")
+		k0_list = [x.item() for x in data['k0_list']]
+		ci_list = [x.item() for x in data["ci_list"]]
+		axs[3].plot(k0_list, linewidth=0.5, label="k0")
+		axs[3].plot(ci_list, linewidth=0.5, label="k1")
+		axs[3].legend(loc=(1.04,0))
+
+		#############################################
+		fig.tight_layout()
 
 		plt.xlabel("Iterations") # aka opt. steps
 
@@ -219,7 +258,7 @@ def graph_losses(exp_name, debug=True):
 	# Out[24]: dict_keys(['test_losses', 'test_attack_losses', 'test_reg_losses', 'k0_grad', 'ci_grad', 'train_loop_times', 'train_losses', 'train_attack_losses', 'train_reg_losses', 'grad_norms', 'V_approx_list', 'boundary_samples_obj_values', 'ci_list', 'k0_list', 'train_attacks', 'train_attack_X_init', 'train_attack_X_init_reuse', 'train_attack_X_init_random', 'train_attack_X_final', 'train_attack_X_obj_vals', 'train_attack_X_phi_vals', 'train_attack_init_best_attack_value', 'train_attack_final_best_attack_value', 'train_attack_t_init', 'train_attack_t_grad_steps', 'train_attack_t_reproject', 'train_attack_t_total_opt', 'train_attack_diff_after_proj', 'train_attack_t_sample_boundary', 'train_attack_n_segments_sampled', 'train_attack_dist_diff_after_proj', 'reg_grad_norms'])
 
 	print(np.min(train_attack_losses))
-	IPython.embed()
+	# IPython.embed()
 	# print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (np.min(train_attack_losses), min_attack_ind, approx_v[round(min_attack_ind/float(args.n_checkpoint_step))]))
 	# min_attack_ind_w_checkpoint = np.argmin(np.array(train_attack_losses)[::n_checkpoint_step])*n_checkpoint_step
 	# print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (train_attack_losses[min_attack_ind_w_checkpoint], min_attack_ind_w_checkpoint, approx_v[int(min_attack_ind_w_checkpoint/n_checkpoint_step)]))
@@ -661,7 +700,7 @@ if __name__ == "__main__":
 	# Server 4
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_2", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_0", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_1", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_2", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_3"]
 
-	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_1"]
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_1"]
 
 	# Server 4
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_125_seed_0", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_1", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_2", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_3"]
@@ -672,6 +711,19 @@ if __name__ == "__main__":
 	# server 5
 	# base_exp_names = ["flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_200"]
 
+	##########################################################################################################
+	# From Wednesday, April 13
+	# Server 4
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
+
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again"]
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
+
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again"]
+
+	# Server 5
+	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
+
 	"""checkpoint_numbers = list(np.arange(0, 825, 50)) + [825]
 	exp_names = ["flying_inv_pend_euc_softplus_seed_1"]*len(checkpoint_numbers)
 
@@ -680,7 +732,7 @@ if __name__ == "__main__":
 
 
 	# To visualize slices for a new experiment
-	"""checkpoint_numbers = []
+	checkpoint_numbers = []
 	exp_names = []
 	for base_exp_name in base_exp_names:
 		data = pickle.load(open("./log/%s/data.pkl" % base_exp_name, 'rb'))
@@ -703,7 +755,7 @@ if __name__ == "__main__":
 		#"""
 
 	# To visualize slices for an ongoing experiment (already has slices visualized)
-	checkpoint_numbers = []
+	"""checkpoint_numbers = []
 	exp_names = []
 	for base_exp_name in base_exp_names:
 		# IPython.embed()
