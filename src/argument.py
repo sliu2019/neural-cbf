@@ -69,6 +69,7 @@ def create_parser():
 	parser.add_argument('--train_attacker_n_samples', default=60, type=int)
 	parser.add_argument('--train_attacker_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping'])
 	parser.add_argument('--train_attacker_max_n_steps', default=50, type=int) # TODO: 200?
+	parser.add_argument('--train_attacker_p_reuse', default=0.7, type=float) # TODO: 200?
 	parser.add_argument('--train_attacker_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"')
 	parser.add_argument('--train_attacker_projection_lr', default=1e-2, type=float) # changed from 1e-4 to increase proj speed
 	parser.add_argument('--train_attacker_projection_time_limit', default=3.0, type=float)

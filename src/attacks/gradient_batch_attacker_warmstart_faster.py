@@ -54,14 +54,14 @@ class GradientBatchWarmstartFasterAttacker():
         self.obj_vals_saved = None
 
         # For multiproc
-        try:
-            mp.set_start_method('spawn')
-        except RuntimeError:
-            print("Couldn't set start_method as spawn, in init")
-            IPython.embed()
         self.n_gpu = torch.cuda.device_count()
         if self.boundary_sampling_speedup_method == "gpu_parallelized":
             self.pool = mp.Pool(self.n_gpu) # torch pool
+            try:
+                mp.set_start_method('spawn')
+            except RuntimeError:
+                print("Couldn't set start_method as spawn, in init")
+                IPython.embed()
 
     def __getstate__(self): # can't pickle pool object; creating threads will pickle self
         self_dict = self.__dict__.copy()

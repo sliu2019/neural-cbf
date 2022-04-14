@@ -42,7 +42,7 @@ class Trainer():
 			"V_approx_list": [],
 			"boundary_samples_obj_values": [],
 			"ci_list": [],
-			"k0_list": [].
+			"k0_list": [],
 			"test_t_total": [],
 			"test_t_boundary": []
 		}
@@ -264,7 +264,7 @@ class Trainer():
 
 				# Sample on boundary
 				t0_test_boundary = time.perf_counter()
-				boundary_samples = self.test_attacker._sample_points_on_boundary(phi_fn, self.args.test_N_boundary_samples) # test_attacker now using "faster" version
+				boundary_samples, debug_dict = self.test_attacker._sample_points_on_boundary(phi_fn, self.args.test_N_boundary_samples) # test_attacker now using "faster" version
 				boundary_samples_obj_value = objective_fn(boundary_samples)
 				boundary_samples_obj_value = boundary_samples_obj_value.detach().cpu().numpy()
 				data_dict["boundary_samples_obj_values"].append(boundary_samples_obj_value)
@@ -298,5 +298,6 @@ class Trainer():
 				if _iter > self.args.trainer_n_steps:
 					break
 
+			# IPython.embed()
 			_iter += 1
 

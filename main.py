@@ -433,7 +433,8 @@ def main(args):
 		                                                projection_time_limit=args.train_attacker_projection_time_limit,
 		                                                train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule,
 		                                                boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method, boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
-		                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t)
+		                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
+		                                                p_reuse=args.train_attacker_p_reuse)
 	# elif args.train_attacker == "gradient_batch_warmstart2":
 	# 	attacker = GradientBatchWarmstartAttacker2(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule, proj_tactic=args.gradient_batch_warmstart2_proj_tactic)
 
@@ -450,7 +451,8 @@ def main(args):
 	                                                train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule,
 	                                                boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method,
 	                                                boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
-	                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t)
+	                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
+	                                                p_reuse=args.train_attacker_p_reuse)
 
 	# print("before calling train in main.py")
 	# print("before actually running, remove this")
