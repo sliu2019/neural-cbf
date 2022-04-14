@@ -242,6 +242,19 @@ def graph_losses(exp_name, debug=True):
 		plt.clf()
 		plt.cla()
 
+		#############################################
+		########## Grad mag detailed plot ###########
+		#############################################
+		plt.title("CBF gradient magnitudes")
+		plt.plot(data["reg_grad_norms"], linewidth=0.5, label="From reg loss")
+		plt.plot(data["grad_norms"], linewidth=0.5, label="From combined loss")
+		plt.legend(loc=(1.04,0))
+		plt.xlabel("Iterations") # aka opt. steps
+
+		plt.savefig("./log/%s/%s_grad_norms.png" % (exp_name, exp_name))
+		plt.clf()
+		plt.cla()
+
 	#############################################
 	train_attack_losses = np.array(data["train_attack_losses"])
 	approx_v = np.array(data["V_approx_list"])
@@ -714,7 +727,7 @@ if __name__ == "__main__":
 	##########################################################################################################
 	# From Wednesday, April 13
 	# Server 4
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
+	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
 
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again"]
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
@@ -722,7 +735,7 @@ if __name__ == "__main__":
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again"]
 
 	# Server 5
-	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
 
 	"""checkpoint_numbers = list(np.arange(0, 825, 50)) + [825]
 	exp_names = ["flying_inv_pend_euc_softplus_seed_1"]*len(checkpoint_numbers)
@@ -732,7 +745,7 @@ if __name__ == "__main__":
 
 
 	# To visualize slices for a new experiment
-	checkpoint_numbers = []
+	"""checkpoint_numbers = []
 	exp_names = []
 	for base_exp_name in base_exp_names:
 		data = pickle.load(open("./log/%s/data.pkl" % base_exp_name, 'rb'))
@@ -860,7 +873,7 @@ if __name__ == "__main__":
 
 	# TODO: plot pages of slices over many iterations
 
-	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
+	"""for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 
 			phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 
