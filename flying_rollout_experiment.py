@@ -1,16 +1,15 @@
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
-import os, sys, IPython
+import os, sys
 from cvxopt import solvers
 solvers.options['show_progress'] = False
 import argparse
-import pickle, math
+import pickle
 
 from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 from flying_cbf_controller import CBFController
-from flying_plot_utils import load_phi_and_params, plot_invariant_set_slices
-from rollout_cbf_classes.flying_our_cbf_class import OurCBF
+from flying_plot_utils import load_phi_and_params
+from rollout_cbf_classes.deprecated.flying_our_cbf_class import OurCBF
 import multiprocessing as mp
 
 from decimal import Decimal
@@ -369,7 +368,7 @@ def run_rollout_experiment(args):
 		from main import create_flying_param_dict
 		param_dict = create_flying_param_dict(cbf_train_args) # default
 
-		from rollout_cbf_classes.flying_ssa import SSA
+		from rollout_cbf_classes.deprecated.flying_ssa import SSA
 		cbf_obj = SSA(param_dict)
 
 		# cbf_obj.c1 = args.low_c1

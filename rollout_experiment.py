@@ -9,7 +9,7 @@ import pickle
 
 from rollout_cbf_classes.cma_es_evaluator import CartPoleEvaluator
 from rollout_cbf_classes.our_cbf_class import OurCBF
-from rollout_cbf_classes.normal_ssa_newsi import SSA
+from rollout_cbf_classes.deprecated.normal_ssa_newsi import SSA
 from rollout_envs.cart_pole_env import CartPoleEnv
 from cbf_controller import CBFController
 

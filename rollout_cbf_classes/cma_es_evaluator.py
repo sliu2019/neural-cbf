@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 from rollout_envs.cart_pole_env import CartPoleEnv
 from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 import seaborn as sns
-from .normal_ssa_newsi import SSA
-from .flying_pend_ssa import FlyingPendSSA
+from rollout_cbf_classes.deprecated.normal_ssa_newsi import SSA
+from rollout_cbf_classes.deprecated.flying_pend_ssa import FlyingPendSSA
 # from .normal_ssa import SSA
 
 # TODO: check if phi_fn, phi_grad are correct.
