@@ -271,6 +271,19 @@ def graph_losses(exp_name, debug=True):
 	# Out[24]: dict_keys(['test_losses', 'test_attack_losses', 'test_reg_losses', 'k0_grad', 'ci_grad', 'train_loop_times', 'train_losses', 'train_attack_losses', 'train_reg_losses', 'grad_norms', 'V_approx_list', 'boundary_samples_obj_values', 'ci_list', 'k0_list', 'train_attacks', 'train_attack_X_init', 'train_attack_X_init_reuse', 'train_attack_X_init_random', 'train_attack_X_final', 'train_attack_X_obj_vals', 'train_attack_X_phi_vals', 'train_attack_init_best_attack_value', 'train_attack_final_best_attack_value', 'train_attack_t_init', 'train_attack_t_grad_steps', 'train_attack_t_reproject', 'train_attack_t_total_opt', 'train_attack_diff_after_proj', 'train_attack_t_sample_boundary', 'train_attack_n_segments_sampled', 'train_attack_dist_diff_after_proj', 'reg_grad_norms'])
 
 	print(np.min(train_attack_losses))
+
+	# IPython.embed()
+	# Answers the question: does the sawtoothing help?
+	trunc_v = approx_v[4:]
+	low_loss_ind = np.argwhere(train_attack_losses[100:] < 1.5).flatten()
+
+	# v_diff = trunc_v[1:] - trunc_v[:-1]
+	print("V avg: %.3f" % (np.mean(trunc_v)))
+	# print("V diff: %.3f" % (v_diff[-1] - v_diff[0]))
+	print("First: %.3f, best: %.3f" % (trunc_v[0], np.max(trunc_v)))
+	# mean_diff = np.mean(v_diff)
+
+	# print("average V diff step-to-step: %.3f +/- %.3f" % (mean_diff, np.std(v_diff)))
 	# IPython.embed()
 	# print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (np.min(train_attack_losses), min_attack_ind, approx_v[round(min_attack_ind/float(args.n_checkpoint_step))]))
 	# min_attack_ind_w_checkpoint = np.argmin(np.array(train_attack_losses)[::n_checkpoint_step])*n_checkpoint_step
@@ -727,7 +740,7 @@ if __name__ == "__main__":
 	##########################################################################################################
 	# From Wednesday, April 13
 	# Server 4
-	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
 
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again"]
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
@@ -735,7 +748,9 @@ if __name__ == "__main__":
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again"]
 
 	# Server 5
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
+	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
+
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
 
 	"""checkpoint_numbers = list(np.arange(0, 825, 50)) + [825]
 	exp_names = ["flying_inv_pend_euc_softplus_seed_1"]*len(checkpoint_numbers)

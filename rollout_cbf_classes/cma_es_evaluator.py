@@ -1,8 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from rollout_envs.cart_pole_env import CartPoleEnv
+from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 import seaborn as sns
 from .normal_ssa_newsi import SSA
+from .flying_pend_ssa import FlyingPendSSA
 # from .normal_ssa import SSA
 
 # TODO: check if phi_fn, phi_grad are correct.
@@ -26,6 +28,215 @@ class Evaluator(object):
     def log(self):
         return ""
 
+
+
+class FlyingPendEvaluator(object):
+    def __init__(self):
+
+        self.env = FlyingInvertedPendulumEnv()
+
+        self.coe = np.zeros(4) # parameters; initialization doesn't matter
+        """
+        phi_0 = delta - delta_max
+        phi = (delta - delta_max)^c0 - c1 dot_delta + c2
+        dot_phi < c3 * phi
+        
+        What's in self.coe?
+        0: power
+        1: weight on dot_theta term 
+        2: additive scalar
+        3: weight dotphi < -weight*phi
+        """
+
+        # Sample state space
+        # n_theta = 30 # TODO
+        # n_psi = 30 # TODO
+        # n_dot_theta = 30 # TODO
+        # n_dot_psi = 30 # TODO
+
+        # delta = 0.01
+        # self.thetas = np.arange(-self.env.max_theta, self.env.max_theta, delta)
+        # self.psis = np.arange(-self.env.max_angular_velocity, self.env.max_angular_velocity, delta)
+        
+        # self.thetas = np.linspace(0, np.pi/4, n_theta)
+        # self.psis = np.linspace(0, np.pi/4, n_psi)
+        # m1, m2 = np.meshgrid(self.thetas, self.psis)
+        
+        n_samples = 100000
+        
+        # print("sampling range:", self.env.x_lim[6:10,0])
+        # print("sampling range:", self.env.x_lim[6:10,1])
+        # x_lim_low = self.env.x_lim[6:10,0]
+        # x_lim_high = self.env.x_lim[6:10,1]
+        self.samples = []
+        
+        for i in range(n_samples):
+            # x_sample = np.zeros(16)
+            # x_sample[6:10] = (x_lim_high-x_lim_low) * np.random.random_sample((4,)) + x_lim_low
+            x_sample = (self.env.x_lim[:,1] - self.env.x_lim[:,0]) * np.random.random_sample((len(self.env.x_lim[:,0]),)) + self.env.x_lim[:,0]
+            self.samples.append(x_sample)
+        
+        # Defining some var
+        self.min_u = np.vstack(self.env.u_lim[:,0])
+        self.max_u = np.vstack(self.env.u_lim[:,1])
+        self.dt = self.env.dt
+
+        self.reg_weight = 1 # TODO: need to tune to get possible result
+
+        self.k = 5.0 # TODO: fixed, not learning it. For ease of comparison
+        # self.d_min = 1
+        
+        self.ssa = FlyingPendSSA(FlyingInvertedPendulumEnv())
+        # self.simp_ssa = FlyingPendSimpSSA(FlyingInvertedPendulumEnv())
+        
+    def phi_fn(self, x):
+        return self.ssa.phi_fn(np.hstack(x))
+
+    def phi_grad(self, x):
+        return self.ssa.phi_grad(np.hstack(x))
+
+    def set_params(self, params):
+        """
+        What's in self.coe?
+        0: -dot phi < - c0
+        1: power of delta term
+        2: weight on dot_delta term 
+        3: additive scalar
+        """
+        self.coe = params
+        self.ssa.set_params(params)
+        
+    def most_valid_control(self, grad_phi, x):
+        # dot_x = f + g * u 
+        f = np.vstack(self.env._f(x))
+        g = np.vstack(self.env._g(x))
+        # return min(grad_phi @ f + grad_phi @ g @ self.min_u, grad_phi @ f + grad_phi @ g @ self.max_u)
+
+        min_dot_phi = 1e9
+        # print("verts:")
+        for u in self.env.control_lim_verts:
+            # print("u_vert: ", u, "dot_phi", grad_phi @ f + grad_phi @ g @ u)
+            min_dot_phi = min(min_dot_phi, grad_phi @ f + grad_phi @ g @ u)
+        
+        # u_safe, debug_dict = self.ssa.compute_control(1, x)
+        # print("u_qp: ", u_safe, "dot_phi: ", grad_phi @ f + grad_phi @ g @ u_safe)
+        # exit()
+        return min_dot_phi
+    
+    def near_boundary(self, phis):
+        # print("phis")
+        # print(phis)
+        phi0 = phis[0,0]
+        phi = phis[0,-1]
+        eps = 1e-2
+        # return abs(phi0) < eps or abs(phi) < eps
+        return abs(phi) < eps
+
+    # TODO: deprecated
+    """
+    def find_max_dot_phi(self):
+        in_invariant = 0
+        valid = 0
+        tot_cnt = 0
+        max_dot_phi = -1e9
+        reg = 0
+        
+        sigmoid = lambda x: 1/(1 + np.exp(-x))
+        
+        for sample in self.samples:
+            idx = sample
+            x = np.hstack([0, self.thetas[idx[0]], 0, self.psis[idx[1]]])
+            
+            phis = self.ssa.phi_fn(x)
+            
+            phi = phis[0, -1]
+            # phi = np.max(phis)
+            
+            if self.near_boundary(phis):
+                tot_cnt += 1
+                
+                C = self.ssa.phi_grad(x)
+                # d = -phi/self.dt if phi < 0 else -phi*self.k
+                d = -phi/self.dt if phi < 0 else -phi*self.k
+                most_valid = self.most_valid_control(C, x)
+                max_dot_phi = max(max_dot_phi, most_valid)
+                
+            if phi <= 0:
+                # reg += sigmoid(phi)
+                in_invariant += 1
+        
+        in_invariant_rate = float(in_invariant)/len(self.samples)
+        return max_dot_phi, in_invariant_rate
+        # """
+    
+    def compute_valid_invariant(self):
+        in_invariant = 0
+        in_invariant_valid = 0
+        valid = 0
+        tot_cnt = 0
+        for sample in self.samples:
+            # idx = sample
+            # x = np.hstack([0, self.thetas[idx[0]], 0, self.psis[idx[1]]])
+            x = sample
+            # print("x")
+            # print(x)
+            phis = self.ssa.phi_fn(x)
+            
+            phi = phis[0, -1]
+            # phi = np.max(phis)
+            
+            if self.near_boundary(phis):
+                tot_cnt += 1
+                
+                C = self.ssa.phi_grad(x)
+                # d = -phi/self.dt if phi < 0 else -phi*self.k
+                d = -phi/self.dt if phi < 0 else -1
+                most_valid = self.most_valid_control(C, x) # TODO: Simin, check this function. You made an MG update....
+                weighted_valid = np.exp(0.1 * min(d - most_valid, 0))
+                # most_valid < d => 1,   most_valid > d => 1 - exp(d-valid)
+                # valid += weighted_valid
+                # print(most_valid - d)
+                valid += (most_valid < d)
+
+            if np.max(phis) <= 0:
+                in_invariant += 1
+
+        self.valid = valid
+        valid_rate = valid * 1.0 / max(1,tot_cnt)
+        print("valid / tot_cnt: ", valid, "/", tot_cnt)
+        # valid_rate = valid * 1.0 / len(self.samples)
+        # self.valid = in_invariant_valid
+        # valid_rate = in_invariant_valid * 1.0 / max(1, in_invariant)
+
+        #### Reg term ####
+        in_invariant_rate = float(in_invariant)/len(self.samples)
+        return valid_rate, in_invariant_rate
+        
+    def evaluate(self, params):
+        self.set_params(params)
+        
+        valid_rate, in_invariant_rate = self.compute_valid_invariant()
+        self.valid_rate = valid_rate
+        self.in_invariant_rate = in_invariant_rate
+        rv = valid_rate + self.reg_weight*in_invariant_rate # TODO: Simin, set this weight
+        print("valid rate: ", valid_rate,"in_invariant_rate: ", in_invariant_rate, "params: ", params)
+        return rv
+        
+        # max_dot_phi, in_invariant_rate = self.find_max_dot_phi()
+        # print("=======")
+        # print(params)
+        # print(max_dot_phi, " ", in_invariant_rate)
+        # rv = -max_dot_phi + self.reg_weight*in_invariant_rate
+        # return rv
+    
+    @property
+    def log(self):
+        # return "{} {}".format(str(self.coe), str(self.valid))
+        # return "{} {} {}".format(str(self.coe), str(self.valid))
+        # s = "Params: %s, valid rate: %f, volume rate: %f" % (str(self.coe), self.valid_rate, self.in_invariant_rate)
+        # return s
+        return ""
+
 class CartPoleEvaluator(object):
     def __init__(self):
 
@@ -42,14 +253,11 @@ class CartPoleEvaluator(object):
 
         # Sample state space
         n_theta = 400 # TODO
-        n_ang = 800 # TODO
+        n_psi = 800 # TODO
 
-        # delta = 0.01
-        # self.thetas = np.arange(-self.env.max_theta, self.env.max_theta, delta)
-        # self.ang_vels = np.arange(-self.env.max_angular_velocity, self.env.max_angular_velocity, delta)
 
         self.thetas = np.linspace(0, self.env.max_theta, n_theta)
-        self.ang_vels = np.linspace(-self.env.max_angular_velocity, self.env.max_angular_velocity, n_ang)
+        self.ang_vels = np.linspace(-self.env.max_angular_velocity, self.env.max_angular_velocity, n_psi)
         m1, m2 = np.meshgrid(self.thetas, self.ang_vels)
 
         self.samples = []

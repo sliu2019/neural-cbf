@@ -115,7 +115,7 @@ class CMAESLearning(object):
         print(mu)
         print("Final reward:")
         print(self.evaluate(mu, log=False))
-        self.evaluator.visualize(mu)
+        # self.evaluator.visualize(mu)
 
         # Note: add save
         # save_fpth = "./cma_es_results/%s" %
@@ -133,7 +133,7 @@ def run_cmaes(config_path):
             # print(config)
             config["evaluator"] = eval("evaluators."+config["evaluator"]+"()")
             learner = CMAESLearning(config)
-            mu = learner.learn()
+            mu = learner.learn() # TODO: key line
             return mu
         except yaml.YAMLError as exc:
             print(exc)

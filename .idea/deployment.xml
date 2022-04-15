@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="On explicit save action" serverName="nsh1609_server5" exclude=".svn;.cvs;.idea;.DS_Store;.git;.hg;*.hprof;*.pyc;.png;log/*;checkpoint/*" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true" showAutoUploadSettingsWarning="false">
+  <component name="PublishConfigData" autoUpload="On explicit save action" serverName="nsh1609_server5" exclude=".svn;.cvs;.idea;.DS_Store;.git;.hg;*.hprof;*.pyc;.png;log/*" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true" showAutoUploadSettingsWarning="false">
     <serverData>
       <paths name="nsh1609_server2">
         <serverdata>
@@ -14,6 +14,9 @@
           <mappings>
             <mapping deploy="/research/cbf_synthesis" local="$PROJECT_DIR$" web="/" />
           </mappings>
+          <excludedPaths>
+            <excludedPath path="/research/cbf_synthesis/checkpoint" />
+          </excludedPaths>
         </serverdata>
       </paths>
       <paths name="nsh1609_server5">
@@ -21,6 +24,9 @@
           <mappings>
             <mapping deploy="/research/cbf_synthesis" local="$PROJECT_DIR$" web="/" />
           </mappings>
+          <excludedPaths>
+            <excludedPath path="/research/cbf_synthesis/checkpoint" />
+          </excludedPaths>
         </serverdata>
       </paths>
     </serverData>
