@@ -13,6 +13,10 @@ import pickle
 
 class OurCBF:
     def __init__(self, exp_name, checkpoint_number):
+        print("Warn: 4/18. If you are reading this, you should refactor this code. Use the generic phi_numpy_wrapper.py instead")
+        IPython.embed()
+        raise NotImplementedError
+
         super().__init__()
         variables = locals()  # dict of local names
         self.__dict__.update(variables)  # __dict__ holds and object's attributes

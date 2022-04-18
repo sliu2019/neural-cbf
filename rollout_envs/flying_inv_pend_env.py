@@ -166,6 +166,7 @@ class FlyingInvertedPendulumEnv():
         delta = np.arccos(cos_cos + signed_eps)
         rv = delta**2 + gamma**2 + beta**2 - self.delta_safety_limit**2
         return rv
+
     def init_visualization(self, save_anim=False):
         self.save_anim = save_anim
         plt.close("all")

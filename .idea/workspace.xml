@@ -2,16 +2,14 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/rollout_cbf_classes/cmaes_fly_config.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/flying_rollout_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/flying_rollout_experiment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/cma_es.py" beforeDir="false" afterPath="$PROJECT_DIR$/baseline_run_cmaes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/cma_es_evaluator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/flying_our_cbf_class.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/deprecated/flying_our_cbf_class.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/flying_pend_ssa.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/deprecated/flying_pend_ssa.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/flying_ssa.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/deprecated/flying_ssa.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/normal_ssa.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/deprecated/normal_ssa.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/normal_ssa_newsi.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/deprecated/normal_ssa_newsi.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rollout_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_experiment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scratch.py" beforeDir="false" afterPath="$PROJECT_DIR$/scratch.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/our_cbf_class.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/our_cbf_class.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/phi_low_torch_module.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/phi_low_torch_module.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/phi_numpy_wrapper.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/phi_numpy_wrapper.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rollout_envs/flying_inv_pend_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_envs/flying_inv_pend_env.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -65,11 +63,11 @@
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/rollout_cbf_classes" />
       <recent name="$PROJECT_DIR$/rollout_cbf_classes/deprecated" />
       <recent name="$PROJECT_DIR$/src/reg_samplers" />
       <recent name="$PROJECT_DIR$/rollout_envs" />
-      <recent name="$PROJECT_DIR$/rollout_cbf_classes" />
-      <recent name="$PROJECT_DIR$" />
     </key>
   </component>
   <component name="ServiceViewManager">
@@ -128,7 +126,7 @@
       <workItem from="1646408822533" duration="52555000" />
       <workItem from="1647269070247" duration="31674000" />
       <workItem from="1647621479083" duration="217415000" />
-      <workItem from="1650038657012" duration="10461000" />
+      <workItem from="1650038657012" duration="25140000" />
     </task>
     <servers />
   </component>

@@ -9,28 +9,28 @@ from torch.autograd import grad
 # TODO: because it is set as CPU elsewhere?
 
 class PhiNumpy:
-    def __init__(self, phi_torch_class, param_dict):
+    def __init__(self, torch_phi_fn):
         print("inside init of PhiNumpy")
         print("don't [pass torch_phi_fn as first argument! Pass the whole torch class instantiation")
         IPython.embed()
         # self.torch_phi_fn = torch_phi_fn
-        self.phi_torch_class = phi_torch_class
-        self.param_dict = param_dict
-        self.__dict__.update(self.param_dict)
-        self.state_index_list = list(self.state_index_dict.keys())
+        self.torch_phi_fn = torch_phi_fn
+        # self.param_dict = param_dict
+        # self.__dict__.update(self.param_dict)
+        # self.state_index_list = list(self.state_index_dict.keys())
 
     def set_params(self, state_dict):
         print("inside set_params of PhiNumpy")
         print("don't pass params as a list, pass it as a state dict")
         IPython.embed()
 
-        self.phi_torch_class.load_state_dict(state_dict, strict=False)
+        self.torch_phi_fn.load_state_dict(state_dict, strict=False)
 
     def _convert_angle_to_negpi_pi_interval(self, angle):
         new_angle = np.arctan2(np.sin(angle), np.cos(angle))
         return new_angle
     
-    def _x_numpy_to_x_torch(self, x_numpy):
+    def _x_numpy_to_x_torch(self, x):
         # Slice off translational states
         x = np.reshape(x, (-1, 16))
         x = x[:, :10]

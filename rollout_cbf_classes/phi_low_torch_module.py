@@ -41,7 +41,7 @@ class PhiLow(nn.Module):
 		self.state_index_dict = self.param_dict["state_index_dict"]
 
 		# Initialize params
-		# TODO: do I need to pad any away from 0 here?
+		# Q: do I need to pad any away from 0 here? No, you can just specify the lower bound within CMA-ES
 		self.ci = nn.Parameter(torch.rand(2, 1)) # reshaping parameters
 		self.ki = nn.Parameter(torch.rand(r-1, 1)) # coeffs for higher order terms
 

@@ -1,0 +1,131 @@
+import numpy as np
+# import matplotlib.pyplot as plt
+# from rollout_envs.cart_pole_env import CartPoleEnv
+from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
+# import seaborn as sns
+# from rollout_cbf_classes.deprecated.normal_ssa_newsi import SSA
+# from rollout_cbf_classes.deprecated.flying_pend_ssa import FlyingPendSSA
+# from .normal_ssa import SSA
+from rollout_cbf_classes.phi_low_torch_module import PhiLow
+from rollout_cbf_classes.phi_numpy_wrapper import PhiNumpy
+# from src.problems.flying_inv_pend import HSum, XDot # TODO: how to import this correctly?
+from main import create_flying_param_dict
+from src.argument import create_parser
+import torch
+import IPython
+
+class FlyingPendEvaluator(object):
+	def __init__(self):
+		print("in evaluator init")
+		IPython.embed()
+
+		self.env = FlyingInvertedPendulumEnv()
+
+		# self.coe = np.zeros(4) # TODO: what is COE used for?
+
+		n_samples = 100000
+
+		self.samples = []
+		for i in range(n_samples):
+			x_sample = (self.env.x_lim[:, 1] - self.env.x_lim[:, 0]) * np.random.random_sample(
+				(len(self.env.x_lim[:, 0]),)) + self.env.x_lim[:, 0]
+			self.samples.append(x_sample)
+
+		# Defining some var
+		self.min_u = np.vstack(self.env.u_lim[:, 0])
+		self.max_u = np.vstack(self.env.u_lim[:, 1])
+		self.dt = self.env.dt
+
+		self.reg_weight = 1  # TODO: need to tune to get best possible result
+
+		# self.k = 5.0  # TODO: fixed, not learning it. For ease of comparison
+		# self.d_min = 1
+
+		# self.ssa = FlyingPendSSA(FlyingInvertedPendulumEnv())
+		parser = create_parser()
+		args = parser.parse_args()
+		param_dict = create_flying_param_dict(args)
+
+		r = param_dict["r"]
+		x_dim = param_dict["x_dim"]
+		u_dim = param_dict["u_dim"]
+		x_lim = param_dict["x_lim"]
+		device = torch.device("cpu")
+		xdot_fn = XDot(param_dict, device)
+		self.ssa_torch_module = PhiLow(HSum, XDot, r, x_dim, u_dim, device, args, param_dict)
+		self.ssa = PhiNumpy(self.ssa_torch_module)
+
+	def set_params(self, params):
+		# self.coe = params
+		state_dict = {"ki": [params[2]], "ci": [params[0], params[1]]}
+		self.ssa.set_params(state_dict)
+
+	def most_valid_control(self, grad_phi, x):
+		f = np.vstack(self.env._f(x))
+		g = np.vstack(self.env._g(x))
+
+		min_dot_phi = float("inf")
+		for u in self.env.control_lim_verts:
+			min_dot_phi = min(min_dot_phi, grad_phi @ f + grad_phi @ g @ u)
+
+		return min_dot_phi
+
+	def near_boundary(self, phis):
+		# Technically, the only boundary we care about has phi[-1] = 0 and phi_i <= 0
+		phi = phis[0, -1]
+		eps = 1e-2
+		return abs(phi) < eps
+
+	def compute_valid_invariant(self):
+		print("in compute_valid_invariant")
+		IPython.embed()
+
+		in_invariant = 0
+		valid = 0
+		tot_cnt = 0
+
+		for sample in self.samples: # Note: set of samples is fixed across CMA-ES opt.
+			x = sample
+			phis = self.ssa.phi_fn(x)
+			phi = phis[0, -1]
+
+			if self.near_boundary(phis):
+				tot_cnt += 1
+
+				C = self.ssa.phi_grad(x)
+				d = -phi / self.dt if phi < 0 else -1 # TODO: objective differs. Aims for dot(phi) <= -alpha(phi(x))
+				most_valid = self.most_valid_control(C, x)
+				# weighted_valid = np.exp(0.1 * min(d - most_valid, 0))
+				# most_valid < d => 1,   most_valid > d => 1 - exp(d-valid)
+				# valid += weighted_valid
+				# print(most_valid - d)
+				valid += (most_valid < d)
+
+			if np.max(phis) <= 0:
+				in_invariant += 1
+
+		self.valid = valid # TODO: ? for logging?
+		valid_rate = float(valid) / max(1, tot_cnt)
+		print("valid / tot_cnt: ", valid, "/", tot_cnt) # TODO: print, not log?
+
+		#### Reg term ####
+		in_invariant_rate = float(in_invariant) / len(self.samples)
+		return valid_rate, in_invariant_rate
+
+	def evaluate(self, params):
+		self.set_params(params)
+
+		valid_rate, in_invariant_rate = self.compute_valid_invariant()
+		self.valid_rate = valid_rate
+		self.in_invariant_rate = in_invariant_rate
+		rv = valid_rate + self.reg_weight * in_invariant_rate
+		print("valid rate: ", valid_rate, "in_invariant_rate: ", in_invariant_rate, "params: ", params) # TODO: why printed and not logged?
+		return rv
+
+	@property
+	def log(self):
+		# return "{} {}".format(str(self.coe), str(self.valid))
+		# return "{} {} {}".format(str(self.coe), str(self.valid))
+		# s = "Params: %s, valid rate: %f, volume rate: %f" % (str(self.coe), self.valid_rate, self.in_invariant_rate)
+		# return s
+		return ""
