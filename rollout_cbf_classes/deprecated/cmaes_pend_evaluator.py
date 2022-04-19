@@ -7,7 +7,6 @@ from rollout_cbf_classes.deprecated.normal_ssa_newsi import SSA
 from rollout_cbf_classes.deprecated.flying_pend_ssa import FlyingPendSSA
 # from .normal_ssa import SSA
 
-
 class CartPoleEvaluator(object):
 	def __init__(self):
 

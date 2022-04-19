@@ -1,15 +1,13 @@
 import numpy as np
-import time
-import subprocess
-import os, sys
-from datetime import datetime
+import os
 # import yaml
 import pickle, IPython
-
-from src.cmas_argument import create_parser
+from cmaes.cmas_argument import create_parser
 from cmaes_objective_flying_pend import FlyingPendEvaluator
+
 # evaluators_dict = {"CartPoleEvaluator": CartPoleEvaluator, "FlyingPendEvaluator": FlyingPendEvaluator}
 evaluators_dict = {"FlyingPendEvaluator": FlyingPendEvaluator}
+
 
 class CMAESLearning(object):
 	def __init__(self, CMAES_args):
@@ -20,7 +18,7 @@ class CMAESLearning(object):
 		self.cmaes_args = CMAES_args
 
 		# Logging
-		self.log_fldrpth = "flying_pend_" + CMAES_args["exp_name"] # Hard-coded the prefix
+		self.log_fldrpth = os.path.join("cmaes", "flying_pend_" + CMAES_args["exp_name"])  # Hard-coded the prefix
 		if not os.path.exists(self.log_fldrpth):
 			os.makedirs(self.log_fldrpth)
 		print("Saving data at: %s" % self.log_fldrpth)
@@ -40,13 +38,13 @@ class CMAESLearning(object):
 		================================================================================
 		Regulate params by upper bound and lower bound. And convert params to integer if required by the user.
 		"""
-		params = np.maximum(params, self.cmaes_args["lower_bound"]) # lower bound
-		params = np.minimum(params, self.cmaes_args["upper_bound"]) # upper bound
+		params = np.maximum(params, self.cmaes_args["lower_bound"])  # lower bound
+		params = np.minimum(params, self.cmaes_args["upper_bound"])  # upper bound
 		if "param_is_int" in self.cmaes_args:
 			for i in range(params.shape[1]):
 				if self.cmaes_args["param_is_int"][i]:
-					params[:,[i]] = np.vstack([int(round(x)) for x in params[:,i]])
-			# params = [ int(params[i]) if self.cmaes_args["param_is_int"][i] else params[i] ]
+					params[:, [i]] = np.vstack([int(round(x)) for x in params[:, i]])
+		# params = [ int(params[i]) if self.cmaes_args["param_is_int"][i] else params[i] ]
 		return params
 
 	def populate(self, mu, sigma):
@@ -64,16 +62,19 @@ class CMAESLearning(object):
 		return the average total reward over multiple repeats.
 		"""
 
-		rewards = []
-		repeat_times = 1  # test multiple times to reduce randomness
-		for i in range(repeat_times):
-			reward = self.evaluator.evaluate(mu)
-			rewards.append(reward)
+		# reward - parameter relationship is not stochastic, so we don't need to evaluate it multiple times
+		# rewards = []
+		# repeat_times = 1  # test multiple times to reduce randomness
+		# for i in range(repeat_times):
+		# 	reward = self.evaluator.evaluate(mu)
+		# 	rewards.append(reward)
+		#
+		# print('Rewards: {}'.format(rewards))
+		#
+		# reward = np.mean(rewards)
 
-		print('Rewards: {}'.format(rewards))
-
-		reward = np.mean(rewards)
-		return reward
+		reward, debug_dict = self.evaluator.evaluate(mu)
+		return reward, debug_dict
 
 	def step(self, mu, sigma):
 		"""
@@ -83,7 +84,18 @@ class CMAESLearning(object):
 		and updateing the weights of the policy networks.
 		"""
 		self.populate(mu, sigma)
-		rewards = np.array(list(map(self.evaluate, self.population)))
+		# rewards = np.array(list(map(self.evaluate, self.population)))
+		# Refactored, since self.evaluate returns a tuple now
+		rewards = []
+		all_debug_dicts = None
+		for pop_member in self.population:
+			reward, debug_dict = self.evaluate(pop_member)
+			rewards.append(reward)
+			if all_debug_dicts is None:
+				all_debug_dicts = {k: list(v) for k, v in debug_dict.items()}
+			else:
+				for k, v in all_debug_dicts.items():
+					all_debug_dicts[k].append(debug_dict[k])
 		indexes = np.argsort(-rewards)
 		"""
 		===============================================================================
@@ -104,6 +116,11 @@ class CMAESLearning(object):
 		print("ln 112, logging")
 		print("Check that data dict is being created properly (new data is scalar or list)")
 		IPython.embed()
+		for k, v in all_debug_dicts.items():
+			if k not in self.data:
+				self.data[k] = []
+			self.data[k].append(v)
+
 		self.data["pop"].append(self.population)
 		self.data["rewards"].append(self.rewards)
 		self.data["mu"].append(mu)
@@ -118,8 +135,8 @@ class CMAESLearning(object):
 		# IPython.embed()
 		mu = self.cmaes_args["init_params"]
 		bound_range = np.array(self.cmaes_args["upper_bound"]) - np.array(self.cmaes_args["lower_bound"])
-		sigma = np.diag((self.cmaes_args["init_sigma_ratio"] * bound_range)**2)
-		self.noise = np.diag((self.cmaes_args["noise_ratio"] * bound_range)**2)
+		sigma = np.diag((self.cmaes_args["init_sigma_ratio"] * bound_range) ** 2)
+		self.noise = np.diag((self.cmaes_args["noise_ratio"] * bound_range) ** 2)
 
 		for i in range(self.cmaes_args["epoch"]):
 			mu, sigma = self.step(mu, sigma)
@@ -128,7 +145,7 @@ class CMAESLearning(object):
 		print("Final best param:")
 		print(mu)
 		print("Final reward:")
-		print(self.evaluate(mu))
+		print(self.evaluate(mu)[0])
 		# self.evaluator.visualize(mu) # TODO: what happened to this function? No longer exists
 
 		return mu
@@ -138,8 +155,7 @@ if __name__ == "__main__":
 	parser = create_parser()
 	args = parser.parse_args()
 	arg_dict = vars(args)
-	arg_dict["evaluator"] = evaluators_dict[arg_dict["evaluator"]]() # pass a class instance
+	arg_dict["evaluator"] = evaluators_dict[arg_dict["evaluator"]](arg_dict)  # pass a class instance
 
 	learner = CMAESLearning(arg_dict)
 	mu = learner.learn()
-

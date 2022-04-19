@@ -6,16 +6,18 @@ from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 # from rollout_cbf_classes.deprecated.normal_ssa_newsi import SSA
 # from rollout_cbf_classes.deprecated.flying_pend_ssa import FlyingPendSSA
 # from .normal_ssa import SSA
-from rollout_cbf_classes.phi_low_torch_module import PhiLow
-from rollout_cbf_classes.phi_numpy_wrapper import PhiNumpy
+from phi_low_torch_module import PhiLow
+from phi_numpy_wrapper import PhiNumpy
+from cmaes.utils import load_philow
 # from src.problems.flying_inv_pend import HSum, XDot # TODO: how to import this correctly?
-from main import create_flying_param_dict
-from src.argument import create_parser
+# from main import create_flying_param_dict
+# from src.argument import create_parser
 import torch
 import IPython
 
 class FlyingPendEvaluator(object):
-	def __init__(self):
+	def __init__(self, arg_dict):
+		self.arg_dict = arg_dict
 		print("in evaluator init")
 		IPython.embed()
 
@@ -36,23 +38,12 @@ class FlyingPendEvaluator(object):
 		self.max_u = np.vstack(self.env.u_lim[:, 1])
 		self.dt = self.env.dt
 
-		self.reg_weight = 1  # TODO: need to tune to get best possible result
-
+		# self.reg_weight = 1  # TODO: need to tune to get best possible result
+		self.reg_weight = arg_dict["FlyingPendEvaluator_reg_weight"]
 		# self.k = 5.0  # TODO: fixed, not learning it. For ease of comparison
 		# self.d_min = 1
 
-		# self.ssa = FlyingPendSSA(FlyingInvertedPendulumEnv())
-		parser = create_parser()
-		args = parser.parse_args()
-		param_dict = create_flying_param_dict(args)
-
-		r = param_dict["r"]
-		x_dim = param_dict["x_dim"]
-		u_dim = param_dict["u_dim"]
-		x_lim = param_dict["x_lim"]
-		device = torch.device("cpu")
-		xdot_fn = XDot(param_dict, device)
-		self.ssa_torch_module = PhiLow(HSum, XDot, r, x_dim, u_dim, device, args, param_dict)
+		self.ssa_torch_module = load_philow() # load clean phi_low, not from checkpoint
 		self.ssa = PhiNumpy(self.ssa_torch_module)
 
 	def set_params(self, params):
@@ -120,7 +111,8 @@ class FlyingPendEvaluator(object):
 		self.in_invariant_rate = in_invariant_rate
 		rv = valid_rate + self.reg_weight * in_invariant_rate
 		print("valid rate: ", valid_rate, "in_invariant_rate: ", in_invariant_rate, "params: ", params) # TODO: why printed and not logged?
-		return rv
+		debug_dict = {"obj:valid_rate": valid_rate, "obj:in_invariant_rate": in_invariant_rate}
+		return rv, debug_dict
 
 	# @property
 	# def log(self):
