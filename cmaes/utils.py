@@ -1,5 +1,6 @@
 import os
 
+import IPython
 import matplotlib.pyplot as plt
 import math
 from dotmap import DotMap
@@ -33,6 +34,7 @@ def load_philow(phi_load_fpth=None):
 	parser = create_parser() # default
 	args = parser.parse_args()
 
+	# IPython.embed()
 	from main import create_flying_param_dict
 	param_dict = create_flying_param_dict(args) # default
 
@@ -76,7 +78,7 @@ def load_philow(phi_load_fpth=None):
 
 	# Create CBF, etc.
 	# phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
-	phi_fn = PhiLow(h_fn, xdot_fn, r, x_dim, u_dim, device, args, param_dict)
+	phi_fn = PhiLow(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
 	# objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
 	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight)
 
@@ -94,8 +96,8 @@ def load_philow(phi_load_fpth=None):
 	# 	load_model(phi_fn, phi_load_fpth)
 	# print("Phi param after load:")
 	# print("k0, ci: ", phi_fn.k0, phi_fn.ci)
-
-	load_model(phi_fn, phi_load_fpth)
+	if phi_load_fpth:
+		load_model(phi_fn, phi_load_fpth)
 
 	# for name, param_info in phi_fn.named_parameters():
 	# 	print(name)

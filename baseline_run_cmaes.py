@@ -27,11 +27,10 @@ class CMAESLearning(object):
 			pickle.dump(CMAES_args, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 		self.data_dict = {"pop": [], "rewards": [], "mu": [], "sigma": []}
-
 		self.evaluator = self.cmaes_args["evaluator"]
 
-		print("in init")
-		IPython.embed()
+		# print("in init")
+		# IPython.embed()
 
 	def regulate_params(self, params):
 		"""

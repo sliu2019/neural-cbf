@@ -18,8 +18,8 @@ import IPython
 class FlyingPendEvaluator(object):
 	def __init__(self, arg_dict):
 		self.arg_dict = arg_dict
-		print("in evaluator init")
-		IPython.embed()
+		# print("in evaluator init")
+		# IPython.embed()
 
 		self.env = FlyingInvertedPendulumEnv()
 
@@ -34,8 +34,8 @@ class FlyingPendEvaluator(object):
 			self.samples.append(x_sample)
 
 		# Defining some var
-		self.min_u = np.vstack(self.env.u_lim[:, 0])
-		self.max_u = np.vstack(self.env.u_lim[:, 1])
+		# self.min_u = np.vstack(self.env.u_lim[:, 0])
+		# self.max_u = np.vstack(self.env.u_lim[:, 1])
 		self.dt = self.env.dt
 
 		# self.reg_weight = 1  # TODO: need to tune to get best possible result
@@ -48,7 +48,7 @@ class FlyingPendEvaluator(object):
 
 	def set_params(self, params):
 		# self.coe = params
-		state_dict = {"ki": [params[2]], "ci": [params[0], params[1]]}
+		state_dict = {"ki": torch.tensor([[params[2]]]), "ci": torch.tensor([[params[0]], [params[1]]])}
 		self.ssa.set_params(state_dict)
 
 	def most_valid_control(self, grad_phi, x):

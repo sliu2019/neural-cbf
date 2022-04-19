@@ -13,30 +13,18 @@ This can be wrapped with a numpy class
 It can also be used within our training algorithm  
 """
 
-# Noe: class is agnostic to r value, but assume it's r = 2
+# Noe: we're assuming r = 2 here
 # Note: in our reshaping, we'll also assume the form of h (although the original class is agnostic to h)
 class PhiLow(nn.Module):
-	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, param_dict):
-		"""
-		:param h_fn:
-		:param xdot_fn:
-		:param r:
-		:param x_dim:
-		:param u_dim:
-		:param device:
-		:param args:
-		:param nn_input_modifier:
-		:param x_e:
-		"""
+	def __init__(self, h_fn, xdot_fn, x_dim, u_dim, device, param_dict):
+
 		# Later: args specifying how beta is parametrized
 		super().__init__()
 		variables = locals()  # dict of local names
 		self.__dict__.update(variables)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
-		assert r >= 0
 
-		# turn Namespace into dict
-		args_dict = vars(args)
+		self.r = 2
 		self.delta_max = param_dict['delta_safety_limit']
 		self.state_index_dict = self.param_dict["state_index_dict"]
 
@@ -95,7 +83,3 @@ class PhiLow(nn.Module):
 		result = torch.cat((result, phi_r_minus_1_star), dim=1)
 
 		return result
-
-
-if __name__ == "__main__":
-	pass

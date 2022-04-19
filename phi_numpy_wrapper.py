@@ -5,25 +5,12 @@ import torch
 import math
 from torch.autograd import grad
 
-# TODO: how come we don't have to involve device = gpu?
-# TODO: because it is set as CPU elsewhere?
-
 class PhiNumpy:
     def __init__(self, torch_phi_fn):
-        print("inside init of PhiNumpy")
-        print("don't [pass torch_phi_fn as first argument! Pass the whole torch class instantiation")
-        IPython.embed()
-        # self.torch_phi_fn = torch_phi_fn
         self.torch_phi_fn = torch_phi_fn
-        # self.param_dict = param_dict
-        # self.__dict__.update(self.param_dict)
-        # self.state_index_list = list(self.state_index_dict.keys())
 
     def set_params(self, state_dict):
-        print("inside set_params of PhiNumpy")
-        print("don't pass params as a list, pass it as a state dict")
-        IPython.embed()
-
+        # TODO: probably should have some checks on this
         self.torch_phi_fn.load_state_dict(state_dict, strict=False)
 
     def _convert_angle_to_negpi_pi_interval(self, angle):
@@ -31,8 +18,9 @@ class PhiNumpy:
         return new_angle
     
     def _x_numpy_to_x_torch(self, x):
-        # Slice off translational states
-        x = np.reshape(x, (-1, 16))
+        # Slice off translational states, if they are present
+        if len(x.shape) == 1:
+            x = np.reshape(x, (1, -1))
         x = x[:, :10]
 
         # Wrap-around on cyclical angles
@@ -41,17 +29,8 @@ class PhiNumpy:
             x[:, i] = self._convert_angle_to_negpi_pi_interval(x[:, i])
 
         x_torch = torch.from_numpy(x.astype("float32"))
-
-        # Warn if x outside of state box of phi
-        # TODO: is this actually being used or is it redundant?
-        """if bs == 1: # NOTE: ONLY PRINTS WHEN RUNNING 1 ROLLOUT AT A TIME
-            outside_box = np.logical_or(x < self.x_lim[:, 0], x > self.x_lim[:, 1]).flatten()
-            if np.any(outside_box):
-                print("WARNING: phi_fn( . ) evaluating phi at x outside of state box")
-                ind_outside_box = np.argwhere(outside_box).flatten()
-                for ind in ind_outside_box:
-                    print(self.state_index_list[ind], x[0, ind])
-                # print("States: " + ", ".join(state_vars_outside_box))"""
+        # Q: how come we don't have to involve device = gpu?
+        # A: because it is set as CPU elsewhere? Yes
 
         return x_torch
 

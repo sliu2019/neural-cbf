@@ -5,14 +5,18 @@ import sys, os
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as Axes3D
 
-g = 9.81
+
 class FlyingInvertedPendulumEnv():
     def __init__(self, param_dict=None):
         if param_dict is None:
             # Form a default param dict
             sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from src.argument import create_parser
             from main import create_flying_param_dict
-            self.param_dict = create_flying_param_dict() # default
+
+            parser = create_parser()  # default
+            args = parser.parse_args()
+            self.param_dict = create_flying_param_dict(args) # default
         else:
             self.param_dict = param_dict
 
@@ -23,10 +27,10 @@ class FlyingInvertedPendulumEnv():
         self.i = state_index_dict
         self.dt = 0.00005 # same as cartpole
         # self.dt = 1e-6
-
+        self.g = 9.81
         # IPython.embed()
 
-        self.init_visualization()
+        # self.init_visualization() # TODO: simplifying out viz, for now
 
         self.control_lim_verts = self.compute_control_lim_vertices()
         
@@ -149,120 +153,120 @@ class FlyingInvertedPendulumEnv():
         rv = f + g@u
         return rv
 
-    def h(self, x):
-        """
-        :param x: (bs, 16)
-        :return: (bs, 1)
-        """
-        theta = x[:, [self.i["theta"]]]
-        phi = x[:, [self.i["phi"]]]
-        gamma = x[:, [self.i["gamma"]]]
-        beta = x[:, [self.i["beta"]]]
-
-        cos_cos = np.cos(theta)*np.cos(phi)
-        eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
-        # with np.no_grad():
-        signed_eps = -np.sign(cos_cos)*eps
-        delta = np.arccos(cos_cos + signed_eps)
-        rv = delta**2 + gamma**2 + beta**2 - self.delta_safety_limit**2
-        return rv
-
-    def init_visualization(self, save_anim=False):
-        self.save_anim = save_anim
-        plt.close("all")
-        self.fig = plt.figure()
-        # self.ax = Axes3D.Axes3D(self.fig)
-        self.ax = self.fig.add_subplot(projection='3d')
-        
-        plt.subplots_adjust(left=0.1, right=0.5)
-        
-        self.ax.set_xlim3d([-5.0, 5.0])
-        self.ax.set_xlabel('X')
-        self.ax.set_ylim3d([-5.0, 5.0])
-        self.ax.set_ylabel('Y')
-        self.ax.set_zlim3d([-5.0, 5.0])
-        self.ax.set_zlabel('Z')
-        self.ax.set_title('Quadcopter Simulation')
-
-        self.quad = {}
-        self.quad['l1'], = self.ax.plot([],[],[],color='blue',linewidth=3,antialiased=False)
-        self.quad['l2'], = self.ax.plot([],[],[],color='red',linewidth=3,antialiased=False)
-        self.quad['hub'], = self.ax.plot([],[],[],marker='o',color='green', markersize=6,antialiased=False)
-        self.quad['pend'], = self.ax.plot([],[],[],color='orange',linewidth=3,antialiased=False)
-
-        self.time_display = self.ax.text2D(0., 0.9, "red" ,color='red', transform=self.ax.transAxes)
-        self.state_display = self.ax.text2D(0.8, 0.9, "green" ,color='green', transform=self.ax.transAxes)
-
-        self.time_elapsed = 0
-        
-        self.info_terms = {}
-        
-
-    def step(self, x, u):
-        self.time_elapsed += self.dt
-        x_dot = self.x_dot_open_loop(x, u)
-        nx = x + x_dot * self.dt
-        return nx
-
-    def rotation_matrix(self, gamma, beta, alpha):
-        #roll-pitch-yaw
-        R = np.zeros((3, 3))
-        R[0, 0] = np.cos(alpha)*np.cos(beta)
-        R[0, 1] = np.cos(alpha)*np.sin(beta)*np.sin(gamma) - np.sin(alpha)*np.cos(gamma)
-        R[0, 2] = np.cos(alpha)*np.sin(beta)*np.cos(gamma) + np.sin(alpha)*np.sin(gamma)
-        R[1, 0] = np.sin(alpha)*np.cos(beta)
-        R[1, 1] = np.sin(alpha)*np.sin(beta)*np.sin(gamma) + np.cos(alpha)*np.cos(gamma)
-        R[1, 2] = np.sin(alpha)*np.sin(beta)*np.cos(gamma) - np.cos(alpha)*np.sin(gamma)
-        R[2, 0] = -np.sin(beta)
-        R[2, 1] = np.cos(beta)*np.sin(gamma)
-        R[2, 2] = np.cos(beta)*np.cos(gamma)
-        return R
-
-    def update_visualization(self, x, info=None):
-        
-        self.ax.set_xlim3d([x[self.i["x"]]-5.0, x[self.i["x"]]+5.0])
-        self.ax.set_ylim3d([x[self.i["y"]]-5.0, x[self.i["y"]]+5.0])
-        self.ax.set_zlim3d([x[self.i["z"]]-5.0, x[self.i["z"]]+5.0])
-        
-        R = self.rotation_matrix(x[self.i["gamma"]], x[self.i["beta"]], x[self.i["alpha"]])
-        L = self.l
-        points = np.array([ [-L,0,0], [L,0,0], [0,-L,0], [0,L,0], [0,0,0], [0,0,0]]).T
-        points = np.dot(R,points)
-        points[0,:] += x[self.i["x"]]
-        points[1,:] += x[self.i["y"]]
-        points[2,:] += x[self.i["z"]]
-        self.quad['l1'].set_data(points[0,0:2],points[1,0:2])
-        self.quad['l1'].set_3d_properties(points[2,0:2])
-        self.quad['l2'].set_data(points[0,2:4],points[1,2:4])
-        self.quad['l2'].set_3d_properties(points[2,2:4])
-        self.quad['hub'].set_data(points[0,4:6],points[1,4:6])
-        self.quad['hub'].set_3d_properties(points[2,4:6])
-        
-        # print(x[self.i["phi"]])
-        # print(x[self.i["theta"]])
-        R_pend = self.rotation_matrix(x[self.i["phi"]], x[self.i["theta"]], 0.)
-        Lp = self.L_p
-        pend_points = np.array([[0,0,0], [0, 0, Lp]]).T
-        pend_points = np.dot(R_pend, pend_points)
-        pend_points[0,:] += x[self.i["x"]]
-        pend_points[1,:] += x[self.i["y"]]
-        pend_points[2,:] += x[self.i["z"]]
-        
-        self.quad['pend'].set_data(pend_points[0,0:2],pend_points[1,0:2])
-        self.quad['pend'].set_3d_properties(pend_points[2,0:2])
-        
-        self.time_display.set_text('Simulation time = %.5fs' % (self.time_elapsed))
-        self.state_display.set_text('Position of the quad: \n x = %.1fm y = %.1fm z = %.1fm' % (x[self.i["x"]], x[self.i["y"]], x[self.i["z"]]))
-        
-        for (key, value) in info.items():
-            if key in self.info_terms.keys():
-                self.info_terms[key].set_text(key + ": " + str(value))
-            else:
-                self.info_terms[key] = self.ax.text2D(1.2, 0.8 - 0.1 * len(self.info_terms), key + ": " + str(value), transform=self.ax.transAxes)
-
-        
-        if not self.save_anim:
-            plt.pause(0.000000000000001)
+    # def h(self, x):
+    #     """
+    #     :param x: (bs, 16)
+    #     :return: (bs, 1)
+    #     """
+    #     theta = x[:, [self.i["theta"]]]
+    #     phi = x[:, [self.i["phi"]]]
+    #     gamma = x[:, [self.i["gamma"]]]
+    #     beta = x[:, [self.i["beta"]]]
+    #
+    #     cos_cos = np.cos(theta)*np.cos(phi)
+    #     eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
+    #     # with np.no_grad():
+    #     signed_eps = -np.sign(cos_cos)*eps
+    #     delta = np.arccos(cos_cos + signed_eps)
+    #     rv = delta**2 + gamma**2 + beta**2 - self.delta_safety_limit**2
+    #     return rv
+    #
+    # def init_visualization(self, save_anim=False):
+    #     self.save_anim = save_anim
+    #     plt.close("all")
+    #     self.fig = plt.figure()
+    #     # self.ax = Axes3D.Axes3D(self.fig)
+    #     self.ax = self.fig.add_subplot(projection='3d')
+    #
+    #     plt.subplots_adjust(left=0.1, right=0.5)
+    #
+    #     self.ax.set_xlim3d([-5.0, 5.0])
+    #     self.ax.set_xlabel('X')
+    #     self.ax.set_ylim3d([-5.0, 5.0])
+    #     self.ax.set_ylabel('Y')
+    #     self.ax.set_zlim3d([-5.0, 5.0])
+    #     self.ax.set_zlabel('Z')
+    #     self.ax.set_title('Quadcopter Simulation')
+    #
+    #     self.quad = {}
+    #     self.quad['l1'], = self.ax.plot([],[],[],color='blue',linewidth=3,antialiased=False)
+    #     self.quad['l2'], = self.ax.plot([],[],[],color='red',linewidth=3,antialiased=False)
+    #     self.quad['hub'], = self.ax.plot([],[],[],marker='o',color='green', markersize=6,antialiased=False)
+    #     self.quad['pend'], = self.ax.plot([],[],[],color='orange',linewidth=3,antialiased=False)
+    #
+    #     self.time_display = self.ax.text2D(0., 0.9, "red" ,color='red', transform=self.ax.transAxes)
+    #     self.state_display = self.ax.text2D(0.8, 0.9, "green" ,color='green', transform=self.ax.transAxes)
+    #
+    #     self.time_elapsed = 0
+    #
+    #     self.info_terms = {}
+    #
+    #
+    # def step(self, x, u):
+    #     self.time_elapsed += self.dt
+    #     x_dot = self.x_dot_open_loop(x, u)
+    #     nx = x + x_dot * self.dt
+    #     return nx
+    #
+    # def rotation_matrix(self, gamma, beta, alpha):
+    #     #roll-pitch-yaw
+    #     R = np.zeros((3, 3))
+    #     R[0, 0] = np.cos(alpha)*np.cos(beta)
+    #     R[0, 1] = np.cos(alpha)*np.sin(beta)*np.sin(gamma) - np.sin(alpha)*np.cos(gamma)
+    #     R[0, 2] = np.cos(alpha)*np.sin(beta)*np.cos(gamma) + np.sin(alpha)*np.sin(gamma)
+    #     R[1, 0] = np.sin(alpha)*np.cos(beta)
+    #     R[1, 1] = np.sin(alpha)*np.sin(beta)*np.sin(gamma) + np.cos(alpha)*np.cos(gamma)
+    #     R[1, 2] = np.sin(alpha)*np.sin(beta)*np.cos(gamma) - np.cos(alpha)*np.sin(gamma)
+    #     R[2, 0] = -np.sin(beta)
+    #     R[2, 1] = np.cos(beta)*np.sin(gamma)
+    #     R[2, 2] = np.cos(beta)*np.cos(gamma)
+    #     return R
+    #
+    # def update_visualization(self, x, info=None):
+    #
+    #     self.ax.set_xlim3d([x[self.i["x"]]-5.0, x[self.i["x"]]+5.0])
+    #     self.ax.set_ylim3d([x[self.i["y"]]-5.0, x[self.i["y"]]+5.0])
+    #     self.ax.set_zlim3d([x[self.i["z"]]-5.0, x[self.i["z"]]+5.0])
+    #
+    #     R = self.rotation_matrix(x[self.i["gamma"]], x[self.i["beta"]], x[self.i["alpha"]])
+    #     L = self.l
+    #     points = np.array([ [-L,0,0], [L,0,0], [0,-L,0], [0,L,0], [0,0,0], [0,0,0]]).T
+    #     points = np.dot(R,points)
+    #     points[0,:] += x[self.i["x"]]
+    #     points[1,:] += x[self.i["y"]]
+    #     points[2,:] += x[self.i["z"]]
+    #     self.quad['l1'].set_data(points[0,0:2],points[1,0:2])
+    #     self.quad['l1'].set_3d_properties(points[2,0:2])
+    #     self.quad['l2'].set_data(points[0,2:4],points[1,2:4])
+    #     self.quad['l2'].set_3d_properties(points[2,2:4])
+    #     self.quad['hub'].set_data(points[0,4:6],points[1,4:6])
+    #     self.quad['hub'].set_3d_properties(points[2,4:6])
+    #
+    #     # print(x[self.i["phi"]])
+    #     # print(x[self.i["theta"]])
+    #     R_pend = self.rotation_matrix(x[self.i["phi"]], x[self.i["theta"]], 0.)
+    #     Lp = self.L_p
+    #     pend_points = np.array([[0,0,0], [0, 0, Lp]]).T
+    #     pend_points = np.dot(R_pend, pend_points)
+    #     pend_points[0,:] += x[self.i["x"]]
+    #     pend_points[1,:] += x[self.i["y"]]
+    #     pend_points[2,:] += x[self.i["z"]]
+    #
+    #     self.quad['pend'].set_data(pend_points[0,0:2],pend_points[1,0:2])
+    #     self.quad['pend'].set_3d_properties(pend_points[2,0:2])
+    #
+    #     self.time_display.set_text('Simulation time = %.5fs' % (self.time_elapsed))
+    #     self.state_display.set_text('Position of the quad: \n x = %.1fm y = %.1fm z = %.1fm' % (x[self.i["x"]], x[self.i["y"]], x[self.i["z"]]))
+    #
+    #     for (key, value) in info.items():
+    #         if key in self.info_terms.keys():
+    #             self.info_terms[key].set_text(key + ": " + str(value))
+    #         else:
+    #             self.info_terms[key] = self.ax.text2D(1.2, 0.8 - 0.1 * len(self.info_terms), key + ": " + str(value), transform=self.ax.transAxes)
+    #
+    #
+    #     if not self.save_anim:
+    #         plt.pause(0.000000000000001)
 
 if __name__ == "__main__":
     pass
