@@ -122,10 +122,10 @@ class FlyingPendEvaluator(object):
 		print("valid rate: ", valid_rate, "in_invariant_rate: ", in_invariant_rate, "params: ", params) # TODO: why printed and not logged?
 		return rv
 
-	@property
-	def log(self):
-		# return "{} {}".format(str(self.coe), str(self.valid))
-		# return "{} {} {}".format(str(self.coe), str(self.valid))
-		# s = "Params: %s, valid rate: %f, volume rate: %f" % (str(self.coe), self.valid_rate, self.in_invariant_rate)
-		# return s
-		return ""
+	# @property
+	# def log(self):
+	# 	# return "{} {}".format(str(self.coe), str(self.valid))
+	# 	# return "{} {} {}".format(str(self.coe), str(self.valid))
+	# 	# s = "Params: %s, valid rate: %f, volume rate: %f" % (str(self.coe), self.valid_rate, self.in_invariant_rate)
+	# 	# return s
+	# 	return ""

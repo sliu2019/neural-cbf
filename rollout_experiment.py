@@ -7,8 +7,8 @@ solvers.options['show_progress'] = False
 
 import pickle
 
-from rollout_cbf_classes.cma_es_evaluator import CartPoleEvaluator
-from rollout_cbf_classes.our_cbf_class import OurCBF
+from rollout_cbf_classes.deprecated.cma_es_evaluator import CartPoleEvaluator
+from rollout_cbf_classes.deprecated.our_cbf_class import OurCBF
 from rollout_cbf_classes.deprecated.normal_ssa_newsi import SSA
 from rollout_envs.cart_pole_env import CartPoleEnv
 from cbf_controller import CBFController
@@ -178,7 +178,7 @@ def main(args):
 		checkpoint_number = 1450 
 		cbf_obj = OurCBF(exp_name, checkpoint_number)
 	elif 'cmaes' in which_cbf:
-		config_path = "./rollout_cbf_classes/cma_es_config.yaml"
+		config_path = "rollout_cbf_classes/deprecated/cma_es_config.yaml"
 		# params = run_cmaes(config_path) # TODO 
 
 		# params = np.array([1.4, 0.2, 0.0])

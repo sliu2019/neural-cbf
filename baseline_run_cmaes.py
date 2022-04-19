@@ -19,14 +19,6 @@ class CMAESLearning(object):
 		"""
 		self.cmaes_args = CMAES_args
 
-		# print("in CMAES learning obj init")
-		# IPython.embed()
-
-		# now = datetime.now()
-		# timestamp = now.strftime("%m-%d_%H:%M")
-		# log_name = CMAES_args["exp_prefix"] + "_epoch:" + str(CMAES_args["epoch"]) + "_populate_num:" + str(CMAES_args["populate_num"]) + "_elite_ratio:" + str(CMAES_args["elite_ratio"]) + "_init_sigma_ratio:" + str(CMAES_args["init_sigma_ratio"]) + "_noise_ratio:" + str(CMAES_args["noise_ratio"]) + "_date:" + timestamp
-		# self.log = open(os.path.dirname(os.path.abspath(__file__)) + "/cma_es_logs/" + log_name + ".txt","w")
-
 		# Logging
 		self.log_fldrpth = "flying_pend_" + CMAES_args["exp_name"] # Hard-coded the prefix
 		if not os.path.exists(self.log_fldrpth):
@@ -40,8 +32,8 @@ class CMAESLearning(object):
 
 		self.evaluator = self.cmaes_args["evaluator"]
 
-		# print(self.cmaes_args)
-		# IPython.embed()
+		print("in init")
+		IPython.embed()
 
 	def regulate_params(self, params):
 		"""
@@ -65,7 +57,7 @@ class CMAESLearning(object):
 		self.population = np.random.multivariate_normal(mu, sigma, self.cmaes_args["populate_num"])
 		self.population = self.regulate_params(self.population)
 
-	def evaluate(self, mu, log=True):
+	def evaluate(self, mu):
 		"""
 		===============================================================================
 		Evaluate a set of weights (a mu) by interacting with the environment and
@@ -81,10 +73,6 @@ class CMAESLearning(object):
 		print('Rewards: {}'.format(rewards))
 
 		reward = np.mean(rewards)
-		if log:
-			self.log.write("{} {}".format(str(mu), reward))
-			self.log.write(self.evaluator.log+"\n")
-			self.log.flush()
 		return reward
 
 	def step(self, mu, sigma):
@@ -114,11 +102,14 @@ class CMAESLearning(object):
 
 		# Logging
 		print("ln 112, logging")
+		print("Check that data dict is being created properly (new data is scalar or list)")
 		IPython.embed()
 		self.data["pop"].append(self.population)
 		self.data["rewards"].append(self.rewards)
 		self.data["mu"].append(mu)
 		self.data["sigma"].append(sigma)
+		with open(os.path.join(self.log_fldrpth, "data.pkl"), 'wb') as handle:
+			pickle.dump(self.data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 		return mu, sigma
 
@@ -131,57 +122,24 @@ class CMAESLearning(object):
 		self.noise = np.diag((self.cmaes_args["noise_ratio"] * bound_range)**2)
 
 		for i in range(self.cmaes_args["epoch"]):
-			self.log.write("epoch {}\n".format(i))
 			mu, sigma = self.step(mu, sigma)
 			print("learning")
 
 		print("Final best param:")
 		print(mu)
 		print("Final reward:")
-		print(self.evaluate(mu, log=False))
-		# self.evaluator.visualize(mu)
-
-		# Note: add save
-		# save_fpth = "./cma_es_results/%s" %
-		# with open(save_fpth, 'wb') as handle:
-		#     pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+		print(self.evaluate(mu))
+		# self.evaluator.visualize(mu) # TODO: what happened to this function? No longer exists
 
 		return mu
 
-# def run_cmaes(config_path):
-# 	with open(config_path, 'r') as stream:
-# 		try:
-# 			print("in run_cmaes() of baseline_run_cmaes.py")
-# 			IPython.embed()
-# 			config = yaml.safe_load(stream)
-# 			# config["evaluator"] = eval("cma_es_evaluator."+config["evaluator"]+"()")
-# 			config["evaluator"] = evaluators_dict[config["evaluator"]]
-# 			learner = CMAESLearning(config)
-# 			mu = learner.learn() # TODO: key line
-# 			return mu
-# 		except yaml.YAMLError as exc:
-# 			print(exc)
-# 			return None
-
-
 
 if __name__ == "__main__":
-
-	# if len(sys.argv) < 2:
-	#     print("===============================================================================")
-	#     print("Please pass in the learning config file path. Pre-defined files are in config")
-	#     print("===============================================================================")
-	# run_cmaes(sys.argv[1])
-
 	parser = create_parser()
 	args = parser.parse_args()
 	arg_dict = vars(args)
+	arg_dict["evaluator"] = evaluators_dict[arg_dict["evaluator"]]() # pass a class instance
 
-	# print("In main of baseline_run_cmaes.py")
-	# print(arg_dict)
-	# IPython.embed()
-	# Is this a dict?
-	arg_dict["evaluator"] = evaluators_dict[arg_dict["evaluator"]]
 	learner = CMAESLearning(arg_dict)
 	mu = learner.learn()
 
