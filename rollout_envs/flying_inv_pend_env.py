@@ -57,32 +57,36 @@ class FlyingInvertedPendulumEnv():
         return force_vert
 
     def _f(self, x):
+
+        if len(x.shape) == 1:
+            x = x[None] # (1, 16)
         # print("Inside f")
         # IPython.embed()
+        bs = x.shape[0]
 
-        gamma = x[self.i["gamma"]]
-        beta = x[self.i["beta"]]
-        alpha = x[self.i["alpha"]]
+        gamma = x[:, self.i["gamma"]]
+        beta = x[:, self.i["beta"]]
+        alpha = x[:, self.i["alpha"]]
 
-        phi = x[self.i["phi"]]
-        theta = x[self.i["theta"]]
-        dphi = x[self.i["dphi"]]
-        dtheta = x[self.i["dtheta"]]
+        phi = x[:, self.i["phi"]]
+        theta = x[:, self.i["theta"]]
+        dphi = x[:, self.i["dphi"]]
+        dtheta = x[:, self.i["dtheta"]]
 
-        R = np.zeros((3, 3))
-        R[0, 0] = np.cos(alpha)*np.cos(beta)
-        R[0, 1] = np.cos(alpha)*np.sin(beta)*np.sin(gamma) - np.sin(alpha)*np.cos(gamma)
-        R[0, 2] = np.cos(alpha)*np.sin(beta)*np.cos(gamma) + np.sin(alpha)*np.sin(gamma)
-        R[1, 0] = np.sin(alpha)*np.cos(beta)
-        R[1, 1] = np.sin(alpha)*np.sin(beta)*np.sin(gamma) + np.cos(alpha)*np.cos(gamma)
-        R[1, 2] = np.sin(alpha)*np.sin(beta)*np.cos(gamma) - np.cos(alpha)*np.sin(gamma)
-        R[2, 0] = -np.sin(beta)
-        R[2, 1] = np.cos(beta)*np.sin(gamma)
-        R[2, 2] = np.cos(beta)*np.cos(gamma)
+        R = np.zeros((bs, 3, 3))
+        R[:,0, 0] = np.cos(alpha)*np.cos(beta)
+        R[:,0, 1] = np.cos(alpha)*np.sin(beta)*np.sin(gamma) - np.sin(alpha)*np.cos(gamma)
+        R[:,0, 2] = np.cos(alpha)*np.sin(beta)*np.cos(gamma) + np.sin(alpha)*np.sin(gamma)
+        R[:,1, 0] = np.sin(alpha)*np.cos(beta)
+        R[:,1, 1] = np.sin(alpha)*np.sin(beta)*np.sin(gamma) + np.cos(alpha)*np.cos(gamma)
+        R[:,1, 2] = np.sin(alpha)*np.sin(beta)*np.cos(gamma) - np.cos(alpha)*np.sin(gamma)
+        R[:,2, 0] = -np.sin(beta)
+        R[:,2, 1] = np.cos(beta)*np.sin(gamma)
+        R[:,2, 2] = np.cos(beta)*np.cos(gamma)
 
-        k_x = R[0, 2]
-        k_y = R[1, 2]
-        k_z = R[2, 2]
+        k_x = R[:,0, 2]
+        k_y = R[:,1, 2]
+        k_z = R[:,2, 2]
 
         ###### Computing state derivatives
 
@@ -94,34 +98,37 @@ class FlyingInvertedPendulumEnv():
         ddz = k_z*self.g - self.g
 
         # Including translational motion
-        f = np.array([x[self.i["dgamma"]], x[self.i["dbeta"]], x[self.i["dalpha"]], 0, 0, 0, dphi, dtheta, ddphi, ddtheta, x[self.i["dx"]], x[self.i["dy"]], x[self.i["dz"]], ddx, ddy, ddz])
+        f = np.vstack([x[:,self.i["dgamma"]], x[:,self.i["dbeta"]], x[:,self.i["dalpha"]], np.zeros(bs), np.zeros(bs), np.zeros(bs), dphi, dtheta, ddphi, ddtheta, x[:,self.i["dx"]], x[:,self.i["dy"]], x[:,self.i["dz"]], ddx, ddy, ddz]).T
         return f
 
     def _g(self, x):
+        if len(x.shape) == 1:
+            x = x[None] # (1, 16)
         # print("g: returns matrix")
         # IPython.embed()
+        bs = x.shape[0]
 
-        gamma = x[self.i["gamma"]]
-        beta = x[self.i["beta"]]
-        alpha = x[self.i["alpha"]]
+        gamma = x[:,self.i["gamma"]]
+        beta = x[:,self.i["beta"]]
+        alpha = x[:,self.i["alpha"]]
 
-        phi = x[self.i["phi"]]
-        theta = x[self.i["theta"]]
+        phi = x[:,self.i["phi"]]
+        theta = x[:,self.i["theta"]]
 
-        R = np.zeros((3, 3))
-        R[0, 0] = np.cos(alpha)*np.cos(beta)
-        R[0, 1] = np.cos(alpha)*np.sin(beta)*np.sin(gamma) - np.sin(alpha)*np.cos(gamma)
-        R[0, 2] = np.cos(alpha)*np.sin(beta)*np.cos(gamma) + np.sin(alpha)*np.sin(gamma)
-        R[1, 0] = np.sin(alpha)*np.cos(beta)
-        R[1, 1] = np.sin(alpha)*np.sin(beta)*np.sin(gamma) + np.cos(alpha)*np.cos(gamma)
-        R[1, 2] = np.sin(alpha)*np.sin(beta)*np.cos(gamma) - np.cos(alpha)*np.sin(gamma)
-        R[2, 0] = -np.sin(beta)
-        R[2, 1] = np.cos(beta)*np.sin(gamma)
-        R[2, 2] = np.cos(beta)*np.cos(gamma)
+        R = np.zeros((bs, 3, 3))
+        R[:,0, 0] = np.cos(alpha)*np.cos(beta)
+        R[:,0, 1] = np.cos(alpha)*np.sin(beta)*np.sin(gamma) - np.sin(alpha)*np.cos(gamma)
+        R[:,0, 2] = np.cos(alpha)*np.sin(beta)*np.cos(gamma) + np.sin(alpha)*np.sin(gamma)
+        R[:,1, 0] = np.sin(alpha)*np.cos(beta)
+        R[:,1, 1] = np.sin(alpha)*np.sin(beta)*np.sin(gamma) + np.cos(alpha)*np.cos(gamma)
+        R[:,1, 2] = np.sin(alpha)*np.sin(beta)*np.cos(gamma) - np.cos(alpha)*np.sin(gamma)
+        R[:,2, 0] = -np.sin(beta)
+        R[:,2, 1] = np.cos(beta)*np.sin(gamma)
+        R[:,2, 2] = np.cos(beta)*np.cos(gamma)
 
-        k_x = R[0, 2]
-        k_y = R[1, 2]
-        k_z = R[2, 2]
+        k_x = R[:,0, 2]
+        k_y = R[:,1, 2]
+        k_z = R[:,2, 2]
 
         ###### Computing state derivatives
         J_inv = np.diag([(1.0/self.J_x), (1.0/self.J_y), (1.0/self.J_z)])
@@ -133,11 +140,11 @@ class FlyingInvertedPendulumEnv():
         ddtheta = (3.0*(-k_x*np.cos(theta)-k_y*np.sin(phi)*np.sin(theta) + k_z*np.cos(phi)*np.sin(theta))/(2.0*self.M*self.L_p))
 
         # Including translational motion
-        g = np.zeros((16, 4))
-        g[3:6, 1:] = dd_drone_angles
-        g[8, 0] = ddphi
-        g[9, 0] = ddtheta
-        g[13:, 0] = (1.0/self.M)*np.array([k_x, k_y, k_z])
+        g = np.zeros((bs, 16, 4))
+        g[:, 3:6, 1:] = dd_drone_angles
+        g[:, 8, 0] = ddphi
+        g[:, 9, 0] = ddtheta
+        g[:, 13:, 0] = (1.0/self.M)*np.array([k_x, k_y, k_z]).T
 
         # print(g)
         return g
@@ -294,3 +301,18 @@ if __name__ == "__main__":
     x_dot = default_env.x_dot_open_loop(x, u)
 
     print(x_dot)"""
+
+    # Testing the batch refactoring
+    """env = FlyingInvertedPendulumEnv()
+
+    # x = np.random.random((16))
+    np.random.seed(0)
+    x_batch = np.random.random((10, 16))
+    f_vals = env._f(x_batch)
+    g_vals = env._g(x_batch)
+
+    print(f_vals)
+    print(g_vals)
+
+    print("done")
+    IPython.embed() #"""

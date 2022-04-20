@@ -258,3 +258,6 @@ if __name__ == "__main__":
 	print(x, u)
 	print(xdot)"""
 	pass
+
+	# comparing results to batched numpy
+
