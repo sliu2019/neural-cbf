@@ -27,20 +27,23 @@ class FlyingPendEvaluator(object):
 		# n_samples = 100000
 		self.n_samples = arg_dict["FlyingPendEvaluator_n_samples"]
 
-		self.samples = []
-		for i in range(self.n_samples):
-			x_sample = (self.env.x_lim[:, 1] - self.env.x_lim[:, 0]) * np.random.random_sample(
-				(len(self.env.x_lim[:, 0]),)) + self.env.x_lim[:, 0]
-
-			x_sample = np.concatenate((x_sample, np.zeros(6))) # (self.n_samples, 10) --> (self.n_samples, 16)
-			self.samples.append(x_sample)
+		# self.samples = []
+		# for i in range(self.n_samples):
+		# 	x_sample = (self.env.x_lim[:, 1] - self.env.x_lim[:, 0]) * np.random.random_sample(
+		# 		(len(self.env.x_lim[:, 0]),)) + self.env.x_lim[:, 0]
+		#
+		# 	x_sample = np.concatenate((x_sample, np.zeros(6))) # (self.n_samples, 10) --> (self.n_samples, 16)
+		# 	self.samples.append(x_sample)
+		# TODO: does self.samples need to be a list or can it be an array?
+		self.samples = np.random.random_sample((self.n_samples, len(self.env.x_lim[:, 0])))*(self.env.x_lim[:, 1] - self.env.x_lim[:, 0]) + self.env.x_lim[:, 0]
+		self.samples = np.concatenate((self.samples, np.zeros((self.n_samples, 6))), axis=1) # (self.n_samples, 10) --> (self.n_samples, 16)
 
 		# Create CBF class
 		self.ssa_torch_module = load_philow() # load clean phi_low, not from checkpoint
 		self.ssa = PhiNumpy(self.ssa_torch_module)
 
 		# For faster computation
-		self.conp_bs = 100
+		self.comp_bs = 100
 
 		# Misc
 		self.near_boundary_eps = 1e-2
@@ -76,7 +79,7 @@ class FlyingPendEvaluator(object):
 		# IPython.embed()
 
 		in_invariant = 0
-		valid = 0
+		n_feasible = 0
 		tot_near_boundary = 0
 
 		"""i = 0
@@ -93,15 +96,15 @@ class FlyingPendEvaluator(object):
 				# d = -phi / self.dt if phi < 0 else -1 # TODO: objective differs. Aims for dot(phi) <= -alpha(phi(x))
 				d = 0
 				most_valid = self.most_valid_control(C, x)
-				valid += (most_valid < d)
+				n_feasible += (most_valid < d)
 
 			if np.max(phis) <= 0:
 				in_invariant += 1
 
 			i += 1"""
 
-		for i in math.ceil(self.n_samples/float(self.comp_bs)):
-			IPython.embed()
+		for i in range(math.ceil(self.n_samples/float(self.comp_bs))):
+			# IPython.embed()
 			x_batch = self.samples[i*self.comp_bs:min((i+1)*self.comp_bs, self.n_samples)]
 
 			# Check if on boundary
@@ -111,27 +114,30 @@ class FlyingPendEvaluator(object):
 			tot_near_boundary += len(ind_near_boundary)
 
 			# If yes, then compute feasibility of safe control
-			f_batch = self.env._f(x_batch)
-			g_batch = self.env._g(x_batch)
+			x_near = x_batch[ind_near_boundary]
+			f_batch = self.env._f(x_near)
+			g_batch = self.env._g(x_near)
 
-			grad_phi_batch = self.ssa.phi_grad(x_batch)
+			grad_phi_batch = self.ssa.phi_grad(x_near)
 
 			# Starting to compute
 			grad_phi_batch = np.reshape(grad_phi_batch, (-1, 1, 16))
 			f_batch = np.reshape(f_batch, (-1, 16, 1))
-			u_batch = np.tile(self.env.control_lim_verts[None], (x_batch.shape[0], 1, 1))
+			u_batch = np.tile(self.env.control_lim_verts.T[None], (x_near.shape[0], 1, 1))
 			phidot_for_all_u = grad_phi_batch @ f_batch + grad_phi_batch @ g_batch @ u_batch  # (bs, nu)
+			# phidot_for_all_u = np.squeeze(phidot_for_all_u)
+			phidot_for_all_u = phidot_for_all_u[:, 0]
 
 			min_phidot_over_all_u = np.min(phidot_for_all_u, axis=1)
-			valid += np.sum(min_phidot_over_all_u < 0)
+			n_feasible += np.sum(min_phidot_over_all_u < 0)
 
 			n_in_S = np.sum(np.all(phis_batch < 0, axis=1))
 			in_invariant += n_in_S
 
 
-		# self.valid = valid # ?
-		valid_rate = float(valid) / max(1, tot_near_boundary)
-		print("valid / tot_near_boundary: ", valid, "/", tot_near_boundary) #
+		# self.n_feasible = n_feasible # ?
+		valid_rate = float(n_feasible) / max(1, tot_near_boundary)
+		print("n_feasible / tot_near_boundary: ", n_feasible, "/", tot_near_boundary) #
 
 		#### Reg term ####
 		in_invariant_rate = float(in_invariant) / self.n_samples

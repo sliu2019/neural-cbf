@@ -196,7 +196,7 @@ if __name__ == "__main__":
 
 
 	"""
-	python baseline_run_cmaes.py --FlyingPendEvaluator_n_samples 10
+	python baseline_run_cmaes.py --FlyingPendEvaluator_n_samples 150
 	
 	python baseline_run_cmaes.py
 	"""
