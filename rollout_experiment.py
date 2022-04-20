@@ -248,5 +248,5 @@ if __name__ == "__main__":
 	parser.add_argument('--log_folder', type=str, default="debug")
 	parser.add_argument('--which_cbf', type=str, default="our_cbf_football")
 	# parser.add_argument('--reg_weight', type=float, default=1.0, help="only relevant for cma-es")
-	args = parser.parse_args()
+	args = parser.parse_known_args()[0]
 	main(args)

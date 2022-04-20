@@ -53,7 +53,7 @@ def save_args(args, file_name):
 
 def load_args(file_name):
 	parser = create_parser()
-	args = parser.parse_args()
+	args = parser.parse_known_args()[0]
 	# args = parser() # TODO
 	with open(file_name, 'r') as f:
 		args.__dict__ = json.load(f)

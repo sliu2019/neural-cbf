@@ -491,7 +491,7 @@ if __name__ == "__main__":
 
 	parser.add_argument('--N_samp_volume', type=int, default=100000)
 
-	args = parser.parse_args()
+	args = parser.parse_known_args()[0]
 
 	# IPython.embed()
 	run_rollout_experiment(args)

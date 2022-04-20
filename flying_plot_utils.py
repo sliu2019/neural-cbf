@@ -29,7 +29,7 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	else:
 		from src.argument import create_parser
 		parser = create_parser() # default
-		args = parser.parse_args()
+		args = parser.parse_known_args()[0]
 
 		from main import create_flying_param_dict
 		param_dict = create_flying_param_dict(args) # default

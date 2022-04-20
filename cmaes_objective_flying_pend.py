@@ -30,6 +30,8 @@ class FlyingPendEvaluator(object):
 		for i in range(n_samples):
 			x_sample = (self.env.x_lim[:, 1] - self.env.x_lim[:, 0]) * np.random.random_sample(
 				(len(self.env.x_lim[:, 0]),)) + self.env.x_lim[:, 0]
+
+			x_sample = np.concatenate((x_sample, np.zeros(6))) # (n_samples, 10) --> (n_samples, 16)
 			self.samples.append(x_sample)
 
 		# Create CBF class
@@ -41,8 +43,14 @@ class FlyingPendEvaluator(object):
 		self.ssa.set_params(state_dict)
 
 	def most_valid_control(self, grad_phi, x):
+		# print("inside most_valid_control")
+		# IPython.embed()
+		# todo: what's the vstack part for?
 		f = np.vstack(self.env._f(x))
 		g = np.vstack(self.env._g(x))
+
+		# f = self._f_trunc_input(x)
+		# g = self._g_trunc_input(x)
 
 		min_dot_phi = float("inf")
 		for u in self.env.control_lim_verts:
@@ -56,9 +64,35 @@ class FlyingPendEvaluator(object):
 		eps = 1e-2
 		return abs(phi) < eps
 
+	# def _f_trunc_input(self, x):
+	# 	"""
+	# 	Numpy flying_inv_pend takes in 16D state, outputs 16D vec
+	# 	We need 10D-10D mapping
+	# 	:param x:
+	# 	:return:
+	# 	"""
+	# 	padding = np.zeros((6))
+	# 	x_padded = np.concatenate((x, padding))
+	# 	f_out = self.env._f(x_padded)
+	# 	f_out_trunc = f_out[:10]
+	# 	return f_out_trunc
+	#
+	# def _g_trunc_input(self, x):
+	# 	"""
+	# 	Numpy flying_inv_pend takes in 16D state, outputs 16D vec
+	# 	We need 10D-10D mapping
+	# 	:param x:
+	# 	:return:
+	# 	"""
+	# 	padding = np.zeros((6))
+	# 	x_padded = np.concatenate((x, padding))
+	# 	g_out = self.env._g(x_padded)
+	# 	g_out_trunc = g_out[:10]
+	# 	return g_out_trunc
+
 	def compute_valid_invariant(self):
-		print("in compute_valid_invariant")
-		IPython.embed()
+		# print("in compute_valid_invariant")
+		# IPython.embed()
 
 		in_invariant = 0
 		valid = 0
@@ -90,6 +124,7 @@ class FlyingPendEvaluator(object):
 		return valid_rate, in_invariant_rate
 
 	def evaluate(self, params):
+		# print("Trying params: ", params)
 		self.set_params(params)
 
 		valid_rate, in_invariant_rate = self.compute_valid_invariant()
@@ -99,8 +134,8 @@ class FlyingPendEvaluator(object):
 		print("valid rate: ", valid_rate, "in_invariant_rate: ", in_invariant_rate, "params: ", params) # TODO: why printed and not logged?
 		debug_dict = {"obj:valid_rate": valid_rate, "obj:in_invariant_rate": in_invariant_rate}
 
-		print("before returning from evaluate on Objective class")
-		IPython.embed()
+		# print("before returning from evaluate on Objective class")
+		# IPython.embed()
 		return rv, debug_dict
 
 	# @property

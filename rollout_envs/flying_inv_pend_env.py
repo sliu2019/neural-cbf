@@ -15,7 +15,7 @@ class FlyingInvertedPendulumEnv():
             from main import create_flying_param_dict
 
             parser = create_parser()  # default
-            args = parser.parse_args()
+            args = parser.parse_known_args()[0]
             self.param_dict = create_flying_param_dict(args) # default
         else:
             self.param_dict = param_dict
@@ -86,12 +86,12 @@ class FlyingInvertedPendulumEnv():
 
         ###### Computing state derivatives
 
-        ddphi = (3.0)*(k_y*np.cos(phi) + k_z*np.sin(phi))/(2*self.M*self.L_p*np.cos(theta))*(self.M*g) + 2*dtheta*dphi*np.tan(theta)
-        ddtheta = (3.0*(-k_x*np.cos(theta)-k_y*np.sin(phi)*np.sin(theta) + k_z*np.cos(phi)*np.sin(theta))/(2.0*self.M*self.L_p))*(self.M*g) - np.square(dphi)*np.sin(theta)*np.cos(theta)
+        ddphi = (3.0)*(k_y*np.cos(phi) + k_z*np.sin(phi))/(2*self.M*self.L_p*np.cos(theta))*(self.M*self.g) + 2*dtheta*dphi*np.tan(theta)
+        ddtheta = (3.0*(-k_x*np.cos(theta)-k_y*np.sin(phi)*np.sin(theta) + k_z*np.cos(phi)*np.sin(theta))/(2.0*self.M*self.L_p))*(self.M*self.g) - np.square(dphi)*np.sin(theta)*np.cos(theta)
 
-        ddx = k_x*g
-        ddy = k_y*g
-        ddz = k_z*g - g
+        ddx = k_x*self.g
+        ddy = k_y*self.g
+        ddz = k_z*self.g - self.g
 
         # Including translational motion
         f = np.array([x[self.i["dgamma"]], x[self.i["dbeta"]], x[self.i["dalpha"]], 0, 0, 0, dphi, dtheta, ddphi, ddtheta, x[self.i["dx"]], x[self.i["dy"]], x[self.i["dz"]], ddx, ddy, ddz])

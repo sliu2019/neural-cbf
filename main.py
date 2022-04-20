@@ -489,7 +489,7 @@ def main(args):
 
 if __name__ == "__main__":
 	parser = create_parser()
-	args = parser.parse_args()
+	args = parser.parse_known_args()[0]
 	torch.manual_seed(args.random_seed)
 	np.random.seed(args.random_seed)
 	main(args)

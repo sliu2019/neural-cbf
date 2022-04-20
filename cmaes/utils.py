@@ -32,7 +32,7 @@ def load_philow(phi_load_fpth=None):
 	# else:
 	from src.argument import create_parser
 	parser = create_parser() # default
-	args = parser.parse_args()
+	args = parser.parse_known_args()[0]
 
 	# IPython.embed()
 	from main import create_flying_param_dict

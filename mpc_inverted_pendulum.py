@@ -205,7 +205,7 @@ if __name__ == "__main__":
 	parser.add_argument('--dt', type=float, default=0.05)
 	parser.add_argument('--delta', type=float, default=0.1)
 	parser.add_argument('--N_horizon', type=int, default=20)
-	args = parser.parse_args()
+	args = parser.parse_known_args()[0]
 
 	mpc_compute_invariant_set(args)
 

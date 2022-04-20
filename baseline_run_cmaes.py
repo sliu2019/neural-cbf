@@ -25,7 +25,7 @@ class CMAESLearning(object):
 		with open(os.path.join(self.log_fldrpth, "args.pkl"), 'wb') as handle:
 			pickle.dump(CMAES_args, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-		self.data_dict = {"pop": [], "rewards": [], "mu": [], "sigma": []}
+		self.data = {"pop": [], "rewards": [], "mu": [], "sigma": []}
 		self.evaluator = self.cmaes_args["evaluator"]
 
 		# print("in init")
@@ -86,15 +86,20 @@ class CMAESLearning(object):
 		# Refactored, since self.evaluate returns a tuple now
 		rewards = []
 		all_debug_dicts = None
+		# IPython.embed()
 		for pop_member in self.population:
 			reward, debug_dict = self.evaluate(pop_member)
 			rewards.append(reward)
 			if all_debug_dicts is None:
-				all_debug_dicts = {k: list(v) for k, v in debug_dict.items()}
+				all_debug_dicts = {k: [v] for (k, v) in debug_dict.items()}
 			else:
 				for k, v in all_debug_dicts.items():
 					all_debug_dicts[k].append(debug_dict[k])
-		indexes = np.argsort(-rewards)
+
+		# print("in step")
+		# IPython.embed()
+		# rewards = np.array(rewards)
+		indexes = np.argsort(-np.array(rewards))
 		"""
 		===============================================================================
 		best members are the top self.cmaes_args["elite_ratio"] proportion of members with the highest 
@@ -111,16 +116,16 @@ class CMAESLearning(object):
 		print(mu)
 
 		# Logging
-		print("ln 112, logging")
-		print("Check that data dict is being created properly (new data is scalar or list)")
-		IPython.embed()
+		# print("ln 112, logging")
+		# print("Check that data dict is being created properly (new data is scalar or list)")
+		# IPython.embed()
 		for k, v in all_debug_dicts.items():
 			if k not in self.data:
 				self.data[k] = []
 			self.data[k].append(v)
 
 		self.data["pop"].append(self.population)
-		self.data["rewards"].append(self.rewards)
+		self.data["rewards"].append(rewards)
 		self.data["mu"].append(mu)
 		self.data["sigma"].append(sigma)
 		with open(os.path.join(self.log_fldrpth, "data.pkl"), 'wb') as handle:
@@ -172,11 +177,20 @@ if __name__ == "__main__":
 
 	# Objective specific
 	parser.add_argument('--FlyingPendEvaluator_reg_weight', default=1.0, type=int)
-	parser.add_argument('--FlyingPendEvaluator_n_samples', default=10e4, type=int)
+	parser.add_argument('--FlyingPendEvaluator_n_samples', default=100000, type=int)
 	# parser = create_parser()
-	args = parser.parse_args()
+	args = parser.parse_known_args()[0]
 	arg_dict = vars(args)
+	# IPython.embed()
+
 	arg_dict["evaluator"] = evaluators_dict[arg_dict["evaluator"]](arg_dict)  # pass a class instance
 
 	learner = CMAESLearning(arg_dict)
 	mu = learner.learn()
+
+
+	"""
+	python baseline_run_cmaes.py --FlyingPendEvaluator_n_samples 10
+	
+	python baseline_run_cmaes.py
+	"""
