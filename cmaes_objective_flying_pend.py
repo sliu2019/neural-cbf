@@ -98,7 +98,9 @@ class FlyingPendEvaluator(object):
 		valid = 0
 		tot_cnt = 0
 
+		i = 0
 		for sample in self.samples: # Note: set of samples is fixed across CMA-ES opt.
+			# print(i)
 			x = sample
 			phis = self.ssa.phi_fn(x)
 			phi = phis[0, -1]
@@ -114,6 +116,8 @@ class FlyingPendEvaluator(object):
 
 			if np.max(phis) <= 0:
 				in_invariant += 1
+
+			i += 1
 
 		# self.valid = valid # ?
 		valid_rate = float(valid) / max(1, tot_cnt)

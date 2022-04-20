@@ -97,7 +97,7 @@ class CMAESLearning(object):
 					all_debug_dicts[k].append(debug_dict[k])
 
 		# print("in step")
-		# IPython.embed()
+		IPython.embed()
 		# rewards = np.array(rewards)
 		indexes = np.argsort(-np.array(rewards))
 		"""
@@ -131,6 +131,7 @@ class CMAESLearning(object):
 		with open(os.path.join(self.log_fldrpth, "data.pkl"), 'wb') as handle:
 			pickle.dump(self.data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+		IPython.embed()
 		return mu, sigma
 
 	def learn(self):
@@ -164,9 +165,9 @@ if __name__ == "__main__":
 	parser.add_argument('--elite_ratio', default=0.06, type=float)
 	parser.add_argument('--populate_num', default=50, type=int)
 
-	parser.add_argument('--init_params', nargs='+', default=[1.0, 0.0, 1.0], type=float, help="exponent, added scalar, multiplier on dot term")
-	parser.add_argument('--lower_bound', nargs='+', default=[0.01, 0.0, 0.01], type=float, help="first, third required > 0")
-	parser.add_argument('--upper_bound', nargs='+', default=[50.0, 5.0, 50.0], type=float, help="Tianhao use very different UB?")
+	parser.add_argument('--lower_bound', nargs='+', default=[1.0, 0.0, 0.01], type=float, help="first, third required > 0") # TODO; c1 LB is 1.0 or 0.0?
+	parser.add_argument('--upper_bound', nargs='+', default=[50.0, 50.0, 50.0], type=float, help="Tianhao use very different UB?") # TODO: perhaps range too large?
+	parser.add_argument('--init_params', nargs='+', default=[1.0, 0.0, 1.0], type=float, help="exponent, added scalar, multiplier on dot term") # TODO: better default? Although, does it matter much if sigma=0.3?
 
 	parser.add_argument('--init_sigma_ratio', default=0.3, type=float, help="initial sigma = init_sigma_ratio * (upper_bound - lower_bound)")
 	parser.add_argument('--noise_ratio', default=0.01, type=int, help="noise = noise_ratio * (upper_bound - lower_bound)")
@@ -176,7 +177,7 @@ if __name__ == "__main__":
 	parser.add_argument('--exp_name', default="debug", type=str)
 
 	# Objective specific
-	parser.add_argument('--FlyingPendEvaluator_reg_weight', default=1.0, type=int)
+	parser.add_argument('--FlyingPendEvaluator_reg_weight', default=1.0, type=float)
 	parser.add_argument('--FlyingPendEvaluator_n_samples', default=100000, type=int)
 	# parser = create_parser()
 	args = parser.parse_known_args()[0]
