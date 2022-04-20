@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import os
 # import yaml
@@ -88,7 +90,10 @@ class CMAESLearning(object):
 		all_debug_dicts = None
 		# IPython.embed()
 		for pop_member in self.population:
+			t0 = time.perf_counter()
 			reward, debug_dict = self.evaluate(pop_member)
+			tf = time.perf_counter()
+			print("Took %.3f seconds" % (tf - t0))
 			rewards.append(reward)
 			if all_debug_dicts is None:
 				all_debug_dicts = {k: [v] for (k, v) in debug_dict.items()}
@@ -97,7 +102,7 @@ class CMAESLearning(object):
 					all_debug_dicts[k].append(debug_dict[k])
 
 		# print("in step")
-		IPython.embed()
+		# IPython.embed()
 		# rewards = np.array(rewards)
 		indexes = np.argsort(-np.array(rewards))
 		"""
@@ -131,7 +136,7 @@ class CMAESLearning(object):
 		with open(os.path.join(self.log_fldrpth, "data.pkl"), 'wb') as handle:
 			pickle.dump(self.data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-		IPython.embed()
+		# IPython.embed()
 		return mu, sigma
 
 	def learn(self):

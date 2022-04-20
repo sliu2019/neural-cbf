@@ -64,32 +64,6 @@ class FlyingPendEvaluator(object):
 		eps = 1e-2
 		return abs(phi) < eps
 
-	# def _f_trunc_input(self, x):
-	# 	"""
-	# 	Numpy flying_inv_pend takes in 16D state, outputs 16D vec
-	# 	We need 10D-10D mapping
-	# 	:param x:
-	# 	:return:
-	# 	"""
-	# 	padding = np.zeros((6))
-	# 	x_padded = np.concatenate((x, padding))
-	# 	f_out = self.env._f(x_padded)
-	# 	f_out_trunc = f_out[:10]
-	# 	return f_out_trunc
-	#
-	# def _g_trunc_input(self, x):
-	# 	"""
-	# 	Numpy flying_inv_pend takes in 16D state, outputs 16D vec
-	# 	We need 10D-10D mapping
-	# 	:param x:
-	# 	:return:
-	# 	"""
-	# 	padding = np.zeros((6))
-	# 	x_padded = np.concatenate((x, padding))
-	# 	g_out = self.env._g(x_padded)
-	# 	g_out_trunc = g_out[:10]
-	# 	return g_out_trunc
-
 	def compute_valid_invariant(self):
 		# print("in compute_valid_invariant")
 		# IPython.embed()

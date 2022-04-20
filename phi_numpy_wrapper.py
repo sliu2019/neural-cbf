@@ -47,23 +47,27 @@ class PhiNumpy:
 
 		return phi_numpy
 
-	def phi_grad(self, x):  # Not batched
+	def phi_grad(self, x):
 		"""
         :param x: (16)
         :return: (16)
         """
 		x_torch = self._x_numpy_to_x_torch(x)
+		bs = x_torch.shape[0]
 		x_torch.requires_grad = True
 
 		# Compute phi grad
 		phi_vals = self.torch_phi_fn(x_torch)
-		phi_val = phi_vals[0, -1]
+		phi_val = torch.sum(phi_vals[:, -1])
 		phi_grad = grad([phi_val], x_torch)[0]
 
 		# Post op
 		x_torch.requires_grad = False
-		phi_grad = phi_grad.detach().cpu().numpy().flatten()
-		phi_grad = np.concatenate((phi_grad, np.zeros(6)))
+		# phi_grad = phi_grad.detach().cpu().numpy().flatten()
+		# phi_grad = np.concatenate((phi_grad, np.zeros(6)))
+		# IPython.embed()
+		phi_grad = phi_grad.detach().cpu().numpy()
+		phi_grad = np.concatenate((phi_grad, np.zeros((bs, 6))), axis=1)
 
 		return phi_grad
 
@@ -73,7 +77,7 @@ if __name__ == "__main__":
 
 	phi_torch = load_philow()  # load clean phi_low, not from checkpoint
 
-	x = torch.ones(5, 10)
+	x = torch.ones(10)
 	x2 = torch.rand(1000, 10)
 
 	# y = phi_torch(x)
@@ -89,10 +93,15 @@ if __name__ == "__main__":
 	x_np = x.cpu().detach().numpy()
 	x2_np = x2.cpu().detach().numpy()
 
-	y_np = phi_numpy.phi_torch(x_np)
-	y2_np = phi_numpy.phi_torch(x2_np)
+	# y_np = phi_numpy.phi_torch(x_np)
+	# y2_np = phi_numpy.phi_torch(x2_np)
 
-	# IPython.embed()
+	y2_grad = phi_numpy.phi_grad(x2_np)
+	y_grad = phi_numpy.phi_grad(x_np)
+
+	print(y2_grad)
+	print(y_grad)
+	IPython.embed()
 	
 	#"""
 	pass
