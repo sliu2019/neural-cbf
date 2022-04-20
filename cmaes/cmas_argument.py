@@ -23,6 +23,7 @@ def create_parser():
 
 	# Objective specific
 	parser.add_argument('--FlyingPendEvaluator_reg_weight', default=1.0, type=int)
+	parser.add_argument('--FlyingPendEvaluator_n_samples', default=10e4, type=int)
 
 	return parser
 

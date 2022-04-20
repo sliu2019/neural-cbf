@@ -748,7 +748,8 @@ if __name__ == "__main__":
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again"]
 
 	# Server 5
-	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
+	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"]
 
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
 
@@ -760,7 +761,7 @@ if __name__ == "__main__":
 
 
 	# To visualize slices for a new experiment
-	"""checkpoint_numbers = []
+	checkpoint_numbers = []
 	exp_names = []
 	for base_exp_name in base_exp_names:
 		data = pickle.load(open("./log/%s/data.pkl" % base_exp_name, 'rb'))
@@ -849,9 +850,9 @@ if __name__ == "__main__":
 	# 	debug(exp_name)
 
 	# TODO: check training progress
-	for exp_name in base_exp_names:
-		min_attack_loss_ind = graph_losses(exp_name)
-		# checkpoint_numbers.append(min_attack_loss_ind)
+	# for exp_name in base_exp_names:
+	# 	min_attack_loss_ind = graph_losses(exp_name)
+	# 	# checkpoint_numbers.append(min_attack_loss_ind)
 
 	# TODO: manually check attacks
 	# with open("./log/%s/data.pkl" % "flying_inv_pend_phi_format_1_seed_0", 'rb') as handle:
@@ -888,7 +889,7 @@ if __name__ == "__main__":
 
 	# TODO: plot pages of slices over many iterations
 
-	"""for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
+	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 
 			phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 

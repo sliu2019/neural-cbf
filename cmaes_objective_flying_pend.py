@@ -18,14 +18,13 @@ import IPython
 class FlyingPendEvaluator(object):
 	def __init__(self, arg_dict):
 		self.arg_dict = arg_dict
-		# print("in evaluator init")
-		# IPython.embed()
 
 		self.env = FlyingInvertedPendulumEnv()
-
-		# self.coe = np.zeros(4) # TODO: what is COE used for?
-
-		n_samples = 100000
+		# Defining some var
+		self.dt = self.env.dt
+		self.reg_weight = arg_dict["FlyingPendEvaluator_reg_weight"]
+		# n_samples = 100000
+		n_samples = arg_dict["FlyingPendEvaluator_n_samples"]
 
 		self.samples = []
 		for i in range(n_samples):
@@ -33,21 +32,11 @@ class FlyingPendEvaluator(object):
 				(len(self.env.x_lim[:, 0]),)) + self.env.x_lim[:, 0]
 			self.samples.append(x_sample)
 
-		# Defining some var
-		# self.min_u = np.vstack(self.env.u_lim[:, 0])
-		# self.max_u = np.vstack(self.env.u_lim[:, 1])
-		self.dt = self.env.dt
-
-		# self.reg_weight = 1  # TODO: need to tune to get best possible result
-		self.reg_weight = arg_dict["FlyingPendEvaluator_reg_weight"]
-		# self.k = 5.0  # TODO: fixed, not learning it. For ease of comparison
-		# self.d_min = 1
-
+		# Create CBF class
 		self.ssa_torch_module = load_philow() # load clean phi_low, not from checkpoint
 		self.ssa = PhiNumpy(self.ssa_torch_module)
 
 	def set_params(self, params):
-		# self.coe = params
 		state_dict = {"ki": torch.tensor([[params[2]]]), "ci": torch.tensor([[params[0]], [params[1]]])}
 		self.ssa.set_params(state_dict)
 
@@ -84,20 +73,17 @@ class FlyingPendEvaluator(object):
 				tot_cnt += 1
 
 				C = self.ssa.phi_grad(x)
-				d = -phi / self.dt if phi < 0 else -1 # TODO: objective differs. Aims for dot(phi) <= -alpha(phi(x))
+				# d = -phi / self.dt if phi < 0 else -1 # TODO: objective differs. Aims for dot(phi) <= -alpha(phi(x))
+				d = 0
 				most_valid = self.most_valid_control(C, x)
-				# weighted_valid = np.exp(0.1 * min(d - most_valid, 0))
-				# most_valid < d => 1,   most_valid > d => 1 - exp(d-valid)
-				# valid += weighted_valid
-				# print(most_valid - d)
 				valid += (most_valid < d)
 
 			if np.max(phis) <= 0:
 				in_invariant += 1
 
-		self.valid = valid # TODO: ? for logging?
+		# self.valid = valid # ?
 		valid_rate = float(valid) / max(1, tot_cnt)
-		print("valid / tot_cnt: ", valid, "/", tot_cnt) # TODO: print, not log?
+		print("valid / tot_cnt: ", valid, "/", tot_cnt) #
 
 		#### Reg term ####
 		in_invariant_rate = float(in_invariant) / len(self.samples)
@@ -112,6 +98,9 @@ class FlyingPendEvaluator(object):
 		rv = valid_rate + self.reg_weight * in_invariant_rate
 		print("valid rate: ", valid_rate, "in_invariant_rate: ", in_invariant_rate, "params: ", params) # TODO: why printed and not logged?
 		debug_dict = {"obj:valid_rate": valid_rate, "obj:in_invariant_rate": in_invariant_rate}
+
+		print("before returning from evaluate on Objective class")
+		IPython.embed()
 		return rv, debug_dict
 
 	# @property

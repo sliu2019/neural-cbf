@@ -28,7 +28,6 @@ class FlyingInvertedPendulumEnv():
         self.dt = 0.00005 # same as cartpole
         # self.dt = 1e-6
         self.g = 9.81
-        # IPython.embed()
 
         # self.init_visualization() # TODO: simplifying out viz, for now
 
@@ -144,9 +143,6 @@ class FlyingInvertedPendulumEnv():
         return g
 
     def x_dot_open_loop(self, x, u):
-        # print("inside x_dot_open_loop")
-        # IPython.embed()
-
         f = self._f(x)
         g = self._g(x)
 

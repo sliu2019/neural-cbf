@@ -2,7 +2,6 @@ import numpy as np
 import os
 # import yaml
 import pickle, IPython
-from cmaes.cmas_argument import create_parser
 from cmaes_objective_flying_pend import FlyingPendEvaluator
 
 # evaluators_dict = {"CartPoleEvaluator": CartPoleEvaluator, "FlyingPendEvaluator": FlyingPendEvaluator}
@@ -151,7 +150,30 @@ class CMAESLearning(object):
 
 
 if __name__ == "__main__":
-	parser = create_parser()
+	# from cmaes.cmas_argument import create_parse
+	import argparse
+	parser = argparse.ArgumentParser(description='CMAES algorithm on CBF parameters')
+
+	# Parameters
+	parser.add_argument('--epoch', default=3, type=int)
+	parser.add_argument('--elite_ratio', default=0.06, type=float)
+	parser.add_argument('--populate_num', default=50, type=int)
+
+	parser.add_argument('--init_params', nargs='+', default=[1.0, 0.0, 1.0], type=float, help="exponent, added scalar, multiplier on dot term")
+	parser.add_argument('--lower_bound', nargs='+', default=[0.01, 0.0, 0.01], type=float, help="first, third required > 0")
+	parser.add_argument('--upper_bound', nargs='+', default=[50.0, 5.0, 50.0], type=float, help="Tianhao use very different UB?")
+
+	parser.add_argument('--init_sigma_ratio', default=0.3, type=float, help="initial sigma = init_sigma_ratio * (upper_bound - lower_bound)")
+	parser.add_argument('--noise_ratio', default=0.01, type=int, help="noise = noise_ratio * (upper_bound - lower_bound)")
+
+	parser.add_argument('--evaluator', default="FlyingPendEvaluator", type=str)
+	# parser.add_argument('--exp_prefix', default="flying_pend", type=str)
+	parser.add_argument('--exp_name', default="debug", type=str)
+
+	# Objective specific
+	parser.add_argument('--FlyingPendEvaluator_reg_weight', default=1.0, type=int)
+	parser.add_argument('--FlyingPendEvaluator_n_samples', default=10e4, type=int)
+	# parser = create_parser()
 	args = parser.parse_args()
 	arg_dict = vars(args)
 	arg_dict["evaluator"] = evaluators_dict[arg_dict["evaluator"]](arg_dict)  # pass a class instance
