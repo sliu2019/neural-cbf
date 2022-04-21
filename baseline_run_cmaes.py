@@ -33,7 +33,9 @@ class CMAESLearning(object):
 		self.evaluator = self.cmaes_args["evaluator"]
 
 		# For multiprocessing
-		self.n_proc = mp.cpu_count()
+		# Deprecated, not using
+		# self.n_proc = mp.cpu_count()
+		# self.n_proc = 150
 		# self.pool = mp.Pool(self.n_proc)
 
 	def regulate_params(self, params):
@@ -76,13 +78,14 @@ class CMAESLearning(object):
 		"""
 		self.populate(mu, sigma)
 
-		pool = mp.Pool(self.n_proc)
+		# pool = mp.Pool(self.n_proc)
 
 		# Refactored, since self.evaluate returns a tuple now
 		rewards = []
 		all_debug_dicts = None
 
-		for i in range(math.ceil(self.cmaes_args["populate_num"]/float(self.n_proc))):
+		"""for i in range(math.ceil(self.cmaes_args["populate_num"]/float(self.n_proc))):
+			print(i)
 			arguments = self.population[i*self.n_proc:min((i+1)*self.n_proc, self.cmaes_args["populate_num"])]
 			arguments = arguments.tolist()
 			arguments = [[x] for x in arguments] # input convention for starmap...
@@ -96,7 +99,17 @@ class CMAESLearning(object):
 					all_debug_dicts = {k: [v] for (k, v) in debug_dict.items()}
 				else:
 					for k, v in all_debug_dicts.items():
-						all_debug_dicts[k].append(debug_dict[k])
+						all_debug_dicts[k].append(debug_dict[k])"""
+
+		for pop_member in self.population:
+			reward, debug_dict = self.evaluate(pop_member)
+
+			rewards.append(reward)
+			if all_debug_dicts is None:
+				all_debug_dicts = {k: [v] for (k, v) in debug_dict.items()}
+			else:
+				for k, v in all_debug_dicts.items():
+					all_debug_dicts[k].append(debug_dict[k])
 
 		# rewards = np.array(rewards)
 		indexes = np.argsort(-np.array(rewards))
