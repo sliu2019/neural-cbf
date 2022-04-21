@@ -3,8 +3,10 @@ import time
 import numpy as np
 import os
 # import yaml
+import math
 import pickle, IPython
 from cmaes_objective_flying_pend import FlyingPendEvaluator
+import multiprocessing as mp
 
 # evaluators_dict = {"CartPoleEvaluator": CartPoleEvaluator, "FlyingPendEvaluator": FlyingPendEvaluator}
 evaluators_dict = {"FlyingPendEvaluator": FlyingPendEvaluator}
@@ -30,8 +32,9 @@ class CMAESLearning(object):
 		self.data = {"pop": [], "rewards": [], "mu": [], "sigma": []}
 		self.evaluator = self.cmaes_args["evaluator"]
 
-		# print("in init")
-		# IPython.embed()
+		# For multiprocessing
+		self.n_proc = mp.cpu_count()
+		# self.pool = mp.Pool(self.n_proc)
 
 	def regulate_params(self, params):
 		"""
@@ -61,18 +64,6 @@ class CMAESLearning(object):
 		Evaluate a set of weights (a mu) by interacting with the environment and
 		return the average total reward over multiple repeats.
 		"""
-
-		# reward - parameter relationship is not stochastic, so we don't need to evaluate it multiple times
-		# rewards = []
-		# repeat_times = 1  # test multiple times to reduce randomness
-		# for i in range(repeat_times):
-		# 	reward = self.evaluator.evaluate(mu)
-		# 	rewards.append(reward)
-		#
-		# print('Rewards: {}'.format(rewards))
-		#
-		# reward = np.mean(rewards)
-
 		reward, debug_dict = self.evaluator.evaluate(mu)
 		return reward, debug_dict
 
@@ -84,25 +75,29 @@ class CMAESLearning(object):
 		and updateing the weights of the policy networks.
 		"""
 		self.populate(mu, sigma)
-		# rewards = np.array(list(map(self.evaluate, self.population)))
+
+		pool = mp.Pool(self.n_proc)
+
 		# Refactored, since self.evaluate returns a tuple now
 		rewards = []
 		all_debug_dicts = None
-		# IPython.embed()
-		for pop_member in self.population:
-			t0 = time.perf_counter()
-			reward, debug_dict = self.evaluate(pop_member)
-			tf = time.perf_counter()
-			print("Took %.3f seconds" % (tf - t0))
-			rewards.append(reward)
-			if all_debug_dicts is None:
-				all_debug_dicts = {k: [v] for (k, v) in debug_dict.items()}
-			else:
-				for k, v in all_debug_dicts.items():
-					all_debug_dicts[k].append(debug_dict[k])
 
-		# print("in step")
-		# IPython.embed()
+		for i in range(math.ceil(self.cmaes_args["populate_num"]/float(self.n_proc))):
+			arguments = self.population[i*self.n_proc:min((i+1)*self.n_proc, self.cmaes_args["populate_num"])]
+			arguments = arguments.tolist()
+			arguments = [[x] for x in arguments] # input convention for starmap...
+			# IPython.embed()
+			results = pool.starmap(self.evaluate, arguments)
+
+			for result in results:
+				reward, debug_dict = result
+				rewards.append(reward)
+				if all_debug_dicts is None:
+					all_debug_dicts = {k: [v] for (k, v) in debug_dict.items()}
+				else:
+					for k, v in all_debug_dicts.items():
+						all_debug_dicts[k].append(debug_dict[k])
+
 		# rewards = np.array(rewards)
 		indexes = np.argsort(-np.array(rewards))
 		"""
@@ -133,6 +128,14 @@ class CMAESLearning(object):
 		self.data["rewards"].append(rewards)
 		self.data["mu"].append(mu)
 		self.data["sigma"].append(sigma)
+
+		# data = {}
+		# data["pop"] = self.population
+		# data["rewards"] = rewards
+		# data["mu"] = mu
+		# data["sigma"] = sigma
+		# data.update(all_debug_dicts)
+
 		with open(os.path.join(self.log_fldrpth, "data.pkl"), 'wb') as handle:
 			pickle.dump(self.data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -148,7 +151,10 @@ class CMAESLearning(object):
 		self.noise = np.diag((self.cmaes_args["noise_ratio"] * bound_range) ** 2)
 
 		for i in range(self.cmaes_args["epoch"]):
+			t0 = time.perf_counter()
 			mu, sigma = self.step(mu, sigma)
+			tf = time.perf_counter()
+			print("epoch took %.3f s" % (tf - t0))
 			print("learning")
 
 		print("Final best param:")
