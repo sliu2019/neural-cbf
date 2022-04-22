@@ -170,12 +170,13 @@ class FlyingPendEvaluator(object):
 			elif self.objective_type == "avg_amount_infeasible":
 				objective_value -= np.sum((min_phidot_over_all_u > 0)*min_phidot_over_all_u)
 			elif self.objective_type == "max_amount_infeasible":
-				objective_value -= np.max((min_phidot_over_all_u > 0)*min_phidot_over_all_u) # basically, a relu on max
+				# IPython.embed()
+				objective_value -= np.max((min_phidot_over_all_u > 0)*min_phidot_over_all_u, initial=0.0) # basically, a relu on max; 2nd arg lets you work with empty array
 
 		# normalize objective by n_samples
 		objective_value /= float(max(1, n_near_boundary))
-		print("n_feasible / n_near_boundary: ", n_feasible, "/", n_near_boundary) #
-		print("\n")
+		# print("n_feasible / n_near_boundary: ", n_feasible, "/", n_near_boundary) #
+		# print("\n")
 
 		#### Reg term ####
 		percentage_inside = float(n_inside) / self.n_samples
@@ -185,7 +186,9 @@ class FlyingPendEvaluator(object):
 		self.objective_value = objective_value
 		self.percentage_inside = percentage_inside
 		rv = objective_value + self.reg_weight * percentage_inside
-		print("objective value: ", objective_value, "percentage_inside: ", percentage_inside, "params: ", params) # TODO: why printed and not logged?
+		print("objective value: ", objective_value, "percentage_inside: ", percentage_inside) # TODO: why printed and not logged?
+		print("params: ", params)
+		print("\n")
 		debug_dict = {"obj:objective_value": objective_value, "obj:percentage_inside": percentage_inside, "obj:n_near_boundary": n_near_boundary}
 
 		# print("before returning from evaluate on objective_value class")

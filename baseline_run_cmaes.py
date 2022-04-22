@@ -29,7 +29,7 @@ class CMAESLearning(object):
 		with open(os.path.join(self.log_fldrpth, "args.pkl"), 'wb') as handle:
 			pickle.dump(CMAES_args, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-		self.data = {"pop": [], "rewards": [], "mu": [], "sigma": []}
+		self.data = {"pop": [], "rewards": [], "mu": [], "sigma": [], "mu_rewards": []}
 		self.evaluator = self.cmaes_args["evaluator"]
 
 		# For multiprocessing
@@ -142,6 +142,8 @@ class CMAESLearning(object):
 		self.data["mu"].append(mu)
 		self.data["sigma"].append(sigma)
 
+		mu_reward = self.evaluate(mu)
+		self.data["mu_rewards"].append(mu_reward)
 		# data = {}
 		# data["pop"] = self.population
 		# data["rewards"] = rewards
@@ -204,9 +206,9 @@ if __name__ == "__main__":
 	parser.add_argument('--exp_name', default="debug", type=str)
 
 	# Objective specific
-	parser.add_argument('--FlyingPendEvaluator_reg_weight', default=1.0, type=float)
+	parser.add_argument('--FlyingPendEvaluator_reg_weight', default=0.0, type=float)
 	parser.add_argument('--FlyingPendEvaluator_n_samples', default=100000, type=int)
-	parser.add_argument('--FlyingPendEvaluator_objective_type   ', default="n_feasible", type=int, choices=["n_feasible", "avg_amount_infeasible", "max_amount_infeasible"]) # note: we are maximizing
+	parser.add_argument('--FlyingPendEvaluator_objective_type', default="n_feasible", type=str, choices=["n_feasible", "avg_amount_infeasible", "max_amount_infeasible"]) # note: we are maximizing
 	parser.add_argument('--FlyingPendEvaluator_near_boundary_eps', default=1e-2, type=float, help="abs(phi) <= eps defines samples considered on the boundary")
 
 	# parser = create_parser()
