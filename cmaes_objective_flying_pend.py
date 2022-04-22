@@ -46,7 +46,8 @@ class FlyingPendEvaluator(object):
 		self.comp_bs = 100
 
 		# Misc
-		self.near_boundary_eps = 1e-2
+		self.objective_type = arg_dict["FlyingPendEvaluator_objective_type"]
+		self.near_boundary_eps = arg_dict["FlyingPendEvaluator_near_boundary_eps"]
 
 	def set_params(self, params):
 		state_dict = {"ki": torch.tensor([[params[2]]]), "ci": torch.tensor([[params[0]], [params[1]]])}
