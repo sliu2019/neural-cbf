@@ -75,34 +75,62 @@ class FlyingPendEvaluator(object):
 	# 	eps = 1e-2
 	# 	return abs(phi) < eps
 
-	def compute_valid_invariant(self):
-		# print("in compute_valid_invariant")
-		# IPython.embed()
+	# def compute_valid_invariant(self):
+	# 	# print("in compute_valid_invariant")
+	# 	# IPython.embed()
+	#
+	# 	n_inside = 0
+	# 	n_feasible = 0
+	# 	n_near_boundary = 0
+	#
+	# 	for i in range(math.ceil(self.n_samples/float(self.comp_bs))):
+	# 		# IPython.embed()
+	# 		x_batch = self.samples[i*self.comp_bs:min((i+1)*self.comp_bs, self.n_samples)]
+	#
+	# 		# Check if on boundary
+	# 		phis_batch = self.ssa.phi_fn(x_batch)
+	#
+	# 		ind_near_boundary = np.argwhere(np.abs(phis_batch[:, -1]) < self.near_boundary_eps).flatten()
+	# 		n_near_boundary += len(ind_near_boundary)
+	#
+	# 		# If yes, then compute feasibility of safe control
+	# 		x_near = x_batch[ind_near_boundary]
+	# 		f_batch = self.env._f(x_near)
+	# 		g_batch = self.env._g(x_near)
+	#
+	# 		grad_phi_batch = self.ssa.phi_grad(x_near)
+	#
+	# 		# Starting to compute
+	# 		grad_phi_batch = np.reshape(grad_phi_batch, (-1, 1, 16))
+	# 		f_batch = np.reshape(f_batch, (-1, 16, 1))
+	# 		u_batch = np.tile(self.env.control_lim_verts.T[None], (x_near.shape[0], 1, 1))
+	# 		phidot_for_all_u = grad_phi_batch @ f_batch + grad_phi_batch @ g_batch @ u_batch  # (bs, nu)
+	# 		# phidot_for_all_u = np.squeeze(phidot_for_all_u)
+	# 		phidot_for_all_u = phidot_for_all_u[:, 0]
+	#
+	# 		min_phidot_over_all_u = np.min(phidot_for_all_u, axis=1)
+	# 		n_feasible += np.sum(min_phidot_over_all_u < 0)
+	#
+	# 		n_in_S = np.sum(np.all(phis_batch < 0, axis=1))
+	# 		n_inside += n_in_S
+	#
+	#
+	# 	# self.n_feasible = n_feasible # ?
+	# 	objective_value = float(n_feasible) / max(1, n_near_boundary)
+	# 	print("n_feasible / n_near_boundary: ", n_feasible, "/", n_near_boundary) #
+	#
+	# 	#### Reg term ####
+	# 	percentage_inside = float(n_inside) / self.n_samples
+	# 	return objective_value, percentage_inside
 
-		in_invariant = 0
-		n_feasible = 0
-		tot_near_boundary = 0
+	def evaluate(self, params):
+		# print("Trying params: ", params)
+		self.set_params(params)
 
-		"""i = 0
-		for sample in self.samples: # Note: set of samples is fixed across CMA-ES opt.
-			# print(i)
-			x = sample
-			phis = self.ssa.phi_fn(x)
-			phi = phis[0, -1]
-
-			if self.near_boundary(phis):
-				tot_near_boundary += 1
-
-				C = self.ssa.phi_grad(x)
-				# d = -phi / self.dt if phi < 0 else -1 # TODO: objective differs. Aims for dot(phi) <= -alpha(phi(x))
-				d = 0
-				most_valid = self.most_valid_control(C, x)
-				n_feasible += (most_valid < d)
-
-			if np.max(phis) <= 0:
-				in_invariant += 1
-
-			i += 1"""
+		n_inside = 0
+		# n_feasible = 0
+		objective_value = 0
+		n_near_boundary = 0
 
 		for i in range(math.ceil(self.n_samples/float(self.comp_bs))):
 			# IPython.embed()
@@ -112,7 +140,7 @@ class FlyingPendEvaluator(object):
 			phis_batch = self.ssa.phi_fn(x_batch)
 
 			ind_near_boundary = np.argwhere(np.abs(phis_batch[:, -1]) < self.near_boundary_eps).flatten()
-			tot_near_boundary += len(ind_near_boundary)
+			n_near_boundary += len(ind_near_boundary)
 
 			# If yes, then compute feasibility of safe control
 			x_near = x_batch[ind_near_boundary]
@@ -130,32 +158,37 @@ class FlyingPendEvaluator(object):
 			phidot_for_all_u = phidot_for_all_u[:, 0]
 
 			min_phidot_over_all_u = np.min(phidot_for_all_u, axis=1)
-			n_feasible += np.sum(min_phidot_over_all_u < 0)
 
 			n_in_S = np.sum(np.all(phis_batch < 0, axis=1))
-			in_invariant += n_in_S
+			n_inside += n_in_S
 
+			# self.n_feasible = n_feasible # ?
+			# ["n_feasible", "avg_amount_infeasible", "max_amount_infeasible"]
+			if self.objective_type == "n_feasible":
+				n_feasible = np.sum(min_phidot_over_all_u < 0)
+				objective_value += float(n_feasible)
+			elif self.objective_type == "avg_amount_infeasible":
+				objective_value -= np.sum((min_phidot_over_all_u > 0)*min_phidot_over_all_u)
+			elif self.objective_type == "max_amount_infeasible":
+				objective_value -= np.max((min_phidot_over_all_u > 0)*min_phidot_over_all_u) # basically, a relu on max
 
-		# self.n_feasible = n_feasible # ?
-		valid_rate = float(n_feasible) / max(1, tot_near_boundary)
-		print("n_feasible / tot_near_boundary: ", n_feasible, "/", tot_near_boundary) #
+		# normalize objective by n_samples
+		objective_value /= float(max(1, n_near_boundary))
+		print("n_feasible / n_near_boundary: ", n_feasible, "/", n_near_boundary) #
+		print("\n")
 
 		#### Reg term ####
-		in_invariant_rate = float(in_invariant) / self.n_samples
-		return valid_rate, in_invariant_rate
+		percentage_inside = float(n_inside) / self.n_samples
+		# return objective_value, percentage_inside
 
-	def evaluate(self, params):
-		# print("Trying params: ", params)
-		self.set_params(params)
+		# objective_value, percentage_inside = self.compute_valid_invariant()
+		self.objective_value = objective_value
+		self.percentage_inside = percentage_inside
+		rv = objective_value + self.reg_weight * percentage_inside
+		print("objective value: ", objective_value, "percentage_inside: ", percentage_inside, "params: ", params) # TODO: why printed and not logged?
+		debug_dict = {"obj:objective_value": objective_value, "obj:percentage_inside": percentage_inside, "obj:n_near_boundary": n_near_boundary}
 
-		valid_rate, in_invariant_rate = self.compute_valid_invariant()
-		self.valid_rate = valid_rate
-		self.in_invariant_rate = in_invariant_rate
-		rv = valid_rate + self.reg_weight * in_invariant_rate
-		print("valid rate: ", valid_rate, "in_invariant_rate: ", in_invariant_rate, "params: ", params) # TODO: why printed and not logged?
-		debug_dict = {"obj:valid_rate": valid_rate, "obj:in_invariant_rate": in_invariant_rate}
-
-		# print("before returning from evaluate on Objective class")
+		# print("before returning from evaluate on objective_value class")
 		# IPython.embed()
 		return rv, debug_dict
 
@@ -163,6 +196,6 @@ class FlyingPendEvaluator(object):
 	# def log(self):
 	# 	# return "{} {}".format(str(self.coe), str(self.valid))
 	# 	# return "{} {} {}".format(str(self.coe), str(self.valid))
-	# 	# s = "Params: %s, valid rate: %f, volume rate: %f" % (str(self.coe), self.valid_rate, self.in_invariant_rate)
+	# 	# s = "Params: %s, valid rate: %f, volume rate: %f" % (str(self.coe), self.objective_value, self.percentage_inside)
 	# 	# return s
 	# 	return ""

@@ -125,8 +125,8 @@ class CMAESLearning(object):
 		sigma = np.cov(best_members.T) + self.noise
 		# except:
 		#     IPython.embed()
-		print("avg best mu in this epoch:")
-		print(mu)
+		# print("avg best mu in this epoch:")
+		# print(mu)
 
 		# Logging
 		# print("ln 112, logging")
@@ -168,12 +168,15 @@ class CMAESLearning(object):
 			mu, sigma = self.step(mu, sigma)
 			tf = time.perf_counter()
 			print("epoch took %.3f s" % (tf - t0))
-			print("learning")
+			# print("learning")
+			print("mu:", mu)
+			print("sigma:", sigma)
+			print(self.evaluate(mu)[0])
 
-		print("Final best param:")
-		print(mu)
-		print("Final reward:")
-		print(self.evaluate(mu)[0])
+		# print("Final best param:")
+		# print(mu)
+		# print("Final reward:")
+		# print(self.evaluate(mu)[0])
 		# self.evaluator.visualize(mu) # TODO: what happened to this function? No longer exists
 
 		return mu

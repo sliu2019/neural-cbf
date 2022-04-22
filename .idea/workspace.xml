@@ -5,7 +5,6 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/baseline_run_cmaes.py" beforeDir="false" afterPath="$PROJECT_DIR$/baseline_run_cmaes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmaes_objective_flying_pend.py" beforeDir="false" afterPath="$PROJECT_DIR$/cmaes_objective_flying_pend.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/argument.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/argument.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
