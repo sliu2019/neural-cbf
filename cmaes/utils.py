@@ -139,6 +139,17 @@ def plot(exp_name):
 	axs[1].plot([x[1, 1] for x in sigma], label="sigma[1, 1]", linewidth=0.5)
 	axs[1].plot([x[2, 2] for x in sigma], label="sigma[2, 2]", linewidth=0.5)
 
+	axs[1].plot([x[1, 0] for x in sigma], label="sigma[0, 0]", linewidth=0.5)
+	axs[1].plot([x[2, 0] for x in sigma], label="sigma[1, 1]", linewidth=0.5)
+	axs[1].plot([x[2, 1] for x in sigma], label="sigma[2, 2]", linewidth=0.5)
+
+	print(np.min([x[0, 0] for x in sigma]))
+	print(np.min([x[1, 1] for x in sigma]))
+	print(np.min([x[2, 2] for x in sigma]))
+	print(np.min(np.abs([x[1, 0] for x in sigma])))
+	print(np.min(np.abs([x[2, 0] for x in sigma])))
+	print(np.min(np.abs([x[2, 1] for x in sigma])))
+
 	axs[1].legend(loc=(1.04,0))
 
 	fig.tight_layout()
@@ -184,12 +195,47 @@ def plot(exp_name):
 	plt.clf()
 	plt.cla()
 
+	# Plot objective components
+	# Useful for reg weight tuning
+	# IPython.embed()
+	fig, axs = plt.subplots(2, sharex=True)
+	fig.suptitle('Fitness function components for %s at iteration %i/%i' % (exp_name, n_it_so_far, n_it_total))
+	percent_inside = data["obj:percentage_inside"]
+	mean_percent_inside = [np.mean(x) for x in percent_inside]
+	max_percent_inside = [np.max(x) for x in percent_inside]
+	min_percent_inside = [np.min(x) for x in percent_inside]
+
+	axs[0].fill_between(np.arange(n_it_so_far), min_percent_inside, max_percent_inside, alpha=0.5, label="percent inside", color="orange")
+	axs[0].plot(mean_percent_inside, color="orange")
+	axs[0].set_title("Percent inside")
+
+	obj_value = data["obj:objective_value"]
+	mean_obj_value = [np.mean(x) for x in obj_value]
+	max_obj_value = [np.max(x) for x in obj_value]
+	min_obj_value = [np.min(x) for x in obj_value]
+
+	axs[1].fill_between(np.arange(n_it_so_far), min_obj_value, max_obj_value, alpha=0.5, label="obj value", color="blue")
+	axs[1].plot(mean_obj_value, color="blue")
+	axs[1].set_title("Obj value")
+	# plt.legend(loc=(1.04,0))
+
+	# print("mean_percent_inside")
+	# print(mean_percent_inside)
+	# print("mean_obj_value")
+	# print(mean_obj_value)
+
+	# plt.plot()
+	# plt.title("Fitness function components")
+	plt.savefig("./cmaes/%s/%s_fitness.png" % (exp_name, exp_name))
+	plt.clf()
+	plt.cla()
+
 if __name__ == "__main__":
 	# pass
 
-	# exp_names = ["flying_pend_v1_n_feasible", "flying_pend_v2_n_feasible", "flying_pend_v3_n_feasible", "flying_pend_v1_avg_amount_infeasible", "flying_pend_v2_avg_amount_infeasible", "flying_pend_v3_avg_amount_infeasible", "flying_pend_v1_max_amount_infeasible", "flying_pend_v2_max_amount_infeasible", "flying_pend_v3_max_amount_infeasible"]
+	exp_names = ["flying_pend_v1_n_feasible", "flying_pend_v2_n_feasible", "flying_pend_v3_n_feasible", "flying_pend_v1_avg_amount_infeasible", "flying_pend_v2_avg_amount_infeasible", "flying_pend_v3_avg_amount_infeasible", "flying_pend_v1_max_amount_infeasible", "flying_pend_v2_max_amount_infeasible", "flying_pend_v3_max_amount_infeasible"]
 
-	exp_names = ["flying_pend_v1_avg_amount_infeasible"]
+	# exp_names = ["flying_pend_v1_avg_amount_infeasible"]
 
 	for exp_name in exp_names:
 		plot(exp_name)

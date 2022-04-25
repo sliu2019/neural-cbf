@@ -24,17 +24,8 @@ class FlyingPendEvaluator(object):
 		# Defining some var
 		self.dt = self.env.dt
 		self.reg_weight = arg_dict["FlyingPendEvaluator_reg_weight"]
-		# n_samples = 100000
 		self.n_samples = arg_dict["FlyingPendEvaluator_n_samples"]
 
-		# self.samples = []
-		# for i in range(self.n_samples):
-		# 	x_sample = (self.env.x_lim[:, 1] - self.env.x_lim[:, 0]) * np.random.random_sample(
-		# 		(len(self.env.x_lim[:, 0]),)) + self.env.x_lim[:, 0]
-		#
-		# 	x_sample = np.concatenate((x_sample, np.zeros(6))) # (self.n_samples, 10) --> (self.n_samples, 16)
-		# 	self.samples.append(x_sample)
-		# TODO: does self.samples need to be a list or can it be an array?
 		self.samples = np.random.random_sample((self.n_samples, len(self.env.x_lim[:, 0])))*(self.env.x_lim[:, 1] - self.env.x_lim[:, 0]) + self.env.x_lim[:, 0]
 		self.samples = np.concatenate((self.samples, np.zeros((self.n_samples, 6))), axis=1) # (self.n_samples, 10) --> (self.n_samples, 16)
 
@@ -53,87 +44,16 @@ class FlyingPendEvaluator(object):
 		state_dict = {"ki": torch.tensor([[params[2]]]), "ci": torch.tensor([[params[0]], [params[1]]])}
 		self.ssa.set_params(state_dict)
 
-	# def most_valid_control(self, grad_phi, x):
-	# 	# print("inside most_valid_control")
-	# 	# IPython.embed()
-	# 	# todo: what's the vstack part for?
-	# 	f = np.vstack(self.env._f(x))
-	# 	g = np.vstack(self.env._g(x))
-	#
-	# 	# f = self._f_trunc_input(x)
-	# 	# g = self._g_trunc_input(x)
-	#
-	# 	min_dot_phi = float("inf")
-	# 	for u in self.env.control_lim_verts:
-	# 		min_dot_phi = min(min_dot_phi, grad_phi @ f + grad_phi @ g @ u)
-	#
-	# 	return min_dot_phi
-
-	# def near_boundary(self, phis):
-	# 	# Technically, the only boundary we care about has phi[-1] = 0 and phi_i <= 0
-	# 	phi = phis[0, -1]
-	# 	eps = 1e-2
-	# 	return abs(phi) < eps
-
-	# def compute_valid_invariant(self):
-	# 	# print("in compute_valid_invariant")
-	# 	# IPython.embed()
-	#
-	# 	n_inside = 0
-	# 	n_feasible = 0
-	# 	n_near_boundary = 0
-	#
-	# 	for i in range(math.ceil(self.n_samples/float(self.comp_bs))):
-	# 		# IPython.embed()
-	# 		x_batch = self.samples[i*self.comp_bs:min((i+1)*self.comp_bs, self.n_samples)]
-	#
-	# 		# Check if on boundary
-	# 		phis_batch = self.ssa.phi_fn(x_batch)
-	#
-	# 		ind_near_boundary = np.argwhere(np.abs(phis_batch[:, -1]) < self.near_boundary_eps).flatten()
-	# 		n_near_boundary += len(ind_near_boundary)
-	#
-	# 		# If yes, then compute feasibility of safe control
-	# 		x_near = x_batch[ind_near_boundary]
-	# 		f_batch = self.env._f(x_near)
-	# 		g_batch = self.env._g(x_near)
-	#
-	# 		grad_phi_batch = self.ssa.phi_grad(x_near)
-	#
-	# 		# Starting to compute
-	# 		grad_phi_batch = np.reshape(grad_phi_batch, (-1, 1, 16))
-	# 		f_batch = np.reshape(f_batch, (-1, 16, 1))
-	# 		u_batch = np.tile(self.env.control_lim_verts.T[None], (x_near.shape[0], 1, 1))
-	# 		phidot_for_all_u = grad_phi_batch @ f_batch + grad_phi_batch @ g_batch @ u_batch  # (bs, nu)
-	# 		# phidot_for_all_u = np.squeeze(phidot_for_all_u)
-	# 		phidot_for_all_u = phidot_for_all_u[:, 0]
-	#
-	# 		min_phidot_over_all_u = np.min(phidot_for_all_u, axis=1)
-	# 		n_feasible += np.sum(min_phidot_over_all_u < 0)
-	#
-	# 		n_in_S = np.sum(np.all(phis_batch < 0, axis=1))
-	# 		n_inside += n_in_S
-	#
-	#
-	# 	# self.n_feasible = n_feasible # ?
-	# 	objective_value = float(n_feasible) / max(1, n_near_boundary)
-	# 	print("n_feasible / n_near_boundary: ", n_feasible, "/", n_near_boundary) #
-	#
-	# 	#### Reg term ####
-	# 	percentage_inside = float(n_inside) / self.n_samples
-	# 	return objective_value, percentage_inside
-
 	def evaluate(self, params):
 		# print("Trying params: ", params)
 		self.set_params(params)
 
 		n_inside = 0
-		# n_feasible = 0
 		objective_value = 0
 		n_near_boundary = 0
 
 		for i in range(math.ceil(self.n_samples/float(self.comp_bs))):
-			# IPython.embed()
+
 			x_batch = self.samples[i*self.comp_bs:min((i+1)*self.comp_bs, self.n_samples)]
 
 			# Check if on boundary
@@ -154,7 +74,6 @@ class FlyingPendEvaluator(object):
 			f_batch = np.reshape(f_batch, (-1, 16, 1))
 			u_batch = np.tile(self.env.control_lim_verts.T[None], (x_near.shape[0], 1, 1))
 			phidot_for_all_u = grad_phi_batch @ f_batch + grad_phi_batch @ g_batch @ u_batch  # (bs, nu)
-			# phidot_for_all_u = np.squeeze(phidot_for_all_u)
 			phidot_for_all_u = phidot_for_all_u[:, 0]
 
 			min_phidot_over_all_u = np.min(phidot_for_all_u, axis=1)
@@ -179,12 +98,12 @@ class FlyingPendEvaluator(object):
 		# print("\n")
 
 		#### Reg term ####
-		percentage_inside = float(n_inside) / self.n_samples
+		percentage_inside = float(n_inside)*100.0 / self.n_samples
 		# return objective_value, percentage_inside
 
 		# objective_value, percentage_inside = self.compute_valid_invariant()
-		self.objective_value = objective_value
-		self.percentage_inside = percentage_inside
+		# self.objective_value = objective_value
+		# self.percentage_inside = percentage_inside
 		rv = objective_value + self.reg_weight * percentage_inside
 		print("objective value: ", objective_value, "percentage_inside: ", percentage_inside) # TODO: why printed and not logged?
 		print("params: ", params)

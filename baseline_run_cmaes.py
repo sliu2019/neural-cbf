@@ -1,6 +1,7 @@
 import time
 
 import numpy as np
+import torch
 import os
 # import yaml
 import math
@@ -204,6 +205,7 @@ if __name__ == "__main__":
 	parser.add_argument('--evaluator', default="FlyingPendEvaluator", type=str)
 	# parser.add_argument('--exp_prefix', default="flying_pend", type=str)
 	parser.add_argument('--exp_name', default="debug", type=str)
+	parser.add_argument('--random_seed', default=0, type=int)
 
 	# Objective specific
 	parser.add_argument('--FlyingPendEvaluator_reg_weight', default=0.0, type=float)
@@ -214,10 +216,14 @@ if __name__ == "__main__":
 	# parser = create_parser()
 	args = parser.parse_known_args()[0]
 	arg_dict = vars(args)
-	# IPython.embed()
+
+	torch.manual_seed(args.random_seed)
+	np.random.seed(args.random_seed)
 
 	arg_dict["evaluator"] = evaluators_dict[arg_dict["evaluator"]](arg_dict)  # pass a class instance
 
+	# print(arg_dict["evaluator"].samples[:5])
+	# IPython.embed()
 	learner = CMAESLearning(arg_dict)
 	mu = learner.learn()
 
