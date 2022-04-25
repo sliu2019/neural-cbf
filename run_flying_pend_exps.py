@@ -41,37 +41,45 @@ def run_exps(args):
 	"""
 	##### Logging #####
 	experiment_dict = {}
-	# save_fldrpth = ""
-	# save_fpth = os.join(save_fldrpth, "")# TODO
 	###################
 
 	device = torch.device("cpu") # todo: is this fine? or too slow?
 	# load phi, phi_torch
 	if args.which_cbf == "ours":
+		print("loading phi for ours")
+		IPython.embed()
+
 		torch_phi_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
 		numpy_phi_fn = PhiNumpy(torch_phi_fn)
 
 		save_fldrpth = "./log/%s" % args.exp_name
 	elif args.which_cbf == "low-CMAES":
-		# todo: create param_dict here? and then pass it load
-		# So basically separate the two parts of load_phiload that are (1) get param_dict and (2) create phi using param_dict into 2 separate functions
+		print("loading phi for low-CMAES")
+		IPython.embed()
 		torch_phi_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
 		numpy_phi_fn = PhiNumpy(torch_phi_fn)
 
 		data = pickle.load(open(os.path.join("cmaes", args.exp_name_to_load, "data.pkl")))
-		mu = data["mu"][-1] # todo: defaulting to last mu
+		mu = data["mu"][args.checkpoint_number_to_load]
 
 		state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])} # todo: this is not very generic
 		numpy_phi_fn.set_params(state_dict)
-		# todo: does this mutate torch_phi_fn or not?
-		print("check todo")
-		IPython.embed()
+		print("check: does this mutate torch_phi_fn or not?")
 
 		save_fldrpth = "./cmaes/%s" % args.exp_name
-	########## Saving and logging
-	save_fpth = os.join(save_fldrpth, args.save_fnm)
-	#############################
-	# Form the torch objective function
+	else:
+		raise NotImplementedError
+
+	########## Saving and logging ############
+	save_fpth = os.path.join(save_fldrpth, args.save_fnm)
+
+	#############################################
+	##### Form the torch objective function #####
+	#############################################
+	print("before forming objective function")
+	print("Check if the learned Phi are on GPU. Probably yes. In that case, is that enough? Usually, Phi class takes a device on instantiation")
+	IPython.embed()
+
 	# r = param_dict["r"]
 	x_dim = param_dict["x_dim"]
 	u_dim = param_dict["u_dim"]
@@ -84,7 +92,7 @@ def run_exps(args):
 
 	xdot_fn = xdot_fn.to(device)
 	uvertices_fn = uvertices_fn.to(device)
-	# TODO: forgot if the learned Phi are on GPU. Probably yes. In that case, is that enough? Usually, Phi class takes a device on instantiation
+
 	torch_phi_fn = torch_phi_fn.to(device)
 	logger = None # doesn't matter, isn't used
 	args = None # currently not used, but sometimes used to set options
@@ -92,16 +100,14 @@ def run_exps(args):
 	objective_fn = Objective(torch_phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
 	objective_fn = objective_fn.to(device)
 
-	# TODO: simin you are here! Some means to create Objective so i can evaluate it easily
-	# TODO: i think what's tricky is we have Numpy vs. Torch, GPU vs, COU
+	# TODO: Simin you are here
 	# call separate functions for each test
 	if "average_boundary" in args.which_experiments:
-		# TODO: everything in torch here
-		# CPU? GPU?
-		# logger = None, since it's never called
+		# TODO: later, add more pass-in options for this
 		print("average_boundary")
 		IPython.embed()
-		n_samples = 100000
+
+		n_samples = 10 # TODO: increase
 		attacker = GradientBatchWarmstartFasterAttacker(param_dict["x_lim"], device, None) # o.w. default args
 		boundary_samples, debug_dict = attacker._sample_points_on_boundary(torch_phi_fn, n_samples) # todo: n_samples to arg?
 		# outputs are in torch
@@ -133,16 +139,17 @@ def run_exps(args):
 		print("Percent infeasible: %.3f" % percent_infeasible)
 		print("Mean, std infeas. amount: %.3f +/- %.3f" % (mean_infeasible_amount, std_infeasible_amount))
 	if "worst_boundary" in args.which_experiments:
-		pass
+		# TODO: later, add more pass-in options for this
+		print("worst_boundary")
+		IPython.embed()
 		"""
 		For now, you can use your attacker 
 		(But of course, you can write a slower, better test-time attacker) 
 		"""
-		# TODO: you'll need an objective function for this too
-		#     def opt(self, objective_fn, phi_fn, iteration, debug=False):
 		# if you called average boundary, reuse the attacker + it's initialized boundary points
-		attacker = GradientBatchWarmstartFasterAttacker(param_dict["x_lim"], device, None) # o.w. default args
-		iteration = 0 # TODO: dictates the number of grad steps, if you're using a step schedule
+		n_opt_steps = 5 # TODO: increase
+		attacker = GradientBatchWarmstartFasterAttacker(param_dict["x_lim"], device, None, max_n_steps=n_opt_steps) # o.w. default args
+		iteration = 0 # dictates the number of grad steps, if you're using a step schedule. but we're not.
 		worst_boundary_samples, debug_dict = attacker.opt(objective_fn, torch_phi_fn, iteration, debug=False)
 
 		obj_values = objective_fn(worst_boundary_samples)
@@ -156,6 +163,9 @@ def run_exps(args):
 		print("Worst infeas. amount: %.3f" % worst_infeasible_amount)
 	if "rollout" in args.which_experiments:
 		# pass
+		print("rollout")
+		print("you're probably going to have a lot of dimension issues, since you switched classes")
+		IPython.embed()
 		"""
 		you're probably going to have to refactor rollout to be more modular....
 		"""
@@ -198,7 +208,12 @@ def run_exps(args):
 
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+		for key, value in stat_dict.items():
+			print("%s: %.3f" % (key, value))
 	if "volume" in args.which_experiments:
+		print("volume")
+		IPython.embed()
 		# Finally, approximate volume of invariant set
 		_, percent_inside = sample_inside_safe_set(param_dict, numpy_phi_fn, args.N_samp_volume)
 		experiment_dict["vol_approximation"] = percent_inside
@@ -206,17 +221,11 @@ def run_exps(args):
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-		print("Approx. % volume: %.3f" % percent_inside)
+		print("Approx. volume: %.3f" % percent_inside)
 
-	# TODO:
 	# Maybe analysis is better done in a different folder
 	if "plot_slices" in args.which_analysis:
-		# TODO: check this
-		plot_interesting_slices(torch_phi_fn, param_dict, save_fldrpth, args.checkpoint_number_to_load) # TODO: 2nd arg from arg obj? above we assume -1
-
-	# Print and save
-	# TODO: print
-
+		plot_interesting_slices(torch_phi_fn, param_dict, save_fldrpth, args.checkpoint_number_to_load)
 
 if __name__ == "__main__":
 	# from cmaes.cmas_argument import create_parse
