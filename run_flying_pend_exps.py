@@ -41,8 +41,8 @@ def run_exps(args):
 	"""
 	##### Logging #####
 	experiment_dict = {}
-	save_fldrpth = ""
-	save_fpth = os.join(save_fldrpth, "")# TODO
+	# save_fldrpth = ""
+	# save_fpth = os.join(save_fldrpth, "")# TODO
 	###################
 
 	device = torch.device("cpu") # todo: is this fine? or too slow?
@@ -50,6 +50,8 @@ def run_exps(args):
 	if args.which_cbf == "ours":
 		torch_phi_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
 		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+
+		save_fldrpth = "./log/%s" % args.exp_name
 	elif args.which_cbf == "low-CMAES":
 		# todo: create param_dict here? and then pass it load
 		# So basically separate the two parts of load_phiload that are (1) get param_dict and (2) create phi using param_dict into 2 separate functions
@@ -65,6 +67,10 @@ def run_exps(args):
 		print("check todo")
 		IPython.embed()
 
+		save_fldrpth = "./cmaes/%s" % args.exp_name
+	########## Saving and logging
+	save_fpth = os.join(save_fldrpth, args.save_fnm)
+	#############################
 	# Form the torch objective function
 	# r = param_dict["r"]
 	x_dim = param_dict["x_dim"]
@@ -124,6 +130,8 @@ def run_exps(args):
 		Create attacker w/ torch_phi_fn
 		Call sample points on boundary  
 		"""
+		print("Percent infeasible: %.3f" % percent_infeasible)
+		print("Mean, std infeas. amount: %.3f +/- %.3f" % (mean_infeasible_amount, std_infeasible_amount))
 	if "worst_boundary" in args.which_experiments:
 		pass
 		"""
@@ -144,6 +152,8 @@ def run_exps(args):
 
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+		print("Worst infeas. amount: %.3f" % worst_infeasible_amount)
 	if "rollout" in args.which_experiments:
 		# pass
 		"""
@@ -179,9 +189,6 @@ def run_exps(args):
 		# Compute numbers
 		#####################################
 		stat_dict = extract_statistics(info_dicts, env, param_dict)
-
-
-
 		# print(percent_inside)
 		# stat_dict["rollout_info_dicts"] = info_dicts
 
@@ -199,6 +206,8 @@ def run_exps(args):
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+		print("Approx. % volume: %.3f" % percent_inside)
+
 	# TODO:
 	# Maybe analysis is better done in a different folder
 	if "plot_slices" in args.which_analysis:
@@ -214,6 +223,7 @@ if __name__ == "__main__":
 	import argparse
 
 	parser = argparse.ArgumentParser(description='All experiments for flying pendulum')
+	parser.add_argument('--save_fnm', type=str, default="debug", required=True)
 	parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES"], required=True)
 
 	parser.add_argument('--exp_name_to_load', type=str, required=True) # flying_inv_pend_first_run
