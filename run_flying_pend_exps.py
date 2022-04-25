@@ -5,6 +5,7 @@ import pickle
 import os, sys, time, IPython
 import torch
 import numpy as np
+import math
 
 from phi_numpy_wrapper import PhiNumpy
 from phi_low_torch_module import PhiLow
@@ -27,6 +28,39 @@ from flying_rollout_experiment import *
 
 # For plotting slices
 from flying_plot_utils import plot_interesting_slices
+
+
+def approx_volume(param_dict, cbf_obj, N_samp):
+	# Or can just increase n_samp for now? Or just find points close to boundary?
+	"""
+	Uses rejection sampling to sample uniformly in the invariant set
+
+	Note: assumes invariant set is defined as follows:
+	x0 in S if max(phi_array(x)) <= 0
+	"""
+	# print("inside sample_inside_safe_set")
+	# IPython.embed()
+
+	# Define some variables
+	x_dim = param_dict["x_dim"]
+	x_lim = param_dict["x_lim"]
+	box_side_lengths = x_lim[:, 1] - x_lim[:, 0]
+
+	M = 50
+	n_inside = 0
+	for i in range(math.ceil(float(N_samp)/M)):
+		# Sample in box
+		samples = np.random.rand(M, x_dim)
+		samples = samples*box_side_lengths + x_lim[:, 0]
+		samples = np.concatenate((samples, np.zeros((M, 6))), axis=1) # Add translational states as zeros
+
+		# Check if samples in invariant set
+		phi_vals = cbf_obj.phi_fn(samples)
+		max_phi_vals = phi_vals.max(axis=1)
+		n_inside += np.sum(max_phi_vals <= 0)
+
+	percent_inside = float(n_inside)/N_samp
+	return percent_inside
 
 def run_exps(args):
 	"""
@@ -54,19 +88,19 @@ def run_exps(args):
 
 		save_fldrpth = "./log/%s" % args.exp_name_to_load
 	elif args.which_cbf == "low-CMAES":
-		print("loading phi for low-CMAES")
-		IPython.embed()
+		# print("loading phi for low-CMAES")
+		# IPython.embed()
 		torch_phi_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
 		numpy_phi_fn = PhiNumpy(torch_phi_fn)
 
-		data = pickle.load(open(os.path.join("cmaes", args.exp_name_to_load, "data.pkl")))
+		data = pickle.load(open(os.path.join("cmaes", args.exp_name_to_load, "data.pkl"), "rb"))
 		mu = data["mu"][args.checkpoint_number_to_load]
 
 		state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])} # todo: this is not very generic
 		numpy_phi_fn.set_params(state_dict)
-		print("check: does this mutate torch_phi_fn or not?")
+		# print("check: does this mutate torch_phi_fn or not?") # yes
 
-		save_fldrpth = "./cmaes/%s" % args.exp_name
+		save_fldrpth = "./cmaes/%s" % args.exp_name_to_load
 	else:
 		raise NotImplementedError
 
@@ -103,8 +137,8 @@ def run_exps(args):
 	# call separate functions for each test
 	if "average_boundary" in args.which_experiments:
 		# TODO: later, add more pass-in options for this
-		# print("average_boundary")
-		# IPython.embed()
+		print("average_boundary")
+		IPython.embed()
 
 		n_samples = 10 # TODO: increase
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
@@ -132,16 +166,13 @@ def run_exps(args):
 
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-		"""
-		Create attacker w/ torch_phi_fn
-		Call sample points on boundary  
-		"""
+
 		print("Percent infeasible: %.3f" % percent_infeasible)
 		print("Mean, std infeas. amount: %.3f +/- %.3f" % (mean_infeasible_amount, std_infeasible_amount))
 	if "worst_boundary" in args.which_experiments:
 		# TODO: later, add more pass-in options for this
-		# print("worst_boundary")
-		# IPython.embed()
+		print("worst_boundary")
+		IPython.embed()
 		"""
 		For now, you can use your attacker 
 		(But of course, you can write a slower, better test-time attacker) 
@@ -170,7 +201,7 @@ def run_exps(args):
 		# pass
 		print("rollout")
 		print("you're probably going to have a lot of dimension issues, since you switched classes")
-		# IPython.embed()
+		IPython.embed()
 		"""
 		you're probably going to have to refactor rollout to be more modular....
 		"""
@@ -217,10 +248,14 @@ def run_exps(args):
 		for key, value in stat_dict.items():
 			print("%s: %.3f" % (key, value))
 	if "volume" in args.which_experiments:
-		# print("volume")
-		# IPython.embed()
+		print("volume")
+		IPython.embed()
 		# Finally, approximate volume of invariant set
-		_, percent_inside = sample_inside_safe_set(param_dict, numpy_phi_fn, args.N_samp_volume)
+		# Note: don't use this: because N_samp is the number of samples we want to find inside
+		# That means it could run forever
+		# On the other hand, if you specify the N_samples, it's a predictable run time
+		# _, percent_inside = sample_inside_safe_set(param_dict, numpy_phi_fn, args.N_samp_volume)
+		percent_inside = approx_volume(param_dict, cbf_obj, N_samp)
 		experiment_dict["vol_approximation"] = percent_inside
 
 		with open(save_fpth, 'wb') as handle:

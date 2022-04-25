@@ -18,7 +18,7 @@ from decimal import Decimal
 torch.manual_seed(2022)
 np.random.seed(2022)
 
-def sample_inside_safe_set(param_dict, cbf_obj, N_samp):
+def sample_inside_safe_set(param_dict, cbf_obj, target_N_samp_inside):
 	# TODO; modify this somehow?
 	# Or can just increase n_samp for now? Or just find points close to boundary?
 	"""
@@ -27,8 +27,8 @@ def sample_inside_safe_set(param_dict, cbf_obj, N_samp):
 	Note: assumes invariant set is defined as follows:
 	x0 in S if max(phi_array(x)) <= 0
 	"""
-	# print("inside sample_inside_safe_set")
-	# IPython.embed()
+	print("inside sample_inside_safe_set")
+	IPython.embed()
 
 	# Define some variables
 	x_dim = param_dict["x_dim"]
@@ -39,7 +39,7 @@ def sample_inside_safe_set(param_dict, cbf_obj, N_samp):
 	M = 50
 	N_samp_found = 0
 	i = 0
-	while N_samp_found < N_samp:
+	while N_samp_found < target_N_samp_inside:
 		# print(i)
 		# Sample in box
 		samples = np.random.rand(M, x_dim)
@@ -59,8 +59,8 @@ def sample_inside_safe_set(param_dict, cbf_obj, N_samp):
 
 	# print("Inside sample x0s")
 	# IPython.embed()
-	# Could be more than N_samp currently; truncate to exactly N_samp
-	x0s = x0s[:N_samp]
+	# Could be more than N_samp currently; truncate to exactly target_N_samp_inside
+	x0s = x0s[:target_N_samp_inside]
 	percent_inside = (float(N_samp_found)/(M*i))*100
 	return x0s, percent_inside
 
