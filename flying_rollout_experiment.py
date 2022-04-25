@@ -5,6 +5,7 @@ from cvxopt import solvers
 solvers.options['show_progress'] = False
 import argparse
 import pickle
+import IPython
 
 from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 from flying_cbf_controller import CBFController
@@ -205,7 +206,9 @@ def simulate_rollout(env, N_steps_max, cbf_controller, random_seed=None):
 	x0, _ = sample_inside_safe_set(cbf_controller.param_dict, cbf_controller.cbf_obj, 1)
 
 	# Initialize data structures
-	x = x0.flatten()
+	# x = x0.flatten()
+	# Note: x is 1 x 16
+	x = x0
 	xs = [x]
 	us = []
 	dict = None
@@ -216,6 +219,8 @@ def simulate_rollout(env, N_steps_max, cbf_controller, random_seed=None):
 	for t in range(N_steps_max): # TODO: end criteria should be different
 		print("rollout, step %i" % t)
 		# print(x)
+		# print("inside simulate_rollout loop")
+		# IPython.embed()
 		u, debug_dict = cbf_controller.compute_control(t, x)  # Define this
 		x_dot = env.x_dot_open_loop(x, u)
 		x = x + env.dt * x_dot
@@ -224,11 +229,11 @@ def simulate_rollout(env, N_steps_max, cbf_controller, random_seed=None):
 		# TODO: hard-coded
 		# IPython.embed()
 		ind = [0, 1, 2, 6, 7]
-		mod_ang = convert_angle_to_negpi_pi_interval(x[ind])
-		x[ind] = mod_ang
+		mod_ang = convert_angle_to_negpi_pi_interval(x[:, ind])
+		x[:, ind] = mod_ang
 
-		us.append(u)
-		xs.append(x)
+		us.append(u) # (4)
+		xs.append(x) # (1, 16)
 
 		if dict is None:
 			dict = {key: [value] for (key, value) in debug_dict.items()}
@@ -249,7 +254,7 @@ def simulate_rollout(env, N_steps_max, cbf_controller, random_seed=None):
 
 	# IPython.embed()
 	dict = {key: np.array(value) for (key, value) in dict.items()}
-	dict["x"] = np.array(xs)
+	dict["x"] = np.squeeze(np.array(xs)) # get rid of second dim = 1
 	dict["u"] = np.array(us)
 
 	# print("At the end of a rollout")

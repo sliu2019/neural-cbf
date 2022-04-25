@@ -43,16 +43,16 @@ def run_exps(args):
 	experiment_dict = {}
 	###################
 
-	device = torch.device("cpu") # todo: is this fine? or too slow?
+	device = torch.device("cpu")
 	# load phi, phi_torch
 	if args.which_cbf == "ours":
-		print("loading phi for ours")
-		IPython.embed()
+		# print("loading phi for ours")
+		# IPython.embed()
 
 		torch_phi_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
 		numpy_phi_fn = PhiNumpy(torch_phi_fn)
 
-		save_fldrpth = "./log/%s" % args.exp_name
+		save_fldrpth = "./log/%s" % args.exp_name_to_load
 	elif args.which_cbf == "low-CMAES":
 		print("loading phi for low-CMAES")
 		IPython.embed()
@@ -76,9 +76,9 @@ def run_exps(args):
 	#############################################
 	##### Form the torch objective function #####
 	#############################################
-	print("before forming objective function")
-	print("Check if the learned Phi are on GPU. Probably yes. In that case, is that enough? Usually, Phi class takes a device on instantiation")
-	IPython.embed()
+	# print("before forming objective function")
+	# print("Check if the learned Phi are on GPU. Probably yes. In that case, is that enough? Usually, Phi class takes a device on instantiation")
+	# IPython.embed()
 
 	# r = param_dict["r"]
 	x_dim = param_dict["x_dim"]
@@ -95,27 +95,27 @@ def run_exps(args):
 
 	torch_phi_fn = torch_phi_fn.to(device)
 	logger = None # doesn't matter, isn't used
-	args = None # currently not used, but sometimes used to set options
+	obj_args = None # currently not used, but sometimes used to set options
 
-	objective_fn = Objective(torch_phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
+	objective_fn = Objective(torch_phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, obj_args)
 	objective_fn = objective_fn.to(device)
 
-	# TODO: Simin you are here
 	# call separate functions for each test
 	if "average_boundary" in args.which_experiments:
 		# TODO: later, add more pass-in options for this
-		print("average_boundary")
-		IPython.embed()
+		# print("average_boundary")
+		# IPython.embed()
 
 		n_samples = 10 # TODO: increase
-		attacker = GradientBatchWarmstartFasterAttacker(param_dict["x_lim"], device, None) # o.w. default args
+		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
+		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None) # o.w. default args
 		boundary_samples, debug_dict = attacker._sample_points_on_boundary(torch_phi_fn, n_samples) # todo: n_samples to arg?
 		# outputs are in torch
 
 		obj_values = objective_fn(boundary_samples)
 
 		# Compute metrics
-		n_infeasible = torch.sum(obj_values > 0)
+		n_infeasible = int(torch.sum(obj_values > 0))
 		percent_infeasible = float(n_infeasible)/n_samples
 
 		print("Check! that you're only adding scalars, not tensors to the dict")
@@ -124,8 +124,8 @@ def run_exps(args):
 		experiment_dict["n_infeasible"] = n_infeasible
 
 		infeas_ind = torch.argwhere(obj_values > 0).flatten()
-		mean_infeasible_amount = torch.mean(obj_values[infeas_ind])
-		std_infeasible_amount = torch.std(obj_values[infeas_ind])
+		mean_infeasible_amount = float(torch.mean(obj_values[infeas_ind]))
+		std_infeasible_amount = float(torch.std(obj_values[infeas_ind]))
 
 		experiment_dict["mean_infeasible_amount"] = mean_infeasible_amount
 		experiment_dict["std_infeasible_amount"] = std_infeasible_amount
@@ -140,19 +140,24 @@ def run_exps(args):
 		print("Mean, std infeas. amount: %.3f +/- %.3f" % (mean_infeasible_amount, std_infeasible_amount))
 	if "worst_boundary" in args.which_experiments:
 		# TODO: later, add more pass-in options for this
-		print("worst_boundary")
-		IPython.embed()
+		# print("worst_boundary")
+		# IPython.embed()
 		"""
 		For now, you can use your attacker 
 		(But of course, you can write a slower, better test-time attacker) 
 		"""
 		# if you called average boundary, reuse the attacker + it's initialized boundary points
+		# TODO: examine parameters of attacker!
 		n_opt_steps = 5 # TODO: increase
-		attacker = GradientBatchWarmstartFasterAttacker(param_dict["x_lim"], device, None, max_n_steps=n_opt_steps) # o.w. default args
-		iteration = 0 # dictates the number of grad steps, if you're using a step schedule. but we're not.
-		worst_boundary_samples, debug_dict = attacker.opt(objective_fn, torch_phi_fn, iteration, debug=False)
+		n_samples = 20 # TODO
 
-		obj_values = objective_fn(worst_boundary_samples)
+		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
+		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples) # o.w. default args
+		iteration = 0 # dictates the number of grad steps, if you're using a step schedule. but we're not.
+		x_worst, debug_dict = attacker.opt(objective_fn, torch_phi_fn, iteration, debug=False)
+
+		x_worst = torch.reshape(x_worst, (1, 10))
+		obj_values = objective_fn(x_worst)
 
 		worst_infeasible_amount = torch.max(obj_values)
 		experiment_dict["worst_infeasible_amount"] = worst_infeasible_amount
@@ -165,7 +170,7 @@ def run_exps(args):
 		# pass
 		print("rollout")
 		print("you're probably going to have a lot of dimension issues, since you switched classes")
-		IPython.embed()
+		# IPython.embed()
 		"""
 		you're probably going to have to refactor rollout to be more modular....
 		"""
@@ -212,8 +217,8 @@ def run_exps(args):
 		for key, value in stat_dict.items():
 			print("%s: %.3f" % (key, value))
 	if "volume" in args.which_experiments:
-		print("volume")
-		IPython.embed()
+		# print("volume")
+		# IPython.embed()
 		# Finally, approximate volume of invariant set
 		_, percent_inside = sample_inside_safe_set(param_dict, numpy_phi_fn, args.N_samp_volume)
 		experiment_dict["vol_approximation"] = percent_inside
@@ -224,7 +229,7 @@ def run_exps(args):
 		print("Approx. volume: %.3f" % percent_inside)
 
 	# Maybe analysis is better done in a different folder
-	if "plot_slices" in args.which_analysis:
+	if "plot_slices" in args.which_analyses:
 		plot_interesting_slices(torch_phi_fn, param_dict, save_fldrpth, args.checkpoint_number_to_load)
 
 if __name__ == "__main__":
@@ -239,7 +244,7 @@ if __name__ == "__main__":
 	parser.add_argument('--checkpoint_number_to_load', type=int, help="for our CBF")
 
 	parser.add_argument('--which_experiments', nargs='+', default=["average_boundary", "worst_boundary", "rollout", "volume"], type=str)
-	parser.add_argument('--which_analysis', nargs='+', default=["plot_slices"], type=str) # TODO: add "animate_rollout" later s
+	parser.add_argument('--which_analyses', nargs='+', default=["plot_slices"], type=str) # TODO: add "animate_rollout" later s
 
 
 	# For rollout_experiment, TODO: rename
@@ -259,11 +264,14 @@ if __name__ == "__main__":
 Debug 
 
 # Ours 
-python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 400 
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 400 --rollout_N_rollout 2 
 
 (ckpt 200 or 400) 
 
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 400 --rollout_N_rollout 2 --which_experiments volume 
+
+
 # Low-CMAES
-python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name_to_load flying_pend_v3_avg_amount_infeasible --checkpoint_number_to_load 10 
+python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name_to_load flying_pend_v3_avg_amount_infeasible --checkpoint_number_to_load 10 --rollout_N_rollout 2
 (ckpt 10 or 12) 
 """

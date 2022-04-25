@@ -706,8 +706,8 @@ def plot_interesting_slices(phi_fn, param_dict, save_fldrpth, checkpoint_number)
 	:param checkpoint: Is used for the title!
 	:return:
 	"""
-	print("inside plot_interesting_slices")
-	IPython.embed()
+	# print("inside plot_interesting_slices")
+	# IPython.embed()
 	# TODO
 	params_to_viz_list = []
 	constants_for_other_params_list = []

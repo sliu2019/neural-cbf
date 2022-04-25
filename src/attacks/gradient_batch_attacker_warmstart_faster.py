@@ -27,7 +27,7 @@ class GradientBatchWarmstartFasterAttacker():
                  lr=1e-3, \
                  p_reuse=0.7,\
                  projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=3.0, verbose=False, train_attacker_use_n_step_schedule=False,\
-                 boundary_sampling_speedup_method="sequential", boundary_sampling_method="uniform", gaussian_t=1.0):
+                 boundary_sampling_speedup_method="sequential", boundary_sampling_method="gaussian", gaussian_t=1.0):
         # boundary_sampling_option: ["sequential", "gpu_parallelized", "cpu_parallelized"]
         # boundary_sampling_method; ["uniform", "gaussian"]
 
