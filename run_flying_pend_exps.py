@@ -71,7 +71,7 @@ def run_exps(args):
 		raise NotImplementedError
 
 	########## Saving and logging ############
-	save_fpth = os.path.join(save_fldrpth, args.save_fnm)
+	save_fpth = os.path.join(save_fldrpth, "%s_exp_data.pkl"% args.save_fnm)
 
 	#############################################
 	##### Form the torch objective function #####
@@ -248,7 +248,7 @@ if __name__ == "__main__":
 	parser.add_argument('--rollout_T_max', type=float, default=1e-1)
 
 	# Volume
-	parser.add_argument('--N_samp_volume', type=int, default=100000)
+	parser.add_argument('--N_samp_volume', type=int, default=100) # TODO: default 100k
 
 	args = parser.parse_known_args()[0]
 
@@ -256,26 +256,14 @@ if __name__ == "__main__":
 	run_exps(args)
 
 """
-TODO: a couple of notes for sensible coding practices 
+Debug 
 
-1. Remove numpy interface for updating state dict. That numpy wrapper is supposed to be agnostic
-A: actually, the way it's implemented is agnostic 
- 
-2. What fully determines an experiment?
-Resulting Phi 
-Dynamics it assumed (param_dict) 
+# Ours 
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 400 
 
-Relatedly: 
-2.a) load_philow should have an input-output interface more like load_phi_and_params
-We need param_dict out; it should take exp_name and checkpoint_number in 
-You'll need to refactor all usages of it 
+(ckpt 200 or 400) 
 
-2.b) create a torch Objective 
-It's a function of torch_Phi and param_dict only 
-
-3. On refactoring rollout 
-Cut and take lines 398-418, that will also get you the volume code 
-Again, all of the things you need to instantiate only need numpy_phi and param_dict  
-
-(Honestly, we probably should have built this script in that file. It's so similar!) 
+# Low-CMAES
+python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name_to_load flying_pend_v3_avg_amount_infeasible --checkpoint_number_to_load 10 
+(ckpt 10 or 12) 
 """
