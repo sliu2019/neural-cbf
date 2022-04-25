@@ -256,7 +256,7 @@ def simulate_rollout(env, N_steps_max, cbf_controller, random_seed=None):
 	# IPython.embed()
 	return dict
 
-def run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller, log_fldr):
+def run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller):
 	info_dicts = None
 	N_rollout = 0
 	# for i in range(N_desired_rollout):
@@ -285,15 +285,15 @@ def run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller, log_fldr):
 		N_rollout += 1
 
 	# Save data
-	save_fpth = os.path.join(log_fldr, "rollouts.pkl")
-	with open(save_fpth, 'wb') as handle:
-		pickle.dump(info_dicts, handle, protocol=pickle.HIGHEST_PROTOCOL)
+	# save_fpth = os.path.join(log_fldr, "rollouts.pkl")
+	# with open(save_fpth, 'wb') as handle:
+	# 	pickle.dump(info_dicts, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	# print("At the end of all our rollouts")
 	# IPython.embed()
 	return info_dicts
 
-def run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller, log_fldr):
+def run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller):
 	info_dicts = None
 	N_rollout = 0
 	it = 0
@@ -337,9 +337,9 @@ def run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller, 
 	print("Number of collected rollouts: %i" % N_rollout)
 
 	# Save data
-	save_fpth = os.path.join(log_fldr, "rollouts.pkl")
-	with open(save_fpth, 'wb') as handle:
-		pickle.dump(info_dicts, handle, protocol=pickle.HIGHEST_PROTOCOL)
+	# save_fpth = os.path.join(log_fldr, "rollouts.pkl")
+	# with open(save_fpth, 'wb') as handle:
+	# 	pickle.dump(info_dicts, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	# print("At the end of all our rollouts")
 	# IPython.embed()
@@ -405,9 +405,13 @@ def run_rollout_experiment(args):
 	# Run multiple rollout_results
 	#####################################
 	if N_desired_rollout < 10:
-		info_dicts = run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller, log_fldrpth)
+		info_dicts = run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller)
 	else:
-		info_dicts = run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller, log_fldrpth)
+		info_dicts = run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller)
+
+	save_fpth = os.path.join(log_fldrpth, "rollouts.pkl")
+	with open(save_fpth, 'wb') as handle:
+		pickle.dump(info_dicts, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	#####################################
 	# Compute numbers

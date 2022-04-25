@@ -697,6 +697,73 @@ def find_attacker_n_reuse(exp_name):
 		for i in range(len(train_attack_X_init_reuse)):
 			print(train_attack_X_init_reuse[i].shape[0])
 
+def plot_interesting_slices(phi_fn, param_dict, save_fldrpth, checkpoint_number):
+	"""
+	:param phi_fn:
+	:param param_dict:
+	:param save_fldrpth:
+	:param save_fnm:
+	:param checkpoint: Is used for the title!
+	:return:
+	"""
+	print("inside plot_interesting_slices")
+	IPython.embed()
+	# TODO
+	params_to_viz_list = []
+	constants_for_other_params_list = []
+	fnms = []
+
+	params_to_viz_list.extend([["phi", "dphi"], ["theta", "dtheta"], ["gamma", "dgamma"], ["beta", "dbeta"]])
+	constants_for_other_params_list.extend([np.zeros(10)] * 4)
+	fnms.extend(["phi_dphi", "theta_dtheta", "gamma_dgamma", "beta_dbeta"])
+
+	# TODO: more slices
+	params_to_viz_list.extend([["dtheta", "dbeta"], ["dphi", "dgamma"]])
+	constants_for_other_params_list.extend([np.zeros(10)] * 2)
+	fnms.extend(["dtheta_dbeta", "dphi_dgamma"])
+
+	state_index_dict = param_dict["state_index_dict"]
+
+	angle = math.pi / 6  # [pi/5-pi/7] is a popular range of choices
+
+	params_to_viz_list.append(["theta", "beta"])  # aligned, misaligned
+	x = np.zeros(10)
+	x[state_index_dict["phi"]] = -angle
+	x[state_index_dict["gamma"]] = angle
+	constants_for_other_params_list.append(x)
+	fnms.append("theta_beta_misaligned")
+
+	params_to_viz_list.append(["theta", "beta"])  # aligned, misaligned
+	x = np.zeros(10)
+	x[state_index_dict["phi"]] = angle
+	x[state_index_dict["gamma"]] = angle
+	constants_for_other_params_list.append(x)
+	fnms.append("theta_beta_aligned")
+
+	params_to_viz_list.append(["phi", "gamma"])  # aligned, misaligned
+	x = np.zeros(10)
+	x[state_index_dict["theta"]] = -angle
+	x[state_index_dict["beta"]] = angle
+	constants_for_other_params_list.append(x)
+	fnms.append("phi_gamma_misaligned")
+
+	params_to_viz_list.append(["phi", "gamma"])  # aligned, misaligned
+	x = np.zeros(10)
+	x[state_index_dict["theta"]] = angle
+	x[state_index_dict["beta"]] = angle
+	constants_for_other_params_list.append(x)
+	fnms.append("phi_gamma_aligned")
+
+	# fnms = [x + "_ckpt_%i" % checkpoint_number for x in fnms]
+
+	# TODO: plotting multiple slices at a time
+	# fldr_path = os.path.join("./log", exp_name)
+	fnm = "slices_ckpt_%i" % checkpoint_number
+	plot_invariant_set_slices(phi_fn, param_dict, fldr_path=save_fldrpth, which_params=params_to_viz_list,
+	                          constants_for_other_params=constants_for_other_params_list, fnm=fnm,
+	                          checkpoint=checkpoint_number)
+	plt.clf()
+	plt.close()
 
 if __name__ == "__main__":
 	########################################################

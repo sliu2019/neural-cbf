@@ -8,7 +8,7 @@ from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 # from .normal_ssa import SSA
 from phi_low_torch_module import PhiLow
 from phi_numpy_wrapper import PhiNumpy
-from cmaes.utils import load_philow
+from cmaes.utils import load_philow_and_params
 # from src.problems.flying_inv_pend import HSum, XDot # TODO: how to import this correctly?
 # from main import create_flying_param_dict
 # from src.argument import create_parser
@@ -30,7 +30,7 @@ class FlyingPendEvaluator(object):
 		self.samples = np.concatenate((self.samples, np.zeros((self.n_samples, 6))), axis=1) # (self.n_samples, 10) --> (self.n_samples, 16)
 
 		# Create CBF class
-		self.ssa_torch_module = load_philow() # load clean phi_low, not from checkpoint
+		self.ssa_torch_module, _ = load_philow_and_params() # load clean phi_low, not from checkpoint
 		self.ssa = PhiNumpy(self.ssa_torch_module)
 
 		# For faster computation
