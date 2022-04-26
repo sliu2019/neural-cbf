@@ -137,8 +137,8 @@ def run_exps(args):
 	# call separate functions for each test
 	if "average_boundary" in args.which_experiments:
 		# TODO: later, add more pass-in options for this
-		print("average_boundary")
-		IPython.embed()
+		# print("average_boundary")
+		# IPython.embed()
 
 		n_samples = 10 # TODO: increase
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
@@ -157,7 +157,7 @@ def run_exps(args):
 		experiment_dict["percent_infeasible"] = percent_infeasible
 		experiment_dict["n_infeasible"] = n_infeasible
 
-		infeas_ind = torch.argwhere(obj_values > 0).flatten()
+		infeas_ind = torch.argwhere(obj_values > 0)[:, 0]
 		mean_infeasible_amount = float(torch.mean(obj_values[infeas_ind]))
 		std_infeasible_amount = float(torch.std(obj_values[infeas_ind]))
 
@@ -171,8 +171,8 @@ def run_exps(args):
 		print("Mean, std infeas. amount: %.3f +/- %.3f" % (mean_infeasible_amount, std_infeasible_amount))
 	if "worst_boundary" in args.which_experiments:
 		# TODO: later, add more pass-in options for this
-		print("worst_boundary")
-		IPython.embed()
+		# print("worst_boundary")
+		# IPython.embed()
 		"""
 		For now, you can use your attacker 
 		(But of course, you can write a slower, better test-time attacker) 
@@ -185,12 +185,12 @@ def run_exps(args):
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
 		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples) # o.w. default args
 		iteration = 0 # dictates the number of grad steps, if you're using a step schedule. but we're not.
-		x_worst, debug_dict = attacker.opt(objective_fn, torch_phi_fn, iteration, debug=False)
+		x_worst, debug_dict = attacker.opt(objective_fn, torch_phi_fn, iteration, debug=True)
 
 		x_worst = torch.reshape(x_worst, (1, 10))
 		obj_values = objective_fn(x_worst)
 
-		worst_infeasible_amount = torch.max(obj_values)
+		worst_infeasible_amount = torch.max(obj_values) # could be negative
 		experiment_dict["worst_infeasible_amount"] = worst_infeasible_amount
 
 		with open(save_fpth, 'wb') as handle:
@@ -199,9 +199,9 @@ def run_exps(args):
 		print("Worst infeas. amount: %.3f" % worst_infeasible_amount)
 	if "rollout" in args.which_experiments:
 		# pass
-		print("rollout")
-		print("you're probably going to have a lot of dimension issues, since you switched classes")
-		IPython.embed()
+		# print("rollout")
+		# print("you're probably going to have a lot of dimension issues, since you switched classes")
+		# IPython.embed()
 		"""
 		you're probably going to have to refactor rollout to be more modular....
 		"""
@@ -234,7 +234,7 @@ def run_exps(args):
 		#####################################
 		# Compute numbers
 		#####################################
-		stat_dict = extract_statistics(info_dicts, env, param_dict)
+		stat_dict = extract_statistics(info_dicts, env, cbf_controller, param_dict)
 		# print(percent_inside)
 		# stat_dict["rollout_info_dicts"] = info_dicts
 
@@ -248,14 +248,10 @@ def run_exps(args):
 		for key, value in stat_dict.items():
 			print("%s: %.3f" % (key, value))
 	if "volume" in args.which_experiments:
-		print("volume")
-		IPython.embed()
+		# print("volume")
+		# IPython.embed()
 		# Finally, approximate volume of invariant set
-		# Note: don't use this: because N_samp is the number of samples we want to find inside
-		# That means it could run forever
-		# On the other hand, if you specify the N_samples, it's a predictable run time
-		# _, percent_inside = sample_inside_safe_set(param_dict, numpy_phi_fn, args.N_samp_volume)
-		percent_inside = approx_volume(param_dict, cbf_obj, N_samp)
+		percent_inside = approx_volume(param_dict, numpy_phi_fn, args.N_samp_volume)
 		experiment_dict["vol_approximation"] = percent_inside
 
 		with open(save_fpth, 'wb') as handle:
@@ -309,4 +305,8 @@ python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_l
 # Low-CMAES
 python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name_to_load flying_pend_v3_avg_amount_infeasible --checkpoint_number_to_load 10 --rollout_N_rollout 2
 (ckpt 10 or 12) 
+
+python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name_to_load flying_pend_n_feasible_reg_weight_1e_1 --checkpoint_number_to_load 6 --rollout_N_rollout 2 --which_experiments volume 
+
+python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name_to_load flying_pend_n_feasible_reg_weight_1e_1 --checkpoint_number_to_load 6 --rollout_N_rollout 2 --which_experiments rollout
 """

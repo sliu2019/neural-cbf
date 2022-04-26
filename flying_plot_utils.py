@@ -578,7 +578,14 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 	print("Saved at: %s" % save_fpth)
 	# plt.tight_layout(pad=0.5)
 
-	ki_str = "k0 = %.4f, k1 = %.4f" % (phi_fn.k0, phi_fn.ci[0])
+	# IPython.embed()
+	if hasattr(phi_fn, "k0"):
+		# cbf is type "ours"
+		ki_str = "k0 = %.4f, k1 = %.4f" % (phi_fn.k0, phi_fn.ci[0])
+	elif hasattr(phi_fn, "ki"):
+		ki_str = "ci = %.4f, %.4f, ki = %.4f" % (phi_fn.ci[0, 0], phi_fn.ci[1, 0], phi_fn.ci[0, 0])
+	else:
+		ki_str = ""
 	# fig.title(ki_str) # doesn't work, title goes on last subfigure
 	if checkpoint: # little messy, little hacky, doesn't matter tho
 		plt.suptitle("From %s, ckpt %i \n %s" % (fldr_path, checkpoint, ki_str))
@@ -706,8 +713,8 @@ def plot_interesting_slices(phi_fn, param_dict, save_fldrpth, checkpoint_number)
 	:param checkpoint: Is used for the title!
 	:return:
 	"""
-	print("inside plot_interesting_slices")
-	IPython.embed()
+	# print("inside plot_interesting_slices")
+	# IPython.embed()
 	# TODO
 	params_to_viz_list = []
 	constants_for_other_params_list = []

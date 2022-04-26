@@ -143,7 +143,7 @@ class CMAESLearning(object):
 		self.data["mu"].append(mu)
 		self.data["sigma"].append(sigma)
 
-		mu_reward = self.evaluate(mu)
+		mu_reward, debug = self.evaluate(mu)
 		self.data["mu_rewards"].append(mu_reward)
 		# data = {}
 		# data["pop"] = self.population

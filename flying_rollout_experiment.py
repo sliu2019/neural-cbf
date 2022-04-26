@@ -27,8 +27,8 @@ def sample_inside_safe_set(param_dict, cbf_obj, target_N_samp_inside):
 	Note: assumes invariant set is defined as follows:
 	x0 in S if max(phi_array(x)) <= 0
 	"""
-	print("inside sample_inside_safe_set")
-	IPython.embed()
+	# print("inside sample_inside_safe_set")
+	# IPython.embed()
 
 	# Define some variables
 	x_dim = param_dict["x_dim"]
@@ -65,7 +65,7 @@ def sample_inside_safe_set(param_dict, cbf_obj, target_N_samp_inside):
 	return x0s, percent_inside
 
 
-def extract_statistics(info_dicts, env, param_dict):
+def extract_statistics(info_dicts, env, cbf_controller, param_dict):
 	# print("Inside extract_statistics")
 	# IPython.embed()
 
@@ -185,8 +185,23 @@ def extract_statistics(info_dicts, env, param_dict):
 	# outside_box_any_rl = [np.sum(rl) for rl in outside_box_rl]
 	# which_rl = np.argwhere(outside_box_any_rl).flatten()
 
+	# Compute how much things are violated
 	# print("at the end of compute_stats")
 	# IPython.embed()
+	qp_slacks = info_dicts["qp_slack"]
+	violation_amounts = []
+	for i in range(N_rollout):
+		if np.any(on_out_rl[i]):
+			qp_slack = qp_slacks[i][:-1]
+			qp_slack[qp_slack == None] = 0
+			amount = np.sum(on_out_rl[i]*qp_slack)
+			violation_amounts.append(amount)
+	# violation_amounts = [on_out_rl[i]*qp_slacks[i][:-1] for i in range(N_rollout)]
+	mean_violation_amount = np.mean(violation_amounts) + cbf_controller.eps_bdry
+	std_violation_amount = np.std(violation_amounts)
+	stat_dict["mean_violation_amount"] = mean_violation_amount
+	stat_dict["std_violation_amount"] = std_violation_amount
+
 	return stat_dict
 
 
@@ -421,7 +436,7 @@ def run_rollout_experiment(args):
 	#####################################
 	# Compute numbers
 	#####################################
-	stat_dict = extract_statistics(info_dicts, env, param_dict)
+	stat_dict = extract_statistics(info_dicts, env, cbf_controller, param_dict)
 
 	# Finally, approximate volume of invariant set
 	_, percent_inside = sample_inside_safe_set(param_dict, cbf_obj, args.N_samp_volume)
