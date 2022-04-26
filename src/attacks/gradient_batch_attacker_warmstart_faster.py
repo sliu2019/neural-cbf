@@ -22,11 +22,11 @@ class GradientBatchWarmstartFasterAttacker():
 	1. Multi-processing for speed-up on boundary sampling
 	2. Different boundary sampling routines
     """
-    def __init__(self, x_lim, device, logger, n_samples=20, \
-                 stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
+    def __init__(self, x_lim, device, logger, n_samples=60, \
+                 stopping_condition="n_steps", max_n_steps=50, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
                  lr=1e-3, \
                  p_reuse=0.7,\
-                 projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=3.0, verbose=False, train_attacker_use_n_step_schedule=False,\
+                 projection_tolerance=1e-1, projection_lr=1e-2, projection_time_limit=3.0, verbose=False, train_attacker_use_n_step_schedule=False,\
                  boundary_sampling_speedup_method="sequential", boundary_sampling_method="gaussian", gaussian_t=1.0):
         # boundary_sampling_option: ["sequential", "gpu_parallelized", "cpu_parallelized"]
         # boundary_sampling_method; ["uniform", "gaussian"]

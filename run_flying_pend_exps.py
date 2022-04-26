@@ -11,12 +11,7 @@ from phi_numpy_wrapper import PhiNumpy
 from phi_low_torch_module import PhiLow
 
 from cmaes.utils import load_philow_and_params
-# todo: tweak load_philow
 from flying_plot_utils import load_phi_and_params
-
-# todo: what about logging/saving conventions?
-# ssave onto one file (reload, modify, resave)?
-# or save onto a bunch of different metrics? <- prefer this
 
 from src.attacks.gradient_batch_attacker_warmstart_faster import GradientBatchWarmstartFasterAttacker
 from main import Objective
@@ -98,7 +93,6 @@ def run_exps(args):
 
 		state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])} # todo: this is not very generic
 		numpy_phi_fn.set_params(state_dict)
-		# print("check: does this mutate torch_phi_fn or not?") # yes
 
 		save_fldrpth = "./cmaes/%s" % args.exp_name_to_load
 	else:
@@ -136,23 +130,19 @@ def run_exps(args):
 
 	# call separate functions for each test
 	if "average_boundary" in args.which_experiments:
-		# TODO: later, add more pass-in options for this
 		# print("average_boundary")
 		# IPython.embed()
 
-		n_samples = 10 # TODO: increase
+		n_samples = args.boundary_n_samples
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
 		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None) # o.w. default args
-		boundary_samples, debug_dict = attacker._sample_points_on_boundary(torch_phi_fn, n_samples) # todo: n_samples to arg?
-		# outputs are in torch
+		boundary_samples, debug_dict = attacker._sample_points_on_boundary(torch_phi_fn, n_samples)
 
 		obj_values = objective_fn(boundary_samples)
 
 		# Compute metrics
 		n_infeasible = int(torch.sum(obj_values > 0))
 		percent_infeasible = float(n_infeasible)/n_samples
-
-		print("Check! that you're only adding scalars, not tensors to the dict")
 
 		experiment_dict["percent_infeasible"] = percent_infeasible
 		experiment_dict["n_infeasible"] = n_infeasible
@@ -163,6 +153,7 @@ def run_exps(args):
 
 		experiment_dict["mean_infeasible_amount"] = mean_infeasible_amount
 		experiment_dict["std_infeasible_amount"] = std_infeasible_amount
+		experiment_dict["average_boundary_debug_dict"] = debug_dict
 
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -170,17 +161,14 @@ def run_exps(args):
 		print("Percent infeasible: %.3f" % percent_infeasible)
 		print("Mean, std infeas. amount: %.3f +/- %.3f" % (mean_infeasible_amount, std_infeasible_amount))
 	if "worst_boundary" in args.which_experiments:
-		# TODO: later, add more pass-in options for this
 		# print("worst_boundary")
 		# IPython.embed()
 		"""
 		For now, you can use your attacker 
 		(But of course, you can write a slower, better test-time attacker) 
 		"""
-		# if you called average boundary, reuse the attacker + it's initialized boundary points
-		# TODO: examine parameters of attacker!
-		n_opt_steps = 5 # TODO: increase
-		n_samples = 20 # TODO
+		n_samples = args.worst_boundary_n_samples
+		n_opt_steps = args.worst_boundary_n_opt_steps
 
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
 		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples) # o.w. default args
@@ -192,23 +180,16 @@ def run_exps(args):
 
 		worst_infeasible_amount = torch.max(obj_values) # could be negative
 		experiment_dict["worst_infeasible_amount"] = worst_infeasible_amount
+		experiment_dict["worst_x"] = x_worst.detach().cpu().numpy()
+		experiment_dict["worst_boundary_debug_dict"] = debug_dict
 
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 		print("Worst infeas. amount: %.3f" % worst_infeasible_amount)
 	if "rollout" in args.which_experiments:
-		# pass
 		# print("rollout")
-		# print("you're probably going to have a lot of dimension issues, since you switched classes")
 		# IPython.embed()
-		"""
-		you're probably going to have to refactor rollout to be more modular....
-		"""
-		# TODO, replacing old numpy wrapper OurCBF
-		# The difference is that the new one is batched, which may cause some dimension issues
-		# You may have to refactor the original file too
-		# TODO: add rollout arguments below
 
 		# Experimental settings
 		N_desired_rollout = args.rollout_N_rollout
@@ -221,8 +202,6 @@ def run_exps(args):
 		env.dt = args.rollout_dt
 		cbf_controller = CBFController(env, numpy_phi_fn, param_dict) # 2nd arg prev. "cbf_obj"
 
-		# print("before running rollouts")
-		# IPython.embed()
 		#####################################
 		# Run multiple rollout_results
 		#####################################
@@ -235,8 +214,6 @@ def run_exps(args):
 		# Compute numbers
 		#####################################
 		stat_dict = extract_statistics(info_dicts, env, cbf_controller, param_dict)
-		# print(percent_inside)
-		# stat_dict["rollout_info_dicts"] = info_dicts
 
 		# Fill out experiment dict
 		experiment_dict["rollout_info_dicts"] = info_dicts
@@ -248,9 +225,10 @@ def run_exps(args):
 		for key, value in stat_dict.items():
 			print("%s: %.3f" % (key, value))
 	if "volume" in args.which_experiments:
+		# Finally, approximate volume of invariant set
+
 		# print("volume")
 		# IPython.embed()
-		# Finally, approximate volume of invariant set
 		percent_inside = approx_volume(param_dict, numpy_phi_fn, args.N_samp_volume)
 		experiment_dict["vol_approximation"] = percent_inside
 
@@ -275,16 +253,22 @@ if __name__ == "__main__":
 	parser.add_argument('--checkpoint_number_to_load', type=int, help="for our CBF")
 
 	parser.add_argument('--which_experiments', nargs='+', default=["average_boundary", "worst_boundary", "rollout", "volume"], type=str)
-	parser.add_argument('--which_analyses', nargs='+', default=["plot_slices"], type=str) # TODO: add "animate_rollout" later s
+	parser.add_argument('--which_analyses', nargs='+', default=["plot_slices"], type=str) # TODO: add "animate_rollout" later
 
+	# For boundary stats
+	parser.add_argument('--boundary_n_samples', type=int, default=1000)
 
-	# For rollout_experiment, TODO: rename
-	parser.add_argument('--rollout_N_rollout', type=int, default=10)
+	# For worst boundary
+	parser.add_argument('--worst_boundary_n_samples', type=int, default=5000)
+	parser.add_argument('--worst_boundary_n_opt_steps', type=int, default=50)
+
+	# For rollout_experiment
+	parser.add_argument('--rollout_N_rollout', type=int, default=500)
 	parser.add_argument('--rollout_dt', type=float, default=1e-4)
 	parser.add_argument('--rollout_T_max', type=float, default=1e-1)
 
 	# Volume
-	parser.add_argument('--N_samp_volume', type=int, default=100) # TODO: default 100k
+	parser.add_argument('--N_samp_volume', type=int, default=100000)
 
 	args = parser.parse_known_args()[0]
 
@@ -292,6 +276,8 @@ if __name__ == "__main__":
 	run_exps(args)
 
 """
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 1020 --boundary_n_samples 100 --worst_boundary_n_samples 100 --rollout_N_rollout 100 
+
 Debug 
 
 # Ours 
@@ -309,4 +295,41 @@ python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name
 python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name_to_load flying_pend_n_feasible_reg_weight_1e_1 --checkpoint_number_to_load 6 --rollout_N_rollout 2 --which_experiments volume 
 
 python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name_to_load flying_pend_n_feasible_reg_weight_1e_1 --checkpoint_number_to_load 6 --rollout_N_rollout 2 --which_experiments rollout
+
+# Best candidates for ours 
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 1020
+"""
+
+"""
+For experiment flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0, at iteration 1551/3000
+Average approx volume: 0.247
+-0.08455947
+1020 0.26794875
+V avg: 0.031
+First: 0.120, best: 0.320
+For experiment flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1, at iteration 1606/3000
+Average approx volume: 0.234
+0.49223045
+1605 0.6197671
+V avg: 0.028
+First: 0.160, best: 0.360
+For experiment flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2, at iteration 2021/3000
+Average approx volume: 0.200
+0.38371262
+1975 0.38371262
+V avg: 0.028
+First: 0.640, best: 0.640
+For experiment flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3, at iteration 1951/3000
+Average approx volume: 0.185
+0.25222638
+930 0.54474854
+V avg: 0.024
+First: 0.000, best: 0.200
+For experiment flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4, at iteration 1186/3000
+Average approx volume: 0.163
+0.49849012
+220 0.49849012
+V avg: 0.017
+First: 0.200, best: 0.200
+(si_feas_env) siminl@nsh1609s
 """

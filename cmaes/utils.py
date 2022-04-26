@@ -207,6 +207,8 @@ def plot(exp_name):
 	max_n_near_boundary = [np.max(x) for x in n_near_boundary]
 	min_n_near_boundary = [np.min(x) for x in n_near_boundary]
 
+	print(mean_n_near_boundary)
+
 	axs[2].fill_between(np.arange(n_it_so_far), min_n_near_boundary, max_n_near_boundary, alpha=0.5, label="obj value", color="purple")
 	axs[2].plot(mean_n_near_boundary, color="purple")
 	axs[2].set_title("N_near_boundary")
@@ -228,9 +230,11 @@ if __name__ == "__main__":
 	# pass
 
 	# exp_names = ["flying_pend_v1_n_feasible", "flying_pend_v2_n_feasible", "flying_pend_v3_n_feasible", "flying_pend_v1_avg_amount_infeasible", "flying_pend_v2_avg_amount_infeasible", "flying_pend_v3_avg_amount_infeasible", "flying_pend_v1_max_amount_infeasible", "flying_pend_v2_max_amount_infeasible", "flying_pend_v3_max_amount_infeasible"]
-
-	exp_names = ["flying_pend_n_feasible_reg_weight_1e_1", "flying_pend_n_feasible_reg_weight_5e_2", "flying_pend_n_feasible_reg_weight_1e_2", "flying_pend_avg_amount_infeasible_reg_weight_10", "flying_pend_avg_amount_infeasible_reg_weight_50", "flying_pend_avg_amount_infeasible_reg_weight_100", "flying_pend_max_amount_infeasible_reg_weight_15", "flying_pend_max_amount_infeasible_reg_weight_75", "flying_pend_max_amount_infeasible_reg_weight_150"]
+	#
+	# exp_names = ["flying_pend_n_feasible_reg_weight_1e_1", "flying_pend_n_feasible_reg_weight_5e_2", "flying_pend_n_feasible_reg_weight_1e_2", "flying_pend_avg_amount_infeasible_reg_weight_10", "flying_pend_avg_amount_infeasible_reg_weight_50", "flying_pend_avg_amount_infeasible_reg_weight_100", "flying_pend_max_amount_infeasible_reg_weight_15", "flying_pend_max_amount_infeasible_reg_weight_75", "flying_pend_max_amount_infeasible_reg_weight_150"]
 	# exp_names = ["flying_pend_v1_avg_amount_infeasible"]
+
+	exp_names = ["flying_pend_n_feasible_reg_weight_5e_2", "flying_pend_n_feasible_reg_weight_1e_2"]
 
 	for exp_name in exp_names:
 		plot(exp_name)
