@@ -135,7 +135,7 @@ def run_exps(args):
 
 		n_samples = args.boundary_n_samples
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
-		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None) # o.w. default args
+		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, gaussian_t=args.boundary_gaussian_t) # o.w. default args
 		boundary_samples, debug_dict = attacker._sample_points_on_boundary(torch_phi_fn, n_samples)
 
 		obj_values = objective_fn(boundary_samples)
@@ -171,7 +171,7 @@ def run_exps(args):
 		n_opt_steps = args.worst_boundary_n_opt_steps
 
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
-		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples) # o.w. default args
+		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples, gaussian_t=args.worst_boundary_gaussian_t) # o.w. default args
 		iteration = 0 # dictates the number of grad steps, if you're using a step schedule. but we're not.
 		x_worst, debug_dict = attacker.opt(objective_fn, torch_phi_fn, iteration, debug=True)
 
@@ -205,20 +205,42 @@ def run_exps(args):
 		#####################################
 		# Run multiple rollout_results
 		#####################################
-		if N_desired_rollout < 10:
-			info_dicts = run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller)
-		else:
-			info_dicts = run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller)
+		# if N_desired_rollout < 10:
+		# 	info_dicts = run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller)
+		# else:
+		# 	info_dicts = run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller)
+		#
+		# experiment_dict["rollout_info_dicts"] = info_dicts
+		# with open(save_fpth, 'wb') as handle:
+		# 	pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+		# TODO: had to fix malformed data; it was expensive to generate
+		experiment_dict = pickle.load(
+			open("./log/flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0/debug_rollout_inf_loop_exp_data.pkl",
+			     "rb"))
+		info_dicts = experiment_dict["rollout_info_dicts"]
+		"""experiment_dict = pickle.load(open("./log/flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0/debug_rollout_inf_loop_exp_data.pkl", "rb"))
+		info_dicts = experiment_dict["rollout_info_dicts"]
+		IPython.embed()
+		new_x = []
+		for rl in info_dicts["x"]:
+			rl = [np.reshape(x, (1, 16)) for x in rl]
+			rl = np.concatenate(rl, axis=0)
+			new_x.append(rl)
+
+		info_dicts["x"] = new_x
+		experiment_dict["rollout_info_dicts"] = info_dicts
+
+		save_fpth = "./log/flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0/debug_rollout_inf_loop_exp_data.pkl"
+		with open(save_fpth, 'wb') as handle:
+			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)"""
 		#####################################
 		# Compute numbers
 		#####################################
 		stat_dict = extract_statistics(info_dicts, env, cbf_controller, param_dict)
 
 		# Fill out experiment dict
-		experiment_dict["rollout_info_dicts"] = info_dicts
 		experiment_dict["rollout_stat_dict"] = stat_dict
-
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -256,19 +278,21 @@ if __name__ == "__main__":
 	parser.add_argument('--which_analyses', nargs='+', default=["plot_slices"], type=str) # TODO: add "animate_rollout" later
 
 	# For boundary stats
-	parser.add_argument('--boundary_n_samples', type=int, default=1000)
+	parser.add_argument('--boundary_n_samples', type=int, default=1000) # TODO
+	parser.add_argument('--boundary_gaussian_t', type=float, default=1.0) # TODO
 
 	# For worst boundary
-	parser.add_argument('--worst_boundary_n_samples', type=int, default=5000)
-	parser.add_argument('--worst_boundary_n_opt_steps', type=int, default=50)
+	parser.add_argument('--worst_boundary_n_samples', type=int, default=1000) # TODO
+	parser.add_argument('--worst_boundary_n_opt_steps', type=int, default=50) # TODO
+	parser.add_argument('--worst_boundary_gaussian_t', type=float, default=1.0) # TODO
 
 	# For rollout_experiment
 	parser.add_argument('--rollout_N_rollout', type=int, default=500)
 	parser.add_argument('--rollout_dt', type=float, default=1e-4)
-	parser.add_argument('--rollout_T_max', type=float, default=1e-1)
+	parser.add_argument('--rollout_T_max', type=float, default=1.0)
 
 	# Volume
-	parser.add_argument('--N_samp_volume', type=int, default=100000)
+	parser.add_argument('--N_samp_volume', type=int, default=100000) # 100K
 
 	args = parser.parse_known_args()[0]
 

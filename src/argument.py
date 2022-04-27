@@ -40,7 +40,7 @@ def create_parser():
 	# Reg
 	parser.add_argument('--reg_weight', default=0.0, type=float, help='the weight on the volume term')
 	parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task')
-	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed', 'random_inside'])
+	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed', 'random_inside', 'random_inside_then_boundary'], help="random_inside_then_boundary switches from RI to bdry after vol drops")
 	parser.add_argument('--reg_n_samples', type=int, default=250)
 	parser.add_argument('--reg_transform', type=str, default="sigmoid", choices=["sigmoid", "softplus"])
 	# parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
@@ -51,7 +51,7 @@ def create_parser():
 	# parser.add_argument('--no_softplus_on_obj', action='store_true', help='removes softplus on the objective')
 	# parser.add_argument('--trainer_average_gradients', action='store_true')
 
-	parser.add_argument('--objective_option', type=str, default='regular', choices=['regular', 'softplus', 'weighted_average'])
+	parser.add_argument('--objective_option', type=str, default='regular', choices=['regular', 'softplus', 'weighted_average', 'weighted_average_include_neg_phidot'], help="allow negative pays attention to phi < 0 as well")
 
 	###################################################################################################################################
 	# # Reg sample keeper
@@ -101,6 +101,8 @@ def create_parser():
 	parser.add_argument('--trainer_lr', default=1e-3, type=float)
 	# parser.add_argument('--train_mode', default='dG', choices=['dG', 'dS'])
 	# parser.add_argument('--trainer_type', type=str, default="Adam")
+	parser.add_argument('--trainer_lr_scheduler', type=str, choices=["exponential_reduction", "reduce_on_plateau"])
+	parser.add_argument('--trainer_lr_scheduler_exponential_reduction_gamma', type=float, default=0.992, help="the multiplicative factor; lr goes by alpha^t")
 
 	# Saving/logging
 	parser.add_argument('--random_seed', default=1, type=int)

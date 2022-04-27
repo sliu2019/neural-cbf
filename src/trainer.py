@@ -12,6 +12,9 @@ import datetime
 import pickle
 import math
 
+from torch.optim.lr_scheduler import ReduceLROnPlateau, ExponentialLR
+# lr_scheduler_str_to_class_dict = {"exponential_reduction":0, "reduce_on_plateau":0}
+
 class Trainer():
 	def __init__(self, args, logger, attacker, test_attacker, reg_sampler, param_dict, device):
 		vars = locals()  # dict of local names
@@ -80,6 +83,16 @@ class Trainer():
 
 		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
 
+		if self.args.trainer_lr_scheduler:
+			print("creating lr scheduler")
+			IPython.embed()
+			if self.args.trainer_lr_scheduler == "exponential_reduction":
+				lr_scheduler = ExponentialLR(optimizer, gamma=self.args.trainer_lr_scheduler_exponential_reduction_gamma)
+			elif self.args.trainer_lr_scheduler == "reduce_on_plateau":
+				lr_scheduler = ReduceLROnPlateau(optimizer, factor=0.9, )
+				# torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
+				# TODO: SIMIN YOU HAVEN'T FINISHED HERE!!!
+
 		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
 
 		_iter = 0
@@ -122,6 +135,14 @@ class Trainer():
 						w = w/torch.sum(w)
 					else:
 						w = torch.zeros_like(obj)
+				attack_value = torch.dot(w.flatten(), obj.flatten())
+			elif self.args.objective_option == "weighted_average_include_neg_phidot":
+				# Eliminates the "relu" effect on above
+				c = 0.1
+
+				obj = objective_fn(X)
+				w = torch.exp(c*obj)
+				w = w/torch.sum(w)
 				attack_value = torch.dot(w.flatten(), obj.flatten())
 
 			# For logging

@@ -36,7 +36,7 @@ def sample_inside_safe_set(param_dict, cbf_obj, target_N_samp_inside):
 	box_side_lengths = x_lim[:, 1] - x_lim[:, 0]
 	x0s = np.empty((0, 16))
 
-	M = 50
+	M = 1000
 	N_samp_found = 0
 	i = 0
 	while N_samp_found < target_N_samp_inside:
@@ -209,7 +209,7 @@ def convert_angle_to_negpi_pi_interval(angle):
 	new_angle = np.arctan2(np.sin(angle), np.cos(angle))
 	return new_angle
 
-def simulate_rollout(env, N_steps_max, cbf_controller, random_seed=None):
+def simulate_rollout(env, N_steps_max, cbf_controller, x0, random_seed=None):
 	# Random seed is for multiproc
 	# print("Inside simulate_rollout")
 	# IPython.embed()
@@ -218,7 +218,7 @@ def simulate_rollout(env, N_steps_max, cbf_controller, random_seed=None):
 		np.random.seed(random_seed)
 
 	# Compute x0
-	x0, _ = sample_inside_safe_set(cbf_controller.param_dict, cbf_controller.cbf_obj, 1)
+	# x0, _ = sample_inside_safe_set(cbf_controller.param_dict, cbf_controller.cbf_obj, 1)
 
 	# Initialize data structures
 	# x = x0.flatten()
@@ -232,7 +232,7 @@ def simulate_rollout(env, N_steps_max, cbf_controller, random_seed=None):
 	u_safe_applied = False
 	t_since = 0
 	for t in range(N_steps_max): # TODO: end criteria should be different
-		print("rollout, step %i" % t)
+		# print("rollout, step %i" % t)
 		# print(x)
 		# print("inside simulate_rollout loop")
 		# IPython.embed()
@@ -269,9 +269,19 @@ def simulate_rollout(env, N_steps_max, cbf_controller, random_seed=None):
 
 	# IPython.embed()
 	dict = {key: np.array(value) for (key, value) in dict.items()}
-	dict["x"] = np.squeeze(np.array(xs)) # get rid of second dim = 1
+	# print("creating dict after rollout")
+	# IPython.embed()
+	xs = [np.reshape(x, (1, 16)) for x in xs]
+	dict["x"] = np.concatenate(xs, axis=0) # get rid of second dim = 1
 	dict["u"] = np.array(us)
 
+	# for k, v in dict.items():
+	# 	if type(v) == np.ndarray:
+	# 		print(k, v.shape)
+	# 	else:
+	# 		print(k, len(v), v[0].shape)
+
+	# print("Finished rollout")
 	# print("At the end of a rollout")
 	# IPython.embed()
 	return dict
@@ -282,7 +292,8 @@ def run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller):
 	# for i in range(N_desired_rollout):
 	while N_rollout < N_desired_rollout:
 		print("Rollout %i" % N_rollout)
-		info_dict = simulate_rollout(env, N_steps_max, cbf_controller)
+		x0, _ = sample_inside_safe_set(cbf_controller.param_dict, cbf_controller.cbf_obj, 1)
+		info_dict = simulate_rollout(env, N_steps_max, cbf_controller, x0)
 
 		# print("inside run_rollouts()")
 		# IPython.embed()
@@ -318,17 +329,21 @@ def run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller):
 	N_rollout = 0
 	it = 0
 
-	n_cpu = mp.cpu_count()
-	random_seeds = np.arange(10*N_desired_rollout)
-	np.random.shuffle(random_seeds) # in place
-	pool = mp.Pool(n_cpu)
+	n_proc = mp.cpu_count()
+	# random_seeds = np.arange(10*N_desired_rollout)
+	# np.random.shuffle(random_seeds) # in place
+	pool = mp.Pool(n_proc)
 
 	arg_tup = [env, N_steps_max, cbf_controller]
-	duplicated_arg = list([arg_tup] * n_cpu)
+	duplicated_arg = list([arg_tup] * n_proc)
 
 	while N_rollout < N_desired_rollout:
-		batch_random_seeds = random_seeds[it*n_cpu:(it+1)*n_cpu]
-		final_arg = [duplicated_arg[i] + [batch_random_seeds[i]] for i in range(n_cpu)]
+		# batch_random_seeds = random_seeds[it*n_proc:(it+1)*n_proc]
+		# final_arg = [duplicated_arg[i] + [batch_random_seeds[i]] for i in range(n_proc)]
+		x0s, _ = sample_inside_safe_set(cbf_controller.param_dict, cbf_controller.cbf_obj, n_proc)
+		final_arg = [duplicated_arg[i] + [x0s[i]] for i in range(n_proc)]
+		# print("before launching n_proc")
+		# IPython.embed()
 		result = pool.starmap(simulate_rollout, final_arg)
 
 		for info_dict in result:
@@ -338,6 +353,7 @@ def run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller):
 
 			# TODO: if you change anything in this, you have to change it in run_rollouts above!
 			if not np.any(info_dict["apply_u_safe"]):
+				print("invalid rollout")
 				continue
 			if N_rollout == N_desired_rollout:
 				break
