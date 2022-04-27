@@ -10,6 +10,8 @@ import math
 from phi_numpy_wrapper import PhiNumpy
 from phi_low_torch_module import PhiLow
 
+print(sys.path)
+sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
 from cmaes.utils import load_philow_and_params
 from flying_plot_utils import load_phi_and_params
 
@@ -205,35 +207,15 @@ def run_exps(args):
 		#####################################
 		# Run multiple rollout_results
 		#####################################
-		# if N_desired_rollout < 10:
-		# 	info_dicts = run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller)
-		# else:
-		# 	info_dicts = run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller)
-		#
-		# experiment_dict["rollout_info_dicts"] = info_dicts
-		# with open(save_fpth, 'wb') as handle:
-		# 	pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+		if N_desired_rollout < 10:
+			info_dicts = run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller)
+		else:
+			info_dicts = run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller)
 
-		# TODO: had to fix malformed data; it was expensive to generate
-		experiment_dict = pickle.load(
-			open("./log/flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0/debug_rollout_inf_loop_exp_data.pkl",
-			     "rb"))
-		info_dicts = experiment_dict["rollout_info_dicts"]
-		"""experiment_dict = pickle.load(open("./log/flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0/debug_rollout_inf_loop_exp_data.pkl", "rb"))
-		info_dicts = experiment_dict["rollout_info_dicts"]
-		IPython.embed()
-		new_x = []
-		for rl in info_dicts["x"]:
-			rl = [np.reshape(x, (1, 16)) for x in rl]
-			rl = np.concatenate(rl, axis=0)
-			new_x.append(rl)
-
-		info_dicts["x"] = new_x
 		experiment_dict["rollout_info_dicts"] = info_dicts
-
-		save_fpth = "./log/flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0/debug_rollout_inf_loop_exp_data.pkl"
 		with open(save_fpth, 'wb') as handle:
-			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)"""
+			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 		#####################################
 		# Compute numbers
 		#####################################
