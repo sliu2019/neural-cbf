@@ -10,8 +10,10 @@ import math
 from phi_numpy_wrapper import PhiNumpy
 from phi_low_torch_module import PhiLow
 
-print(sys.path)
-sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
+# print(sys.path)
+import socket
+if socket.gethostname() == "nsh1609server4":
+	sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
 from cmaes.utils import load_philow_and_params
 from flying_plot_utils import load_phi_and_params
 
@@ -59,6 +61,36 @@ def approx_volume(param_dict, cbf_obj, N_samp):
 	percent_inside = float(n_inside)/N_samp
 	return percent_inside
 
+	parser = argparse.ArgumentParser(description='All experiments for flying pendulum')
+	parser.add_argument('--save_fnm', type=str, default="debug", required=True)
+	parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES"], required=True)
+
+	parser.add_argument('--exp_name_to_load', type=str, required=True) # flying_inv_pend_first_run
+	parser.add_argument('--checkpoint_number_to_load', type=int, help="for our CBF")
+
+	parser.add_argument('--which_experiments', nargs='+', default=["average_boundary", "worst_boundary", "rollout", "volume"], type=str)
+	parser.add_argument('--which_analyses', nargs='+', default=["plot_slices"], type=str) # TODO: add "animate_rollout" later
+
+	# For boundary stats
+	parser.add_argument('--boundary_n_samples', type=int, default=1000) # TODO
+	parser.add_argument('--boundary_gaussian_t', type=float, default=1.0) # TODO
+
+	# For worst boundary
+	parser.add_argument('--worst_boundary_n_samples', type=int, default=1000) # TODO
+	parser.add_argument('--worst_boundary_n_opt_steps', type=int, default=50) # TODO
+	parser.add_argument('--worst_boundary_gaussian_t', type=float, default=1.0) # TODO
+
+	# For rollout_experiment
+	parser.add_argument('--rollout_N_rollout', type=int, default=500)
+	parser.add_argument('--rollout_dt', type=float, default=1e-4)
+	parser.add_argument('--rollout_T_max', type=float, default=1.0)
+
+	# Volume
+	parser.add_argument('--N_samp_volume', type=int, default=100000) # 100K
+
+	# In debug mode (use fewer samples for everything)
+	parser.add_argument('--debug_mode', action="store_true") # 100K
+
 def run_exps(args):
 	"""
 	if torch.cuda.is_available():
@@ -70,8 +102,18 @@ def run_exps(args):
 	# dev = "cpu"
 	device = torch.device(dev)
 	"""
+	if args.debug_mode:
+		# IPython.embed()
+		args.boundary_n_samples = 10
+		args.worst_boundary_n_samples = 10
+		args.worst_boundary_n_opt_steps = 10
+		args.rollout_N_rollout = 2
+		args.N_samp_volume = 100
+
 	##### Logging #####
 	experiment_dict = {}
+	args_dict = vars(args)
+	experiment_dict["args"] = args_dict
 	###################
 
 	device = torch.device("cpu")
@@ -181,9 +223,9 @@ def run_exps(args):
 		obj_values = objective_fn(x_worst)
 
 		worst_infeasible_amount = torch.max(obj_values) # could be negative
-		experiment_dict["worst_infeasible_amount"] = worst_infeasible_amount
+		experiment_dict["worst_infeasible_amount"] = worst_infeasible_amount.detach().cpu().numpy()
 		experiment_dict["worst_x"] = x_worst.detach().cpu().numpy()
-		experiment_dict["worst_boundary_debug_dict"] = debug_dict
+		# experiment_dict["worst_boundary_debug_dict"] = debug_dict
 
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -275,6 +317,9 @@ if __name__ == "__main__":
 
 	# Volume
 	parser.add_argument('--N_samp_volume', type=int, default=100000) # 100K
+
+	# In debug mode (use fewer samples for everything)
+	parser.add_argument('--debug_mode', action="store_true") # 100K
 
 	args = parser.parse_known_args()[0]
 

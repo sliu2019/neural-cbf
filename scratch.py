@@ -32,6 +32,10 @@ def debug_format_1(fldrnm):
 
 
 if __name__ == "__main__":
-	# fldrnm = "exp_flying_inv_pend_phi_format_0_seed_0_ckpt_3370_nrollout_1000_dt_1.00E-04"
+
+	fldrnm = "exp_flying_inv_pend_phi_format_0_seed_0_ckpt_3370_nrollout_1000_dt_1.00E-04"
 	fldrnm = "exp_flying_inv_pend_phi_format_1_seed_0_ckpt_60_nrollout_1000_dt_1.00E-04"
 	debug_format_1(fldrnm)
+	# import IPython
+	# d = pickle.load(open("log/flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0/default_exp_data.pkl", "rb"))
+	# IPython.embed()
