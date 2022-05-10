@@ -279,7 +279,7 @@ class Trainer():
 				for k in range(math.ceil(self.args.test_N_volume_samples/float(M))):
 					phi_vals_batch = phi_fn(samp_torch[k*M: min((k+1)*M, self.args.test_N_volume_samples)])
 					N_samples_inside += torch.sum(torch.max(phi_vals_batch, axis=1)[0] <= 0.0)
-				V_approx = N_samples_inside*100/float(self.args.test_N_volume_samples)
+				V_approx = N_samples_inside*100.0/float(self.args.test_N_volume_samples)
 				V_approx = V_approx.item()
 				data_dict["V_approx_list"].append(V_approx)
 

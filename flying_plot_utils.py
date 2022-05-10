@@ -258,74 +258,48 @@ def graph_losses(exp_name, debug=True):
 	#############################################
 	train_attack_losses = np.array(data["train_attack_losses"])
 	approx_v = np.array(data["V_approx_list"])
-	N_it = len(train_attack_losses)
+	# N_it = len(train_attack_losses)
+	n_test_loss_step = args.n_test_loss_step
 	n_checkpoint_step = args.n_checkpoint_step
 
-	print("For experiment %s, at iteration %i/%i" % (exp_name, n_it_so_far, args.trainer_n_steps))
-	min_attack_ind = np.argmin(train_attack_losses)
+	# print("For experiment %s, at iteration %i/%i" % (exp_name, n_it_so_far, args.trainer_n_steps))
+	# min_attack_ind = np.argmin(train_attack_losses)
 
 	# print("Total iterations (so far): %i" % N_it)
 	print("Average approx volume: %.3f" % (np.mean(approx_v)))
 
+	# print(np.min(train_attack_losses))
+	#
+	# print(np.argmin(train_attack_losses[::5])*5, np.min(train_attack_losses[::5])) # TODO
+
+	# Trying different tactics to select a training iteration
+
 	# IPython.embed()
-	# Out[24]: dict_keys(['test_losses', 'test_attack_losses', 'test_reg_losses', 'k0_grad', 'ci_grad', 'train_loop_times', 'train_losses', 'train_attack_losses', 'train_reg_losses', 'grad_norms', 'V_approx_list', 'boundary_samples_obj_values', 'ci_list', 'k0_list', 'train_attacks', 'train_attack_X_init', 'train_attack_X_init_reuse', 'train_attack_X_init_random', 'train_attack_X_final', 'train_attack_X_obj_vals', 'train_attack_X_phi_vals', 'train_attack_init_best_attack_value', 'train_attack_final_best_attack_value', 'train_attack_t_init', 'train_attack_t_grad_steps', 'train_attack_t_reproject', 'train_attack_t_total_opt', 'train_attack_diff_after_proj', 'train_attack_t_sample_boundary', 'train_attack_n_segments_sampled', 'train_attack_dist_diff_after_proj', 'reg_grad_norms'])
+	# Balancing volume and train loss
+	ind_sort_volume = np.argsort(-approx_v)
+	m = len(approx_v)
+	rank_volume = np.zeros(m)
+	rank_volume[ind_sort_volume] = np.arange(m)
+	rank_volume = rank_volume.astype(int)
 
-	print(np.min(train_attack_losses))
+	train_attack_losses_at_checkpoints = train_attack_losses[::n_test_loss_step][:m]
+	ind_sort_train_loss = np.argsort(train_attack_losses_at_checkpoints)
+	rank_train_loss = np.zeros(m)
+	rank_train_loss[ind_sort_train_loss] = np.arange(m)
+	rank_train_loss = rank_train_loss.astype(int)
 
-	print(np.argmin(train_attack_losses[::5])*5, np.min(train_attack_losses[::5]))
+	rank_sum = rank_volume + rank_train_loss # TODO: checkpoint selection criteria
+	best_balanced_ind = np.argmin(rank_sum)
 
-	# IPython.embed()
-	# Answers the question: does the sawtoothing help?
-	"""trunc_v = approx_v[4:]
-	low_loss_ind = np.argwhere(train_attack_losses[100:] < 1.5).flatten()
+	checkpoint_ind = best_balanced_ind*n_test_loss_step
 
-	# v_diff = trunc_v[1:] - trunc_v[:-1]
-	print("V avg: %.3f" % (np.mean(trunc_v)))
-	# print("V diff: %.3f" % (v_diff[-1] - v_diff[0]))
-	print("First: %.3f, best: %.3f" % (trunc_v[0], np.max(trunc_v)))
-	# mean_diff = np.mean(v_diff)"""
+	checkpoint_ind = int(checkpoint_ind)
+	print(exp_name)
+	print("At selected checkpoint %i: %.3f loss, %.3f volume" % (checkpoint_ind, train_attack_losses[int(checkpoint_ind/n_checkpoint_step)], approx_v[best_balanced_ind]))
 
-	# print("average V diff step-to-step: %.3f +/- %.3f" % (mean_diff, np.std(v_diff)))
-	# IPython.embed()
-	# print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (np.min(train_attack_losses), min_attack_ind, approx_v[round(min_attack_ind/float(args.n_checkpoint_step))]))
-	# min_attack_ind_w_checkpoint = np.argmin(np.array(train_attack_losses)[::n_checkpoint_step])*n_checkpoint_step
-	# print("Min attack loss (desired <= 0): %.5f at checkpoint %i, with volume ~= %.3f" % (train_attack_losses[min_attack_ind_w_checkpoint], min_attack_ind_w_checkpoint, approx_v[int(min_attack_ind_w_checkpoint/n_checkpoint_step)]))
-	# # print("Min overall loss %.3f at checkpoint %i" % (np.min(train_losses), np.argmin(train_losses)))
-	# # checkpoint_ind = min_attack_ind_w_checkpoint # TODO
-	#
-	# # Trying different tactics to select a training iteration
-	#
-	# # Balancing volume and train loss
-	# train_attack_losses_at_checkpoints = train_attack_losses[::n_checkpoint_step]
-	# m = len(train_attack_losses_at_checkpoints)
-	# ind_sort_train_loss = np.argsort(train_attack_losses_at_checkpoints)
-	# rank_train_loss = np.zeros(m)
-	# rank_train_loss[ind_sort_train_loss] = np.arange(m)
-	# rank_train_loss = rank_train_loss.astype(int)
-	#
-	# ind_sort_volume = np.argsort(-approx_v)
-	# rank_volume = np.zeros(m)
-	# rank_volume[ind_sort_volume] = np.arange(m)
-	# rank_volume = rank_volume.astype(int)
-	#
-	# rank_sum = rank_volume + rank_train_loss # TODO: checkpoint selection criteria
-	# # rank_sum = rank_train_loss
-	# best_balanced_ind = np.argmin(rank_sum)
-	#
-	# checkpoint_ind = best_balanced_ind*n_checkpoint_step
-	#
-	# # IPython.embed()
-	# # print(train_attack_losses)
-	# # IPython.embed()
-	# # return min_attack_ind_w_checkpoint # cause we're loading this checkpoint
-	#
-	# checkpoint_ind = int(checkpoint_ind)
-	# print("At selected checkpoint %i: %.3f loss, %.3f volume" % (checkpoint_ind, train_attack_losses[checkpoint_ind], approx_v[int(checkpoint_ind/n_checkpoint_step)]))
-	#
-	# print("\n")
-	# return checkpoint_ind
-
-	return None
+	print("volume rank: %i, loss rank %i" % (rank_volume[best_balanced_ind], rank_train_loss[best_balanced_ind]))
+	print("\n")
+	return checkpoint_ind
 
 def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
 	"""
@@ -816,7 +790,7 @@ if __name__ == "__main__":
 	##########################################################################################################
 	# From Wednesday, April 13
 	# Server 4
-	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
 
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again"]
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
@@ -824,7 +798,7 @@ if __name__ == "__main__":
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again"]
 
 	# Server 5
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
+	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"]
 
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]

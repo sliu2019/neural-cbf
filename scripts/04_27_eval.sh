@@ -20,3 +20,5 @@ nohup python -u run_flying_pend_exps.py --save_fnm default --which_cbf ours --ex
 #nohup python -u run_flying_pend_exps.py --save_fnm default_rollouts_only --which_cbf low-CMAES --exp_name_to_load flying_pend_avg_amount_infeasible_reg_weight_1 --checkpoint_number_to_load 8 --which_experiments rollout &> compute_metric_flying_pend_avg_amount_infeasible_reg_weight_1.out &
 #
 #nohup python -u run_flying_pend_exps.py --save_fnm default_rollouts_only --which_cbf low-CMAES --exp_name_to_load flying_pend_avg_amount_infeasible_reg_weight_1e_1 --checkpoint_number_to_load 8 --which_experiments rollout &> compute_metric_flying_pend_avg_amount_infeasible_reg_weight_1e_1.out &
+
+python -u run_flying_pend_exps.py --save_fnm default_volume_only --which_cbf low-CMAES --exp_name_to_load flying_pend_avg_amount_infeasible_reg_weight_1 --checkpoint_number_to_load 8 --which_experiments volume

@@ -13,6 +13,7 @@ from phi_low_torch_module import PhiLow
 # print(sys.path)
 import socket
 if socket.gethostname() == "nsh1609server4":
+	# IPython.embed()
 	sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
 from cmaes.utils import load_philow_and_params
 from flying_plot_utils import load_phi_and_params
@@ -29,7 +30,7 @@ from flying_rollout_experiment import *
 from flying_plot_utils import plot_interesting_slices
 
 
-def approx_volume(param_dict, cbf_obj, N_samp):
+def approx_volume(param_dict, cbf_obj, N_samp, x_lim=None):
 	# Or can just increase n_samp for now? Or just find points close to boundary?
 	"""
 	Uses rejection sampling to sample uniformly in the invariant set
@@ -42,7 +43,14 @@ def approx_volume(param_dict, cbf_obj, N_samp):
 
 	# Define some variables
 	x_dim = param_dict["x_dim"]
-	x_lim = param_dict["x_lim"]
+	if x_lim is None:
+		x_lim = param_dict["x_lim"]
+	else:
+		x_lim_command_line = np.array(x_lim)
+		x_lim = np.concatenate((x_lim_command_line[::2][:, None], x_lim_command_line[1::2][:, None]), axis=1)
+		print("tried to pass in x_lim to approx_volume; needs sanity check")
+		IPython.embed() # TODO
+
 	box_side_lengths = x_lim[:, 1] - x_lim[:, 0]
 
 	M = 50
@@ -58,38 +66,15 @@ def approx_volume(param_dict, cbf_obj, N_samp):
 		max_phi_vals = phi_vals.max(axis=1)
 		n_inside += np.sum(max_phi_vals <= 0)
 
-	percent_inside = float(n_inside)/N_samp
-	return percent_inside
+	# percent_inside = float(n_inside)*100.0/N_samp
+	# return percent_inside
 
-	parser = argparse.ArgumentParser(description='All experiments for flying pendulum')
-	parser.add_argument('--save_fnm', type=str, default="debug", required=True)
-	parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES"], required=True)
+	fraction_inside = float(n_inside)/N_samp
+	approx_volume = np.prod(box_side_lengths)*fraction_inside
 
-	parser.add_argument('--exp_name_to_load', type=str, required=True) # flying_inv_pend_first_run
-	parser.add_argument('--checkpoint_number_to_load', type=int, help="for our CBF")
-
-	parser.add_argument('--which_experiments', nargs='+', default=["average_boundary", "worst_boundary", "rollout", "volume"], type=str)
-	parser.add_argument('--which_analyses', nargs='+', default=["plot_slices"], type=str) # TODO: add "animate_rollout" later
-
-	# For boundary stats
-	parser.add_argument('--boundary_n_samples', type=int, default=1000) # TODO
-	parser.add_argument('--boundary_gaussian_t', type=float, default=1.0) # TODO
-
-	# For worst boundary
-	parser.add_argument('--worst_boundary_n_samples', type=int, default=1000) # TODO
-	parser.add_argument('--worst_boundary_n_opt_steps', type=int, default=50) # TODO
-	parser.add_argument('--worst_boundary_gaussian_t', type=float, default=1.0) # TODO
-
-	# For rollout_experiment
-	parser.add_argument('--rollout_N_rollout', type=int, default=500)
-	parser.add_argument('--rollout_dt', type=float, default=1e-4)
-	parser.add_argument('--rollout_T_max', type=float, default=1.0)
-
-	# Volume
-	parser.add_argument('--N_samp_volume', type=int, default=100000) # 100K
-
-	# In debug mode (use fewer samples for everything)
-	parser.add_argument('--debug_mode', action="store_true") # 100K
+	print("Check modification to volume calculation")
+	IPython.embed() # TODO
+	return approx_volume
 
 def run_exps(args):
 	"""
@@ -102,14 +87,32 @@ def run_exps(args):
 	# dev = "cpu"
 	device = torch.device(dev)
 	"""
-	if args.debug_mode:
+	# if args.debug_mode:
 		# IPython.embed()
+		# args.boundary_n_samples = 10
+		# args.worst_boundary_n_samples = 10
+		# args.worst_boundary_n_opt_steps = 10
+		# args.rollout_N_rollout = 2
+		# args.N_samp_volume = 100
+
+	if args.run_length == "short":
 		args.boundary_n_samples = 10
 		args.worst_boundary_n_samples = 10
-		args.worst_boundary_n_opt_steps = 10
 		args.rollout_N_rollout = 2
 		args.N_samp_volume = 100
+	elif args.run_length == "medium":
+		args.boundary_n_samples = 1000
+		args.worst_boundary_n_samples = 1000
+		args.rollout_N_rollout = 500
+		args.N_samp_volume = 100000
+	elif args.run_length == "long":
+		args.boundary_n_samples = 10000
+		args.worst_boundary_n_samples = 10000
+		args.rollout_N_rollout = 5000
+		args.N_samp_volume = 100000
 
+	print("Sanity check if you have set args.run_length")
+	IPython.embed() # TODO
 	##### Logging #####
 	experiment_dict = {}
 	args_dict = vars(args)
@@ -186,7 +189,7 @@ def run_exps(args):
 
 		# Compute metrics
 		n_infeasible = int(torch.sum(obj_values > 0))
-		percent_infeasible = float(n_infeasible)/n_samples
+		percent_infeasible = float(n_infeasible)*100.0/n_samples
 
 		experiment_dict["percent_infeasible"] = percent_infeasible
 		experiment_dict["n_infeasible"] = n_infeasible
@@ -275,13 +278,13 @@ def run_exps(args):
 
 		# print("volume")
 		# IPython.embed()
-		percent_inside = approx_volume(param_dict, numpy_phi_fn, args.N_samp_volume)
+		percent_inside = approx_volume(param_dict, numpy_phi_fn, args.N_samp_volume, args.volume_x_lim)
 		experiment_dict["vol_approximation"] = percent_inside
 
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-		print("Approx. volume: %.3f" % percent_inside)
+		print("Approx. volume: %f" % percent_inside)
 
 	# Maybe analysis is better done in a different folder
 	if "plot_slices" in args.which_analyses:
@@ -317,9 +320,11 @@ if __name__ == "__main__":
 
 	# Volume
 	parser.add_argument('--N_samp_volume', type=int, default=100000) # 100K
+	parser.add_argument('--volume_x_lim', nargs='+', help="if you want to shrink x_lim to help the approx be better; this should just be a flat list of form [LB1, UB1, LB2, UB2, etc.]") # 100K
 
 	# In debug mode (use fewer samples for everything)
-	parser.add_argument('--debug_mode', action="store_true") # 100K
+	# parser.add_argument('--debug_mode', action="store_true") # 100K
+	parser.add_argument('--run_length', type=str, choices=["short", "medium", "long"], help="determines the number of samples (the run length)")
 
 	args = parser.parse_known_args()[0]
 
