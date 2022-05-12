@@ -23,7 +23,7 @@
 # Ours, a few more epochs and seeds
 
 #nohup python -u run_flying_pend_exps.py --save_fnm long_length --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --run_length long &> eval_ours_seed0_long.out &
-
+#
 #nohup python -u run_flying_pend_exps.py --save_fnm long_length --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1 --checkpoint_number_to_load 375 --run_length long &> eval_ours_seed1_long.out &
 #
 #nohup python -u run_flying_pend_exps.py --save_fnm long_length --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2 --checkpoint_number_to_load 625 --run_length long &> eval_ours_seed2_long.out &
@@ -31,3 +31,17 @@
 #nohup python -u run_flying_pend_exps.py --save_fnm long_length --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3 --checkpoint_number_to_load 250 --run_length long &> eval_ours_seed3_long.out &
 #
 #nohup python -u run_flying_pend_exps.py --save_fnm long_length --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4 --checkpoint_number_to_load 175 --run_length long &> eval_ours_seed4_long.out &
+
+########################################################################
+python -u run_flying_pend_exps.py --save_fnm long_length_ckpt_1020 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 1020 --run_length long
+
+python -u run_flying_pend_exps.py --save_fnm long_length_ckpt_250 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --run_length long
+
+python -u run_flying_pend_exps.py --save_fnm long_length_ckpt_375 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1 --checkpoint_number_to_load 375 --run_length long
+
+
+python -u run_flying_pend_exps.py --save_fnm long_length_ckpt_625 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2 --checkpoint_number_to_load 625 --run_length long
+
+python -u run_flying_pend_exps.py --save_fnm long_length_ckpt_250 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3 --checkpoint_number_to_load 250 --run_length long
+
+python -u run_flying_pend_exps.py --save_fnm long_length_kpt_175 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4 --checkpoint_number_to_load 175 --run_length long

@@ -77,7 +77,7 @@ class Trainer():
 
 		###########  Done  ###########
 		##############################
-		pos_param_names = ["ci", "k0"] # TODO: fill out, especially if you change variable names
+		pos_param_names = ["ci", "k0"] # TODO: SIMIN fill out, especially if you change variable names
 		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
 		pos_params = [p_dict[name] for name in pos_param_names]
 
@@ -161,7 +161,7 @@ class Trainer():
 			avg_grad_norm = 0
 			n_param = 0
 			for n, p in phi_fn.named_parameters():
-				if n not in ["ci", "k0"]:
+				if n not in ["ci", "k0"]: # TODO: SIMIN
 					avg_grad_norm += torch.linalg.norm(p.grad).item()
 					n_param += 1
 			avg_grad = avg_grad_norm/n_param
@@ -175,7 +175,7 @@ class Trainer():
 			avg_grad_norm = 0
 			n_param = 0
 			for n, p in phi_fn.named_parameters():
-				if n not in ["ci", "k0"]:
+				if n not in ["ci", "k0"]: # TODO: SIMIN
 					avg_grad_norm += torch.linalg.norm(p.grad).item()
 					n_param += 1
 			avg_grad = avg_grad_norm/n_param
@@ -238,6 +238,7 @@ class Trainer():
 			iteration_info_dict.update(debug_dict)
 
 			# Misc saving
+			# TODO: Simin
 			iteration_info_dict["ci_list"] = phi_fn.ci
 			iteration_info_dict["k0_list"] = phi_fn.k0
 
