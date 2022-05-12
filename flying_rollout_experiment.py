@@ -324,12 +324,13 @@ def run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller):
 	# IPython.embed()
 	return info_dicts
 
-def run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller):
+def run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller, verbose=False, n_proc=None):
 	info_dicts = None
 	N_rollout = 0
 	it = 0
 
-	n_proc = mp.cpu_count()
+	if n_proc is None:
+		n_proc = mp.cpu_count()
 	# random_seeds = np.arange(10*N_desired_rollout)
 	# np.random.shuffle(random_seeds) # in place
 	ctx = mp.get_context('spawn') # TODO: default "fork" is not compatible with tensorflow
@@ -368,6 +369,8 @@ def run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller):
 					value.append(info_dict[key])
 
 			N_rollout += 1 		# Indicate this rollout has been recorded
+		if verbose:
+			print(N_rollout)
 		it += 1
 
 	print("\n\n")

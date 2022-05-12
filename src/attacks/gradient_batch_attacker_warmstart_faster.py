@@ -309,21 +309,26 @@ class GradientBatchWarmstartFasterAttacker():
         """
         t0 = time.perf_counter()
         # Everything done in torch
-        samples = []
+        samples = torch.zeros((0, self.x_dim))
         n_remaining_to_sample = n_samples
 
         n_segments_sampled = 0
         while n_remaining_to_sample > 0:
-
+            if self.verbose:
+                print(".", end=" ")
             intersection = self._sample_segment_intersect_boundary(phi_fn)
             if intersection is not None:
-                samples.append(intersection.view(1, -1))
+                # samples.append(intersection.view(1, -1))
+                samples = torch.cat((samples, intersection.view(1, -1)), dim=0)
                 n_remaining_to_sample -= 1
+                if self.verbose:
+                    print("\n")
+                    print(n_remaining_to_sample)
 
             n_segments_sampled += 1
             # self.logger.info("%i segments" % n_segments_sampled)
 
-        samples = torch.cat(samples, dim=0)
+        # samples = torch.cat(samples, dim=0)
         # self.logger.info("Done with sampling points on the boundary...")
         tf = time.perf_counter()
         debug_dict = {"t_sample_boundary": (tf- t0), "n_segments_sampled": n_segments_sampled}
@@ -395,6 +400,9 @@ class GradientBatchWarmstartFasterAttacker():
             X_reuse_init = torch.zeros((0, self.x_dim))
             X_random_init = X_init
         else:
+            # print("inside attacker, using saved points")
+            # print("check that X+saved format correct; code compiles")
+            # IPython.embed()
             n_target_reuse_samples = int(self.n_samples*self.p_reuse)
 
             inds = torch.argsort(self.obj_vals_saved, axis=0, descending=True).flatten()
@@ -411,6 +419,7 @@ class GradientBatchWarmstartFasterAttacker():
                 if len(inds_distinct) >= n_target_reuse_samples:
                     break
 
+            # IPython.embed()
             n_reuse_samples = len(inds_distinct)
             n_random_samples= self.n_samples - n_reuse_samples
             # print("Actual percentage reuse: %f" % ((n_reuse_samples/self.n_samples)*100))
@@ -440,7 +449,9 @@ class GradientBatchWarmstartFasterAttacker():
             max_n_steps = (0.5*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
             print("Max_n_steps: %i" % max_n_steps)
         while True:
-            # print("Inner max step #%i" % i)
+            if self.verbose:
+                print("Counterex. max. step #%i" % i)
+            # IPython.embed()
             X, step_debug_dict = self._step(objective_fn, phi_fn, X) # Take gradient steps on all candidate attacks
             # obj_vals = objective_fn(X.view(-1, self.x_dim))
 

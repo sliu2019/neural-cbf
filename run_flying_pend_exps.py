@@ -10,8 +10,8 @@ import math
 from phi_numpy_wrapper import PhiNumpy
 from phi_low_torch_module import PhiLow
 
-print("In flying pend exps")
-print(sys.path)
+# print("In flying pend exps")
+# print(sys.path)
 # import socket
 # if socket.gethostname() == "nsh1609server4":
 # 	# IPython.embed()
@@ -178,8 +178,6 @@ def run_exps(args):
 	else:
 		raise NotImplementedError
 
-
-
 	########## Saving and logging ############
 	save_fpth = os.path.join(save_fldrpth, "%s_exp_data.pkl" % args.save_fnm)
 
@@ -217,8 +215,10 @@ def run_exps(args):
 
 		n_samples = args.boundary_n_samples
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
-		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, gaussian_t=args.boundary_gaussian_t) # o.w. default args
+		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, gaussian_t=args.boundary_gaussian_t, verbose=True) # o.w. default args
 		boundary_samples, debug_dict = attacker._sample_points_on_boundary(torch_phi_fn, n_samples)
+		# boundary_samples = torch.rand((10000, 10))*100
+		# debug_dict = {}
 
 		obj_values = objective_fn(boundary_samples)
 
@@ -253,8 +253,15 @@ def run_exps(args):
 		n_opt_steps = args.worst_boundary_n_opt_steps
 
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
-		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples, gaussian_t=args.worst_boundary_gaussian_t) # o.w. default args
+		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples, gaussian_t=args.worst_boundary_gaussian_t, verbose=True, p_reuse=1.0) # o.w. default args
 		iteration = 0 # dictates the number of grad steps, if you're using a step schedule. but we're not.
+
+		if "average_boundary" in args.which_experiments:
+			# reuse the boundary points computed there
+			# saves time
+			attacker.X_saved = boundary_samples
+			obj_vals = objective_fn(boundary_samples.view(-1, 10)) # TODO: hard-coded dim
+			attacker.obj_vals_saved = obj_vals
 		x_worst, debug_dict = attacker.opt(objective_fn, torch_phi_fn, iteration, debug=True)
 
 		x_worst = torch.reshape(x_worst, (1, 10))
@@ -290,7 +297,7 @@ def run_exps(args):
 		if N_desired_rollout < 10:
 			info_dicts = run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller)
 		else:
-			info_dicts = run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller)
+			info_dicts = run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller, verbose=True, n_proc=args.n_proc)
 
 		experiment_dict["rollout_info_dicts"] = info_dicts
 		with open(save_fpth, 'wb') as handle:
@@ -370,6 +377,9 @@ if __name__ == "__main__":
 	# In debug mode (use fewer samples for everything)
 	# parser.add_argument('--debug_mode', action="store_true") # 100K
 	parser.add_argument('--run_length', type=str, choices=["short", "medium", "long"], help="determines the number of samples (the run length)")
+
+	# This only affects rollout, AFAIK
+	parser.add_argument('--n_proc', type=int, default=36)
 
 	args = parser.parse_known_args()[0]
 
