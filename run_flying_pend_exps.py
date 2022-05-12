@@ -10,12 +10,13 @@ import math
 from phi_numpy_wrapper import PhiNumpy
 from phi_low_torch_module import PhiLow
 
-# print(sys.path)
-import socket
-if socket.gethostname() == "nsh1609server4":
-	# IPython.embed()
-	sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
-from cmaes.utils import load_philow_and_params
+print("In flying pend exps")
+print(sys.path)
+# import socket
+# if socket.gethostname() == "nsh1609server4":
+# 	# IPython.embed()
+# 	sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
+# from cmaes.utils import load_philow_and_params
 from flying_plot_utils import load_phi_and_params
 
 from src.attacks.gradient_batch_attacker_warmstart_faster import GradientBatchWarmstartFasterAttacker
@@ -70,11 +71,17 @@ def approx_volume(param_dict, cbf_obj, N_samp, x_lim=None):
 	# return percent_inside
 
 	fraction_inside = float(n_inside)/N_samp
-	approx_volume = np.prod(box_side_lengths)*fraction_inside
+	# TODO: assumes this is the default domain
+	thresh = np.array([math.pi / 3, math.pi / 3, math.pi, 20, 20, 20, math.pi / 3, math.pi / 3, 20, 20],
+	                  dtype=np.float32) # angular velocities bounds probably much higher in reality (~10-20 for drone, which can do 3 flips in 1 sec).
+	default_x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
 
-	print("Check modification to volume calculation")
-	IPython.embed() # TODO
-	return approx_volume
+	percent_of_domain_volume = fraction_inside*100*np.prod(box_side_lengths)/np.prod(default_x_lim[:, 1] - default_x_lim[:, 0])
+	# approx_volume = np.prod(box_side_lengths)*fraction_inside
+
+	# print("Check modification to volume calculation")
+	# IPython.embed()
+	return percent_of_domain_volume
 
 def run_exps(args):
 	"""
@@ -98,21 +105,24 @@ def run_exps(args):
 	if args.run_length == "short":
 		args.boundary_n_samples = 10
 		args.worst_boundary_n_samples = 10
-		args.rollout_N_rollout = 2
+		args.rollout_N_rollout = 10
 		args.N_samp_volume = 100
-	elif args.run_length == "medium":
+	elif args.run_length == "medium": # 1k
 		args.boundary_n_samples = 1000
 		args.worst_boundary_n_samples = 1000
-		args.rollout_N_rollout = 500
-		args.N_samp_volume = 100000
-	elif args.run_length == "long":
+		args.rollout_N_rollout = 1000
+		args.N_samp_volume = 100000 # 100k
+	elif args.run_length == "long": # 10k
 		args.boundary_n_samples = 10000
 		args.worst_boundary_n_samples = 10000
-		args.rollout_N_rollout = 5000
-		args.N_samp_volume = 100000
+		args.rollout_N_rollout = 10000
+		args.N_samp_volume = 1000000 # 1m
 
-	print("Sanity check if you have set args.run_length")
-	IPython.embed() # TODO
+		args.worst_boundary_gaussian_t = 0.1 # TODO
+		args.boundary_gaussian_t = 0.1 # TODO
+
+	# print("Sanity check if you have set args.run_length")
+	# IPython.embed() # TODO
 	##### Logging #####
 	experiment_dict = {}
 	args_dict = vars(args)
@@ -132,21 +142,46 @@ def run_exps(args):
 	elif args.which_cbf == "low-CMAES":
 		# print("loading phi for low-CMAES")
 		# IPython.embed()
+		from cmaes.utils import load_philow_and_params
 		torch_phi_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
 		numpy_phi_fn = PhiNumpy(torch_phi_fn)
 
 		data = pickle.load(open(os.path.join("cmaes", args.exp_name_to_load, "data.pkl"), "rb"))
 		mu = data["mu"][args.checkpoint_number_to_load]
+		print("*************************************************")
+		print("Parameters found by CMAES are:")
+		print(mu)
+		print("*************************************************")
+		# IPython.embed()
 
 		state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])} # todo: this is not very generic
 		numpy_phi_fn.set_params(state_dict)
 
 		save_fldrpth = "./cmaes/%s" % args.exp_name_to_load
+	elif args.which_cbf == "low-heuristic":
+		from cmaes.utils import load_philow_and_params
+		torch_phi_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
+		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+
+		# print("loading phi for low-heuristic")
+		# IPython.embed()
+		mu = args.low_cbf_params
+		state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])} # todo: this is not very generic
+		numpy_phi_fn.set_params(state_dict)
+
+		save_fldrpth = "./low_heuristic/k1_%.2f_k2_%.2f_k3_%.2f" % (mu[2], mu[0], mu[1]) # Note: named using Overleaf convention, but args are passed using another convention (swap 1st entry to end)
+		if not os.path.exists(save_fldrpth):
+			os.makedirs(save_fldrpth)
+
+		# print("ln 156")
+		# IPython.embed()
 	else:
 		raise NotImplementedError
 
+
+
 	########## Saving and logging ############
-	save_fpth = os.path.join(save_fldrpth, "%s_exp_data.pkl"% args.save_fnm)
+	save_fpth = os.path.join(save_fldrpth, "%s_exp_data.pkl" % args.save_fnm)
 
 	#############################################
 	##### Form the torch objective function #####
@@ -278,28 +313,38 @@ def run_exps(args):
 
 		# print("volume")
 		# IPython.embed()
-		percent_inside = approx_volume(param_dict, numpy_phi_fn, args.N_samp_volume, args.volume_x_lim)
-		experiment_dict["vol_approximation"] = percent_inside
+		percent_of_domain_volume = approx_volume(param_dict, numpy_phi_fn, args.N_samp_volume, args.volume_x_lim)
+		experiment_dict["percent_of_domain_volume"] = percent_of_domain_volume
 
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-		print("Approx. volume: %f" % percent_inside)
+		print("percent_of_domain_volume: %f" % percent_of_domain_volume)
 
 	# Maybe analysis is better done in a different folder
 	if "plot_slices" in args.which_analyses:
 		plot_interesting_slices(torch_phi_fn, param_dict, save_fldrpth, args.checkpoint_number_to_load)
 
+"""
+Instructions for running:
+
+Use run_length (short, medium, long) to select how many samples you want to use for boundary sampling, volume sampling, rollout sampling 
+However, this does not set parameters like boundary_gaussian_t, so if you want to set those smaller (1 -> 0.1), do so separately. 
+
+Common gotchas:
+1. Did you check if the param_dicts for different CBF's are the same? They have to be, if you're comparing them
+"""
 if __name__ == "__main__":
 	# from cmaes.cmas_argument import create_parse
 	import argparse
 
 	parser = argparse.ArgumentParser(description='All experiments for flying pendulum')
-	parser.add_argument('--save_fnm', type=str, default="debug", required=True)
-	parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES"], required=True)
+	parser.add_argument('--save_fnm', type=str, default="debug", help="conscisely describes the hyperparameters of this run")
+	parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES", "low-heuristic"], required=True)
 
-	parser.add_argument('--exp_name_to_load', type=str, required=True) # flying_inv_pend_first_run
-	parser.add_argument('--checkpoint_number_to_load', type=int, help="for our CBF")
+	parser.add_argument('--exp_name_to_load', type=str) # flying_inv_pend_first_run
+	parser.add_argument('--checkpoint_number_to_load', type=int, help="for our CBF", default=0)
+	parser.add_argument('--low_cbf_params', type=float, nargs='+', help="for which_cbf == low-heuristic")
 
 	parser.add_argument('--which_experiments', nargs='+', default=["average_boundary", "worst_boundary", "rollout", "volume"], type=str)
 	parser.add_argument('--which_analyses', nargs='+', default=["plot_slices"], type=str) # TODO: add "animate_rollout" later

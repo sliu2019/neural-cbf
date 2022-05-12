@@ -8,6 +8,13 @@ from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 # from .normal_ssa import SSA
 from phi_low_torch_module import PhiLow
 from phi_numpy_wrapper import PhiNumpy
+# import socket, sys
+# if socket.gethostname() == "nsh1609server4":
+# 	# IPython.embed()
+# 	sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
+import sys
+print("in objective file")
+print(sys.path)
 from cmaes.utils import load_philow_and_params
 # from src.problems.flying_inv_pend import HSum, XDot # TODO: how to import this correctly?
 # from main import create_flying_param_dict

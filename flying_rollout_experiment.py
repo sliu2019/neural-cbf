@@ -332,7 +332,9 @@ def run_rollouts_multiproc(env, N_desired_rollout, N_steps_max, cbf_controller):
 	n_proc = mp.cpu_count()
 	# random_seeds = np.arange(10*N_desired_rollout)
 	# np.random.shuffle(random_seeds) # in place
-	pool = mp.Pool(n_proc)
+	ctx = mp.get_context('spawn') # TODO: default "fork" is not compatible with tensorflow
+	pool = ctx.Pool(n_proc)
+	# pool = mp.Pool(n_proc)
 
 	arg_tup = [env, N_steps_max, cbf_controller]
 	duplicated_arg = list([arg_tup] * n_proc)

@@ -263,7 +263,6 @@ class Trainer():
 				with open(self.data_save_fpth, 'wb') as handle:
 					pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-
 			#######################################################
 			##############   Compute test stats   #################
 			#######################################################

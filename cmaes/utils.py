@@ -237,10 +237,13 @@ if __name__ == "__main__":
 	# exp_names = ["flying_pend_n_feasible_reg_weight_5e_2", "flying_pend_n_feasible_reg_weight_1e_2"]
 
 	# 4/26 experiments: much lighter reg weights than before
-	exp_names = ["flying_pend_avg_amount_infeasible_reg_weight_1", "flying_pend_avg_amount_infeasible_reg_weight_1e_1", "flying_pend_max_amount_infeasible_reg_weight_1", "flying_pend_max_amount_infeasible_reg_weight_1e_1"]
+	# exp_names = ["flying_pend_avg_amount_infeasible_reg_weight_1", "flying_pend_avg_amount_infeasible_reg_weight_1e_1", "flying_pend_max_amount_infeasible_reg_weight_1", "flying_pend_max_amount_infeasible_reg_weight_1e_1"]
+
+	# 05/11
+	# exp_names = ["flying_pend_new_init", "flying_pend_new_init_sigma_ratio_3e_1", "flying_pend_new_init_reg_weight_1e_1"]
+
+	exp_names = ["flying_pend_new_init_new_ub_reg_weight_1", "flying_pend_new_init_new_ub_reg_weight_1e_1"]
 
 	for exp_name in exp_names:
 		plot(exp_name)
-
-
 

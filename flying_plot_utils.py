@@ -276,7 +276,8 @@ def graph_losses(exp_name, debug=True):
 
 	# IPython.embed()
 	# Balancing volume and train loss
-	ind_sort_volume = np.argsort(-approx_v)
+
+	"""ind_sort_volume = np.argsort(-approx_v)
 	m = len(approx_v)
 	rank_volume = np.zeros(m)
 	rank_volume[ind_sort_volume] = np.arange(m)
@@ -288,7 +289,7 @@ def graph_losses(exp_name, debug=True):
 	rank_train_loss[ind_sort_train_loss] = np.arange(m)
 	rank_train_loss = rank_train_loss.astype(int)
 
-	rank_sum = rank_volume + rank_train_loss # TODO: checkpoint selection criteria
+	rank_sum = 0.25*rank_volume + rank_train_loss # TODO: checkpoint selection criteria
 	best_balanced_ind = np.argmin(rank_sum)
 
 	checkpoint_ind = best_balanced_ind*n_test_loss_step
@@ -299,6 +300,34 @@ def graph_losses(exp_name, debug=True):
 
 	print("volume rank: %i, loss rank %i" % (rank_volume[best_balanced_ind], rank_train_loss[best_balanced_ind]))
 	print("\n")
+
+	print("Here are a few other choices of checkpoint")
+	n_top = 15
+	best_balanced_inds = np.argsort(rank_sum)
+	for k in range(n_top):
+		best_balanced_ind = best_balanced_inds[k]
+		checkpoint_ind = best_balanced_ind * n_test_loss_step
+		print("At selected checkpoint %i: %.3f loss, %.5f volume" % (checkpoint_ind, train_attack_losses[int(checkpoint_ind / n_checkpoint_step)], approx_v[best_balanced_ind]))
+	IPython.embed()"""
+
+	# don't use rank, since approx_v has a lot of duplicate values. They won't receive the same rank, which is problematic...
+	m = len(approx_v)
+	train_attack_losses_at_checkpoints = train_attack_losses[::n_test_loss_step][:m]
+	# total_loss = -3*approx_v + train_attack_losses_at_checkpoints + 0.1*np.arange(m)
+	total_loss = train_attack_losses_at_checkpoints + 0.1*np.arange(m)
+	best_inds = np.argsort(total_loss)
+
+	n_top = 5
+	train_loop_times = data["train_loop_times"]
+	for k in range(n_top):
+		best_balanced_ind = best_inds[k]
+		checkpoint_ind = best_balanced_ind * n_test_loss_step
+		t_so_far_seconds = train_loop_times[checkpoint_ind]
+		t_hours = t_so_far_seconds // (60 * 60)
+		t_minutes = (t_so_far_seconds - t_hours*60*60)//60
+		print("At selected checkpoint %i: %.3f loss, %.5f volume, %i:%i h:m" % (checkpoint_ind, train_attack_losses_at_checkpoints[best_balanced_ind], approx_v[best_balanced_ind], t_hours, t_minutes))
+
+	# IPython.embed()
 	return checkpoint_ind
 
 def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
@@ -809,6 +838,8 @@ if __name__ == "__main__":
 	checkpoint_numbers = list(np.arange(0, 140, 25)) + [140]
 	exp_names = ["flying_inv_pend_euc_softplus_weighted_avg_seed_1"]*len(checkpoint_numbers)"""
 
+	# May 11th
+	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
 
 	# To visualize slices for a new experiment
 	"""checkpoint_numbers = []
