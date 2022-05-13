@@ -6,7 +6,6 @@ from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
 # from rollout_cbf_classes.deprecated.normal_ssa_newsi import SSA
 # from rollout_cbf_classes.deprecated.flying_pend_ssa import FlyingPendSSA
 # from .normal_ssa import SSA
-from phi_low_torch_module import PhiLow
 from phi_numpy_wrapper import PhiNumpy
 # import socket, sys
 # if socket.gethostname() == "nsh1609server4":
@@ -20,7 +19,6 @@ from cmaes.utils import load_philow_and_params
 # from main import create_flying_param_dict
 # from src.argument import create_parser
 import torch
-import IPython
 import math
 
 class FlyingPendEvaluator(object):

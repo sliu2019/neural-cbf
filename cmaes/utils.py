@@ -1,16 +1,9 @@
-import os
-
-import IPython
 import matplotlib.pyplot as plt
-import math
-from dotmap import DotMap
 import torch
-import pickle
-import time, os, glob, re, sys
-import numpy as np
+import os, sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from phi_low_torch_module import PhiLow
+from src.phi_designs.low_phi import LowPhi
 from src.utils import *
 # Make numpy and torch deterministic (for rand phi and attack/reg sampling)
 seed = 3
@@ -48,7 +41,7 @@ def load_philow_and_params(exp_name=None, checkpoint_number=None):
 	x_lim = param_dict["x_lim"]
 
 	# Create phi
-	from src.problems.flying_inv_pend import HMax, HSum, XDot, ULimitSetVertices
+	from src.problems.flying_inv_pend import HMax, HSum, XDot
 	if args.h == "sum":
 		h_fn = HSum(param_dict)
 	elif args.h == "max":
@@ -61,7 +54,7 @@ def load_philow_and_params(exp_name=None, checkpoint_number=None):
 	xdot_fn = xdot_fn.to(device)
 
 	# Create CBF, etc.
-	phi_fn = PhiLow(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
+	phi_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)

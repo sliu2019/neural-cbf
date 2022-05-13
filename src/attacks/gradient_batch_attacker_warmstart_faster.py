@@ -309,7 +309,7 @@ class GradientBatchWarmstartFasterAttacker():
         """
         t0 = time.perf_counter()
         # Everything done in torch
-        samples = torch.zeros((0, self.x_dim))
+        samples = torch.zeros((0, self.x_dim)).to(self.device)
         n_remaining_to_sample = n_samples
 
         n_segments_sampled = 0

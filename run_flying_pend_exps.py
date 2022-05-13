@@ -1,14 +1,10 @@
 """
 Mega-script to run all flying pendulum experiments
 """
-import pickle
-import os, sys, time, IPython
 import torch
-import numpy as np
 import math
 
 from phi_numpy_wrapper import PhiNumpy
-from phi_low_torch_module import PhiLow
 
 # print("In flying pend exps")
 # print(sys.path)
@@ -17,7 +13,6 @@ from phi_low_torch_module import PhiLow
 # 	# IPython.embed()
 # 	sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
 # from cmaes.utils import load_philow_and_params
-from flying_plot_utils import load_phi_and_params
 
 from src.attacks.gradient_batch_attacker_warmstart_faster import GradientBatchWarmstartFasterAttacker
 from main import Objective
@@ -115,7 +110,7 @@ def run_exps(args):
 	elif args.run_length == "long": # 10k
 		args.boundary_n_samples = 10000
 		args.worst_boundary_n_samples = 10000
-		args.rollout_N_rollout = 10000
+		args.rollout_N_rollout = 5000 # TODO: 10k too Slow
 		args.N_samp_volume = 1000000 # 1m
 
 		args.worst_boundary_gaussian_t = 0.1 # TODO

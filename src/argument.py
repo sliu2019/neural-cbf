@@ -10,13 +10,14 @@ def create_parser():
 	parser.add_argument('--h', type=str, default='sum', choices=['max', 'sum'], help='For flying inv pend, chose the form of h(x)')
 
 	# Phi
-	parser.add_argument('--phi_nn_dimension', default="64-64", type=str, help='specify the hidden dimension')
-	parser.add_argument('--phi_nnl', default="tanh-tanh-none", type=str, help='can also do tanh-tanh-softplus')
-	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='c_i are initialized uniformly within the range [0, x]')
+	parser.add_argument('--phi_design', default="neural", type=str, choices=["neural", "low"])
+	parser.add_argument('--phi_nn_dimension', default="64-64", type=str, help='for neural CBF: specify the hidden dimension')
+	parser.add_argument('--phi_nnl', default="tanh-tanh-none", type=str, help='for neural CBF: can also do tanh-tanh-softplus')
+	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='for neural CBF: c_i are initialized uniformly within the range [0, x]')
 	# parser.add_argument('--phi_k0_init_min', default=0.0, type=float)
 	# parser.add_argument('--phi_k0_init_max', default=1.0, type=float)
-	parser.add_argument('--phi_include_xe', action='store_true')
-	parser.add_argument('--phi_nn_inputs', type=str, default="spherical", choices=["spherical", "euc"], help='which coordinates? spherical or euclidean')
+	parser.add_argument('--phi_include_xe', action='store_true', help='for neural CBF')
+	parser.add_argument('--phi_nn_inputs', type=str, default="spherical", choices=["spherical", "euc"], help='for neural CBF: which coordinates? spherical or euclidean')
 
 	# parser.add_argument('--phi_reshape_h', action='store_true', help='reshape h')
 	# parser.add_argument('--phi_reshape_dh', action='store_true', help="reshape dh by setting dh = d/dt(h + reshape). h will be reshape independently by default")

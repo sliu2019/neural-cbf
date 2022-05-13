@@ -9,29 +9,35 @@ import IPython
 
 """
 File contains torch module that implements the low-dimensional CBF
-This can be wrapped with a numpy class
-It can also be used within our training algorithm  
+This can be wrapped with a numpy class and used in CMA-ES and calculations of experimental metrics
+It can also be used within our gradient-based, min-max training algorithm  
 """
 
 # Noe: we're assuming r = 2 here
 # Note: in our reshaping, we'll also assume the form of h (although the original class is agnostic to h)
-class PhiLow(nn.Module):
+class LowPhi(nn.Module):
 	def __init__(self, h_fn, xdot_fn, x_dim, u_dim, device, param_dict):
-
+		# TODO: doesn't take in r, assumes r = 2
 		# Later: args specifying how beta is parametrized
 		super().__init__()
 		variables = locals()  # dict of local names
 		self.__dict__.update(variables)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
 
-		self.r = 2
 		self.delta_max = param_dict['delta_safety_limit']
 		self.state_index_dict = self.param_dict["state_index_dict"]
 
 		# Initialize params
-		# Q: do I need to pad any away from 0 here? No, you can just specify the lower bound within CMA-ES
+		# TODO: pad away from 0
+		# TODO: CMA-ES double-pads, effectively
 		self.ci = nn.Parameter(torch.rand(2, 1)) # reshaping parameters
-		self.ki = nn.Parameter(torch.rand(self.r-1, 1)) # coeffs for higher order terms
+		self.ki = nn.Parameter(torch.rand(1, 1)) # coeffs for higher order terms
+
+		self.ci_min = 1e-2
+		self.ki_min = 1e-2
+
+		self.pos_param_names = ["ki", "ci"]
+		self.exclude_from_gradient_param_names = [] # exclude the gradient of these params from gradient magnitude calculation
 
 	def forward(self, x, grad_x=False):
 		# The way these are implemented should be batch compliant
@@ -40,6 +46,14 @@ class PhiLow(nn.Module):
 		# IPython.embed()
 		# Compute higher-order Lie derivatives
 		#####################################################################
+		# IPython.embed()
+		ci = torch.zeros((2, 1)).to(self.device)
+		ci[0, 0] = self.ci[0, 0] + self.ci_min
+		ci[1, 0] = self.ci[1, 0]
+		# ci = self.ci.to(self.device)
+		# ci[0] = ci[0] + self.ci_min
+		ki = self.ki.to(self.device) + self.ki_min
+
 		# Turn gradient tracking on for x
 		bs = x.size()[0]
 		if grad_x == False:
@@ -47,7 +61,6 @@ class PhiLow(nn.Module):
 			x.requires_grad = True
 
 		h_ith_deriv = self.h_fn(x)  # bs x 1, the zeroth derivative
-
 		h_derivs = h_ith_deriv  # bs x 1
 		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device))  # bs x x_dim
 
@@ -61,11 +74,11 @@ class PhiLow(nn.Module):
 		if grad_x == False:
 			x.requires_grad = orig_req_grad_setting
 
-		ki = torch.tensor([[1.0, 1.0], [0.0, 0.0]])
-		ki[1, 1] = self.ki
+		ki_mat = torch.tensor([[1.0, 1.0], [0.0, 0.0]]).to(self.device)
+		ki_mat[1, 1] = ki
 		#####################################################################
 		# Turn gradient tracking off for x
-		result = h_derivs.mm(ki)
+		result = h_derivs.mm(ki_mat)
 
 		##############################################
 		##### Compute new_h (reshaped)
@@ -79,7 +92,7 @@ class PhiLow(nn.Module):
 		with torch.no_grad():
 			signed_eps = -torch.sign(cos_cos)*eps
 		delta = torch.acos(cos_cos + signed_eps)
-		new_h = (delta**2 + gamma**2 + beta**2)**(self.ci[0]) - (self.delta_max**2)**(self.ci[0]) + self.ci[1]
+		new_h = (delta**2 + gamma**2 + beta**2)**(ci[0]) - (self.delta_max**2)**(ci[0]) + ci[1]
 
 		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_h
 

@@ -8,8 +8,14 @@ import pickle
 import time, os, glob, re
 import numpy as np
 
-from main import Phi, Objective, Regularizer
+# from main import Phi, Objective, Regularizer
+from main import Objective, Regularizer
+from src.phi_designs.neural_phi import NeuralPhi
+from src.phi_designs.low_phi import LowPhi
 from src.utils import *
+
+from src.phi_designs.low_phi import LowPhi
+from src.phi_designs.neural_phi import NeuralPhi
 
 # Make numpy and torch deterministic (for rand phi and attack/reg sampling)
 seed = 3
@@ -73,7 +79,16 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	# x_lim = torch.tensor(x_lim).to(device)
 
 	# Create CBF, etc.
-	phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
+	# phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
+	# IPython.embed()
+	# For some reason, args will always have phi_design
+	if args.phi_design == "neural":
+		phi_fn = NeuralPhi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
+	elif args.phi_design == "low":
+		phi_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
+	else:
+		phi_fn = NeuralPhi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
+
 	# objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
 	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight)
 
@@ -83,14 +98,20 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	# reg_fn = reg_fn.to(device)
 
 	print("Phi param before load:")
-	print("k0, ci: ", phi_fn.k0, phi_fn.ci)
+	if isinstance(phi_fn, NeuralPhi):
+		print("k0, ci: ", phi_fn.k0, phi_fn.ci)
+	elif isinstance(phi_fn, LowPhi):
+		print("ki, ci: ", phi_fn.ki, phi_fn.ci)
 
 	if exp_name:
 		assert checkpoint_number is not None
 		phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
 		load_model(phi_fn, phi_load_fpth)
 	print("Phi param after load:")
-	print("k0, ci: ", phi_fn.k0, phi_fn.ci)
+	if isinstance(phi_fn, NeuralPhi):
+		print("k0, ci: ", phi_fn.k0, phi_fn.ci)
+	elif isinstance(phi_fn, LowPhi):
+		print("ki, ci: ", phi_fn.ki, phi_fn.ci)
 
 	# for name, param_info in phi_fn.named_parameters():
 	# 	print(name)
@@ -588,7 +609,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 		# cbf is type "ours"
 		ki_str = "k0 = %.4f, k1 = %.4f" % (phi_fn.k0, phi_fn.ci[0])
 	elif hasattr(phi_fn, "ki"):
-		ki_str = "ci = %.4f, %.4f, ki = %.4f" % (phi_fn.ci[0, 0], phi_fn.ci[1, 0], phi_fn.ci[0, 0])
+		ki_str = "ci = %.4f, %.4f, ki = %.4f" % (phi_fn.ci[0, 0], phi_fn.ci[1, 0], phi_fn.ki[0, 0])
 	else:
 		ki_str = ""
 	# fig.title(ki_str) # doesn't work, title goes on last subfigure
@@ -827,10 +848,7 @@ if __name__ == "__main__":
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again"]
 
 	# Server 5
-	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"]
-
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
 
 	"""checkpoint_numbers = list(np.arange(0, 825, 50)) + [825]
 	exp_names = ["flying_inv_pend_euc_softplus_seed_1"]*len(checkpoint_numbers)
@@ -839,7 +857,10 @@ if __name__ == "__main__":
 	exp_names = ["flying_inv_pend_euc_softplus_weighted_avg_seed_1"]*len(checkpoint_numbers)"""
 
 	# May 11th
-	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
+
+	# May 13
+	base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1", "flying_inv_pend_low_cbf_reg_weight_10", "flying_inv_pend_low_cbf_reg_weight_100"]
 
 	# To visualize slices for a new experiment
 	"""checkpoint_numbers = []

@@ -15,6 +15,9 @@ import math
 from torch.optim.lr_scheduler import ReduceLROnPlateau, ExponentialLR
 # lr_scheduler_str_to_class_dict = {"exponential_reduction":0, "reduce_on_plateau":0}
 
+from src.phi_designs.neural_phi import NeuralPhi
+from src.phi_designs.low_phi import LowPhi
+
 class Trainer():
 	def __init__(self, args, logger, attacker, test_attacker, reg_sampler, param_dict, device):
 		vars = locals()  # dict of local names
@@ -44,11 +47,16 @@ class Trainer():
 			"grad_norms": [],
 			"V_approx_list": [],
 			"boundary_samples_obj_values": [],
-			"ci_list": [],
-			"k0_list": [],
 			"test_t_total": [],
 			"test_t_boundary": []
 		}
+
+		if isinstance(phi_fn, NeuralPhi):
+			data_dict["ci_list"] = []
+			data_dict["k0_list"] = []
+		elif isinstance(phi_fn, LowPhi):
+			data_dict["ci_list"] = []
+			data_dict["ki_list"] = []
 
 		train_attack_dict = {"train_attacks": [],
 			"train_attack_X_init": [],
@@ -77,9 +85,8 @@ class Trainer():
 
 		###########  Done  ###########
 		##############################
-		pos_param_names = ["ci", "k0"] # TODO: SIMIN fill out, especially if you change variable names
 		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
-		pos_params = [p_dict[name] for name in pos_param_names]
+		pos_params = [p_dict[name] for name in phi_fn.pos_param_names]
 
 		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
 
@@ -102,20 +109,14 @@ class Trainer():
 		save_model(phi_fn, file_name)
 
 		while True:
+
 			iteration_info_dict = {}
-			# t0_xreg = time.perf_counter()
 			X_reg = self.reg_sampler.get_samples(phi_fn)
 			reg_value = reg_fn(X_reg)
-			# tf_xreg = time.perf_counter()
 
-
-			# TODO: SIMIN, this won't work for the regular attacker
-			# def surface_fn(x, grad_x=False):
-			# 	return phi_fn(x, grad_x=grad_x)[:, -1]
+			# Note: this won't work for the regular attacker
 			x, debug_dict = self.attacker.opt(objective_fn, phi_fn, _iter, debug=True)
 			X = debug_dict["X_final"]
-
-			optimizer.zero_grad()
 
 			if self.args.objective_option == "regular":
 				x_batch = x.view(1, -1)
@@ -154,6 +155,7 @@ class Trainer():
 			#######################################################
 			############# Now, taking the gradients ###############
 			#######################################################
+			optimizer.zero_grad()
 
 			reg_value.backward()
 
@@ -161,7 +163,8 @@ class Trainer():
 			avg_grad_norm = 0
 			n_param = 0
 			for n, p in phi_fn.named_parameters():
-				if n not in ["ci", "k0"]: # TODO: SIMIN
+				if n not in phi_fn.exclude_from_gradient_param_names:
+				# if n not in ["ci", "k0"]:
 					avg_grad_norm += torch.linalg.norm(p.grad).item()
 					n_param += 1
 			avg_grad = avg_grad_norm/n_param
@@ -175,7 +178,8 @@ class Trainer():
 			avg_grad_norm = 0
 			n_param = 0
 			for n, p in phi_fn.named_parameters():
-				if n not in ["ci", "k0"]: # TODO: SIMIN
+				# if n not in ["ci", "k0"]:
+				if n not in phi_fn.exclude_from_gradient_param_names:
 					avg_grad_norm += torch.linalg.norm(p.grad).item()
 					n_param += 1
 			avg_grad = avg_grad_norm/n_param
@@ -187,7 +191,6 @@ class Trainer():
 
 			with torch.no_grad():
 				for param in pos_params:
-					# pos_param = param
 					pos_param = torch.maximum(param, torch.zeros_like(param))
 					param.copy_(pos_param)
 
@@ -238,9 +241,17 @@ class Trainer():
 			iteration_info_dict.update(debug_dict)
 
 			# Misc saving
-			# TODO: Simin
-			iteration_info_dict["ci_list"] = phi_fn.ci
-			iteration_info_dict["k0_list"] = phi_fn.k0
+			if isinstance(phi_fn, NeuralPhi):
+				iteration_info_dict["ci_list"] = phi_fn.ci
+				iteration_info_dict["k0_list"] = phi_fn.k0
+				print(phi_fn.k0)
+				print(phi_fn.ci)
+
+			if isinstance(phi_fn, LowPhi):
+				iteration_info_dict["ci_list"] = phi_fn.ci
+				iteration_info_dict["ki_list"] = phi_fn.ki
+				self.logger.info(phi_fn.k0)
+				self.logger.info(phi_fn.ci)
 
 			# Merge into info_dict
 			for key, value in iteration_info_dict.items():
