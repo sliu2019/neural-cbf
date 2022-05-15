@@ -96,7 +96,7 @@ def create_parser():
 	###################################################################################################################################
 
 	# Trainer
-	parser.add_argument('--trainer_stopping_condition', default=['n_steps'], choices=['n_steps', 'early_stopping'])
+	parser.add_argument('--trainer_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping'])
 	parser.add_argument('--trainer_early_stopping_patience', default=100, type=int)
 	parser.add_argument('--trainer_n_steps', default=3000, type=int, help='if stopping condition is n_steps, specify the number here')
 	parser.add_argument('--trainer_lr', default=1e-3, type=float)

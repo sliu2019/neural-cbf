@@ -170,6 +170,12 @@ def run_exps(args):
 
 		# print("ln 156")
 		# IPython.embed()
+	elif args.which_cbf == "low-gradient":
+		torch_phi_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
+		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+
+		save_fldrpth = "./log/%s" % args.exp_name_to_load
+		# IPython.embed()
 	else:
 		raise NotImplementedError
 
@@ -342,7 +348,7 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='All experiments for flying pendulum')
 	parser.add_argument('--save_fnm', type=str, default="debug", help="conscisely describes the hyperparameters of this run")
-	parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES", "low-heuristic"], required=True)
+	parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES", "low-heuristic", "low-gradient"], required=True)
 
 	parser.add_argument('--exp_name_to_load', type=str) # flying_inv_pend_first_run
 	parser.add_argument('--checkpoint_number_to_load', type=int, help="for our CBF", default=0)

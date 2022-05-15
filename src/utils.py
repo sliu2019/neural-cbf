@@ -38,7 +38,6 @@ def create_logger(save_path='', file_type='', level='debug'):
 def save_model(model, file_name):
 	torch.save(model.state_dict(), file_name)
 
-
 def load_model(model, file_name):
 	model.load_state_dict(
 		torch.load(file_name, map_location=lambda storage, loc: storage))

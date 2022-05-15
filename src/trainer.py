@@ -250,7 +250,7 @@ class Trainer():
 			if isinstance(phi_fn, LowPhi):
 				iteration_info_dict["ci_list"] = phi_fn.ci
 				iteration_info_dict["ki_list"] = phi_fn.ki
-				self.logger.info(phi_fn.k0)
+				self.logger.info(phi_fn.ki)
 				self.logger.info(phi_fn.ci)
 
 			# Merge into info_dict
@@ -331,5 +331,7 @@ class Trainer():
 					break
 
 			# IPython.embed()
+			# print(self.args.trainer_stopping_condition)
+			# print(_iter)
 			_iter += 1
 

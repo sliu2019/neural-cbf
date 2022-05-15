@@ -81,7 +81,7 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	# Create CBF, etc.
 	# phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
 	# IPython.embed()
-	# For some reason, args will always have phi_design
+	# For some reason, args will always have phi_design (the DotMap loading procedure)
 	if args.phi_design == "neural":
 		phi_fn = NeuralPhi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
 	elif args.phi_design == "low":
@@ -247,13 +247,25 @@ def graph_losses(exp_name, debug=True):
 		axs[2].legend(loc=(1.04,0))
 
 		#############################################
-		axs[3].set_title("k0, ci over iterations")
-		k0_list = [x.item() for x in data['k0_list']]
-		ci_list = [x.item() for x in data["ci_list"]]
-		axs[3].plot(k0_list, linewidth=0.5, label="k0")
-		axs[3].plot(ci_list, linewidth=0.5, label="k1")
-		axs[3].legend(loc=(1.04,0))
-
+		if args.phi_design == "neural":
+			axs[3].set_title("k0, ci over iterations")
+			k0_list = [x.item() for x in data['k0_list']]
+			ci_list = [x.item() for x in data["ci_list"]]
+			axs[3].plot(k0_list, linewidth=0.5, label="k0")
+			axs[3].plot(ci_list, linewidth=0.5, label="k1")
+			axs[3].legend(loc=(1.04,0))
+		elif args.phi_design == "low":
+			axs[3].set_title("ki, ci over iterations")
+			k1_list = [x.item() for x in data['ki_list']]
+			# k1_list = data['ki_list']
+			c1_list = [x[0, 0] for x in data["ci_list"]]
+			c2_list = [x[1, 0] for x in data["ci_list"]]
+			axs[3].plot(k1_list, linewidth=0.5, label="k1")
+			axs[3].plot(c1_list, linewidth=0.5, label="c1")
+			axs[3].plot(c2_list, linewidth=0.5, label="c2")
+			axs[3].legend(loc=(1.04,0))
+		else:
+			raise NotImplementedError
 		#############################################
 		fig.tight_layout()
 
@@ -335,7 +347,8 @@ def graph_losses(exp_name, debug=True):
 	m = len(approx_v)
 	train_attack_losses_at_checkpoints = train_attack_losses[::n_test_loss_step][:m]
 	# total_loss = -3*approx_v + train_attack_losses_at_checkpoints + 0.1*np.arange(m)
-	total_loss = train_attack_losses_at_checkpoints + 0.1*np.arange(m)
+	# total_loss = train_attack_losses_at_checkpoints + 0.1*np.arange(m)
+	total_loss = train_attack_losses_at_checkpoints
 	best_inds = np.argsort(total_loss)
 
 	n_top = 5
@@ -798,6 +811,37 @@ def plot_interesting_slices(phi_fn, param_dict, save_fldrpth, checkpoint_number)
 	plt.clf()
 	plt.close()
 
+def fill_ci_ki_lists(exp_name):
+	"""
+	For low-cbf experiments ran before we started recording ci, ki lists
+	:param exp_name:
+	:return:
+	"""
+	# IPython.embed()
+	data_save_fpth = "./log/%s/data.pkl" % exp_name
+	with open(data_save_fpth, 'rb') as handle:
+		data = pickle.load(handle)
+
+	args = load_args("./log/%s/args.txt" % exp_name)
+	n_it_so_far = len(data["train_losses"]) - 1
+
+	ki_list = []
+	ci_list = []
+	for checkpoint_number in np.arange(0, n_it_so_far, args.n_checkpoint_step):
+		# IPython.embed()
+		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+
+		ki_list.append(phi_fn.ki.detach().cpu().numpy())
+		ci_list.append(phi_fn.ci.detach().cpu().numpy())
+
+	data["ki_list"] = ki_list
+	data["ci_list"] = ci_list
+
+	print("Saving at: ", data_save_fpth)
+	with open(data_save_fpth, 'wb') as handle:
+		pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
 if __name__ == "__main__":
 	########################################################
 	#########     FILL OUT HERE !!!!   #####################
@@ -860,7 +904,8 @@ if __name__ == "__main__":
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
 
 	# May 13
-	base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1", "flying_inv_pend_low_cbf_reg_weight_10", "flying_inv_pend_low_cbf_reg_weight_100"]
+	base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1"]
+	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1", "flying_inv_pend_low_cbf_reg_weight_10", "flying_inv_pend_low_cbf_reg_weight_100"]
 
 	# To visualize slices for a new experiment
 	"""checkpoint_numbers = []
@@ -953,6 +998,7 @@ if __name__ == "__main__":
 
 	# TODO: check training progress
 	for exp_name in base_exp_names:
+		# fill_ci_ki_lists(exp_name)
 		min_attack_loss_ind = graph_losses(exp_name)
 		# checkpoint_numbers.append(min_attack_loss_ind)
 
