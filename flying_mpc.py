@@ -32,15 +32,19 @@ np.random.seed(2022)
 
 g = 9.81
 
+from src.argument import create_parser
+
+parser = create_parser()  # default
+default_args = parser.parse_known_args()[0]
+from main import create_flying_param_dict
+
+param_dict = create_flying_param_dict(default_args)  # default
+state_index_dict = param_dict["state_index_dict"]
+
+
 def setup_solver(args):
 	# TODO: Load default param dict
 	# IPython.embed()
-	from src.argument import create_parser
-	parser = create_parser()  # default
-	default_args = parser.parse_known_args()[0]
-	from main import create_flying_param_dict
-	param_dict = create_flying_param_dict(default_args)  # default
-
 	N_horizon = args.N_horizon
 	dt = args.dt
 
@@ -168,84 +172,111 @@ def setup_solver(args):
 	#################################
 	return model, mpc
 
-# def mpc_compute_invariant_set(args):
-# 	N_horizon = args.N_horizon
-# 	delta = args.delta
-# 	dt = args.dt
-#
-# 	x = np.arange(x_lim[0, 0], x_lim[0, 1], delta)
-# 	y = np.arange(x_lim[1, 0], x_lim[1, 1], delta)[::-1]  # need to reverse it
-# 	X, Y = np.meshgrid(x, y)
-#
-# 	sze = X.size
-# 	input = np.concatenate((np.zeros((sze, 1)), X.flatten()[:, None], np.zeros((sze, 1)), Y.flatten()[:, None]), axis=1)
-# 	phi_0_vals = phi_0(input)
-# 	phi_0_vals = np.reshape(phi_0_vals, X.shape)
-#
-# 	neg_inds = np.argwhere(phi_0_vals <= 0) # (m, 2)
-# 	n_neg_inds = neg_inds.shape[0]
-#
-# 	exists_soln_bools = np.zeros(n_neg_inds)
-# 	model, mpc = setup_solver(args)
-#
-# 	print("./rollout_results/mpc_delta_%f_dt_%f_horizon_%i.png" % (delta, dt, N_horizon))
-# 	# IPython.embed()
-# 	for i in range(n_neg_inds):
-# 		mpc.reset_history()
-# 		x0 = np.zeros((4, 1))
-#
-# 		x0[1] = X[neg_inds[i,0], neg_inds[i,1]]
-# 		x0[3] = Y[neg_inds[i,0], neg_inds[i,1]]
-#
-# 		mpc.x0 = x0
-# 		mpc.set_initial_guess()
-#
-# 		u0 = mpc.make_step(x0)
-#
-# 		# exists_soln_bools[i] = mpc.data['success'].item()
-#
-# 		# Has shape (2*N_horizon) because records default (0) aux first.
-# 		pred_cost = mpc.data['_opt_aux_num']
-# 		pred_cost = np.reshape(pred_cost, (-1, 2))[:, 1]
-# 		if np.any(pred_cost != 0):
-# 			# print("YAY")
-# 			# IPython.embed()
-# 			exists_soln_bools[i] = 0
-# 		else:
-# 			exists_soln_bools[i] = 1
-#
-# 		# print(mpc.data['_opt_aux_num'].shape, mpc.data['_opt_aux_num'])
-# 		"""Please choose from dict_keys(['_time', '_x', '_y', '_u', '_z', '_tvp', '_p', '_aux', '_eps', 'opt_p_num', '_opt_x_num', '_opt_aux_num', '_lam_g_num', 'success', 't_wall_total'])"""
-# 		# IPython.embed()
-# 	save_fpth_root = "./rollout_results/mpc_delta_%f_dt_%f_horizon_%i" % (delta, dt, N_horizon)
-#
-# 	# Save data
-# 	save_dict = {"neg_inds": neg_inds, "X": X, "Y": Y, "exists_soln_bools":exists_soln_bools}
-# 	with open(save_fpth_root + ".pkl", 'wb') as handle:
-# 		pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-#
-# 	# Plotting
-# 	signs = np.zeros_like(X)
-# 	signs[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
-# 	signs = np.logical_not(signs) # get colors to match NN plot
-# 	fig = plt.figure()
-# 	ax = fig.add_subplot(111)
-# 	ax.imshow(signs, extent=x_lim.flatten())
-# 	ax.set_aspect("equal")
-#
-# 	plt.savefig(save_fpth_root + ".png", bbox_inches='tight')
-# 	plt.clf()
-# 	plt.close()
+def phi_0(x):
+	theta = x[:, [state_index_dict["theta"]]]
+	phi = x[:, [state_index_dict["phi"]]]
+	gamma = x[:, [state_index_dict["gamma"]]]
+	beta = x[:, [state_index_dict["beta"]]]
+	delta_safety_limit = param_dict["delta_safety_limit"]
+
+	cos_cos = np.cos(theta) * np.cos(phi)
+	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
+	signed_eps = -np.sign(cos_cos) * eps
+	delta = np.acos(cos_cos + signed_eps)
+	rv = delta ** 2 + gamma ** 2 + beta ** 2 - delta_safety_limit ** 2
+	return rv
+
+def mpc_compute_invariant_set(args):
+	N_horizon = args.N_horizon
+	delta = args.delta
+	dt = args.dt
+	which_params = args.which_params
+	x_lim = param_dict["x_lim"]
+	state_index_dict = param_dict["state_index_dict"]
+	ind1 = state_index_dict[which_params[0]]
+	ind2 = state_index_dict[which_params[1]]
+
+	# Note: assuming that we're interested in 2 variables and the other vars = 0
+	x = np.arange(x_lim[ind1, 0], x_lim[ind1, 1], delta)
+	y = np.arange(x_lim[ind2, 0], x_lim[ind2, 1], delta)[::-1]  # need to reverse it
+	X, Y = np.meshgrid(x, y)
+
+	sze = X.size
+	input = np.zeros((sze, 10))
+	input[:, ind1] = X.flatten()
+	input[:, ind2] = Y.flatten()
+	# input = np.concatenate((np.zeros((sze, 1)), X.flatten()[:, None], np.zeros((sze, 1)), Y.flatten()[:, None]), axis=1)
+	phi_0_vals = phi_0(input)
+	phi_0_vals = np.reshape(phi_0_vals, X.shape)
+
+	neg_inds = np.argwhere(phi_0_vals <= 0) # (m, 2)
+	n_neg_inds = neg_inds.shape[0]
+
+	exists_soln_bools = np.zeros(n_neg_inds)
+	model, mpc = setup_solver(args, default_args)
+
+	# print("./rollout_results/mpc_delta_%f_dt_%f_horizon_%i.png" % (delta, dt, N_horizon)) # TODO: replace this
+	save_fpth_root = "./flying_mpc_outputs/mpc_%s_%s" % (which_params[0], which_params[1])
+	print(save_fpth_root)
+	# IPython.embed()
+	for i in range(n_neg_inds):
+		mpc.reset_history()
+		x0 = np.zeros((10, 1))
+
+		x0[ind1] = X[neg_inds[i,0], neg_inds[i,1]]
+		x0[ind2] = Y[neg_inds[i,0], neg_inds[i,1]]
+
+		mpc.x0 = x0
+		mpc.set_initial_guess()
+
+		u0 = mpc.make_step(x0)
+
+		# exists_soln_bools[i] = mpc.data['success'].item()
+
+		# Has shape (2*N_horizon) because records default (0) aux first.
+		pred_cost = mpc.data['_opt_aux_num']
+		pred_cost = np.reshape(pred_cost, (-1, 2))[:, 1]
+		if np.any(pred_cost != 0):
+			# print("YAY")
+			# IPython.embed()
+			exists_soln_bools[i] = 0
+		else:
+			exists_soln_bools[i] = 1
+
+		# print(mpc.data['_opt_aux_num'].shape, mpc.data['_opt_aux_num'])
+		"""Please choose from dict_keys(['_time', '_x', '_y', '_u', '_z', '_tvp', '_p', '_aux', '_eps', 'opt_p_num', '_opt_x_num', '_opt_aux_num', '_lam_g_num', 'success', 't_wall_total'])"""
+		# IPython.embed()
+
+	# Save data
+	save_dict = {"neg_inds": neg_inds, "X": X, "Y": Y, "exists_soln_bools":exists_soln_bools}
+	with open(save_fpth_root + ".pkl", 'wb') as handle:
+		pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+	# Plotting
+	signs = np.zeros_like(X)
+	signs[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
+	signs = np.logical_not(signs) # get colors to match NN plot
+	fig = plt.figure()
+	ax = fig.add_subplot(111)
+	ax.imshow(signs, extent=x_lim.flatten())
+	ax.set_aspect("equal")
+
+	plt.savefig(save_fpth_root + ".png", bbox_inches='tight')
+	plt.clf()
+	plt.close()
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='CBF synthesis')
 	parser.add_argument('--dt', type=float, default=0.05)
 	parser.add_argument('--delta', type=float, default=0.1)
 	parser.add_argument('--N_horizon', type=int, default=20)
+
+	parser.add_argument('--which_params', default=["phi", "dphi"], nargs='+', type=str, help="which 2 state variables")
+
 	args = parser.parse_known_args()[0]
 
-	# mpc_compute_invariant_set(args)
-	setup_solver(args)
+	mpc_compute_invariant_set(args)
+	# setup_solver(args)
 
 
 # if __name__ == "__main__":

@@ -4,7 +4,6 @@
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/flying_mpc.py" beforeDir="false" afterPath="$PROJECT_DIR$/flying_mpc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mpc_inverted_pendulum.py" beforeDir="false" afterPath="$PROJECT_DIR$/mpc_inverted_pendulum.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -126,7 +125,7 @@
       <workItem from="1650637606187" duration="1851000" />
       <workItem from="1650640679109" duration="10658000" />
       <workItem from="1650735589065" duration="79883000" />
-      <workItem from="1651767509664" duration="68158000" />
+      <workItem from="1651767509664" duration="69632000" />
     </task>
     <servers />
   </component>
