@@ -50,7 +50,7 @@ def phi_0(x_batch):
 	return rv
 
 
-def setup_solver(N_horizon):
+def setup_solver(args):
 	N_horizon = args.N_horizon
 	dt = args.dt
 

@@ -28,29 +28,19 @@ Unless Changliu meant to do MPC 1-step with a super long horizon (which I doubt)
 """
 
 # Fixed seed for repeatability
-torch.manual_seed(2022)
 np.random.seed(2022)
 
 g = 9.81
-I = 1.2E-3
-m = 0.127
-M = 1.0731
-l = 0.3365
 
-theta_safety_lim = math.pi/4.0
-max_force = 22.0
+def setup_solver(args):
+	# TODO: Load default param dict
+	# IPython.embed()
+	from src.argument import create_parser
+	parser = create_parser()  # default
+	default_args = parser.parse_known_args()[0]
+	from main import create_flying_param_dict
+	param_dict = create_flying_param_dict(default_args)  # default
 
-max_angular_velocity = 5.0 # state space constraint
-x_lim = np.array([[-math.pi, math.pi], [-max_angular_velocity, max_angular_velocity]])
-
-def phi_0(x_batch):
-	# x_batch is (n, 4)
-	theta = x_batch[:, 1]
-	rv = theta**2 - theta_safety_lim**2
-	return rv
-
-
-def setup_solver(N_horizon):
 	N_horizon = args.N_horizon
 	dt = args.dt
 
@@ -58,38 +48,90 @@ def setup_solver(N_horizon):
 	model = do_mpc.model.Model(model_type)
 
 	# Define state vars
-	x = model.set_variable(var_type='_x', var_name='x', shape=(1,1))
+	gamma = model.set_variable(var_type='_x', var_name='gamma', shape=(1, 1))
+	dgamma = model.set_variable(var_type='_x', var_name='dgamma', shape=(1, 1))
+	beta = model.set_variable(var_type='_x', var_name='beta', shape=(1, 1))
+	dbeta = model.set_variable(var_type='_x', var_name='dbeta', shape=(1, 1))
+	alpha = model.set_variable(var_type='_x', var_name='alpha', shape=(1, 1))
+	dalpha = model.set_variable(var_type='_x', var_name='dalpha', shape=(1, 1))
+
+	phi = model.set_variable(var_type='_x', var_name='phi', shape=(1,1))
+	dphi = model.set_variable(var_type='_x', var_name='dphi', shape=(1,1))
 	theta = model.set_variable(var_type='_x', var_name='theta', shape=(1,1))
-	dot_x = model.set_variable(var_type='_x', var_name='dot_x', shape=(1,1))
-	dot_theta = model.set_variable(var_type='_x', var_name='dot_theta', shape=(1,1))
+	dtheta = model.set_variable(var_type='_x', var_name='dtheta', shape=(1,1))
 
 	# Define input
-	u = model.set_variable(var_type='_u', var_name='u')
+	u = model.set_variable(var_type='_u', var_name='u', shape=(4, 1)) # TODO: note this is lower-level controls!!!
 
 	# Define dynamics
-	model.set_rhs('x', dot_x)
-	model.set_rhs('theta', dot_theta)
+	k1 = param_dict["k1"]
+	k2 = param_dict["k2"]
+	l = param_dict["l"]
+	M = param_dict["M"]
+	J_x = param_dict["J_x"]
+	J_y = param_dict["J_y"]
+	J_z = param_dict["J_z"]
+	L_p = param_dict["L_p"]
+	delta_safety_limit = param_dict["delta_safety_limit"]
 
-	# from casadi import *
-	# Note: has to use Casadi primitives, not numpy or math module
-	denom = I*(M + m) + m*(l**2)*(M + m*(sin(theta)**2))
-	numx = (I + m*(l**2))*(m*l*dot_theta**2*sin(theta)) - g*(m**2)*(l**2)*sin(theta)*cos(theta) + (I + m*l**2)*u
-	numtheta = m*l*(-m*l*dot_theta**2*sin(theta)*cos(theta) + (M+m)*g*sin(theta)) + (-m*l*cos(theta))*u
-	ddot_x_expr = numx/denom
-	ddot_theta_expr = numtheta/denom
+	Mixer = SX([[k1, k1, k1, k1], [0, -l * k1, 0, l * k1], [l * k1, 0, -l * k1, 0], [-k2, k2, -k2, k2]])  # mixer matrix
 
-	model.set_rhs('dot_x', ddot_x_expr)
-	model.set_rhs('dot_theta', ddot_theta_expr)
+	R = SX.zeros(3, 3)
+	R[0, 0] = cos(alpha) * cos(beta)
+	R[0, 1] = cos(alpha) * sin(beta) * sin(gamma) - sin(alpha) * cos(gamma)
+	R[0, 2] = cos(alpha) * sin(beta) * cos(gamma) + sin(alpha) * sin(gamma)
+	R[1, 0] = sin(alpha) * cos(beta)
+	R[1, 1] = sin(alpha) * sin(beta) * sin(gamma) + cos(alpha) * cos(gamma)
+	R[1, 2] = sin(alpha) * sin(beta) * cos(gamma) - cos(alpha) * sin(gamma)
+	R[2, 0] = -sin(beta)
+	R[2, 1] = cos(beta) * sin(gamma)
+	R[2, 2] = cos(beta) * cos(gamma)
+
+	k_x = R[0, 2]
+	k_y = R[1, 2]
+	k_z = R[2, 2]
+
+	U = Mixer@u # TODO: high-level control inputs, (4x1)
+	F = U[0, 0]
+
+	###### Computing state derivatives
+	# IPython.embed()
+	J = SX([[J_x], [J_y], [J_z]])
+	norm_torques = u[1:] * (1.0 / J)
+
+	ddquad_angles = R@norm_torques
+	ddgamma = ddquad_angles[0, 0]
+	ddbeta = ddquad_angles[1, 0]
+	ddalpha = ddquad_angles[2, 0]
+
+	ddphi = (3.0) * (k_y * cos(phi) + k_z * sin(phi)) / (
+				2 * M * L_p * cos(theta)) * F + 2 * dtheta * dphi * tan(theta)
+	ddtheta = (3.0 * (
+				-k_x * cos(theta) - k_y * sin(phi) * sin(theta) + k_z * cos(phi) * sin(
+			theta)) / (2.0 * M * L_p)) * F - (dphi**2) * sin(theta) * cos(theta)
+
+	# model.set_rhs('rpw', drpw)
+	# model.set_rhs('drpw', ddrpw)
+
+	model.set_rhs('theta', dtheta)
+	model.set_rhs('phi', dphi)
+	model.set_rhs('gamma', dgamma)
+	model.set_rhs('beta', dbeta)
+	model.set_rhs('alpha', dalpha)
+
+	model.set_rhs('dtheta', ddtheta)
+	model.set_rhs('dphi', ddphi)
+	model.set_rhs('dgamma', ddgamma)
+	model.set_rhs('dbeta', ddbeta)
+	model.set_rhs('dalpha', ddalpha)
 
 	# Set aux expressions
-	# model = do_mpc.model.Model('continuous')
-	# model.set_variable('_x', 'temperature', 4)  # 4 states
-	# dt = model.x['temperature', 0] - model.x['temperature', 1]
-	# model.set_expression('dtemp', dt)
-	# # Query:
-	# model.aux['dtemp', 0]  # 0th element of variable
-	# model.aux['dtemp']  # all elements of variable
-	cost = fmax(0, theta ** 2 - theta_safety_lim ** 2)  # we are in a casadi symbolic environment
+	cos_cos = cos(theta) * cos(phi)
+	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
+	signed_eps = -sign(cos_cos) * eps
+	delta = acos(cos_cos + signed_eps)
+	h = delta ** 2 + gamma ** 2 + beta ** 2 - delta_safety_limit ** 2
+	cost = fmax(0, h)  # we are in a casadi symbolic environment
 	model.set_expression('cost', cost)
 
 	# Finally,
@@ -107,98 +149,93 @@ def setup_solver(N_horizon):
 	mpc.set_param(**setup_mpc)
 
 	# Define objective (minimized)
-	lterm = fmax(0, theta ** 2 - theta_safety_lim ** 2)  # we are in a casadi symbolic environment
+	cos_cos = cos(theta) * cos(phi)
+	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
+	signed_eps = -sign(cos_cos) * eps
+	delta = acos(cos_cos + signed_eps)
+	h = delta ** 2 + gamma ** 2 + beta ** 2 - delta_safety_limit ** 2
+	lterm = fmax(0, h)  # we are in a casadi symbolic environment
 	mpc.set_objective(lterm=lterm, mterm=lterm)
 
 	# Set state and control limits
-	# TODO: no state limits
-	# mpc.bounds['lower', '_x', 'theta'] = x_lim[0, 0]
-	# mpc.bounds['upper', '_x', 'theta'] = x_lim[0, 1]
-	# mpc.bounds['lower', '_x', 'dot_theta'] = x_lim[1, 0]
-	# mpc.bounds['upper', '_x', 'dot_theta'] = x_lim[0, 1]
-
-	mpc.bounds['lower', '_u', 'u'] = -max_force
-	mpc.bounds['upper', '_u', 'u'] = max_force
+	# No state limits
+	mpc.bounds['lower', '_u', 'u'] = SX.zeros(4, 1)
+	mpc.bounds['upper', '_u', 'u'] = SX.ones(4, 1)
 
 	# Finally,
 	mpc.setup()
 
-	#######################
-	# Create simulator
-	# simulator = do_mpc.simulator.Simulator(model)
-	# simulator.set_param(t_step = dt)
-	# simulator.setup()
-
+	#################################
 	return model, mpc
 
-def mpc_compute_invariant_set(args):
-	N_horizon = args.N_horizon
-	delta = args.delta
-	dt = args.dt
-
-	x = np.arange(x_lim[0, 0], x_lim[0, 1], delta)
-	y = np.arange(x_lim[1, 0], x_lim[1, 1], delta)[::-1]  # need to reverse it
-	X, Y = np.meshgrid(x, y)
-
-	sze = X.size
-	input = np.concatenate((np.zeros((sze, 1)), X.flatten()[:, None], np.zeros((sze, 1)), Y.flatten()[:, None]), axis=1)
-	phi_0_vals = phi_0(input)
-	phi_0_vals = np.reshape(phi_0_vals, X.shape)
-
-	neg_inds = np.argwhere(phi_0_vals <= 0) # (m, 2)
-	n_neg_inds = neg_inds.shape[0]
-
-	exists_soln_bools = np.zeros(n_neg_inds)
-	model, mpc = setup_solver(args)
-
-	print("./rollout_results/mpc_delta_%f_dt_%f_horizon_%i.png" % (delta, dt, N_horizon))
-	# IPython.embed()
-	for i in range(n_neg_inds):
-		mpc.reset_history()
-		x0 = np.zeros((4, 1))
-
-		x0[1] = X[neg_inds[i,0], neg_inds[i,1]]
-		x0[3] = Y[neg_inds[i,0], neg_inds[i,1]]
-
-		mpc.x0 = x0
-		mpc.set_initial_guess()
-
-		u0 = mpc.make_step(x0)
-
-		# exists_soln_bools[i] = mpc.data['success'].item()
-
-		# Has shape (2*N_horizon) because records default (0) aux first.
-		pred_cost = mpc.data['_opt_aux_num']
-		pred_cost = np.reshape(pred_cost, (-1, 2))[:, 1]
-		if np.any(pred_cost != 0):
-			# print("YAY")
-			# IPython.embed()
-			exists_soln_bools[i] = 0
-		else:
-			exists_soln_bools[i] = 1
-
-		# print(mpc.data['_opt_aux_num'].shape, mpc.data['_opt_aux_num'])
-		"""Please choose from dict_keys(['_time', '_x', '_y', '_u', '_z', '_tvp', '_p', '_aux', '_eps', 'opt_p_num', '_opt_x_num', '_opt_aux_num', '_lam_g_num', 'success', 't_wall_total'])"""
-		# IPython.embed()
-	save_fpth_root = "./rollout_results/mpc_delta_%f_dt_%f_horizon_%i" % (delta, dt, N_horizon)
-
-	# Save data
-	save_dict = {"neg_inds": neg_inds, "X": X, "Y": Y, "exists_soln_bools":exists_soln_bools}
-	with open(save_fpth_root + ".pkl", 'wb') as handle:
-		pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-	# Plotting
-	signs = np.zeros_like(X)
-	signs[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
-	signs = np.logical_not(signs) # get colors to match NN plot
-	fig = plt.figure()
-	ax = fig.add_subplot(111)
-	ax.imshow(signs, extent=x_lim.flatten())
-	ax.set_aspect("equal")
-
-	plt.savefig(save_fpth_root + ".png", bbox_inches='tight')
-	plt.clf()
-	plt.close()
+# def mpc_compute_invariant_set(args):
+# 	N_horizon = args.N_horizon
+# 	delta = args.delta
+# 	dt = args.dt
+#
+# 	x = np.arange(x_lim[0, 0], x_lim[0, 1], delta)
+# 	y = np.arange(x_lim[1, 0], x_lim[1, 1], delta)[::-1]  # need to reverse it
+# 	X, Y = np.meshgrid(x, y)
+#
+# 	sze = X.size
+# 	input = np.concatenate((np.zeros((sze, 1)), X.flatten()[:, None], np.zeros((sze, 1)), Y.flatten()[:, None]), axis=1)
+# 	phi_0_vals = phi_0(input)
+# 	phi_0_vals = np.reshape(phi_0_vals, X.shape)
+#
+# 	neg_inds = np.argwhere(phi_0_vals <= 0) # (m, 2)
+# 	n_neg_inds = neg_inds.shape[0]
+#
+# 	exists_soln_bools = np.zeros(n_neg_inds)
+# 	model, mpc = setup_solver(args)
+#
+# 	print("./rollout_results/mpc_delta_%f_dt_%f_horizon_%i.png" % (delta, dt, N_horizon))
+# 	# IPython.embed()
+# 	for i in range(n_neg_inds):
+# 		mpc.reset_history()
+# 		x0 = np.zeros((4, 1))
+#
+# 		x0[1] = X[neg_inds[i,0], neg_inds[i,1]]
+# 		x0[3] = Y[neg_inds[i,0], neg_inds[i,1]]
+#
+# 		mpc.x0 = x0
+# 		mpc.set_initial_guess()
+#
+# 		u0 = mpc.make_step(x0)
+#
+# 		# exists_soln_bools[i] = mpc.data['success'].item()
+#
+# 		# Has shape (2*N_horizon) because records default (0) aux first.
+# 		pred_cost = mpc.data['_opt_aux_num']
+# 		pred_cost = np.reshape(pred_cost, (-1, 2))[:, 1]
+# 		if np.any(pred_cost != 0):
+# 			# print("YAY")
+# 			# IPython.embed()
+# 			exists_soln_bools[i] = 0
+# 		else:
+# 			exists_soln_bools[i] = 1
+#
+# 		# print(mpc.data['_opt_aux_num'].shape, mpc.data['_opt_aux_num'])
+# 		"""Please choose from dict_keys(['_time', '_x', '_y', '_u', '_z', '_tvp', '_p', '_aux', '_eps', 'opt_p_num', '_opt_x_num', '_opt_aux_num', '_lam_g_num', 'success', 't_wall_total'])"""
+# 		# IPython.embed()
+# 	save_fpth_root = "./rollout_results/mpc_delta_%f_dt_%f_horizon_%i" % (delta, dt, N_horizon)
+#
+# 	# Save data
+# 	save_dict = {"neg_inds": neg_inds, "X": X, "Y": Y, "exists_soln_bools":exists_soln_bools}
+# 	with open(save_fpth_root + ".pkl", 'wb') as handle:
+# 		pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+#
+# 	# Plotting
+# 	signs = np.zeros_like(X)
+# 	signs[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
+# 	signs = np.logical_not(signs) # get colors to match NN plot
+# 	fig = plt.figure()
+# 	ax = fig.add_subplot(111)
+# 	ax.imshow(signs, extent=x_lim.flatten())
+# 	ax.set_aspect("equal")
+#
+# 	plt.savefig(save_fpth_root + ".png", bbox_inches='tight')
+# 	plt.clf()
+# 	plt.close()
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='CBF synthesis')
@@ -207,9 +244,13 @@ if __name__ == "__main__":
 	parser.add_argument('--N_horizon', type=int, default=20)
 	args = parser.parse_known_args()[0]
 
-	mpc_compute_invariant_set(args)
+	# mpc_compute_invariant_set(args)
+	setup_solver(args)
 
 
+# if __name__ == "__main__":
+# 	N_horizon = 5
+# 	setup_solver(N_horizon)
 
 """
 Query data using: 
