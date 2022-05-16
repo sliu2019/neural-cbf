@@ -203,6 +203,7 @@ def mpc_compute_invariant_set(args):
 	# print(save_fpth_root)
 	# print("ln 220")
 	# IPython.embed()
+	t_per_mpc = []
 	for i in range(n_neg_inds):
 		# print("inside loop")
 		# IPython.embed()
@@ -234,6 +235,7 @@ def mpc_compute_invariant_set(args):
 		"""Please choose from dict_keys(['_time', '_x', '_y', '_u', '_z', '_tvp', '_p', '_aux', '_eps', 'opt_p_num', '_opt_x_num', '_opt_aux_num', '_lam_g_num', 'success', 't_wall_total'])"""
 		t1 = time.perf_counter()
 		print("t for mpc on a single x0: %.3f s" % (t1 -t0))
+		t_per_mpc.append((t1-t0))
 
 	# Save data
 	# print("line 251")
@@ -241,7 +243,7 @@ def mpc_compute_invariant_set(args):
 	S_grid = np.zeros_like(X)
 	S_grid[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
 	A_grid = (phi_0_vals <= 0).astype("int")
-	save_dict = {"A_grid": A_grid, "X": X, "Y": Y, "exists_soln_bools": exists_soln_bools, "S_grid": S_grid, "args": args}
+	save_dict = {"A_grid": A_grid, "X": X, "Y": Y, "exists_soln_bools": exists_soln_bools, "S_grid": S_grid, "args": args, "t_per_mpc": t_per_mpc}
 	with open(save_fpth_root + ".pkl", 'wb') as handle:
 		pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 

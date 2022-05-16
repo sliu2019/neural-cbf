@@ -108,6 +108,8 @@ class Trainer():
 		file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 		save_model(phi_fn, file_name)
 
+		# print("Before training")
+		# IPython.embed()
 		while True:
 
 			iteration_info_dict = {}
@@ -127,16 +129,27 @@ class Trainer():
 			elif self.args.objective_option == "weighted_average":
 				c = 0.1
 
+				# obj = objective_fn(X)
+				# mask_neg = obj >= 0 # zeros out entries where obj < 0: actually, just use softplus on the objective
+				# with torch.no_grad():
+				# 	if torch.any(mask_neg):
+				# 		w = torch.exp(c*obj)
+				# 		w = w*mask_neg
+				# 		w = w/torch.sum(w)
+				# 	else:
+				# 		w = torch.zeros_like(obj)
+				# attack_value = torch.dot(w.flatten(), obj.flatten())
+				# TODO: above implementation will fail when obj contains large values (>1000).
+				# torch.exp overflows easily; torch.nn.functional.softmax is way better
+
+				# print("Is gradient propagated correctly? Through indexing?")
+				# IPython.embed()
 				obj = objective_fn(X)
-				mask_neg = obj >= 0 # zeros out entries where obj < 0: actually, just use softplus on the objective
+				pos_inds = torch.where(obj >= 0) # tuple of 2D inds
+				pos_obj = c*obj[pos_inds[0], pos_inds[1]]
 				with torch.no_grad():
-					if torch.any(mask_neg):
-						w = torch.exp(c*obj)
-						w = w*mask_neg
-						w = w/torch.sum(w)
-					else:
-						w = torch.zeros_like(obj)
-				attack_value = torch.dot(w.flatten(), obj.flatten())
+					w = torch.nn.functional.softmax(pos_obj)
+				attack_value = torch.dot(w.flatten(), pos_obj.flatten())
 			elif self.args.objective_option == "weighted_average_include_neg_phidot":
 				# Eliminates the "relu" effect on above
 				c = 0.1
@@ -275,6 +288,8 @@ class Trainer():
 				with open(self.data_save_fpth, 'wb') as handle:
 					pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+			# print("After first training iteration")
+			# IPython.embed()
 			#######################################################
 			##############   Compute test stats   #################
 			#######################################################

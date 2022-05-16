@@ -904,7 +904,8 @@ if __name__ == "__main__":
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
 
 	# May 13
-	base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1"]
+	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1"]
+	base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1_seed_3", "flying_inv_pend_low_cbf_reg_weight_1_seed_4"]
 	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1", "flying_inv_pend_low_cbf_reg_weight_10", "flying_inv_pend_low_cbf_reg_weight_100"]
 
 	# To visualize slices for a new experiment
