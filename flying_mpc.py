@@ -9,23 +9,7 @@ import torch
 from casadi import *
 import pickle
 import argparse
-"""
-Pseudo-code:
-
-phi_0
-grid, find points inside phi_0 zero sublevel set 
-
-for each point, solve MPC (can multithread this if it's super slow to get low resolution) 
-If it's slow, would recommend saving progress from each point as it's received. 
-
-solve mpc:
-implement model 
-implement optimizer 
-yes, you can do a rollout in RHC fashion.
-Unless Changliu meant to do MPC 1-step with a super long horizon (which I doubt). 
-
-# TODO: you also need to try for 2-3 Horizon choices. What is T_max? 
-"""
+import time
 
 # Fixed seed for repeatability
 np.random.seed(2022)
@@ -43,7 +27,6 @@ state_index_dict = param_dict["state_index_dict"]
 
 
 def setup_solver(args):
-	# TODO: Load default param dict
 	# IPython.embed()
 	N_horizon = args.N_horizon
 	dt = args.dt
@@ -101,7 +84,7 @@ def setup_solver(args):
 	###### Computing state derivatives
 	# IPython.embed()
 	J = SX([[J_x], [J_y], [J_z]])
-	norm_torques = u[1:] * (1.0 / J)
+	norm_torques = U[1:] * (1.0 / J)
 
 	ddquad_angles = R@norm_torques
 	ddgamma = ddquad_angles[0, 0]
@@ -182,7 +165,7 @@ def phi_0(x):
 	cos_cos = np.cos(theta) * np.cos(phi)
 	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
 	signed_eps = -np.sign(cos_cos) * eps
-	delta = np.acos(cos_cos + signed_eps)
+	delta = np.arccos(cos_cos + signed_eps)
 	rv = delta ** 2 + gamma ** 2 + beta ** 2 - delta_safety_limit ** 2
 	return rv
 
@@ -192,7 +175,7 @@ def mpc_compute_invariant_set(args):
 	dt = args.dt
 	which_params = args.which_params
 	x_lim = param_dict["x_lim"]
-	state_index_dict = param_dict["state_index_dict"]
+	# state_index_dict = param_dict["state_index_dict"]
 	ind1 = state_index_dict[which_params[0]]
 	ind2 = state_index_dict[which_params[1]]
 
@@ -213,13 +196,17 @@ def mpc_compute_invariant_set(args):
 	n_neg_inds = neg_inds.shape[0]
 
 	exists_soln_bools = np.zeros(n_neg_inds)
-	model, mpc = setup_solver(args, default_args)
+	model, mpc = setup_solver(args)
 
 	# print("./rollout_results/mpc_delta_%f_dt_%f_horizon_%i.png" % (delta, dt, N_horizon)) # TODO: replace this
 	save_fpth_root = "./flying_mpc_outputs/mpc_%s_%s" % (which_params[0], which_params[1])
-	print(save_fpth_root)
+	# print(save_fpth_root)
+	# print("ln 220")
 	# IPython.embed()
 	for i in range(n_neg_inds):
+		# print("inside loop")
+		# IPython.embed()
+		t0 = time.perf_counter()
 		mpc.reset_history()
 		x0 = np.zeros((10, 1))
 
@@ -245,10 +232,16 @@ def mpc_compute_invariant_set(args):
 
 		# print(mpc.data['_opt_aux_num'].shape, mpc.data['_opt_aux_num'])
 		"""Please choose from dict_keys(['_time', '_x', '_y', '_u', '_z', '_tvp', '_p', '_aux', '_eps', 'opt_p_num', '_opt_x_num', '_opt_aux_num', '_lam_g_num', 'success', 't_wall_total'])"""
-		# IPython.embed()
+		t1 = time.perf_counter()
+		print("t for mpc on a single x0: %.3f s" % (t1 -t0))
 
 	# Save data
-	save_dict = {"neg_inds": neg_inds, "X": X, "Y": Y, "exists_soln_bools":exists_soln_bools}
+	# print("line 251")
+	# IPython.embed()
+	S_grid = np.zeros_like(X)
+	S_grid[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
+	A_grid = (phi_0_vals <= 0).astype("int")
+	save_dict = {"A_grid": A_grid, "X": X, "Y": Y, "exists_soln_bools": exists_soln_bools, "S_grid": S_grid, "args": args}
 	with open(save_fpth_root + ".pkl", 'wb') as handle:
 		pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -258,7 +251,7 @@ def mpc_compute_invariant_set(args):
 	signs = np.logical_not(signs) # get colors to match NN plot
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
-	ax.imshow(signs, extent=x_lim.flatten())
+	ax.imshow(signs, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
 	ax.set_aspect("equal")
 
 	plt.savefig(save_fpth_root + ".png", bbox_inches='tight')
@@ -268,7 +261,7 @@ def mpc_compute_invariant_set(args):
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='CBF synthesis')
 	parser.add_argument('--dt', type=float, default=0.05)
-	parser.add_argument('--delta', type=float, default=0.1)
+	parser.add_argument('--delta', type=float, default=0.1, help="discretization of grid over slice")
 	parser.add_argument('--N_horizon', type=int, default=20)
 
 	parser.add_argument('--which_params', default=["phi", "dphi"], nargs='+', type=str, help="which 2 state variables")
