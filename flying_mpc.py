@@ -12,6 +12,7 @@ import argparse
 import time
 import sys
 import logging
+import multiprocessing as mp
 
 # Fixed seed for repeatability
 np.random.seed(2022)
@@ -173,6 +174,28 @@ def phi_0(x):
 	rv = delta ** 2 + gamma ** 2 + beta ** 2 - delta_safety_limit ** 2
 	return rv
 
+def run_mpc_on_x0(args, x0_list):
+	model, mpc = setup_solver(args)
+	exists_soln_bools = []
+	for x0 in x0_list:
+
+		mpc.reset_history()
+
+		mpc.x0 = x0
+		mpc.set_initial_guess()
+
+		u0 = mpc.make_step(x0)
+
+		# Has shape (2*N_horizon) because records default (0) aux first.
+		pred_cost = mpc.data['_opt_aux_num']
+		pred_cost = np.reshape(pred_cost, (-1, 2))[:, 1]
+		if np.any(pred_cost != 0):
+			exists_soln_bools.append(0)
+		else:
+			exists_soln_bools.append(1)
+
+	return exists_soln_bools
+
 def mpc_compute_invariant_set(args):
 	t0 = time.perf_counter()
 
@@ -187,17 +210,9 @@ def mpc_compute_invariant_set(args):
 
 	save_fpth_root = "./flying_mpc_outputs/mpc_%s_%s" % (which_params[0], which_params[1])
 
-	# Redirect std.out (print)
-	# file_path = save_fpth_root + "_debug.out"
-	# sys.stdout = open(file_path, "w")
-
 	# Create logger
 	log_file_path = save_fpth_root + "_debug.out"
 	logging.basicConfig(filename=log_file_path, filemode='w', format='%(message)s', level=logging.DEBUG)
-	# logging.debug('This will get logged to a file')
-	# print("check logging")
-	# IPython.embed()
-	# return
 
 	# Note: assuming that we're interested in 2 variables and the other vars = 0
 	x = np.arange(x_lim[ind1, 0], x_lim[ind1, 1], delta)
@@ -209,20 +224,36 @@ def mpc_compute_invariant_set(args):
 	input[:, ind1] = X.flatten()
 	input[:, ind2] = Y.flatten()
 	# input = np.concatenate((np.zeros((sze, 1)), X.flatten()[:, None], np.zeros((sze, 1)), Y.flatten()[:, None]), axis=1)
-	phi_0_vals = phi_0(input)
-	phi_0_vals = np.reshape(phi_0_vals, X.shape)
-
+	phi_0_vals_flat = phi_0(input)
+	phi_0_vals = np.reshape(phi_0_vals_flat, X.shape)
 	neg_inds = np.argwhere(phi_0_vals <= 0) # (m, 2)
-	n_neg_inds = neg_inds.shape[0]
+	# n_neg_inds = neg_inds.shape[0]
+	# exists_soln_bools = np.zeros(n_neg_inds)
 
-	exists_soln_bools = np.zeros(n_neg_inds)
-	model, mpc = setup_solver(args)
+	ctx = mp.get_context('fork') # TODO: try spawn and fork
+	pool = ctx.Pool(args.n_proc)
+	flat_neg_inds = np.argwhere(phi_0_vals_flat <= 0)[:, 0]
+	# x0s_in_A = input[flat_neg_inds]
+	n_x0 = flat_neg_inds.size
+	n_x0_per_proc = math.ceil(n_x0/args.n_proc)
+	permuted_inds = np.random.permutation(flat_neg_inds)
+	chunked_permuted_inds = [permuted_inds[i*n_x0_per_proc:(i+1)*n_x0_per_proc] for i in range(args.n_proc)]
+	arguments = [[args, input[x]] for x in chunked_permuted_inds]
 
-	# print("./rollout_results/mpc_delta_%f_dt_%f_horizon_%i.png" % (delta, dt, N_horizon)) # TODO: replace this
-	# print(save_fpth_root)
-	# print("ln 220")
+	# print("before launching n_proc")
 	# IPython.embed()
+	t0 = time.perf_counter()
+	result = pool.starmap(run_mpc_on_x0, arguments)
+	tf = time.perf_counter()
+	# print("after")
+	# IPython.embed()
+	exists_soln_bools = np.zeros(sze)
+	for i, r in enumerate(result):
+		exists_soln_bools[chunked_permuted_inds[i]] = r
+
+	S_grid = np.reshape(exists_soln_bools, X.shape)
 	t_per_mpc = []
+	"""t_per_mpc = []
 	for i in range(n_neg_inds):
 		# print("inside loop")
 		# IPython.embed()
@@ -253,19 +284,20 @@ def mpc_compute_invariant_set(args):
 			exists_soln_bools[i] = 1
 
 		# print(mpc.data['_opt_aux_num'].shape, mpc.data['_opt_aux_num'])
-		"""Please choose from dict_keys(['_time', '_x', '_y', '_u', '_z', '_tvp', '_p', '_aux', '_eps', 'opt_p_num', '_opt_x_num', '_opt_aux_num', '_lam_g_num', 'success', 't_wall_total'])"""
+		# Please choose from dict_keys(['_time', '_x', '_y', '_u', '_z', '_tvp', '_p', '_aux', '_eps', 'opt_p_num', '_opt_x_num', '_opt_aux_num', '_lam_g_num', 'success', 't_wall_total'])
 		ti_end = time.perf_counter()
 		ti_time = ti_end - ti_start
 		# print("t for mpc on a single x0: %.3f s" % ti_time)
 		logging.debug("t for mpc on a single x0: %.3f s" % ti_time)
 		t_per_mpc.append(ti_time)
+	tf = time.perf_counter()
+		"""
 
 	# Save data
-	tf = time.perf_counter()
 	# print("line 251")
 	# IPython.embed()
-	S_grid = np.zeros_like(X)
-	S_grid[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
+	# S_grid = np.zeros_like(X)
+	# S_grid[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
 	A_grid = (phi_0_vals <= 0).astype("int")
 	percent_of_A_volume = np.sum(S_grid)*100.0/np.sum(A_grid)
 	save_dict = {"A_grid": A_grid, "X": X, "Y": Y, "exists_soln_bools": exists_soln_bools, "S_grid": S_grid, "args": args, "t_per_mpc": t_per_mpc, "t_total": (tf-t0), "percent_of_A_volume": percent_of_A_volume}
@@ -273,12 +305,12 @@ def mpc_compute_invariant_set(args):
 		pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	# Plotting
-	signs = np.zeros_like(X)
-	signs[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
-	signs = np.logical_not(signs) # get colors to match NN plot
+	# signs = np.zeros_like(X)
+	# signs[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
+	# signs = np.logical_not(signs) # get colors to match NN plot
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
-	ax.imshow(signs, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
+	ax.imshow(np.logical_not(S_grid), extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
 	ax.set_aspect("equal")
 
 	plt.savefig(save_fpth_root + ".png", bbox_inches='tight')
@@ -292,6 +324,8 @@ if __name__ == "__main__":
 	parser.add_argument('--N_horizon', type=int, default=20)
 
 	parser.add_argument('--which_params', default=["phi", "dphi"], nargs='+', type=str, help="which 2 state variables")
+
+	parser.add_argument('--n_proc', default=36, type=int)
 
 	args = parser.parse_known_args()[0]
 
