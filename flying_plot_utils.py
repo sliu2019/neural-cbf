@@ -905,7 +905,9 @@ if __name__ == "__main__":
 
 	# May 13
 	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1"]
-	base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1_seed_3", "flying_inv_pend_low_cbf_reg_weight_1_seed_4"]
+	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1_seed_3", "flying_inv_pend_low_cbf_reg_weight_1_seed_4"]
+
+	base_exp_names = [("flying_inv_pend_low_cbf_reg_weight_1_seed_%i" % x) for x in np.arange(1, 8)]
 	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1", "flying_inv_pend_low_cbf_reg_weight_10", "flying_inv_pend_low_cbf_reg_weight_100"]
 
 	# To visualize slices for a new experiment

@@ -10,6 +10,8 @@ from casadi import *
 import pickle
 import argparse
 import time
+import sys
+import logging
 
 # Fixed seed for repeatability
 np.random.seed(2022)
@@ -25,7 +27,6 @@ from main import create_flying_param_dict
 param_dict = create_flying_param_dict(default_args)  # default
 state_index_dict = param_dict["state_index_dict"]
 
-
 def setup_solver(args):
 	# IPython.embed()
 	N_horizon = args.N_horizon
@@ -35,16 +36,19 @@ def setup_solver(args):
 	model = do_mpc.model.Model(model_type)
 
 	# Define state vars
+	# TODO: has to be done in this order: 	state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi", "dtheta"]
 	gamma = model.set_variable(var_type='_x', var_name='gamma', shape=(1, 1))
-	dgamma = model.set_variable(var_type='_x', var_name='dgamma', shape=(1, 1))
 	beta = model.set_variable(var_type='_x', var_name='beta', shape=(1, 1))
-	dbeta = model.set_variable(var_type='_x', var_name='dbeta', shape=(1, 1))
 	alpha = model.set_variable(var_type='_x', var_name='alpha', shape=(1, 1))
+
+	dgamma = model.set_variable(var_type='_x', var_name='dgamma', shape=(1, 1))
+	dbeta = model.set_variable(var_type='_x', var_name='dbeta', shape=(1, 1))
 	dalpha = model.set_variable(var_type='_x', var_name='dalpha', shape=(1, 1))
 
 	phi = model.set_variable(var_type='_x', var_name='phi', shape=(1,1))
-	dphi = model.set_variable(var_type='_x', var_name='dphi', shape=(1,1))
 	theta = model.set_variable(var_type='_x', var_name='theta', shape=(1,1))
+
+	dphi = model.set_variable(var_type='_x', var_name='dphi', shape=(1,1))
 	dtheta = model.set_variable(var_type='_x', var_name='dtheta', shape=(1,1))
 
 	# Define input
@@ -170,6 +174,8 @@ def phi_0(x):
 	return rv
 
 def mpc_compute_invariant_set(args):
+	t0 = time.perf_counter()
+
 	N_horizon = args.N_horizon
 	delta = args.delta
 	dt = args.dt
@@ -178,6 +184,20 @@ def mpc_compute_invariant_set(args):
 	# state_index_dict = param_dict["state_index_dict"]
 	ind1 = state_index_dict[which_params[0]]
 	ind2 = state_index_dict[which_params[1]]
+
+	save_fpth_root = "./flying_mpc_outputs/mpc_%s_%s" % (which_params[0], which_params[1])
+
+	# Redirect std.out (print)
+	# file_path = save_fpth_root + "_debug.out"
+	# sys.stdout = open(file_path, "w")
+
+	# Create logger
+	log_file_path = save_fpth_root + "_debug.out"
+	logging.basicConfig(filename=log_file_path, filemode='w', format='%(message)s', level=logging.DEBUG)
+	# logging.debug('This will get logged to a file')
+	# print("check logging")
+	# IPython.embed()
+	# return
 
 	# Note: assuming that we're interested in 2 variables and the other vars = 0
 	x = np.arange(x_lim[ind1, 0], x_lim[ind1, 1], delta)
@@ -199,7 +219,6 @@ def mpc_compute_invariant_set(args):
 	model, mpc = setup_solver(args)
 
 	# print("./rollout_results/mpc_delta_%f_dt_%f_horizon_%i.png" % (delta, dt, N_horizon)) # TODO: replace this
-	save_fpth_root = "./flying_mpc_outputs/mpc_%s_%s" % (which_params[0], which_params[1])
 	# print(save_fpth_root)
 	# print("ln 220")
 	# IPython.embed()
@@ -207,12 +226,14 @@ def mpc_compute_invariant_set(args):
 	for i in range(n_neg_inds):
 		# print("inside loop")
 		# IPython.embed()
-		t0 = time.perf_counter()
+		ti_start = time.perf_counter()
 		mpc.reset_history()
 		x0 = np.zeros((10, 1))
 
 		x0[ind1] = X[neg_inds[i,0], neg_inds[i,1]]
 		x0[ind2] = Y[neg_inds[i,0], neg_inds[i,1]]
+
+		# IPython.embed()
 
 		mpc.x0 = x0
 		mpc.set_initial_guess()
@@ -233,17 +254,21 @@ def mpc_compute_invariant_set(args):
 
 		# print(mpc.data['_opt_aux_num'].shape, mpc.data['_opt_aux_num'])
 		"""Please choose from dict_keys(['_time', '_x', '_y', '_u', '_z', '_tvp', '_p', '_aux', '_eps', 'opt_p_num', '_opt_x_num', '_opt_aux_num', '_lam_g_num', 'success', 't_wall_total'])"""
-		t1 = time.perf_counter()
-		print("t for mpc on a single x0: %.3f s" % (t1 -t0))
-		t_per_mpc.append((t1-t0))
+		ti_end = time.perf_counter()
+		ti_time = ti_end - ti_start
+		# print("t for mpc on a single x0: %.3f s" % ti_time)
+		logging.debug("t for mpc on a single x0: %.3f s" % ti_time)
+		t_per_mpc.append(ti_time)
 
 	# Save data
+	tf = time.perf_counter()
 	# print("line 251")
 	# IPython.embed()
 	S_grid = np.zeros_like(X)
 	S_grid[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
 	A_grid = (phi_0_vals <= 0).astype("int")
-	save_dict = {"A_grid": A_grid, "X": X, "Y": Y, "exists_soln_bools": exists_soln_bools, "S_grid": S_grid, "args": args, "t_per_mpc": t_per_mpc}
+	percent_of_A_volume = np.sum(S_grid)*100.0/np.sum(A_grid)
+	save_dict = {"A_grid": A_grid, "X": X, "Y": Y, "exists_soln_bools": exists_soln_bools, "S_grid": S_grid, "args": args, "t_per_mpc": t_per_mpc, "t_total": (tf-t0), "percent_of_A_volume": percent_of_A_volume}
 	with open(save_fpth_root + ".pkl", 'wb') as handle:
 		pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -292,3 +317,11 @@ mpc.data['success']
 # for i in range(T_max):
 		# 	u0 = mpc.make_step(x0)
 		# 	x0 = simulator.make_step(u0)
+
+"""
+import sys
+ 
+file_path = 'randomfile.txt'
+sys.stdout = open(file_path, "w")
+print("This text will be added to the file")
+"""
