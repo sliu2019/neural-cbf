@@ -104,20 +104,33 @@ def setup_solver(args):
 
 	# model.set_rhs('rpw', drpw)
 	# model.set_rhs('drpw', ddrpw)
-
-	model.set_rhs('theta', dtheta)
-	model.set_rhs('phi', dphi)
 	model.set_rhs('gamma', dgamma)
 	model.set_rhs('beta', dbeta)
 	model.set_rhs('alpha', dalpha)
 
-	model.set_rhs('dtheta', ddtheta)
-	model.set_rhs('dphi', ddphi)
 	model.set_rhs('dgamma', ddgamma)
 	model.set_rhs('dbeta', ddbeta)
 	model.set_rhs('dalpha', ddalpha)
 
-	# Set aux expressions
+	model.set_rhs('theta', dtheta)
+	model.set_rhs('phi', dphi)
+
+	model.set_rhs('dtheta', ddtheta)
+	model.set_rhs('dphi', ddphi)
+
+	# Code snippet
+	# def convert_angle_to_negpi_pi_interval(angle):
+	# 	new_angle = np.arctan2(np.sin(angle), np.cos(angle))
+	# 	return new_angle
+
+	# Convert all angles to [-pi, pi] interval
+	# TODO: this is important, as it matches our assumption in the phi0 function
+	gamma = arctan2(sin(gamma), cos(gamma))
+	beta = arctan2(sin(beta), cos(beta))
+	alpha = arctan2(sin(alpha), cos(alpha))
+	phi = arctan2(sin(phi), cos(phi))
+	theta = arctan2(sin(theta), cos(theta))
+
 	cos_cos = cos(theta) * cos(phi)
 	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
 	signed_eps = -sign(cos_cos) * eps
@@ -132,22 +145,24 @@ def setup_solver(args):
 	#######################
 	# Create optimizer
 	mpc = do_mpc.controller.MPC(model)
+	# Last entry suppresses IPOPT output
 	setup_mpc = {
 		'n_horizon': N_horizon,
 		't_step': dt,
-		'store_full_solution': True
+		'store_full_solution': True,
+		'nlpsol_opts': {'ipopt.print_level': 0, 'ipopt.sb': 'yes', 'print_time': 0}
 	}
 
 	mpc.set_param(**setup_mpc)
 
 	# Define objective (minimized)
-	cos_cos = cos(theta) * cos(phi)
-	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
-	signed_eps = -sign(cos_cos) * eps
-	delta = acos(cos_cos + signed_eps)
-	h = delta ** 2 + gamma ** 2 + beta ** 2 - delta_safety_limit ** 2
-	lterm = fmax(0, h)  # we are in a casadi symbolic environment
-	mpc.set_objective(lterm=lterm, mterm=lterm)
+	# cos_cos = cos(theta) * cos(phi)
+	# eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
+	# signed_eps = -sign(cos_cos) * eps
+	# delta = acos(cos_cos + signed_eps)
+	# h = delta ** 2 + gamma ** 2 + beta ** 2 - delta_safety_limit ** 2
+	# lterm = fmax(0, h)  # we are in a casadi symbolic environment
+	mpc.set_objective(lterm=cost, mterm=cost)
 
 	# Set state and control limits
 	# No state limits
@@ -184,11 +199,15 @@ def run_mpc_on_x0(args, x0_list):
 		mpc.x0 = x0
 		mpc.set_initial_guess()
 
+		# print("line 188")
+		# IPython.embed()
 		u0 = mpc.make_step(x0)
 
+		# print("line 192")
+		# IPython.embed()
 		# Has shape (2*N_horizon) because records default (0) aux first.
 		pred_cost = mpc.data['_opt_aux_num']
-		pred_cost = np.reshape(pred_cost, (-1, 2))[:, 1]
+		pred_cost = np.reshape(pred_cost, (-1, 2))[:, 1] # TODO: Simin, is this correct?
 		if np.any(pred_cost != 0):
 			exists_soln_bools.append(0)
 		else:
@@ -199,21 +218,22 @@ def run_mpc_on_x0(args, x0_list):
 def mpc_compute_invariant_set(args):
 	t0 = time.perf_counter()
 
+	# Create useful variables
 	N_horizon = args.N_horizon
 	delta = args.delta
 	dt = args.dt
 	which_params = args.which_params
 	x_lim = param_dict["x_lim"]
-	# state_index_dict = param_dict["state_index_dict"]
 	ind1 = state_index_dict[which_params[0]]
 	ind2 = state_index_dict[which_params[1]]
 
-	save_fpth_root = "./flying_mpc_outputs/mpc_%s_%s" % (which_params[0], which_params[1])
+	save_fpth_root = "./flying_mpc_outputs/mpc_%s_%s_N_horizon_%i" % (which_params[0], which_params[1], N_horizon)
 
 	# Create logger
 	log_file_path = save_fpth_root + "_debug.out"
 	logging.basicConfig(filename=log_file_path, filemode='w', format='%(message)s', level=logging.DEBUG)
 
+	# Create grid over 2D slice
 	# Note: assuming that we're interested in 2 variables and the other vars = 0
 	x = np.arange(x_lim[ind1, 0], x_lim[ind1, 1], delta)
 	y = np.arange(x_lim[ind2, 0], x_lim[ind2, 1], delta)[::-1]  # need to reverse it
@@ -223,81 +243,40 @@ def mpc_compute_invariant_set(args):
 	input = np.zeros((sze, 10))
 	input[:, ind1] = X.flatten()
 	input[:, ind2] = Y.flatten()
-	# input = np.concatenate((np.zeros((sze, 1)), X.flatten()[:, None], np.zeros((sze, 1)), Y.flatten()[:, None]), axis=1)
 	phi_0_vals_flat = phi_0(input)
 	phi_0_vals = np.reshape(phi_0_vals_flat, X.shape)
-	neg_inds = np.argwhere(phi_0_vals <= 0) # (m, 2)
-	# n_neg_inds = neg_inds.shape[0]
-	# exists_soln_bools = np.zeros(n_neg_inds)
+	# neg_inds = np.argwhere(phi_0_vals <= 0) # (m, 2)
+	flat_neg_inds = np.argwhere(phi_0_vals_flat <= 0)[:, 0]
 
 	ctx = mp.get_context('fork') # TODO: try spawn and fork
 	pool = ctx.Pool(args.n_proc)
-	flat_neg_inds = np.argwhere(phi_0_vals_flat <= 0)[:, 0]
-	# x0s_in_A = input[flat_neg_inds]
 	n_x0 = flat_neg_inds.size
 	n_x0_per_proc = math.ceil(n_x0/args.n_proc)
-	permuted_inds = np.random.permutation(flat_neg_inds)
+	permuted_inds = np.random.permutation(flat_neg_inds) # TODO: why do we need to do this?
 	chunked_permuted_inds = [permuted_inds[i*n_x0_per_proc:(i+1)*n_x0_per_proc] for i in range(args.n_proc)]
 	arguments = [[args, input[x]] for x in chunked_permuted_inds]
 
-	# print("before launching n_proc")
-	# IPython.embed()
+	# Launch threads
 	t0 = time.perf_counter()
 	result = pool.starmap(run_mpc_on_x0, arguments)
 	tf = time.perf_counter()
-	# print("after")
+
+	# print("line 246")
 	# IPython.embed()
+	# Don't multithread
+	# result = []
+	# for i in range(len(flat_neg_inds)):
+	# 	r = run_mpc_on_x0(args, [input[flat_neg_inds[i]]])
+	# 	result.append(r)
+
 	exists_soln_bools = np.zeros(sze)
 	for i, r in enumerate(result):
-		exists_soln_bools[chunked_permuted_inds[i]] = r
+		exists_soln_bools[chunked_permuted_inds[i]] = r # TODO: does fork return RV in the same order as args?
 
 	S_grid = np.reshape(exists_soln_bools, X.shape)
 	t_per_mpc = []
-	"""t_per_mpc = []
-	for i in range(n_neg_inds):
-		# print("inside loop")
-		# IPython.embed()
-		ti_start = time.perf_counter()
-		mpc.reset_history()
-		x0 = np.zeros((10, 1))
-
-		x0[ind1] = X[neg_inds[i,0], neg_inds[i,1]]
-		x0[ind2] = Y[neg_inds[i,0], neg_inds[i,1]]
-
-		# IPython.embed()
-
-		mpc.x0 = x0
-		mpc.set_initial_guess()
-
-		u0 = mpc.make_step(x0)
-
-		# exists_soln_bools[i] = mpc.data['success'].item()
-
-		# Has shape (2*N_horizon) because records default (0) aux first.
-		pred_cost = mpc.data['_opt_aux_num']
-		pred_cost = np.reshape(pred_cost, (-1, 2))[:, 1]
-		if np.any(pred_cost != 0):
-			# print("YAY")
-			# IPython.embed()
-			exists_soln_bools[i] = 0
-		else:
-			exists_soln_bools[i] = 1
-
-		# print(mpc.data['_opt_aux_num'].shape, mpc.data['_opt_aux_num'])
-		# Please choose from dict_keys(['_time', '_x', '_y', '_u', '_z', '_tvp', '_p', '_aux', '_eps', 'opt_p_num', '_opt_x_num', '_opt_aux_num', '_lam_g_num', 'success', 't_wall_total'])
-		ti_end = time.perf_counter()
-		ti_time = ti_end - ti_start
-		# print("t for mpc on a single x0: %.3f s" % ti_time)
-		logging.debug("t for mpc on a single x0: %.3f s" % ti_time)
-		t_per_mpc.append(ti_time)
-	tf = time.perf_counter()
-		"""
 
 	# Save data
-	# print("line 251")
-	# IPython.embed()
-	# S_grid = np.zeros_like(X)
-	# S_grid[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
 	A_grid = (phi_0_vals <= 0).astype("int")
 	percent_of_A_volume = np.sum(S_grid)*100.0/np.sum(A_grid)
 	save_dict = {"A_grid": A_grid, "X": X, "Y": Y, "exists_soln_bools": exists_soln_bools, "S_grid": S_grid, "args": args, "t_per_mpc": t_per_mpc, "t_total": (tf-t0), "percent_of_A_volume": percent_of_A_volume}
@@ -305,9 +284,6 @@ def mpc_compute_invariant_set(args):
 		pickle.dump(save_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	# Plotting
-	# signs = np.zeros_like(X)
-	# signs[neg_inds[:, 0], neg_inds[:, 1]] = exists_soln_bools
-	# signs = np.logical_not(signs) # get colors to match NN plot
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
 	ax.imshow(np.logical_not(S_grid), extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
@@ -318,6 +294,9 @@ def mpc_compute_invariant_set(args):
 	plt.close()
 
 if __name__ == "__main__":
+	# print("TODO: check against the default param dict in main()")
+	# print(param_dict)
+	# IPython.embed()
 	parser = argparse.ArgumentParser(description='CBF synthesis')
 	parser.add_argument('--dt', type=float, default=0.05)
 	parser.add_argument('--delta', type=float, default=0.1, help="discretization of grid over slice")
