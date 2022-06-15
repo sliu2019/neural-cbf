@@ -5,9 +5,12 @@ from cvxopt import matrix, solvers
 solvers.options['show_progress'] = False
 import IPython
 # from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
+from utils_for_corl import A, B
+import control
 
+g = 9.81
 class CBFController:
-	def __init__(self, env, cbf_obj, param_dict, eps_bdry=1.0, eps_outside=5.0):
+	def __init__(self, env, cbf_obj, param_dict, args, eps_bdry=1.0, eps_outside=5.0):
 		super().__init__()
 		variables = locals()  # dict of local names
 		self.__dict__.update(variables)  # __dict__ holds and object's attributes
@@ -18,9 +21,29 @@ class CBFController:
 		self.mixer = np.array([[self.k1, self.k1, self.k1, self.k1], [0, -self.l * self.k1, 0, self.l * self.k1],
 		                       [self.l * self.k1, 0, -self.l * self.k1, 0], [-self.k2, self.k2, -self.k2, self.k2]])
 
+		if self.args.u_ref == "LQR":
+			print("ln 24 in controller initialization")
+			IPython.embed()
+			C = control.ctrb(A, B)
+			rk = np.linalg.matrix_rank(C)
+			assert rk == 16
+
+			# Use LQR to compute feedback portion of controller
+			q = self.args.rollout_LQR_q
+			r = self.args.rollout_LQR_r
+			Q = q * np.eye(16)
+			R = r * np.eye(4)
+			K, S, E = control.lqr(A, B, Q, R)
+			self.K = K
+
 	def compute_u_ref(self, t, x):
-		u_ref = np.zeros(self.u_dim)
-		return u_ref
+		if self.args.u_ref == "unactuated":
+			u = np.zeros(self.u_dim)
+		elif self.args.u_ref == "LQR":
+			print("ln 43 in compute_u_ref")
+			IPython.embed()
+			u = np.array([self.M * g, 0, 0, 0]) - self.K @ x
+		return u
 
 	def compute_control(self, t, x):
 		# print("in CBFcontroller, compute control")
