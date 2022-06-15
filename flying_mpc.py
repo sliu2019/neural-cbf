@@ -1,5 +1,5 @@
 """
-Estimates invariant set in a brute-force way, by using MPC
+Computes largest safe set in a brute-force way, by using MPC
 """
 import do_mpc
 import IPython
@@ -29,7 +29,6 @@ param_dict = create_flying_param_dict(default_args)  # default
 state_index_dict = param_dict["state_index_dict"]
 
 def setup_solver(args):
-	# IPython.embed()
 	N_horizon = args.N_horizon
 	dt = args.dt
 
@@ -87,7 +86,6 @@ def setup_solver(args):
 	F = U[0, 0]
 
 	###### Computing state derivatives
-	# IPython.embed()
 	J = SX([[J_x], [J_y], [J_z]])
 	norm_torques = U[1:] * (1.0 / J)
 
@@ -102,8 +100,6 @@ def setup_solver(args):
 				-k_x * cos(theta) - k_y * sin(phi) * sin(theta) + k_z * cos(phi) * sin(
 			theta)) / (2.0 * M * L_p)) * F - (dphi**2) * sin(theta) * cos(theta)
 
-	# model.set_rhs('rpw', drpw)
-	# model.set_rhs('drpw', ddrpw)
 	model.set_rhs('gamma', dgamma)
 	model.set_rhs('beta', dbeta)
 	model.set_rhs('alpha', dalpha)
@@ -118,25 +114,21 @@ def setup_solver(args):
 	model.set_rhs('dtheta', ddtheta)
 	model.set_rhs('dphi', ddphi)
 
-	# Code snippet
-	# def convert_angle_to_negpi_pi_interval(angle):
-	# 	new_angle = np.arctan2(np.sin(angle), np.cos(angle))
-	# 	return new_angle
+	# Define logging functions (we log the cost function)
+	### Convert all angles to [-pi, pi] interval
+	### TODO: this is important, as it matches our assumption in the phi0 function
+	gamma_int = arctan2(sin(gamma), cos(gamma))
+	beta_int = arctan2(sin(beta), cos(beta))
+	phi_int = arctan2(sin(phi), cos(phi))
+	theta_int = arctan2(sin(theta), cos(theta))
 
-	# Convert all angles to [-pi, pi] interval
-	# TODO: this is important, as it matches our assumption in the phi0 function
-	gamma = arctan2(sin(gamma), cos(gamma))
-	beta = arctan2(sin(beta), cos(beta))
-	alpha = arctan2(sin(alpha), cos(alpha))
-	phi = arctan2(sin(phi), cos(phi))
-	theta = arctan2(sin(theta), cos(theta))
-
-	cos_cos = cos(theta) * cos(phi)
+	cos_cos = cos(theta_int) * cos(phi_int)
 	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
 	signed_eps = -sign(cos_cos) * eps
 	delta = acos(cos_cos + signed_eps)
-	h = delta ** 2 + gamma ** 2 + beta ** 2 - delta_safety_limit ** 2
+	h = delta ** 2 + gamma_int ** 2 + beta_int ** 2 - delta_safety_limit ** 2
 	cost = fmax(0, h)  # we are in a casadi symbolic environment
+	# cost = h # TODO
 	model.set_expression('cost', cost)
 
 	# Finally,
@@ -155,14 +147,21 @@ def setup_solver(args):
 
 	mpc.set_param(**setup_mpc)
 
-	# Define objective (minimized)
-	# cos_cos = cos(theta) * cos(phi)
-	# eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
-	# signed_eps = -sign(cos_cos) * eps
-	# delta = acos(cos_cos + signed_eps)
-	# h = delta ** 2 + gamma ** 2 + beta ** 2 - delta_safety_limit ** 2
-	# lterm = fmax(0, h)  # we are in a casadi symbolic environment
-	mpc.set_objective(lterm=cost, mterm=cost)
+	# Define cost function
+	### You have to redefine this, even though it's defined as cost above
+	gamma_int = arctan2(sin(gamma), cos(gamma))
+	beta_int = arctan2(sin(beta), cos(beta))
+	phi_int = arctan2(sin(phi), cos(phi))
+	theta_int = arctan2(sin(theta), cos(theta))
+
+	cos_cos = cos(theta_int) * cos(phi_int)
+	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
+	signed_eps = -sign(cos_cos) * eps
+	delta = acos(cos_cos + signed_eps)
+	h = delta ** 2 + gamma_int ** 2 + beta_int ** 2 - delta_safety_limit ** 2
+	# lterm = h
+	lterm = fmax(0, h)  # we are in a casadi symbolic environment
+	mpc.set_objective(lterm=lterm, mterm=lterm)
 
 	# Set state and control limits
 	# No state limits
@@ -192,26 +191,24 @@ def phi_0(x):
 def run_mpc_on_x0(args, x0_list):
 	model, mpc = setup_solver(args)
 	exists_soln_bools = []
-	for x0 in x0_list:
+	for i, x0 in enumerate(x0_list):
 
 		mpc.reset_history()
 
 		mpc.x0 = x0
 		mpc.set_initial_guess()
 
-		# print("line 188")
-		# IPython.embed()
 		u0 = mpc.make_step(x0)
 
-		# print("line 192")
-		# IPython.embed()
 		# Has shape (2*N_horizon) because records default (0) aux first.
 		pred_cost = mpc.data['_opt_aux_num']
-		pred_cost = np.reshape(pred_cost, (-1, 2))[:, 1] # TODO: Simin, is this correct?
-		if np.any(pred_cost != 0):
+		pred_cost = np.reshape(pred_cost, (-1, 2))[:, 1]
+		if np.any(pred_cost > 0):
 			exists_soln_bools.append(0)
 		else:
 			exists_soln_bools.append(1)
+
+		print(i, x0)
 
 	return exists_soln_bools
 
@@ -227,7 +224,10 @@ def mpc_compute_invariant_set(args):
 	ind1 = state_index_dict[which_params[0]]
 	ind2 = state_index_dict[which_params[1]]
 
-	save_fpth_root = "./flying_mpc_outputs/mpc_%s_%s_N_horizon_%i" % (which_params[0], which_params[1], N_horizon)
+	if args.affix is None:
+		save_fpth_root = "./flying_mpc_outputs/mpc_%s_%s_dt_%.3f_N_horizon_%i_delta_%.3f" % (which_params[0], which_params[1], dt, N_horizon, delta)
+	else:
+		save_fpth_root = "./flying_mpc_outputs/mpc_%s" % args.affix
 
 	# Create logger
 	log_file_path = save_fpth_root + "_debug.out"
@@ -240,6 +240,7 @@ def mpc_compute_invariant_set(args):
 	X, Y = np.meshgrid(x, y)
 
 	sze = X.size
+	print("sze: ", sze)
 	input = np.zeros((sze, 10))
 	input[:, ind1] = X.flatten()
 	input[:, ind2] = Y.flatten()
@@ -248,6 +249,7 @@ def mpc_compute_invariant_set(args):
 	# neg_inds = np.argwhere(phi_0_vals <= 0) # (m, 2)
 	flat_neg_inds = np.argwhere(phi_0_vals_flat <= 0)[:, 0]
 
+	# IPython.embed()
 	ctx = mp.get_context('fork') # TODO: try spawn and fork
 	pool = ctx.Pool(args.n_proc)
 	n_x0 = flat_neg_inds.size
@@ -305,6 +307,8 @@ if __name__ == "__main__":
 	parser.add_argument('--which_params', default=["phi", "dphi"], nargs='+', type=str, help="which 2 state variables")
 
 	parser.add_argument('--n_proc', default=36, type=int)
+
+	parser.add_argument('--affix', help='the affix for the save folder', type=str)
 
 	args = parser.parse_known_args()[0]
 
