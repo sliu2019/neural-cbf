@@ -371,8 +371,8 @@ if __name__ == "__main__":
 	parser.add_argument('--rollout_dt', type=float, default=1e-4)
 	parser.add_argument('--rollout_T_max', type=float, default=1.0)
 	parser.add_argument('--rollout_u_ref', type=str, choices=["unactuated", "LQR", "MPC"], default="unactuated")
-	parser.add_argument('--rollout_LRQ_q', type=float, default=1.0)
-	parser.add_argument('--rollout_LRQ_r', type=float, default=1.0)
+	parser.add_argument('--rollout_LQR_q', type=float, default=1.0)
+	parser.add_argument('--rollout_LQR_r', type=float, default=1.0)
 
 	# Volume
 	parser.add_argument('--N_samp_volume', type=int, default=100000) # 100K

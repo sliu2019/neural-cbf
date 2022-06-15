@@ -21,12 +21,13 @@ class CBFController:
 		self.mixer = np.array([[self.k1, self.k1, self.k1, self.k1], [0, -self.l * self.k1, 0, self.l * self.k1],
 		                       [self.l * self.k1, 0, -self.l * self.k1, 0], [-self.k2, self.k2, -self.k2, self.k2]])
 
-		if self.args.u_ref == "LQR":
-			print("ln 24 in controller initialization")
-			IPython.embed()
-			C = control.ctrb(A, B)
-			rk = np.linalg.matrix_rank(C)
-			assert rk == 16
+		if self.args.rollout_u_ref == "LQR":
+			# print("ln 24 in controller initialization")
+			# IPython.embed()
+			# Confirmed controllable!
+			# C = control.ctrb(A, B)
+			# rk = np.linalg.matrix_rank(C)
+			# assert rk == 16
 
 			# Use LQR to compute feedback portion of controller
 			q = self.args.rollout_LQR_q
@@ -37,12 +38,12 @@ class CBFController:
 			self.K = K
 
 	def compute_u_ref(self, t, x):
-		if self.args.u_ref == "unactuated":
+		if self.args.rollout_u_ref == "unactuated":
 			u = np.zeros(self.u_dim)
-		elif self.args.u_ref == "LQR":
-			print("ln 43 in compute_u_ref")
-			IPython.embed()
-			u = np.array([self.M * g, 0, 0, 0]) - self.K @ x
+		elif self.args.rollout_u_ref == "LQR":
+			# print("ln 43 in compute_u_ref")
+			# IPython.embed()
+			u = np.array([self.M * g, 0, 0, 0]) - self.K @ np.squeeze(x)
 		return u
 
 	def compute_control(self, t, x):
