@@ -9,6 +9,8 @@ import torch
 from casadi import *
 import pickle
 import argparse
+from global_settings import *
+from PIL import Image
 """
 Pseudo-code:
 
@@ -200,6 +202,8 @@ def mpc_compute_invariant_set(args):
 	plt.clf()
 	plt.close()
 
+	return exists_soln_bools
+
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='CBF synthesis')
 	parser.add_argument('--dt', type=float, default=0.05)
@@ -208,7 +212,6 @@ if __name__ == "__main__":
 	args = parser.parse_known_args()[0]
 
 	mpc_compute_invariant_set(args)
-
 
 
 """

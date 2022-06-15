@@ -599,9 +599,10 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 			# title = "%s vs. %s" % (param1, param2)
 			axs[i, j].set_xlabel(param1)
 			axs[i, j].set_ylabel(param2)
-			if constants_for_other_params:
-				const = constants_for_other_params[i * n_per_row + j]
-				axs[i, j].set_title(const)
+			# TODO: uncomment
+			# if constants_for_other_params:
+			# 	const = constants_for_other_params[i * n_per_row + j]
+			# 	axs[i, j].set_title(const)
 
 	if fnm is None:
 		fnm = time.strftime('%m_%d_%H:%M:%S')
@@ -626,10 +627,12 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 	else:
 		ki_str = ""
 	# fig.title(ki_str) # doesn't work, title goes on last subfigure
-	if checkpoint: # little messy, little hacky, doesn't matter tho
-		plt.suptitle("From %s, ckpt %i \n %s" % (fldr_path, checkpoint, ki_str))
-	else:
-		plt.suptitle("From %s \n %s" % (fldr_path, ki_str))
+
+	# TODO: uncomment
+	# if checkpoint: # little messy, little hacky, doesn't matter tho
+	# 	plt.suptitle("From %s, ckpt %i \n %s" % (fldr_path, checkpoint, ki_str))
+	# else:
+	# 	plt.suptitle("From %s \n %s" % (fldr_path, ki_str))
 
 	plt.savefig(save_fpth, bbox_inches='tight')
 	# plt.clf()
@@ -996,14 +999,24 @@ if __name__ == "__main__":
 
 	### ****************************************************
 	########################################################
+	exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"
+	checkpoint_number = 250
+	phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+	params_to_viz_list = [["phi", "dphi"]]
+	constants_for_other_params_list = [np.zeros(10)]
+	fnm = "test"
+	fldr_path = os.path.join("./log", exp_name)
+	plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list,
+	                          constants_for_other_params=constants_for_other_params_list, fnm=fnm,
+	                          checkpoint=checkpoint_number)
 	# for exp_name in exp_names:
 	# 	debug(exp_name)
 
 	# TODO: check training progress
-	for exp_name in base_exp_names:
-		# fill_ci_ki_lists(exp_name)
-		min_attack_loss_ind = graph_losses(exp_name)
-		# checkpoint_numbers.append(min_attack_loss_ind)
+	# for exp_name in base_exp_names:
+	# 	# fill_ci_ki_lists(exp_name)
+	# 	min_attack_loss_ind = graph_losses(exp_name)
+	# 	# checkpoint_numbers.append(min_attack_loss_ind)
 
 	# TODO: manually check attacks
 	# with open("./log/%s/data.pkl" % "flying_inv_pend_phi_format_1_seed_0", 'rb') as handle:
