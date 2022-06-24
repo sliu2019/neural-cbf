@@ -292,7 +292,10 @@ def run_rollouts(env, N_desired_rollout, N_steps_max, cbf_controller):
 	# for i in range(N_desired_rollout):
 	while N_rollout < N_desired_rollout:
 		print("Rollout %i" % N_rollout)
+		# TODO: uncomment below
 		x0, _ = sample_inside_safe_set(cbf_controller.param_dict, cbf_controller.cbf_obj, 1)
+		# print(x0.shape)
+		# x0 = np.random.normal(scale=0.1, size=(1, 16))
 		info_dict = simulate_rollout(env, N_steps_max, cbf_controller, x0)
 
 		# print("inside run_rollouts()")

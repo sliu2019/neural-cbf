@@ -89,9 +89,10 @@ class FlyingInvertedPendulumEnv():
         k_z = R[:,2, 2]
 
         ###### Computing state derivatives
+        ddphi = (3.0) * (k_y * np.cos(phi) + k_z * np.sin(phi)) * (self.M * self.g) / (
+                    2 * self.M * self.L_p * np.cos(theta)) + 2 * dtheta * dphi * np.tan(theta)
 
-        ddphi = (3.0)*(k_y*np.cos(phi) + k_z*np.sin(phi))/(2*self.M*self.L_p*np.cos(theta))*(self.M*self.g) + 2*dtheta*dphi*np.tan(theta)
-        ddtheta = (3.0*(-k_x*np.cos(theta)-k_y*np.sin(phi)*np.sin(theta) + k_z*np.cos(phi)*np.sin(theta))/(2.0*self.M*self.L_p))*(self.M*self.g) - np.square(dphi)*np.sin(theta)*np.cos(theta)
+        ddtheta = (3.0*(-k_x*np.cos(theta)-k_y*np.sin(phi)*np.sin(theta) + k_z*np.cos(phi)*np.sin(theta))*(self.M*self.g)/(2.0*self.M*self.L_p)) - np.square(dphi)*np.sin(theta)*np.cos(theta)
 
         ddx = k_x*self.g
         ddy = k_y*self.g

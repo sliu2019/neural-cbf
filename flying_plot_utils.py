@@ -247,25 +247,26 @@ def graph_losses(exp_name, debug=True):
 		axs[2].legend(loc=(1.04,0))
 
 		#############################################
-		if args.phi_design == "neural":
-			axs[3].set_title("k0, ci over iterations")
-			k0_list = [x.item() for x in data['k0_list']]
-			ci_list = [x.item() for x in data["ci_list"]]
-			axs[3].plot(k0_list, linewidth=0.5, label="k0")
-			axs[3].plot(ci_list, linewidth=0.5, label="k1")
-			axs[3].legend(loc=(1.04,0))
-		elif args.phi_design == "low":
-			axs[3].set_title("ki, ci over iterations")
-			k1_list = [x.item() for x in data['ki_list']]
-			# k1_list = data['ki_list']
-			c1_list = [x[0, 0] for x in data["ci_list"]]
-			c2_list = [x[1, 0] for x in data["ci_list"]]
-			axs[3].plot(k1_list, linewidth=0.5, label="k1")
-			axs[3].plot(c1_list, linewidth=0.5, label="c1")
-			axs[3].plot(c2_list, linewidth=0.5, label="c2")
-			axs[3].legend(loc=(1.04,0))
-		else:
-			raise NotImplementedError
+		# TODO: uncomment
+		# if args.phi_design == "neural":
+		# 	axs[3].set_title("k0, ci over iterations")
+		# 	k0_list = [x.item() for x in data['k0_list']]
+		# 	ci_list = [x.item() for x in data["ci_list"]]
+		# 	axs[3].plot(k0_list, linewidth=0.5, label="k0")
+		# 	axs[3].plot(ci_list, linewidth=0.5, label="k1")
+		# 	axs[3].legend(loc=(1.04,0))
+		# elif args.phi_design == "low":
+		# 	axs[3].set_title("ki, ci over iterations")
+		# 	k1_list = [x.item() for x in data['ki_list']]
+		# 	# k1_list = data['ki_list']
+		# 	c1_list = [x[0, 0] for x in data["ci_list"]]
+		# 	c2_list = [x[1, 0] for x in data["ci_list"]]
+		# 	axs[3].plot(k1_list, linewidth=0.5, label="k1")
+		# 	axs[3].plot(c1_list, linewidth=0.5, label="c1")
+		# 	axs[3].plot(c2_list, linewidth=0.5, label="c2")
+		# 	axs[3].legend(loc=(1.04,0))
+		# else:
+		# 	raise NotImplementedError
 		#############################################
 		fig.tight_layout()
 
@@ -347,11 +348,11 @@ def graph_losses(exp_name, debug=True):
 	m = len(approx_v)
 	train_attack_losses_at_checkpoints = train_attack_losses[::n_test_loss_step][:m]
 	# total_loss = -3*approx_v + train_attack_losses_at_checkpoints + 0.1*np.arange(m)
-	# total_loss = train_attack_losses_at_checkpoints + 0.1*np.arange(m)
-	total_loss = train_attack_losses_at_checkpoints
+	total_loss = train_attack_losses_at_checkpoints + 0.1*np.arange(m)
+	# total_loss = train_attack_losses_at_checkpoints
 	best_inds = np.argsort(total_loss)
 
-	n_top = 5
+	n_top = 15
 	train_loop_times = data["train_loop_times"]
 	for k in range(n_top):
 		best_balanced_ind = best_inds[k]
@@ -999,7 +1000,9 @@ if __name__ == "__main__":
 
 	### ****************************************************
 	########################################################
-	exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"
+
+	# TODO: For CORL
+	"""exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"
 	checkpoint_number = 250
 	phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 	params_to_viz_list = [["phi", "dphi"]]
@@ -1008,15 +1011,19 @@ if __name__ == "__main__":
 	fldr_path = os.path.join("./log", exp_name)
 	plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list,
 	                          constants_for_other_params=constants_for_other_params_list, fnm=fnm,
-	                          checkpoint=checkpoint_number)
+	                          checkpoint=checkpoint_number)"""
+
+	# TODO: more for CORL
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0_reg_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3_reg_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3"]
+	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
 	# for exp_name in exp_names:
 	# 	debug(exp_name)
 
 	# TODO: check training progress
-	# for exp_name in base_exp_names:
-	# 	# fill_ci_ki_lists(exp_name)
-	# 	min_attack_loss_ind = graph_losses(exp_name)
-	# 	# checkpoint_numbers.append(min_attack_loss_ind)
+	for exp_name in base_exp_names:
+		# fill_ci_ki_lists(exp_name)
+		min_attack_loss_ind = graph_losses(exp_name)
+		# checkpoint_numbers.append(min_attack_loss_ind)
 
 	# TODO: manually check attacks
 	# with open("./log/%s/data.pkl" % "flying_inv_pend_phi_format_1_seed_0", 'rb') as handle:

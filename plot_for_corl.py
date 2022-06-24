@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 from flying_plot_utils import *
 from global_settings import *
 from phi_numpy_wrapper import PhiNumpy
@@ -294,8 +296,86 @@ def load_philow_and_params(exp_name=None, checkpoint_number=None):
 
 	return phi_fn, param_dict
 
+def plot_training_losses():
+	# Hardcoding
+	plt.figure(dpi=1200)
+
+	# exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" for i in range(5)]
+	# last_checkpoint_number = [250, 650, 625, 250, 175]
+	# last_checkpoint_number = [600]*5
+	last_checkpoint_number = [250, 400, 550, 300, 175]
+
+	fig, axs = plt.subplots(5, sharex=True)
+	fig.suptitle('Losses throughout training for 5 random seeds')
+	fig.text(0.5, 0.04, 'Training iteration', ha='center', va='center')
+	fig.text(0.06, 0.5, 'Train, test losses', ha='center', va='center', rotation='vertical')
+
+	colors = plt.rcParams["axes.prop_cycle"]()
+	# plt.title("Saturation risk over training iterations")
+	# plt.xlabel("Iteration")
+	# plt.ylabel("Sat. risk")
+
+	all_times = []
+	x_ub = np.max(last_checkpoint_number) + 50
+	for seed_num in range(5):
+		exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % seed_num
+		with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+			data = pickle.load(handle)
+		args = load_args("./log/%s/args.txt" % exp_name)
+
+		c = next(colors)["color"]
+
+		axs[seed_num].set_xlim([0, x_ub])
+
+		# Plot training
+		sat_risk = data["train_attack_losses"][:last_checkpoint_number[seed_num]]
+		axs[seed_num].plot(sat_risk, linewidth=1.0, color=c, linestyle='--')
+
+		# Plot test metric
+		# IPython.embed()
+		per_n_iterations = args.n_test_loss_step
+		test_iterations = np.arange(0, last_checkpoint_number[seed_num] + per_n_iterations, per_n_iterations)
+		boundary_samples_obj_values = data["boundary_samples_obj_values"]
+		percent_infeas_at_boundary = [np.sum(boundary_samples_obj_value > 0) * 100 / boundary_samples_obj_value.size for
+		                              boundary_samples_obj_value in boundary_samples_obj_values]
+		percent_infeas_at_boundary = percent_infeas_at_boundary[:len(test_iterations)]
+		axs[seed_num].plot(test_iterations, percent_infeas_at_boundary,  linewidth=1.0, color=c, linestyle='-')
+
+		# Plot 0 line
+		axs[seed_num].plot([0, x_ub], [0, 0], color='k', linestyle='--', linewidth=0.8)
+
+		# Record time
+		train_loop_times = data["train_loop_times"]
+		t_so_far_seconds = train_loop_times[last_checkpoint_number[seed_num]]
+		all_times.append(t_so_far_seconds)
+		t_hours = t_so_far_seconds // (60 * 60)
+		t_minutes = (t_so_far_seconds - t_hours*60*60)//60
+
+		print("Training took %i:%i h:m" % (t_hours, t_minutes))
+
+
+	avg_h = np.mean(all_times)/(60*60.0)
+	std_h = np.std(all_times)/(60.0*60)
+	print("On average, training took %.3f +/- %.3f h" % (avg_h, std_h))
+
+	# plt.legend(loc="upper right")
+	legend_str = "Dashed: train loss (sat. risk)\nSolid: test loss (% non-sat. states)"
+	props = dict(boxstyle='round', facecolor='whitesmoke')
+	fig.text(0.6, 0.855, legend_str, va='center', ha='left', bbox=props, size='small')
+	plt.savefig("./log/corl/sat_risk_for_all_seeds_subfigs.svg", dpi=1200)
+
+	"""
+	Timing results
+	Training took 11:21 h:m
+	Training took 17:45 h:m
+	Training took 20:47 h:m
+	Training took 11:40 h:m
+	Training took 10:29 h:m
+	On average, training took 14.412 +/- 4.101 h
+	"""
+
 if __name__ == "__main__":
-	exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"
+	""""exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"
 	checkpoint_number = 250
 
 	# params_to_viz_list = [["phi", "dphi"]] # TODO
@@ -340,5 +420,15 @@ if __name__ == "__main__":
 	                          constants_for_other_params=constants_for_other_params_list, fnm=fnm, pass_axs=axs)
 
 	# print("ln 235")
-	# IPython.embed()
+	# IPython.embed()"""
 
+	plot_training_losses()
+
+	# for seed_num in range(5):
+	# 	exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % seed_num
+	# 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
+	# 		data = pickle.load(handle)
+	#
+	# 	t = np.array(data["train_attack_losses"])
+	# 	print(np.argwhere(t < 2.0))
+	# 	IPython.embed()

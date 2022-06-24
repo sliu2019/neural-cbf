@@ -8,6 +8,27 @@ from torch.autograd import grad
 import torch
 from torch.autograd.functional import jacobian
 
+from phi_numpy_wrapper import PhiNumpy
+
+# print("In flying pend exps")
+# print(sys.path)
+# import socket
+# if socket.gethostname() == "nsh1609server4":
+# 	# IPython.embed()
+# 	sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
+# from cmaes.utils import load_philow_and_params
+
+from src.attacks.gradient_batch_attacker_warmstart_faster import GradientBatchWarmstartFasterAttacker
+from main import Objective
+
+# For rollouts
+# from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
+# from flying_cbf_controller import CBFController
+from flying_rollout_experiment import *
+
+# For plotting slices
+from flying_plot_utils import plot_interesting_slices
+
 class FlyingInvertedPendulumEnv():
 	def __init__(self, param_dict=None):
 		if param_dict is None:
@@ -33,35 +54,35 @@ class FlyingInvertedPendulumEnv():
 
 		# self.init_visualization() # TODO: simplifying out viz, for now
 
-		self.control_lim_verts = self.compute_control_lim_vertices()
-
-	def compute_control_lim_vertices(self):
-		k1 = self.k1
-		k2 = self.k2
-		l = self.l
-
-		M = torch.tensor(
-			[[k1, k1, k1, k1], [0, -l * k1, 0, l * k1], [l * k1, 0, -l * k1, 0], [-k2, k2, -k2, k2]])  # mixer matrix
-
-		self.mixer = M
-
-		r1 = torch.cat((torch.zeros(8), torch.ones(8)))
-		r2 = torch.cat((torch.zeros(4), torch.ones(4), torch.zeros(4), torch.ones(4)))
-		r3 = torch.cat(
-			(torch.zeros(2), torch.ones(2), torch.zeros(2), torch.ones(2), torch.zeros(2), torch.ones(2), torch.zeros(2), torch.ones(2)))
-		r4 = torch.zeros(16)
-		r4[1::2] = 1.0
-		impulse_vert = torch.cat((r1[None], r2[None], r3[None], r4[None]),
-		                              axis=0)  # 16 vertices in the impulse control space
-
-		# print("ulimitsetvertices")
-		# IPython.embed()
-
-		force_vert = M @ impulse_vert - torch.tensor(
-			[[self.M * self.g], [0.0], [0.0], [0.0]])  # Fixed bug: was subtracting self.M*g (not just in the first row)
-		# force_vert = force_vert.T.astype("float32")
-		force_vert = force_vert.T
-		return force_vert
+	# 	self.control_lim_verts = self.compute_control_lim_vertices()
+	#
+	# def compute_control_lim_vertices(self):
+	# 	k1 = self.k1
+	# 	k2 = self.k2
+	# 	l = self.l
+	#
+	# 	M = torch.tensor(
+	# 		[[k1, k1, k1, k1], [0, -l * k1, 0, l * k1], [l * k1, 0, -l * k1, 0], [-k2, k2, -k2, k2]])  # mixer matrix
+	#
+	# 	self.mixer = M
+	#
+	# 	r1 = torch.cat((torch.zeros(8), torch.ones(8)))
+	# 	r2 = torch.cat((torch.zeros(4), torch.ones(4), torch.zeros(4), torch.ones(4)))
+	# 	r3 = torch.cat(
+	# 		(torch.zeros(2), torch.ones(2), torch.zeros(2), torch.ones(2), torch.zeros(2), torch.ones(2), torch.zeros(2), torch.ones(2)))
+	# 	r4 = torch.zeros(16)
+	# 	r4[1::2] = 1.0
+	# 	impulse_vert = torch.cat((r1[None], r2[None], r3[None], r4[None]),
+	# 	                              axis=0)  # 16 vertices in the impulse control space
+	#
+	# 	# print("ulimitsetvertices")
+	# 	# IPython.embed()
+	#
+	# 	force_vert = M @ impulse_vert - torch.tensor(
+	# 		[[self.M * self.g], [0.0], [0.0], [0.0]])  # Fixed bug: was subtracting self.M*g (not just in the first row)
+	# 	# force_vert = force_vert.T.astype("float32")
+	# 	force_vert = force_vert.T
+	# 	return force_vert
 
 	def _f(self, x):
 		# print("Inside f function")
@@ -99,12 +120,11 @@ class FlyingInvertedPendulumEnv():
 
 		###### Computing state derivatives
 
-		ddphi = (3.0) * (k_y * torch.cos(phi) + k_z * torch.sin(phi)) / (2 * self.M * self.L_p * torch.cos(theta)) * (
-					self.M * self.g) + 2 * dtheta * dphi * torch.tan(theta)
-		ddtheta = (3.0 * (
+		ddphi = (3.0) * (k_y * torch.cos(phi) + k_z * torch.sin(phi)) * (
+					self.M * self.g) / (2 * self.M * self.L_p * torch.cos(theta)) + 2 * dtheta * dphi * torch.tan(theta)
+		ddtheta = (self.M * self.g)*(3.0 * (
 					-k_x * torch.cos(theta) - k_y * torch.sin(phi) * torch.sin(theta) + k_z * torch.cos(phi) * torch.sin(theta)) / (
-					           2.0 * self.M * self.L_p)) * (self.M * self.g) - torch.square(dphi) * torch.sin(theta) * torch.cos(
-			theta)
+					           2.0 * self.M * self.L_p)) - torch.square(dphi) * torch.sin(theta) * torch.cos(theta)
 
 		ddx = k_x * self.g
 		ddy = k_y * self.g
@@ -115,6 +135,9 @@ class FlyingInvertedPendulumEnv():
 			[x[:, self.i["dgamma"]], x[:, self.i["dbeta"]], x[:, self.i["dalpha"]], torch.zeros(bs), torch.zeros(bs),
 			 torch.zeros(bs), dphi, dtheta, ddphi, ddtheta, x[:, self.i["dx"]], x[:, self.i["dy"]], x[:, self.i["dz"]],
 			 ddx, ddy, ddz]).T
+		# f = torch.vstack(
+		# 	[x[:, self.i["dgamma"]], x[:, self.i["dbeta"]], x[:, self.i["dalpha"]], torch.zeros(bs), torch.zeros(bs),
+		# 	 torch.zeros(bs), dphi, dtheta, ddphi, ddtheta]).T
 		return f
 
 	def _g(self, x):
@@ -167,7 +190,7 @@ class FlyingInvertedPendulumEnv():
 		g[:, 9, 0] = ddtheta
 		g[:, 13:, 0] = (1.0 / self.M) * torch.vstack([k_x, k_y, k_z]).T
 
-		# print(g)
+		print(g)
 		return g
 
 	def x_dot_open_loop(self, x, u):
@@ -177,39 +200,88 @@ class FlyingInvertedPendulumEnv():
 		rv = f + g @ u
 		return rv
 
-A = np.array([[0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [0.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   1.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [-4.9050, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 4.9050, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [0.0000, -4.9050, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 4.9050,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000],
-                  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000],
-                  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000],
-                  [0.0000, 9.8100, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [-9.8100, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
-                  [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
-                   0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]])
+# A = np.array([[0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [0.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    1.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [-4.9050, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 4.9050, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [0.0000, -4.9050, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 4.9050,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000, 0.0000],
+#                   [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000, 0.0000],
+#                   [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 1.0000],
+#                   [0.0000, 9.8100, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [-9.8100, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+#                   [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+#                    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]])
+#
+# B = np.array([[  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  0.0000, 200.0000,   0.0000,   0.0000],
+#         [  0.0000,   0.0000, 200.0000,   0.0000],
+#         [  0.0000,   0.0000,   0.0000, 111.1111],
+#         [  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  0.0000,   0.0000,   0.0000,   0.0000],
+#         [  1.1905,   0.0000,   0.0000,   0.0000]])
 
+A = np.array([[ 0.0000,  0.0000,  0.0000,  1.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [ 0.0000,  0.0000,  0.0000,  0.0000,  1.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [ 0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  1.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [ 0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [ 0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [ 0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [ 0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          1.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [ 0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  1.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [-4.9050,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  4.9050,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [ 0.0000, -4.9050,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  4.9050,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [ 0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  1.0000,  0.0000,  0.0000],
+        [ 0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  1.0000,  0.0000],
+        [ 0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  1.0000],
+        [ 0.0000,  9.8100,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [-9.8100,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000],
+        [ 0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,
+          0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000,  0.0000]])
 B = np.array([[  0.0000,   0.0000,   0.0000,   0.0000],
         [  0.0000,   0.0000,   0.0000,   0.0000],
         [  0.0000,   0.0000,   0.0000,   0.0000],
@@ -274,15 +346,18 @@ if __name__ == "__main__":
 	print("done")
 	IPython.embed() #"""
 
-	env = FlyingInvertedPendulumEnv()
-	x_batch = torch.zeros((1, 16))
-
-	print("done")
-	IPython.embed()
-
-	A = torch.squeeze(jacobian(env._f, x_batch))
-	# g_jacobian = jacobian(env._g, x_batch)
-	B = torch.squeeze(env._g(x_batch))
+	# env = FlyingInvertedPendulumEnv()
+	# x_batch = torch.zeros((1, 16))
+	#
+	# # x_batch = torch.ones((1, 16))
+	# A = torch.squeeze(jacobian(env._f, x_batch))
+	# # g_jacobian = jacobian(env._g, x_batch)
+	# B = torch.squeeze(env._g(x_batch))
+	#
+	# print(A)
+	# print(B)
+	# print("done")
+	# # IPython.embed()
 
 	"""
 	A = torch.tensor([[ 0.0000,  0.0000,  0.0000,  1.0000,  0.0000,  0.0000,  0.0000,  0.0000,
@@ -337,3 +412,52 @@ if __name__ == "__main__":
 
 	"""
 
+	# python - u
+	# run_flying_pend_exps.py - -save_fnm
+	# debug_LQR - -which_cbf
+	# ours - -exp_name_to_load
+	# flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 - -checkpoint_number_to_load
+	# 250 - -which_experiments
+	# rollout - -rollout_u_ref
+	# LQR - -rollout_T_max
+	# 10 - -rollout_dt
+	# 0.1 - -rollout_LQR_q
+	# 0.5 - -rollout_N_rollout
+	# 1
+
+	exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"
+	rollout_N_rollout = 1
+	rollout_T_max = 2.5
+	rollout_dt = 0.01
+
+	class dotdict(dict):
+		"""dot.notation access to dictionary attributes"""
+		__getattr__ = dict.get
+		__setattr__ = dict.__setitem__
+		__delattr__ = dict.__delitem__
+
+	torch_phi_fn, param_dict = load_phi_and_params(exp_name=exp_name,
+	                                               checkpoint_number=250)
+	numpy_phi_fn = PhiNumpy(torch_phi_fn)
+
+	save_fldrpth = "./log/%s" % exp_name
+
+	# Experimental settings
+	N_desired_rollout = rollout_N_rollout
+	T_max = rollout_T_max
+	N_steps_max = int(T_max / rollout_dt)
+	print("Number of timesteps: %f" % N_steps_max)
+
+	# Create core classes: environment, controller
+	env = FlyingInvertedPendulumEnv(param_dict)
+	env.dt = rollout_dt
+	controller_args = {"rollout_u_ref": "LQR", "rollout_LQR_q":1.0, "rollout_LQR_r":1.0}
+	controller_args = dotdict(controller_args)
+	cbf_controller = CBFController(env, numpy_phi_fn, param_dict, args)  # 2nd arg prev. "cbf_obj"
+
+	x0 = np.random.normal(scale=0.1, size=(1, 16))
+	d = simulate_rollout(env, N_steps_max, cbf_controller, x0)
+	x = d["x"]
+	print(x)
+
+	IPython.embed()
