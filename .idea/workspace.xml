@@ -2,15 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/flying_cbf_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/flying_cbf_controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/flying_plot_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/flying_plot_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/flying_rollout_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/flying_rollout_experiment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/plot_for_corl.py" beforeDir="false" afterPath="$PROJECT_DIR$/plot_for_corl.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rollout_envs/flying_inv_pend_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_envs/flying_inv_pend_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/06_15_corl_eval.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/06_15_corl_eval.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils_for_corl.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils_for_corl.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
