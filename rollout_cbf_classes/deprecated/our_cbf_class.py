@@ -23,7 +23,7 @@ class OurCBF:
         del self.__dict__["self"]  # don't need `self`
 
         # print("here")
-        self.torch_phi_fn, self.x_lim = create_phi_struct_load_xlim(exp_name, checkpoint_number)
+        self.torch_phi_fn, self.x_lim = create_phi_struct_load_xlim(exp_name)
         phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
         load_model(self.torch_phi_fn, phi_load_fpth)
         # print("actually here")

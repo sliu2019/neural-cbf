@@ -21,21 +21,21 @@ Implements a baseline CBF
 class PhiBaseline(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
 
-	def __init__(self, h_fn, ci, beta, xdot_fn, r, x_dim, u_dim, device):
+	def __init__(self, h_fn, ci, xdot_fn, r, x_dim, u_dim, device):
 		# Later: args specifying how beta is parametrized
 		super().__init__()
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
 		assert r>=0
-		assert self.beta>=0
+		# assert self.beta>=0
 		assert np.all(np.array(ci)>0)
 
 
 	def forward(self, x):
 		# The way these are implemented should be batch compliant
 		# Assume x is (bs, x_dim)
-		beta_value = self.beta
+		# beta_value = self.beta
 
 		# Convert ci to ki
 		ki = torch.tensor([[1.0]])
@@ -79,9 +79,10 @@ class PhiBaseline(nn.Module):
 		# result = beta_value + h_derivs.mm(ki) # bs x 1
 		# New: (bs, r+1)
 		result = h_derivs.mm(ki_all.t())
-		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + beta_value
-		result = torch.cat((result, phi_r_minus_1_star), dim=1)
+		# phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + beta_value
+		result = torch.cat((result, result[:, [-1]]), dim=1)
 
+		print(result)
 		return result
 
 if __name__=="__main__":

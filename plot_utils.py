@@ -181,7 +181,7 @@ def graph_log_file_2(exp_name, mode='train'):
 	print("%.5f" % np.min(train_attack_losses))
 	# IPython.embed()
 
-def create_phi_struct_load_xlim(exp_name, checkpoint_number):
+def create_phi_struct_load_xlim(exp_name):
 	args = load_args("./log/%s/args.txt" % exp_name)
 	dev = "cpu"
 	device = torch.device(dev)
@@ -226,7 +226,7 @@ def create_phi_struct_load_xlim(exp_name, checkpoint_number):
 	return phi_fn, x_lim
 
 def plot_3d(checkpoint_number, exp_name, fname=None):
-	phi_fn, x_lim = create_phi_struct_load_xlim(exp_name, checkpoint_number)
+	phi_fn, x_lim = create_phi_struct_load_xlim(exp_name)
 	###################################
 	# IPython.embed()
 	delta = 0.1
@@ -290,7 +290,7 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=None, mpc=Fal
 	Plots binary +/- of CBF value
 	Also plots training attacks (all of the candidate attacks, not just the maximizer)
 	"""
-	phi_fn, x_lim = create_phi_struct_load_xlim(exp_name, checkpoint_number)
+	phi_fn, x_lim = create_phi_struct_load_xlim(exp_name)
 	# print(out)
 	# IPython.embed()
 	###################################
@@ -342,6 +342,7 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=None, mpc=Fal
 	# axes[0].scatter(attacks_init[:, 0], attacks_init[:, 1], c="k", marker="o", s=12, zorder=2)
 	# axes[1].scatter(attacks[:, 0], attacks[:, 1], c="k", marker="o", s=12, zorder=2)
 
+	# TODO: turning off attack plotting temporarily
 	ax.scatter(attacks[:, 0], attacks[:, 1], c="k", marker="o", s=12, zorder=2)
 
 	if mpc:
@@ -424,7 +425,7 @@ def plot_a_k(exp_name, n_it):
 	a_list = []
 	k_list = []
 	for checkpoint_number in np.arange(0, n_it, 50):
-		phi_fn, x_lim = create_phi_struct_load_xlim(exp_name, checkpoint_number)
+		phi_fn, x_lim = create_phi_struct_load_xlim(exp_name)
 
 		a = phi_fn.a[0, 0].item()
 		k = phi_fn.ci[0, 0].item()

@@ -67,17 +67,17 @@ class CBFController:
 		on_boundary = False
 		outside_boundary = False
 		################
-		apply_u_safe = False
-		inside_boundary = True
-		debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs": qp_rhs,
-		              "qp_lhs": qp_lhs, "phi_vals": [0], "impulses": impulses,
-		              "inside_boundary": inside_boundary, "on_boundary": on_boundary,
-		              "outside_boundary": outside_boundary, "dist_between_xs": 0,
-		              "phi_grad_mag": 0, "phi_grad": 0}
-		return u_ref, debug_dict
+		# apply_u_safe = False
+		# inside_boundary = True
+		# debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "qp_slack": qp_slack, "qp_rhs": qp_rhs,
+		#               "qp_lhs": qp_lhs, "phi_vals": [0], "impulses": impulses,
+		#               "inside_boundary": inside_boundary, "on_boundary": on_boundary,
+		#               "outside_boundary": outside_boundary, "dist_between_xs": 0,
+		#               "phi_grad_mag": 0, "phi_grad": 0}
+		# return u_ref, debug_dict
 
 
-		"""phi_vals = self.cbf_obj.phi_fn(x)  # This is an array of (1, r+1), where r is the degree
+		phi_vals = self.cbf_obj.phi_fn(x)  # This is an array of (1, r+1), where r is the degree
 		phi_grad = self.cbf_obj.phi_grad(x)
 
 		# print(x.shape)
@@ -170,4 +170,4 @@ class CBFController:
 		debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "phi_vals": phi_vals.flatten(),
 		              "qp_slack": qp_slack, "qp_rhs": qp_rhs, "qp_lhs": qp_lhs, "impulses": impulses,
 		             "inside_boundary": inside_boundary, "on_boundary": on_boundary, "outside_boundary": outside_boundary, "dist_between_xs": dist_between_xs, "phi_grad_mag": phi_grad_mag, "phi_grad": phi_grad.flatten()}
-		return u_safe, debug_dict"""
+		return u_safe, debug_dict
