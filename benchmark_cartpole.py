@@ -3,17 +3,19 @@ import torch
 from torch.autograd import grad
 import IPython
 import math
+
 from src.utils import *
 import pickle
 from plot_utils import create_phi_struct_load_xlim, plot_2d_attacks_from_loaded
+from global_settings import *
+from deprecated.phi_baseline import PhiBaseline
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.lines as lines
 
-from deprecated.phi_baseline import PhiBaseline
-
+import imageio
 
 g = 9.81
 
@@ -223,34 +225,32 @@ def plot_2d_contours(phi_fn, exp_name):
 	y = np.arange(x_lim[1, 0], x_lim[1, 1], delta)[::-1] # need to reverse it # TODO
 	X, Y = np.meshgrid(x, y)
 
+	##### Plotting ######
 	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
 	input = torch.from_numpy(input)
-	rv = phi_fn(input)
-	# S_vals = torch.max(phi_vals, dim=1)[0] # S = all phi_i <= 0
-	# phi_signs = torch.sign(S_vals).detach().cpu().numpy()
-	# phi_signs = np.reshape(phi_signs, X.shape)
+	phi_vals = phi_fn(input)
+	S_vals = torch.max(phi_vals, dim=1)[0] # S = all phi_i <= 0
+	phi_signs = torch.sign(S_vals).detach().cpu().numpy()
+	phi_signs = np.reshape(phi_signs, X.shape)
 
 	# fig, axes = plt.subplots(1, 2) # (1, 2)
 	fig, ax = plt.subplots(1, 1) # (1, 2)
 
-	# red_rgba = np.append(red_rgb, 0.5)
-	# blue_rgba = np.append(blue_rgb, 0.7)
-	#
-	# img = np.zeros((phi_signs.shape[0], phi_signs.shape[1], 4))
-	# blue_inds = np.argwhere(phi_signs == 1)
-	# img[blue_inds[:, 0], blue_inds[:, 1], :] = red_rgba
-	# red_inds = np.argwhere(phi_signs == -1)
-	# img[red_inds[:, 0], red_inds[:, 1], :] = blue_rgba
+	red_rgba = np.append(red_rgb, 0.5)
+	blue_rgba = np.append(blue_rgb, 0.7)
 
-
+	img = np.zeros((phi_signs.shape[0], phi_signs.shape[1], 4))
+	blue_inds = np.argwhere(np.logical_or(phi_signs == 1, phi_signs == 0))
+	img[blue_inds[:, 0], blue_inds[:, 1], :] = red_rgba
+	red_inds = np.argwhere(phi_signs == -1)
+	img[red_inds[:, 0], red_inds[:, 1], :] = blue_rgba
 
 	# for ax in axes: # TODO
-	phi_vals = rv[:, -1].detach().cpu().numpy()
-	img = np.reshape(phi_vals, X.shape)
-	ax.imshow(img, extent=[-math.pi, math.pi, -5, 5], cmap="RdBu_r")
-	ax.set_aspect("equal")
-	ax.contour(X, Y, img, levels=[0.0],
-	            colors=(['k']), linewidths=(2,), zorder=1)
+	ax.imshow(img, extent=[-math.pi, math.pi, -5, 5])
+	# ax.set_aspect("equal")
+	phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+	ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
+	            colors=([np.append(dark_blue_rgb, 1.0)]), linewidths=(2,), zorder=1)
 
 	ax.set_xlabel("angle")
 	ax.set_ylabel("ang. vel.")
@@ -264,55 +264,303 @@ def plot_2d_contours(phi_fn, exp_name):
 	plt.clf()
 	plt.close()
 
+def plot_2d_contours_ours(phi_fn, ax):
+	delta = 0.01
+	# delta = 0.005
+	# x = np.arange(x_lim[0, 0], x_lim[0, 1], delta)
+	# y = np.arange(x_lim[1, 0], x_lim[1, 1], delta)[::-1] # need to reverse it # TODO
+	x = np.arange(-math.pi, math.pi, delta)
+	y = np.arange(-5, 5, delta)[::-1]  # need to reverse it # TODO
+	X, Y = np.meshgrid(x, y)
+
+	##### Plotting ######
+	# input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
+	# input = torch.from_numpy(input)
+	# phi_vals = phi_fn(input)
+	# S_vals = torch.max(phi_vals, dim=1)[0] # S = all phi_i <= 0
+	# phi_signs = torch.sign(S_vals).detach().cpu().numpy()
+	# phi_signs = np.reshape(phi_signs, X.shape)
+	#
+	# # fig, axes = plt.subplots(1, 2) # (1, 2)
+	# # fig, ax = plt.subplots(1, 1) # (1, 2)
+	#
+	# red_rgba = np.append(red_rgb, 0.5)
+	# blue_rgba = np.append(blue_rgb, 0.7)
+	#
+	# img = np.zeros((phi_signs.shape[0], phi_signs.shape[1], 4))
+	# blue_inds = np.argwhere(np.logical_or(phi_signs == 1, phi_signs == 0))
+	# img[blue_inds[:, 0], blue_inds[:, 1], :] = red_rgba
+	# red_inds = np.argwhere(phi_signs == -1)
+	# img[red_inds[:, 0], red_inds[:, 1], :] = blue_rgba
+	#
+	# # for ax in axes: # TODO
+	# ax.imshow(img, extent=[-math.pi, math.pi, -5, 5])
+	# # ax.set_aspect("equal")
+	# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+	# ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
+	#             colors=([np.append(dark_blue_rgb, 1.0)]), linewidths=(2,), zorder=1)
+
+	input = np.concatenate((X.flatten()[:, None], Y.flatten()[:, None]), axis=1).astype(np.float32)
+	input = torch.from_numpy(input)
+	phi_vals = phi_fn(input)
+	phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+	phi_signs = np.sign(np.reshape(phi_vals_numpy, X.shape))
+
+	# S_vals = torch.max(phi_vals, dim=1)[0] # S = all phi_i <= 0
+	# phi_signs = torch.sign(S_vals).detach().cpu().numpy()
+	# phi_signs = np.reshape(phi_signs, X.shape)
+
+	# fig, axes = plt.subplots(1, 2) # (1, 2)
+	# fig, ax = plt.subplots(1, 1) # (1, 2)
+
+	red_rgba = np.append(red_rgb, 0.5)
+	blue_rgba = np.append(blue_rgb, 0.7)
+
+	# IPython.embed()
+	img = np.zeros((phi_signs.shape[0], phi_signs.shape[1], 4))
+	blue_inds = np.argwhere(phi_signs == 1)
+	img[blue_inds[:, 0], blue_inds[:, 1], :] = red_rgba
+	red_inds = np.argwhere(phi_signs == -1)
+	img[red_inds[:, 0], red_inds[:, 1], :] = blue_rgba
+
+	# for ax in axes: # TODO
+	# ax.imshow(img, extent=x_lim.flatten())
+	ax.imshow(img, extent=[-math.pi, math.pi, -5, 5])
+	ax.set_aspect("equal")
+	# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+	ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape), levels=[0.0],
+	            colors=([np.append(dark_blue_rgb, 1.0)]), linewidths=(2,), zorder=1, extent=[-math.pi, math.pi, -5, 5])
+	# ax.imshow(np.reshape(phi_vals_numpy, X.shape), extent=[-math.pi, math.pi, -5, 5])
+	# ax.contour(X, Y, np.reshape(phi_vals_numpy, X.shape))
+
+	ax.set_xlabel("angle")
+	ax.set_ylabel("ang. vel.")
+
+
+def plot_2d_contours_baseline(ax):
+	delta = 0.01
+	# delta = 0.005
+	x = np.arange(-math.pi, math.pi, delta)
+	y = np.arange(-5, 5, delta)[::-1] # need to reverse it # TODO
+	X, Y = np.meshgrid(x, y)
+
+	# IPython.embed()
+	# print("ln 313")
+	##### Plotting ######
+	def fake_phi(x, y):
+		rv = x**2 - (math.pi/4)**2
+		return rv
+
+	phi_vals = fake_phi(X.flatten(), Y.flatten())
+	phi_signs = np.reshape(np.sign(phi_vals), X.shape)
+
+	# fig, axes = plt.subplots(1, 2) # (1, 2)
+	# fig, ax = plt.subplots(1, 1) # (1, 2)
+
+	red_rgba = np.append(red_rgb, 0.5)
+	blue_rgba = np.append(blue_rgb, 0.7)
+
+	img = np.zeros((phi_signs.shape[0], phi_signs.shape[1], 4))
+	blue_inds = np.argwhere(phi_signs == 1)
+	img[blue_inds[:, 0], blue_inds[:, 1], :] = red_rgba
+	red_inds = np.argwhere(phi_signs == -1)
+	img[red_inds[:, 0], red_inds[:, 1], :] = blue_rgba
+
+	# for ax in axes: # TODO
+	ax.imshow(img, extent=[-math.pi, math.pi, -5, 5])
+	# ax.set_aspect("equal")
+	# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+	ax.contour(X, Y, np.reshape(phi_vals, X.shape), levels=[0.0],
+	            colors=([np.append(dark_blue_rgb, 1.0)]), linewidths=(2,), zorder=1)
+
+	ax.set_xlabel("angle")
+	ax.set_ylabel("ang. vel.")
+
+
+def animate_fancy(r1, r2, phi_fn1, param_dict, save_fpth):
+	# IPython.embed()
+	# r1 = r1 + np.array([[0, 204, 0, 1256]])
+	# r2 = r2 + np.array([[0, 60, 0, 380]])
+
+	l = param_dict["l"]
+	len = r1.shape[0]
+
+	# IPython.embed()
+	# Animation utilities
+	fig = plt.figure()
+	ax1 = fig.add_subplot(221, aspect='equal', xlim=(-1, x_lim[0, 1]), ylim=(-0.5, 1),
+	                     title="Baseline")
+	ax1.grid()
+	ax2 = fig.add_subplot(222, aspect='equal', xlim=(-1, x_lim[0, 1]), ylim=(-0.5, 1),
+	                     title="Ours")
+	ax2.grid()
+	ax3 = fig.add_subplot(223)
+	plot_2d_contours_baseline(ax3) # TODO
+	# ax3.imshow(img1, extent=[-math.pi, math.pi, -5, 5])
+
+	ax4 = fig.add_subplot(224)
+	plot_2d_contours_ours(phi_fn1, ax4) # TODO
+	# ax4.imshow(img2, extent=[-math.pi, math.pi, -5, 5])
+
+	plt.subplots_adjust(wspace=0, hspace=0)
+	# fig.set_size_inches(10)
+
+	zoom = 2
+	w, h = fig.get_size_inches()
+	fig.set_size_inches(w * zoom, h * zoom)
+
+	# animation parameters
+	origin = [0.0, 0.0]
+	# anim_dt = 0.02
+
+	pendulumArm1 = lines.Line2D(origin, origin, color='r')
+	cart1 = patches.Rectangle(origin, 0.5, 0.15, color='b')
+
+	pendulumArm2 = lines.Line2D(origin, origin, color='r')
+	cart2 = patches.Rectangle(origin, 0.5, 0.15, color='b')
+
+	line1, = ax3.plot([], [], marker=".", color="k")
+	line2, = ax4.plot([], [], marker=".", color="k")
+
+	# IPython.embed()
+	def init():
+		ax1.add_patch(cart1)
+		ax1.add_line(pendulumArm1)
+
+		ax2.add_patch(cart2)
+		ax2.add_line(pendulumArm2)
+
+		rv = [pendulumArm1, cart1, pendulumArm2, cart2, line1, line2]
+		return rv
+
+	def animate(i):
+		# r1
+		xPos = r1[i, 0]
+		theta = r1[i, 1]
+		x = [origin[0] + xPos, origin[0] + xPos + l * np.sin(theta)]
+		y = [origin[1], origin[1] + l * np.cos(theta)]
+		pendulumArm1.set_xdata(x)
+		pendulumArm1.set_ydata(y)
+
+		cartPos = [origin[0] + xPos - cart1.get_width() / 2, origin[1] - cart1.get_height()]
+		cart1.set_xy(cartPos)
+
+		# r2
+		# TODO: freeze timeline
+		xPos = r2[i, 0]
+		theta = r2[i, 1]
+		x = [origin[0] + xPos, origin[0] + xPos + l * np.sin(theta)]
+		y = [origin[1], origin[1] + l * np.cos(theta)]
+		pendulumArm2.set_xdata(x)
+		pendulumArm2.set_ydata(y)
+
+		cartPos = [origin[0] + xPos - cart2.get_width() / 2, origin[1] - cart2.get_height()]
+		cart2.set_xy(cartPos)
+
+		# lines
+		line1.set_data(r1[:i, 1], r1[:i, 3])
+		line2.set_data(r2[:i, 1], r2[:i, 3])
+
+		rv = [pendulumArm1, cart1, pendulumArm2, cart2, line1, line2]
+		# rv = [[pendulumArm1, cart1], [pendulumArm2, cart2], line1, line2]
+		return rv
+
+	# IPython.embed()
+	# TODO: frames = len
+	anim = animation.FuncAnimation(fig, animate, init_func=init, frames=7, interval=2500,
+	                               blit=True)  # interval: real time, delay between frames in ms, 20
+	# plt.show()
+	FFwriter = animation.FFMpegWriter(fps=1)
+	anim.save(save_fpth, writer=FFwriter, dpi=600)
+
+def call_fancy_animate():
+	d1 = pickle.load(open("./log/cartpole_reduced_baseline_k_1e_2/rollout.pkl", "rb"))
+	d2 = pickle.load(open("./log/cartpole_reduced_debugpinch1_softplus_s3/rollout.pkl", "rb"))
+
+	r1 = d1["x_rollout"]
+	r2 = d2["x_rollout"]
+
+	# TODO
+	# img1 = imageio.imread("./log/cartpole_reduced_baseline_k_1e_2/2d_contour_from_loaded_checkpoint_0.png")
+	# img2 = imageio.imread("./log/cartpole_reduced_debugpinch1_softplus_s3/2d_contour_from_loaded_checkpoint_750.png")
+
+	param_dict = pickle.load(open("./log/cartpole_reduced_debugpinch1_softplus_s3/param_dict.pkl", "rb"))
+
+	# print(param_dict)
+	save_fpth = "./log/cartpole_reduced_baseline_k_1e_2/fancy_video_600_dpi_short.gif"
+
+	# animate_fancy(r1, r2, img1, img2, param_dict, save_fpth)
+	exp_name = "cartpole_reduced_debugpinch1_softplus_s3"
+	checkpoint_number = 750
+	phi_fn, x_lim = create_phi_struct_load_xlim(exp_name)
+	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+	load_model(phi_fn, phi_load_fpth)
+
+	animate_fancy(r1, r2, phi_fn, param_dict, save_fpth)
+
 if __name__ == "__main__":
 	# exp_name = "cartpole_reduced_debugpinch1_softplus_s3"
 	# checkpoint_number = 750
-
-	exp_name = "cartpole_reduced_baseline_k_1e_2"
-	checkpoint_number = 0
-	x0 = [0, 0.2, 0, 1.0] # [x, theta, dx, dtheta]
-	dt = 0.1
-	max_time = 1.0
-
-	param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb"))
-
-	# IPython.embed()
-
-	from src.problems.cartpole_reduced import H, XDot
-
-	h_fn = H(param_dict)
-	xdot_fn = XDot(param_dict)
-	xdot_fn_numpy = XDot_numpy(param_dict)
-
-	# phi_fn, x_lim = create_phi_struct_load_xlim(exp_name)
-	# phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
-	# load_model(phi_fn, phi_load_fpth)
-	ci = [0.01] # weights on higher order terms
-	phi_fn = PhiBaseline(h_fn, ci, xdot_fn, r, x_dim, u_dim, device)
-
-	# save_model(phi_fn, "./checkpoint/cartpole_reduced_baseline_k_1e_2/checkpoint_0.pth")
-
-	controller = CBF_controller(phi_fn, xdot_fn_numpy, param_dict, dt=dt) # Note: controller, simulator have their own dt defined
-	simulator = Cartpole_Simulator(xdot_fn_numpy, param_dict, dt=dt, max_time=max_time)
-	# print("after creating all the objects")
-	# IPython.embed()
-
+	#
+	# # exp_name = "cartpole_reduced_baseline_k_1e_2"
+	# # checkpoint_number = 0
+	#
+	# x0 = [0, 0.2, 0, 1.0] # [x, theta, dx, dtheta]
+	# dt = 0.1
+	# max_time = 1.0
+	#
+	# param_dict = pickle.load(open("./log/%s/param_dict.pkl" % exp_name, "rb"))
+	#
+	# # IPython.embed()
+	#
+	# from src.problems.cartpole_reduced import H, XDot
+	#
+	# h_fn = H(param_dict)
+	# xdot_fn = XDot(param_dict)
+	# xdot_fn_numpy = XDot_numpy(param_dict)
+	#
+	# if exp_name == "cartpole_reduced_debugpinch1_softplus_s3":
+	# 	phi_fn, x_lim = create_phi_struct_load_xlim(exp_name)
+	# 	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
+	# 	load_model(phi_fn, phi_load_fpth)
+	# elif exp_name == "cartpole_reduced_baseline_k_1e_2":
+	# 	ci = [0.01] # weights on higher order terms
+	# 	phi_fn = PhiBaseline(h_fn, ci, xdot_fn, r, x_dim, u_dim, device)
+	#
+	# # save_model(phi_fn, "./checkpoint/cartpole_reduced_baseline_k_1e_2/checkpoint_0.pth")
+	#
+	# controller = CBF_controller(phi_fn, xdot_fn_numpy, param_dict, dt=dt) # Note: controller, simulator have their own dt defined
+	# simulator = Cartpole_Simulator(xdot_fn_numpy, param_dict, dt=dt, max_time=max_time)
+	#
+	# # print("after creating all the objects")
+	# # IPython.embed()
+	#
 	# x_rollout, u_rollout, u_preclip_rollout = simulator.simulate_rollout(x0, controller)
-	# print(np.max(x_rollout[:, -1]))
+	# # print(np.max(x_rollout[:, -1]))
+	# print(x_rollout.shape)
+	#
+	# data = {"x_rollout": x_rollout, "u_rollout": u_rollout, "u_preclip_rollout":u_preclip_rollout}
+	# data_save_fpth = "./log/%s/rollout.pkl" % exp_name
+	# with open(data_save_fpth, 'wb') as handle:
+	# 	pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	# save_fpth = "./log/%s/test_animated_rollout.mp4" % exp_name
 	# save_fpth = "./log/cartpole_reduced_baseline_k_1/test_animated_rollout.mp4"
 	# animate_rollout(x_rollout, param_dict, save_fpth)
-	#
+
 	# print("finished animating")
 	# print(u_rollout)
 	# IPython.embed()
-
+	#
 	# checkpoint_number = 0
 	# exp_name = "cartpole_reduced_baseline_k_1e_2"
 	# plot_2d_attacks_from_loaded(checkpoint_number, exp_name)
 
-	plot_2d_contours(phi_fn, exp_name)
+	# plot_2d_contours(phi_fn, exp_name) # TODO
+
+	call_fancy_animate()
+
+
 
 
 

@@ -343,7 +343,7 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=None, mpc=Fal
 	# axes[1].scatter(attacks[:, 0], attacks[:, 1], c="k", marker="o", s=12, zorder=2)
 
 	# TODO: turning off attack plotting temporarily
-	ax.scatter(attacks[:, 0], attacks[:, 1], c="k", marker="o", s=12, zorder=2)
+	# ax.scatter(attacks[:, 0], attacks[:, 1], c="k", marker="o", s=12, zorder=2)
 
 	if mpc:
 		# IPython.embed()
@@ -651,6 +651,13 @@ if __name__=="__main__":
 	# "mpc_delta_0.050000_dt_0.050000_horizon_30.pkl"
 
 	# for MPC
+	# exp_name = "cartpole_reduced_debugpinch1_softplus_s3"
+	# # plot_2d_attacks_from_loaded(750, exp_name, fname="corl_figure_it_%i" % 750, mpc=True)
+	# plot_2d_attacks_from_loaded(750, exp_name, fname="test", mpc=True)
+
+	# plot without counterexamples
 	exp_name = "cartpole_reduced_debugpinch1_softplus_s3"
-	# plot_2d_attacks_from_loaded(750, exp_name, fname="corl_figure_it_%i" % 750, mpc=True)
-	plot_2d_attacks_from_loaded(750, exp_name, fname="test", mpc=True)
+	# checkpoints = [0, 80, 170, 210]
+	checkpoints = [20]
+	for ckpt in checkpoints:
+		plot_2d_attacks_from_loaded(ckpt, exp_name, fname="learner_%i.png" % ckpt)

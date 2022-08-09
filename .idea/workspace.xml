@@ -2,13 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af89d972-d30a-49a3-a8c4-e4732b8a6579" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deprecated/benchmark_cartpole.py" beforeDir="false" afterPath="$PROJECT_DIR$/benchmark_cartpole.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deprecated/phi_baseline.py" beforeDir="false" afterPath="$PROJECT_DIR$/deprecated/phi_baseline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/flying_cbf_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/flying_cbf_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/benchmark_cartpole.py" beforeDir="false" afterPath="$PROJECT_DIR$/benchmark_cartpole.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/plot_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/plot_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rollout_cbf_classes/deprecated/our_cbf_class.py" beforeDir="false" afterPath="$PROJECT_DIR$/rollout_cbf_classes/deprecated/our_cbf_class.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -132,7 +128,8 @@
       <workItem from="1650735589065" duration="79883000" />
       <workItem from="1651767509664" duration="90716000" />
       <workItem from="1653485936916" duration="81963000" />
-      <workItem from="1658713179324" duration="7251000" />
+      <workItem from="1658713179324" duration="14757000" />
+      <workItem from="1658885839675" duration="5581000" />
     </task>
     <servers />
   </component>
