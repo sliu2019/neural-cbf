@@ -154,8 +154,26 @@ class FlyingInvertedPendulumEnv():
         f = self._f(x)
         g = self._g(x)
 
-        rv = f + g@u
+        u_clamped, debug_dict = self.clip_u(u)
+        rv = f + g@u_clamped
         return rv
+
+    def _smooth_clamp(self, motor_impulses):
+        # clamps to 0, 1
+        # rv = 1.0/(1.0 + np.exp(-8*motor_impulses+4))
+        rv = np.clip(motor_impulses, 0, 1)
+        return rv
+
+    def clip_u(self, u):
+        # Assumes u is raw
+        u_gravity_comp = u + np.array([self.M*self.g, 0, 0, 0]) # u with gravity compensation
+        motor_impulses = np.linalg.solve(self.mixer, u_gravity_comp) # low-level inputs
+        smooth_clamped_motor_impulses = self._smooth_clamp(motor_impulses)
+
+        smooth_clamped_u_gravity_comp = self.mixer@smooth_clamped_motor_impulses
+        rv = smooth_clamped_u_gravity_comp - np.array([self.M*self.g, 0, 0, 0])
+
+        return rv, {"motor_impulses": motor_impulses, "smooth_clamped_motor_impulses": smooth_clamped_motor_impulses}
 
     # def h(self, x):
     #     """
