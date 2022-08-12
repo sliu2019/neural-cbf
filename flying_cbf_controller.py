@@ -56,7 +56,7 @@ class CBFController:
 		if self.args.rollout_u_ref == "unactuated":
 			u = np.zeros(self.u_dim)
 		elif self.args.rollout_u_ref == "LQR":
-			u = - self.K @ np.squeeze(x)
+			u = - self.K @ np.squeeze(x)[:10]
 		return u
 
 	def compute_control(self, t, x):

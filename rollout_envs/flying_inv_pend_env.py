@@ -165,6 +165,7 @@ class FlyingInvertedPendulumEnv():
         # print("in x_dot_open_loop")
         # IPython.embed()
         rv = f + (g@(u_clamped[:, :, None]))[:, :, 0]
+        # rv = np.squeeze(rv)
         return rv
 
     def _smooth_clamp(self, motor_impulses):
