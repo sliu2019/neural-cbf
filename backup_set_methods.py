@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import IPython
 import math
 from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
+from tqdm import tqdm
 
 # Physical parameters
 g = 9.81
@@ -65,8 +66,8 @@ def simulate_quadrotor(xdot_fn, u_fn, timesteps=1000):
 
 	x_all.append(xcurr)
 
-	M = np.array(
-		[[k1, k1, k1, k1], [0, -l * k1, 0, l * k1], [l * k1, 0, -l * k1, 0], [-k2, k2, -k2, k2]])  # Mixer matrix
+	# M = np.array(
+	# 	[[k1, k1, k1, k1], [0, -l * k1, 0, l * k1], [l * k1, 0, -l * k1, 0], [-k2, k2, -k2, k2]])  # Mixer matrix
 
 	print("Initial state: ", xcurr)
 
@@ -85,9 +86,9 @@ def simulate_quadrotor(xdot_fn, u_fn, timesteps=1000):
 		xnext = xcurr + np.squeeze(xdot) * dt  # Simulate system via finite differencing
 
 		# Log data
-		x_all.append(xnext)
-		u_impulses_all.append(Ui)
-		u_forces_all.append(ucurr)
+		x_all.append(np.squeeze(xnext))
+		u_impulses_all.append(np.squeeze(Ui))
+		u_forces_all.append(np.squeeze(ucurr))
 
 		xcurr = xnext
 
@@ -312,41 +313,49 @@ def _set_axes_radius(ax, origin, radius):
     ax.set_zlim3d([z - radius, z + radius])
 
 def batch_simulate_T_seconds(x_batch, xdot_fn, u_fn, T):
-	for i in range(T/float(dt)):
+	for i in range(math.ceil(T/float(dt))):
 		u_batch = u_fn(x_batch)
 		x_batch = x_batch + dt*xdot_fn(x_batch, u_batch)
 
+	print(i)
 	return x_batch
 
 def compute_backup_set(params_to_viz, xdot_fn, u_fn, save_fpth, T=3.0):
+	# print("in compute_backup_set")
+	# IPython.embed()
+
 	tol = 1e-3
 	# params_to_viz is a tuple of parameter names
-	ind1, ind2 = params_to_viz
+	param1, param2 = params_to_viz
+	ind1 = state_index_dict[param1]
+	ind2 = state_index_dict[param2]
 
-	delta = 0.01  # larger for 3D plotting, due to latency
+	delta = 0.1  # larger for 3D plotting, due to latency
 	x = np.arange(x_lim[ind1, 0], x_lim[ind1, 1], delta)
 	y = np.arange(x_lim[ind2, 0], x_lim[ind2, 1], delta)[::-1]  # need to reverse it # TODO
 	X, Y = np.meshgrid(x, y)
 
 	processing_batch_size = 100
-	inside_implicit_ss = np.zeros(X.size)
-	for i in range(math.ceil(X.size/processing_batch_size)):
-		ind1_batch = X.flatten()[i * processing_batch_size:max(X.size, (i + 1) * processing_batch_size)]
-		ind2_batch = Y.flatten()[i * processing_batch_size:max(X.size, (i + 1) * processing_batch_size)]
+	inside_implicit_ss = np.zeros(X.size) # 840k for dtheta, theta
+
+	for i in tqdm(range(math.ceil(X.size/processing_batch_size))):
+		# print(i)
+		ind1_batch = X.flatten()[i * processing_batch_size:min(X.size, (i + 1) * processing_batch_size)]
+		ind2_batch = Y.flatten()[i * processing_batch_size:min(X.size, (i + 1) * processing_batch_size)]
 		x_batch = np.zeros((ind1_batch.size, 16))
-		x_batch[:, state_index_dict[ind1]] = ind1_batch
-		x_batch[:, state_index_dict[ind2]] = ind2_batch
+		x_batch[:, ind1] = ind1_batch
+		x_batch[:, ind2] = ind2_batch
 
 		x_batch_T = batch_simulate_T_seconds(x_batch, xdot_fn, u_fn, T)
 		x_batch_inside = np.linalg.norm(x_batch_T[:, :10], axis=1) < tol
-		inside_implicit_ss[i * processing_batch_size:max(X.size, (i + 1) * processing_batch_size)] = x_batch_inside
+		inside_implicit_ss[i * processing_batch_size:min(X.size, (i + 1) * processing_batch_size)] = x_batch_inside
 
 	img = np.reshape(inside_implicit_ss, X.shape)
 
 	# np.save('test3.npy', a)  # .npy extension is added if not given
 	# d = np.load('test3.npy')
 	np.save(save_fpth + ".npy", img)
-	plt.plot(img)
+	plt.imshow(img, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
 	plt.savefig(save_fpth + ".png")
 	plt.show()
 
@@ -380,7 +389,7 @@ if __name__ == "__main__":
 	# assert rk == 10
 
 	# Use LQR to compute feedback portion of controller
-	q = 0.25 # 1 is the limit
+	q = 0.1 # 1 is the limit
 	r = 1
 	Q = q * np.eye(10)
 	R = r * np.eye(4)
@@ -389,8 +398,14 @@ if __name__ == "__main__":
 	print(K)
 
 	def u_fn(x):
-		x = x[:10] # truncate, if necessary. control loop uses full 16D
-		u = -K @ x
+		# Batched
+		# print("Inside u_fn")
+		# IPython.embed()
+		if x.ndim == 1:
+			x = x[None, :]
+		x = x[:, :10] # truncate, if necessary. control loop uses full 16D
+		# u = -K @ x
+		u = -x@K.T
 		return u
 
 	# u_fn = lambda x: np.array([M * g, 0, 0, 0]) - K @ x  # control policy
@@ -399,8 +414,8 @@ if __name__ == "__main__":
 	# print(xdot_fn(np.zeros(16), np.array([0, 0, 0, 0]))) # check origin is equilibrium
 
 	# IPython.embed()
-
-	x_all, u_impulses_all, u_forces_all, distances = simulate_quadrotor(xdot_fn, u_fn, timesteps=250) # TODO: 2000
+	"""
+	x_all, u_impulses_all, u_forces_all, distances = simulate_quadrotor(xdot_fn, u_fn, timesteps=1000) # TODO: 2000
 
 	# Plotting
 
@@ -429,7 +444,7 @@ if __name__ == "__main__":
 	axs[3].plot(t, u_impulses_all[:, 3], linewidth=0.5)
 	axs[3].set_title("Motor 4")
 	fig.savefig("backup_set_outputs/u_q_%f_r_%f.png" % (q, r))
-	plt.clf()
+	plt.clf()"""
 
 	# IPython.embed()
 
@@ -447,7 +462,10 @@ if __name__ == "__main__":
 
 	# plot_fancy_3D(x_all, "backup_set_outputs/fancy_3d_plot_q_%f_r_%f.png" % (q,r))
 
-	animate_quadcopter(x_all, param_dict, "backup_set_outputs/animation_q_%f_r_%f.gif" % (q,r))
+	# animate_quadcopter(x_all, param_dict, "backup_set_outputs/animation_q_%f_r_%f.gif" % (q,r))
+
+	T = 20.0
+	compute_backup_set(["theta", "dtheta"], xdot_fn, u_fn, "backup_set_outputs/backup_set_q_%f_r_%f_T_%i" % (q,r,T), T=T)
 
 
 
