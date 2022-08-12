@@ -313,12 +313,28 @@ def _set_axes_radius(ax, origin, radius):
     ax.set_zlim3d([z - radius, z + radius])
 
 def batch_simulate_T_seconds(x_batch, xdot_fn, u_fn, T):
+	x_rollout = np.copy(x_batch)[:, None]
+
 	for i in range(math.ceil(T/float(dt))):
 		u_batch = u_fn(x_batch)
 		x_batch = x_batch + dt*xdot_fn(x_batch, u_batch)
 
-	print(i)
-	return x_batch
+		x_rollout = np.concatenate((x_rollout, x_batch[:, None]), axis=1)
+	# print(i)
+	return x_rollout
+
+# def h_sum():
+# 	theta = x[:, [self.i["theta"]]]
+# 	phi = x[:, [self.i["phi"]]]
+# 	gamma = x[:, [self.i["gamma"]]]
+# 	beta = x[:, [self.i["beta"]]]
+#
+# 	cos_cos = torch.cos(theta) * torch.cos(phi)
+# 	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
+# 	with torch.no_grad():
+# 		signed_eps = -torch.sign(cos_cos) * eps
+# 	delta = torch.acos(cos_cos + signed_eps)
+# 	rv = delta ** 2 + gamma ** 2 + beta ** 2 - self.delta_safety_limit ** 2
 
 def compute_backup_set(params_to_viz, xdot_fn, u_fn, save_fpth, T=3.0):
 	# print("in compute_backup_set")
@@ -335,20 +351,40 @@ def compute_backup_set(params_to_viz, xdot_fn, u_fn, save_fpth, T=3.0):
 	y = np.arange(x_lim[ind2, 0], x_lim[ind2, 1], delta)[::-1]  # need to reverse it # TODO
 	X, Y = np.meshgrid(x, y)
 
-	processing_batch_size = 100
+	processing_batch_size = 50
 	inside_implicit_ss = np.zeros(X.size) # 840k for dtheta, theta
 
 	for i in tqdm(range(math.ceil(X.size/processing_batch_size))):
 		# print(i)
+		# IPython.embed()
+
 		ind1_batch = X.flatten()[i * processing_batch_size:min(X.size, (i + 1) * processing_batch_size)]
 		ind2_batch = Y.flatten()[i * processing_batch_size:min(X.size, (i + 1) * processing_batch_size)]
 		x_batch = np.zeros((ind1_batch.size, 16))
 		x_batch[:, ind1] = ind1_batch
 		x_batch[:, ind2] = ind2_batch
 
-		x_batch_T = batch_simulate_T_seconds(x_batch, xdot_fn, u_fn, T)
-		x_batch_inside = np.linalg.norm(x_batch_T[:, :10], axis=1) < tol
-		inside_implicit_ss[i * processing_batch_size:min(X.size, (i + 1) * processing_batch_size)] = x_batch_inside
+		x_rollout = batch_simulate_T_seconds(x_batch, xdot_fn, u_fn, T) # bs x len_rollout x x_dim
+
+		x_T = x_rollout[:, -1]
+		x_reach_invariant = np.linalg.norm(x_T[:, :10], axis=1) < tol
+
+		# Check if the whole trajectory was inside the safe set
+		theta = x_rollout[:, :, state_index_dict["theta"]]
+		phi = x_rollout[:, :, state_index_dict["phi"]]
+		gamma = x_rollout[:, :, state_index_dict["gamma"]]
+		beta = x_rollout[:, :, state_index_dict["beta"]]
+
+		cos_cos = np.cos(theta)*np.cos(phi)
+		eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
+		signed_eps = -np.sign(cos_cos)*eps
+		delta = np.arccos(cos_cos + signed_eps)
+		h_sum = (delta**2 + gamma**2 + beta**2 <= param_dict["delta_safety_limit"]**2)
+		whole_rollout_safe = np.prod(h_sum, axis=1)
+
+		x_inside_implicit_safe_set = np.logical_and(x_reach_invariant, whole_rollout_safe)
+
+		inside_implicit_ss[i * processing_batch_size:min(X.size, (i + 1) * processing_batch_size)] = x_inside_implicit_safe_set
 
 	img = np.reshape(inside_implicit_ss, X.shape)
 
