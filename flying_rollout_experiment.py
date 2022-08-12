@@ -247,6 +247,8 @@ def simulate_rollout(env, N_steps_max, cbf_controller, x0, random_seed=None):
 		mod_ang = convert_angle_to_negpi_pi_interval(x[:, ind])
 		x[:, ind] = mod_ang
 
+		u = np.reshape(u, (4))
+		x = np.reshape(x, (1, 16))
 		us.append(u) # (4)
 		xs.append(x) # (1, 16)
 

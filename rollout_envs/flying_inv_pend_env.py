@@ -152,6 +152,11 @@ class FlyingInvertedPendulumEnv():
         return g
 
     def x_dot_open_loop(self, x, u):
+        if u.ndim == 1:
+            u = u[None]
+        if x.ndim == 1:
+            x = x[None]
+
         # Batched
         f = self._f(x)
         g = self._g(x)
@@ -170,6 +175,8 @@ class FlyingInvertedPendulumEnv():
         return rv
 
     def clip_u(self, u):
+        if u.ndim == 1:
+            u = u[None]
         # Batched: u is bs x u_dim
         # Assumes u is raw
         # print("in clip_u")

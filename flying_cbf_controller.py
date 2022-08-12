@@ -5,7 +5,7 @@ from cvxopt import matrix, solvers
 solvers.options['show_progress'] = False
 import IPython
 # from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
-from utils_for_corl import A, B
+# from utils_for_corl import A, B
 import control
 
 g = 9.81
@@ -22,23 +22,33 @@ class CBFController:
 		                       [self.l * self.k1, 0, -self.l * self.k1, 0], [-self.k2, self.k2, -self.k2, self.k2]])
 
 		if self.args.rollout_u_ref == "LQR":
-			# print("ln 24 in controller initialization")
-			# IPython.embed()
-			# Confirmed controllable!
-			# C = control.ctrb(A, B)
-			# rk = np.linalg.matrix_rank(C)
-			# assert rk == 16
+			L_p = param_dict["L_p"]
+			M = param_dict["M"]
+			J_x = param_dict["J_x"]
+			J_y = param_dict["J_y"]
+			J_z = param_dict["J_z"]
+
+			A = np.zeros((10, 10))  # 10 x 10
+			A[0:3, 3:6] = np.eye(3)
+			A[6:8, 8:10] = np.eye(2)
+			A[8, 0] = -3 * g / (2 * L_p)
+			A[9, 1] = -3 * g / (2 * L_p)
+			A[8, 6] = 3 * g / (2 * L_p)
+			A[9, 7] = 3 * g / (2 * L_p)
+
+			B = np.zeros((10, 4))
+			B[3:6, 1:4] = np.diag([1.0 / J_x, 1.0 / J_y, 1.0 / J_z])
 
 			# Use LQR to compute feedback portion of controller
 			q = self.args.rollout_LQR_q
 			r = self.args.rollout_LQR_r
-			Q = q * np.eye(16)
+			Q = q * np.eye(10)
 			R = r * np.eye(4)
 			K, S, E = control.lqr(A, B, Q, R)
 			self.K = K
 
-			print(q)
-			print(K)
+			# print(q)
+			# print(K)
 			# print(K)
 			# IPython.embed()
 
@@ -46,9 +56,7 @@ class CBFController:
 		if self.args.rollout_u_ref == "unactuated":
 			u = np.zeros(self.u_dim)
 		elif self.args.rollout_u_ref == "LQR":
-			# print("ln 43 in compute_u_ref")
-			# IPython.embed()
-			u = np.array([self.M * g, 0, 0, 0]) - self.K @ np.squeeze(x)
+			u = - self.K @ np.squeeze(x)
 		return u
 
 	def compute_control(self, t, x):
@@ -126,23 +134,52 @@ class CBFController:
 		# Note, constraint may not always be satisfied, so we include a slack variable on the CBF input constraint
 		w = 1000.0  # slack weight
 
-		P = np.zeros((5, 5))
-		P[:4, :4] = 2 * self.mixer.T @ self.mixer
-		q = np.concatenate([-2 * u_ref.T @ self.mixer, np.array([w])])
-		q = np.reshape(q, (-1, 1))
+		# P = np.zeros((5, 5))
+		# P[:4, :4] = 2 * self.mixer.T @ self.mixer
+		# q = np.concatenate([-2 * u_ref.T @ self.mixer, np.array([w])])
+		# q = np.reshape(q, (-1, 1))
+		#
+		# G = np.zeros((10, 5))
+		# G[0, 0:4] = lhs @ self.mixer
+		# G[0, 4] = -1.0
+		# G[1:5, 0:4] = -np.eye(4)
+		# G[5:9, 0:4] = np.eye(4)
+		# G[-1, -1] = -1.0
+		#
+		# h = np.concatenate([np.array([rhs]), np.zeros(4), np.ones(4), np.zeros(1)])
+		# h = np.reshape(h, (-1, 1))
 
-		G = np.zeros((10, 5))
-		G[0, 0:4] = lhs @ self.mixer
-		G[0, 4] = -1.0
-		G[1:5, 0:4] = -np.eye(4)
-		G[5:9, 0:4] = np.eye(4)
-		G[-1, -1] = -1.0
+		P = np.zeros((9, 9))
+		P[:4, :4] = 2 *np.eye(4)
+		q = np.zeros((9, 1))
+		q[:4, 0] = -2*u_ref
+		q[-1, 0] = w
 
-		h = np.concatenate([np.array([rhs]), np.zeros(4), np.ones(4), np.zeros(1)])
-		h = np.reshape(h, (-1, 1))
+		# G <= h
+		G = np.zeros((10,9))
+		G[0, :4] = lhs
+		G[0, -1] = -1.0
+		##
+		G[1:5, 4:8] = -np.eye(4)
+		G[5:9, 4:8] = np.eye(4)
+		G[9, -1] = -1.0
+
+		h = np.zeros((10, 1))
+		h[0, 0] = rhs
+		##
+		h[5:9, 0] = 1.0
+
+		A = np.zeros((4, 9))
+		A[:4, :4] = -np.eye(4)
+		A[:4, 4:8] = self.mixer
+		b = np.array([self.M*g, 0, 0, 0])[:, None]
+
+		# print("line 177, flying_cbf_controller")
+		# IPython.embed()
 
 		try:
-			sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h))
+			# sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h))
+			sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h), matrix(A), matrix(b))
 		except:
 			# IPython.embed()
 			print("QP solve was unsuccessful, with status: %s " % sol_obj["status"])
@@ -158,15 +195,16 @@ class CBFController:
 		sol_var = np.array(sol_obj['x'])
 
 		# u_safe = sol_var[0:4]
-		sol_impulses = sol_var[0:4]
-		u_safe = self.mixer @ np.reshape(sol_impulses, (4, 1))
+		# sol_impulses = sol_var[0:4]
+		# u_safe = self.mixer @ np.reshape(sol_impulses, (4, 1))
 
+		u_safe = sol_var[0:4]
 		u_safe = np.reshape(u_safe, (4))
 		qp_slack = sol_var[-1]
 
 		# print("Slack: %.6f" % qp_slack) # TODO
 		# print(sol_impulses, u_safe, qp_slack)
-		impulses = sol_impulses
+		impulses = sol_var[4:8]
 		debug_dict = {"apply_u_safe": apply_u_safe, "u_ref": u_ref, "phi_vals": phi_vals.flatten(),
 		              "qp_slack": qp_slack, "qp_rhs": qp_rhs, "qp_lhs": qp_lhs, "impulses": impulses,
 		             "inside_boundary": inside_boundary, "on_boundary": on_boundary, "outside_boundary": outside_boundary, "dist_between_xs": dist_between_xs, "phi_grad_mag": phi_grad_mag, "phi_grad": phi_grad.flatten()}

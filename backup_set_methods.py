@@ -38,7 +38,8 @@ param_dict = {
 }
 param_dict["M"] = param_dict["m"] + param_dict["m_p"]
 
-ub = 20
+# ub = 20 # TODO
+ub = 5
 thresh = np.array([math.pi / 3, math.pi / 3, math.pi, ub, ub, ub, math.pi / 3, math.pi / 3, ub, ub],
                   dtype=np.float32)  # angular velocities bounds probably much higher in reality (~10-20 for drone, which can do 3 flips in 1 sec).
 x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
@@ -313,27 +314,43 @@ def _set_axes_radius(ax, origin, radius):
     ax.set_zlim3d([z - radius, z + radius])
 
 def batch_simulate_T_seconds(x_batch, xdot_fn, u_fn, T):
-	x_rollout = np.copy(x_batch)[:, None]
+	tol = 1e-3
 
+	bs = x_batch.shape[0]
+	whole_rollout_safe = np.ones_like(bs)
 	for i in range(math.ceil(T/float(dt))):
 		u_batch = u_fn(x_batch)
 		x_batch = x_batch + dt*xdot_fn(x_batch, u_batch)
 
-		x_rollout = np.concatenate((x_rollout, x_batch[:, None]), axis=1)
-	# print(i)
-	return x_rollout
 
-def compute_backup_set(params_to_viz, xdot_fn, u_fn, save_fpth, T=3.0):
+		# Check if the whole trajectory was inside the safe set
+		theta = x_batch[:, state_index_dict["theta"]]
+		phi = x_batch[:, state_index_dict["phi"]]
+		gamma = x_batch[:, state_index_dict["gamma"]]
+		beta = x_batch[:, state_index_dict["beta"]]
+
+		cos_cos = np.cos(theta)*np.cos(phi)
+		eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
+		signed_eps = -np.sign(cos_cos)*eps
+		delta = np.arccos(cos_cos + signed_eps)
+		whole_rollout_safe = (delta**2 + gamma**2 + beta**2 <= param_dict["delta_safety_limit"]**2)*whole_rollout_safe
+
+	# Compute on final state
+	x_reach_invariant = np.linalg.norm(x_batch[:, :10], axis=1) <= tol
+	x_inside_implicit_safe_set = np.logical_and(x_reach_invariant, whole_rollout_safe)
+
+	return x_inside_implicit_safe_set
+
+def compute_backup_set(params_to_viz, xdot_fn, u_fn, save_fpth, T=3.0, delta=0.01):
 	# print("in compute_backup_set")
 	# IPython.embed()
 
-	tol = 1e-3
 	# params_to_viz is a tuple of parameter names
 	param1, param2 = params_to_viz
 	ind1 = state_index_dict[param1]
 	ind2 = state_index_dict[param2]
 
-	delta = 0.1  # larger for 3D plotting, due to latency
+	# delta = 0.01  # larger for 3D plotting, due to latency
 	x = np.arange(x_lim[ind1, 0], x_lim[ind1, 1], delta)
 	y = np.arange(x_lim[ind2, 0], x_lim[ind2, 1], delta)[::-1]  # need to reverse it # TODO
 	X, Y = np.meshgrid(x, y)
@@ -351,26 +368,7 @@ def compute_backup_set(params_to_viz, xdot_fn, u_fn, save_fpth, T=3.0):
 		x_batch[:, ind1] = ind1_batch
 		x_batch[:, ind2] = ind2_batch
 
-		x_rollout = batch_simulate_T_seconds(x_batch, xdot_fn, u_fn, T) # bs x len_rollout x x_dim
-
-		x_T = x_rollout[:, -1]
-		x_reach_invariant = np.linalg.norm(x_T[:, :10], axis=1) < tol
-
-		# Check if the whole trajectory was inside the safe set
-		theta = x_rollout[:, :, state_index_dict["theta"]]
-		phi = x_rollout[:, :, state_index_dict["phi"]]
-		gamma = x_rollout[:, :, state_index_dict["gamma"]]
-		beta = x_rollout[:, :, state_index_dict["beta"]]
-
-		cos_cos = np.cos(theta)*np.cos(phi)
-		eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
-		signed_eps = -np.sign(cos_cos)*eps
-		delta = np.arccos(cos_cos + signed_eps)
-		h_sum = (delta**2 + gamma**2 + beta**2 <= param_dict["delta_safety_limit"]**2)
-		whole_rollout_safe = np.prod(h_sum, axis=1)
-
-		x_inside_implicit_safe_set = np.logical_and(x_reach_invariant, whole_rollout_safe)
-
+		x_inside_implicit_safe_set = batch_simulate_T_seconds(x_batch, xdot_fn, u_fn, T) # bs x 1
 		inside_implicit_ss[i * processing_batch_size:min(X.size, (i + 1) * processing_batch_size)] = x_inside_implicit_safe_set
 
 	img = np.reshape(inside_implicit_ss, X.shape)
@@ -384,6 +382,16 @@ def compute_backup_set(params_to_viz, xdot_fn, u_fn, save_fpth, T=3.0):
 
 
 if __name__ == "__main__":
+	import argparse
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--q', type=float, default=0.1)
+	parser.add_argument('--T', type=int, default=20)
+	parser.add_argument('--param1', type=str, default="theta")
+	parser.add_argument('--param2', type=str, default="dtheta")
+	parser.add_argument('--delta', type=float, default=0.01)
+
+	args = parser.parse_known_args()[0]
+
 	# IPython.embed()
 	L_p = param_dict["L_p"]
 	M = param_dict["M"]
@@ -412,7 +420,7 @@ if __name__ == "__main__":
 	# assert rk == 10
 
 	# Use LQR to compute feedback portion of controller
-	q = 0.1 # 1 is the limit
+	q = args.q # 1 is the limit
 	r = 1
 	Q = q * np.eye(10)
 	R = r * np.eye(4)
@@ -487,8 +495,7 @@ if __name__ == "__main__":
 
 	# animate_quadcopter(x_all, param_dict, "backup_set_outputs/animation_q_%f_r_%f.gif" % (q,r))
 
-	T = 20.0
-	compute_backup_set(["theta", "dtheta"], xdot_fn, u_fn, "backup_set_outputs/backup_set_q_%f_r_%f_T_%i" % (q,r,T), T=T)
+	compute_backup_set([args.param1, args.param2], xdot_fn, u_fn, "backup_set_outputs/backup_set_%s_%s_q_%.3f_T_%i" % (args.param1, args.param2, args.q, args.T), T=args.T, delta=args.delta)
 
 
 
