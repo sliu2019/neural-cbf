@@ -53,7 +53,7 @@
     <property name="WebServerToolWindowPanel.toolwindow.show.size" value="false" />
     <property name="com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File" value="Python" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
-    <property name="settings.editor.selected.configurable" value="reference.settings.deploy.options" />
+    <property name="settings.editor.selected.configurable" value="web.server" />
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
@@ -128,7 +128,7 @@
       <workItem from="1651767509664" duration="90716000" />
       <workItem from="1653485936916" duration="81963000" />
       <workItem from="1658713179324" duration="14757000" />
-      <workItem from="1658885839675" duration="36741000" />
+      <workItem from="1658885839675" duration="37044000" />
     </task>
     <servers />
   </component>

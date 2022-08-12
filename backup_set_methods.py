@@ -323,19 +323,6 @@ def batch_simulate_T_seconds(x_batch, xdot_fn, u_fn, T):
 	# print(i)
 	return x_rollout
 
-# def h_sum():
-# 	theta = x[:, [self.i["theta"]]]
-# 	phi = x[:, [self.i["phi"]]]
-# 	gamma = x[:, [self.i["gamma"]]]
-# 	beta = x[:, [self.i["beta"]]]
-#
-# 	cos_cos = torch.cos(theta) * torch.cos(phi)
-# 	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
-# 	with torch.no_grad():
-# 		signed_eps = -torch.sign(cos_cos) * eps
-# 	delta = torch.acos(cos_cos + signed_eps)
-# 	rv = delta ** 2 + gamma ** 2 + beta ** 2 - self.delta_safety_limit ** 2
-
 def compute_backup_set(params_to_viz, xdot_fn, u_fn, save_fpth, T=3.0):
 	# print("in compute_backup_set")
 	# IPython.embed()
