@@ -39,7 +39,7 @@ param_dict = {
 param_dict["M"] = param_dict["m"] + param_dict["m_p"]
 
 # ub = 20 # TODO
-ub = 5
+ub = 15
 thresh = np.array([math.pi / 3, math.pi / 3, math.pi, ub, ub, ub, math.pi / 3, math.pi / 3, ub, ub],
                   dtype=np.float32)  # angular velocities bounds probably much higher in reality (~10-20 for drone, which can do 3 flips in 1 sec).
 x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
