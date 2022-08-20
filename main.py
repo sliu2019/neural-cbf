@@ -97,11 +97,11 @@ def create_flying_param_dict(args=None):
 		"J_x": 0.005,
 		"J_y": 0.005,
 		"J_z": 0.009,
-		"l": 0.15,
+		"l": 1.5,
 		"k1": 4.0,
 		"k2": 0.05,
 		"m_p": 0.04, # 5% of quad weight
-		"L_p": 0.30, # Prev: 0.03
+		"L_p": 3.0, # Prev: 0.03
 		'delta_safety_limit': math.pi / 4  # should be <= math.pi/4
 	}
 	param_dict["M"] = param_dict["m"] + param_dict["m_p"]
@@ -278,9 +278,7 @@ def main(args):
 
 		# Create phi
 		from src.problems.quadcopter import HMax, XDot, ULimitSetVertices
-
 		h_fn = HMax(param_dict)
-
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
