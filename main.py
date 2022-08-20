@@ -84,7 +84,7 @@ class Regularizer(nn.Module):
 		max_phi_values = torch.max(all_phi_values, dim=1)[0]
 
 		if self.reg_transform == "sigmoid":
-			transform_of_max_phi = nn.functional.sigmoid(0.3*max_phi_values)
+			transform_of_max_phi = torch.sigmoid(0.3*max_phi_values)
 		elif self.reg_transform == "softplus":
 			transform_of_max_phi = nn.functional.softplus(max_phi_values)
 		reg = self.reg_weight*torch.mean(transform_of_max_phi)
@@ -162,6 +162,7 @@ def create_quadcopter_param_dict():
 
 def main(args):
 	# Boilerplate for saving
+	# IPython.embed()
 	save_folder = '%s_%s' % (args.problem, args.affix)
 
 	log_folder = os.path.join(args.log_root, save_folder)
@@ -334,7 +335,7 @@ def main(args):
 		                                                projection_lr=args.train_attacker_projection_lr,
 		                                                projection_time_limit=args.train_attacker_projection_time_limit,
 		                                                train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule,
-		                                                boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method, boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
+		                                                boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method,boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
 		                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
 		                                                p_reuse=args.train_attacker_p_reuse)
 

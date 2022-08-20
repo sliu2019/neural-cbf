@@ -86,7 +86,7 @@ def create_parser():
 	# # Gradient batch attacker
 	# parser.add_argument('--test_attacker_n_samples', default=50, type=int)
 	# parser.add_argument('--test_attacker_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping'])
-	# parser.add_argument('--test_attacker_max_n_steps', default=200, type=int∑) # TODO
+	# parser.add_argument('--test_attacker_max_n_steps', default=200, type=int) # TODO
 	# parser.add_argument('--test_attacker_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"')
 	# parser.add_argument('--test_attacker_projection_lr', default=1e-4, type=float)
 	# parser.add_argument('--test_attacker_lr', default=1e-3, type=float)
@@ -107,7 +107,7 @@ def create_parser():
 
 	# Saving/logging
 	parser.add_argument('--random_seed', default=1, type=int)
-	parser.add_argument('--affix', default='default', help='the affix for the save folder')
+	parser.add_argument('--affix', type=str, default='default', help='the affix for the save folder')
 	parser.add_argument('--log_root', default='log',
 	                    help='the directory to save the logs or other imformations (e.g. images)')
 	parser.add_argument('--model_root', default='checkpoint', help='the directory to save the models')
