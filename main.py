@@ -137,7 +137,7 @@ def create_quadcopter_param_dict():
 		"J_x": 0.005,
 		"J_y": 0.005,
 		"J_z": 0.009,
-		"l": 1.5,
+		"l": 0.15, # TODO: this param differs from flying inverted pendulum
 		"k1": 4.0,
 		"k2": 0.05
 	}
@@ -183,10 +183,8 @@ def main(args):
 	if torch.cuda.is_available():
 		os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 		dev = "cuda:%i" % (args.gpu)
-		# print("Using GPU device: %s" % dev)
 	else:
 		dev = "cpu"
-	# dev = "cpu"
 	device = torch.device(dev)
 
 	# Selecting problem
@@ -270,6 +268,29 @@ def main(args):
 			nn_input_modifier = None
 		elif args.phi_nn_inputs == "euc":
 			nn_input_modifier = TransformEucNNInput(state_index_dict)
+	elif args.problem == "quadcopter":
+		param_dict = create_quadcopter_param_dict()
+
+		r = param_dict["r"]
+		x_dim = param_dict["x_dim"]
+		u_dim = param_dict["u_dim"]
+		x_lim = param_dict["x_lim"]
+
+		# Create phi
+		from src.problems.quadcopter import HMax, XDot, ULimitSetVertices
+
+		h_fn = HMax(param_dict)
+
+		xdot_fn = XDot(param_dict, device)
+		uvertices_fn = ULimitSetVertices(param_dict, device)
+
+		reg_sampler = reg_samplers_name_to_class_dict[args.reg_sampler](x_lim, device, logger, n_samples=args.reg_n_samples)
+
+		x_e = None
+
+		# Passing in subset of state to NN
+		state_index_dict = param_dict["state_index_dict"]
+		nn_input_modifier = None
 	else:
 		raise NotImplementedError
 
@@ -291,7 +312,6 @@ def main(args):
 	elif args.phi_design == "low":
 		phi_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
 
-	# phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
 	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
 	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, reg_transform=args.reg_transform)
 
@@ -319,9 +339,6 @@ def main(args):
 		                                                boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method, boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
 		                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
 		                                                p_reuse=args.train_attacker_p_reuse)
-	# elif args.train_attacker == "gradient_batch_warmstart2":
-	# 	attacker = GradientBatchWarmstartAttacker2(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule, proj_tactic=args.gradient_batch_warmstart2_proj_tactic)
-
 
 	# Create test attacker
 	# Note: doesn't matter that we're passing train params. We're only using test_attacker to sample on boundary
@@ -338,20 +355,6 @@ def main(args):
 	                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
 	                                                p_reuse=args.train_attacker_p_reuse)
 
-	# print("before calling train in main.py")
-	# print("before actually running, remove this")
-	# IPython.embed()
-
-	"""
-	# phi_params = list(phi_fn.parameters())
-	# print(phi_params[0], phi_params[1], phi_params[2])
-	exp_name = "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_150"
-	checkpoint_number = 340
-	phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
-	load_model(phi_fn, phi_load_fpth)
-	# print(phi_params[0], phi_params[1], phi_params[2])
-	# IPython.embed()
-	# """
 
 	# Pass everything to Trainer
 	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)

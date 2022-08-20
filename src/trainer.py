@@ -90,15 +90,15 @@ class Trainer():
 
 		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
 
-		if self.args.trainer_lr_scheduler:
-			print("creating lr scheduler")
-			IPython.embed()
-			if self.args.trainer_lr_scheduler == "exponential_reduction":
-				lr_scheduler = ExponentialLR(optimizer, gamma=self.args.trainer_lr_scheduler_exponential_reduction_gamma)
-			elif self.args.trainer_lr_scheduler == "reduce_on_plateau":
-				lr_scheduler = ReduceLROnPlateau(optimizer, factor=0.9, )
-				# torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
-				# TODO: SIMIN YOU HAVEN'T FINISHED HERE!!!
+		# if self.args.trainer_lr_scheduler:
+		# 	print("creating lr scheduler")
+		# 	IPython.embed()
+		# 	if self.args.trainer_lr_scheduler == "exponential_reduction":
+		# 		lr_scheduler = ExponentialLR(optimizer, gamma=self.args.trainer_lr_scheduler_exponential_reduction_gamma)
+		# 	elif self.args.trainer_lr_scheduler == "reduce_on_plateau":
+		# 		lr_scheduler = ReduceLROnPlateau(optimizer, factor=0.9, )
+		# 		# torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
+		# 		# TODO: SIMIN YOU HAVEN'T FINISHED HERE!!!
 
 		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
 
@@ -128,22 +128,6 @@ class Trainer():
 				attack_value = nn.functional.softplus(objective_fn(x_batch)[0, 0])
 			elif self.args.objective_option == "weighted_average":
 				c = 0.1
-
-				# obj = objective_fn(X)
-				# mask_neg = obj >= 0 # zeros out entries where obj < 0: actually, just use softplus on the objective
-				# with torch.no_grad():
-				# 	if torch.any(mask_neg):
-				# 		w = torch.exp(c*obj)
-				# 		w = w*mask_neg
-				# 		w = w/torch.sum(w)
-				# 	else:
-				# 		w = torch.zeros_like(obj)
-				# attack_value = torch.dot(w.flatten(), obj.flatten())
-				# TODO: above implementation will fail when obj contains large values (>1000).
-				# torch.exp overflows easily; torch.nn.functional.softmax is way better
-
-				# print("Is gradient propagated correctly? Through indexing?")
-				# IPython.embed()
 				obj = objective_fn(X)
 				pos_inds = torch.where(obj >= 0) # tuple of 2D inds
 				pos_obj = c*obj[pos_inds[0], pos_inds[1]]

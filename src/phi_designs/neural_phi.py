@@ -128,9 +128,6 @@ class NeuralPhi(nn.Module):
 
 			new_h = torch.square(beta_net_value - beta_net_xe_value) + k0*self.h_fn(x)
 
-		# if self.phi_reshape_dh:
-		# 	h_ith_deriv = new_h  # bs x 1, the zeroth derivative
-		# else:
 		h_ith_deriv = self.h_fn(x) # bs x 1, the zeroth derivative
 
 		h_derivs = h_ith_deriv # bs x 1
@@ -147,10 +144,6 @@ class NeuralPhi(nn.Module):
 		#####################################################################
 		# Turn gradient tracking off for x
 		result = h_derivs.mm(ki_all.t())
-		# if self.phi_reshape_dh:
-		# 	phi_r_minus_1_star = result[:, [-1]]
-		# else:
-		# 	phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_h
 		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_h
 
 		result = torch.cat((result, phi_r_minus_1_star), dim=1)

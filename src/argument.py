@@ -4,7 +4,7 @@ import math
 def create_parser():
 	# Problem
 	parser = argparse.ArgumentParser(description='CBF synthesis')
-	parser.add_argument('--problem', default='flying_inv_pend', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced"])
+	parser.add_argument('--problem', default='flying_inv_pend', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced", "quadcopter"])
 
 	# h(x) (user-specified SI)
 	parser.add_argument('--h', type=str, default='sum', choices=['max', 'sum'], help='For flying inv pend, chose the form of h(x)')
@@ -102,8 +102,8 @@ def create_parser():
 	parser.add_argument('--trainer_lr', default=1e-3, type=float)
 	# parser.add_argument('--train_mode', default='dG', choices=['dG', 'dS'])
 	# parser.add_argument('--trainer_type', type=str, default="Adam")
-	parser.add_argument('--trainer_lr_scheduler', type=str, choices=["exponential_reduction", "reduce_on_plateau"])
-	parser.add_argument('--trainer_lr_scheduler_exponential_reduction_gamma', type=float, default=0.992, help="the multiplicative factor; lr goes by alpha^t")
+	# parser.add_argument('--trainer_lr_scheduler', type=str, choices=["exponential_reduction", "reduce_on_plateau"]) # TODO: not implemented
+	# parser.add_argument('--trainer_lr_scheduler_exponential_reduction_gamma', type=float, default=0.992, help="the multiplicative factor; lr goes by alpha^t") # TODO: not implemented
 
 	# Saving/logging
 	parser.add_argument('--random_seed', default=1, type=int)
