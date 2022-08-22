@@ -7,7 +7,7 @@ def create_parser():
 	parser.add_argument('--problem', default='flying_inv_pend', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced", "quadcopter"])
 
 	# h(x) (user-specified SI)
-	parser.add_argument('--h', type=str, default='sum', choices=['max', 'sum', 'regular'], help='Chose the form of h(x). For flying inv pend, chose between max and sum. For quadcopter, chose between sum and regular')
+	parser.add_argument('--h', type=str, default='sum', choices=['max', 'sum', 'reg'], help='Chose the form of h(x). For flying inv pend, chose between max and sum. For quadcopter, chose between sum and regular')
 
 	# Phi
 	parser.add_argument('--phi_design', default="neural", type=str, choices=["neural", "low"])

@@ -147,7 +147,7 @@ def create_quadcopter_param_dict(args):
 	# r = 2
 	if args.h == 'sum':
 		r = 2
-	elif args.h == 'regular':
+	elif args.h == 'reg':
 		r = 4
 	x_dim = len(state_index_names)
 	u_dim = 4
@@ -283,7 +283,8 @@ def main(args):
 
 		# Create phi
 		from src.problems.quadcopter import H, HSum, XDot, ULimitSetVertices
-		if args.h == "regular":
+		# IPython.embed()
+		if args.h == "reg":
 			h_fn = H(param_dict)
 		elif args.h == 'sum':
 			h_fn = HSum(param_dict)
@@ -363,8 +364,8 @@ def main(args):
 
 
 	# Pass everything to Trainer
-	# trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)
-	# trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
+	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)
+	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################

@@ -914,10 +914,13 @@ if __name__ == "__main__":
 	# base_exp_names = [("flying_inv_pend_low_cbf_reg_weight_1_seed_%i" % x) for x in np.arange(1, 8)]
 	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1", "flying_inv_pend_low_cbf_reg_weight_10", "flying_inv_pend_low_cbf_reg_weight_100"]
 	# base_exp_names = ['flying_inv_pend_“repro_test_04_14”', 'flying_inv_pend_repro_test']
-	base_exp_names = ['flying_inv_pend_repro_test'] #, 'flying_inv_pend_"repro_test"']
+	# base_exp_names = ['flying_inv_pend_repro_test'] #, 'flying_inv_pend_"repro_test"']
+	# base_exp_names = ['flying_inv_pend_h_reg_copter_reg_50']
+	exp_names = ['quadcopter_h_reg_copter_reg_50']
+	checkpoint_numbers = [0]
 
 	# To visualize slices for a new experiment
-	checkpoint_numbers = []
+	"""checkpoint_numbers = []
 	exp_names = []
 	for base_exp_name in base_exp_names:
 		data = pickle.load(open("./log/%s/data.pkl" % base_exp_name, 'rb'))
@@ -1023,10 +1026,10 @@ if __name__ == "__main__":
 	# 	debug(exp_name)
 
 	# TODO: check training progress
-	for exp_name in base_exp_names:
-		# fill_ci_ki_lists(exp_name)
-		min_attack_loss_ind = graph_losses(exp_name)
-		# checkpoint_numbers.append(min_attack_loss_ind)
+	# for exp_name in base_exp_names:
+	# 	# fill_ci_ki_lists(exp_name)
+	# 	min_attack_loss_ind = graph_losses(exp_name)
+	# 	# checkpoint_numbers.append(min_attack_loss_ind)
 
 	# TODO: manually check attacks
 	# with open("./log/%s/data.pkl" % "flying_inv_pend_phi_format_1_seed_0", 'rb') as handle:
