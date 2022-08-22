@@ -146,15 +146,18 @@ class Trainer():
 				obj = objective_fn(X)
 				pos_inds = torch.where(obj >= 0) # tuple of 2D inds
 				pos_obj = obj[pos_inds[0], pos_inds[1]]
+				pos_obj = pos_obj.flatten()
+				# IPython.embed()
 				with torch.no_grad():
-					w = torch.nn.functional.softmax(c*pos_obj)
+					w = torch.nn.functional.softmax(c*pos_obj, dim=0)
 				attack_value = torch.dot(w.flatten(), pos_obj.flatten())
 			elif self.args.objective_option == "weighted_average_include_neg_phidot":
 				# Eliminates the "relu" effect on above
 				c = 0.1
 				obj = objective_fn(X)
+				obj = obj.flatten()
 				with torch.no_grad():
-					w = torch.nn.functional.softmax(c*obj)
+					w = torch.nn.functional.softmax(c*obj, dim=0)
 				attack_value = torch.dot(w.flatten(), obj.flatten())
 
 			# For logging

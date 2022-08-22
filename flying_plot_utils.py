@@ -344,26 +344,26 @@ def graph_losses(exp_name, debug=True):
 		print("At selected checkpoint %i: %.3f loss, %.5f volume" % (checkpoint_ind, train_attack_losses[int(checkpoint_ind / n_checkpoint_step)], approx_v[best_balanced_ind]))
 	IPython.embed()"""
 
-	# don't use rank, since approx_v has a lot of duplicate values. They won't receive the same rank, which is problematic...
-	m = len(approx_v)
-	train_attack_losses_at_checkpoints = train_attack_losses[::n_test_loss_step][:m]
-	# total_loss = -3*approx_v + train_attack_losses_at_checkpoints + 0.1*np.arange(m)
-	total_loss = train_attack_losses_at_checkpoints + 0.1*np.arange(m)
-	# total_loss = train_attack_losses_at_checkpoints
-	best_inds = np.argsort(total_loss)
-
-	n_top = 15
-	train_loop_times = data["train_loop_times"]
-	for k in range(n_top):
-		best_balanced_ind = best_inds[k]
-		checkpoint_ind = best_balanced_ind * n_test_loss_step
-		t_so_far_seconds = train_loop_times[checkpoint_ind]
-		t_hours = t_so_far_seconds // (60 * 60)
-		t_minutes = (t_so_far_seconds - t_hours*60*60)//60
-		print("At selected checkpoint %i: %.3f loss, %.5f volume, %i:%i h:m" % (checkpoint_ind, train_attack_losses_at_checkpoints[best_balanced_ind], approx_v[best_balanced_ind], t_hours, t_minutes))
-
-	# IPython.embed()
-	return checkpoint_ind
+	# # don't use rank, since approx_v has a lot of duplicate values. They won't receive the same rank, which is problematic...
+	# m = len(approx_v)
+	# train_attack_losses_at_checkpoints = train_attack_losses[::n_test_loss_step][:m]
+	# # total_loss = -3*approx_v + train_attack_losses_at_checkpoints + 0.1*np.arange(m)
+	# total_loss = train_attack_losses_at_checkpoints + 0.1*np.arange(m)
+	# # total_loss = train_attack_losses_at_checkpoints
+	# best_inds = np.argsort(total_loss)
+	#
+	# n_top = 15
+	# train_loop_times = data["train_loop_times"]
+	# for k in range(n_top):
+	# 	best_balanced_ind = best_inds[k]
+	# 	checkpoint_ind = best_balanced_ind * n_test_loss_step
+	# 	t_so_far_seconds = train_loop_times[checkpoint_ind]
+	# 	t_hours = t_so_far_seconds // (60 * 60)
+	# 	t_minutes = (t_so_far_seconds - t_hours*60*60)//60
+	# 	print("At selected checkpoint %i: %.3f loss, %.5f volume, %i:%i h:m" % (checkpoint_ind, train_attack_losses_at_checkpoints[best_balanced_ind], approx_v[best_balanced_ind], t_hours, t_minutes))
+	#
+	# # IPython.embed()
+	# return checkpoint_ind
 
 def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
 	"""
@@ -911,11 +911,13 @@ if __name__ == "__main__":
 	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1"]
 	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1_seed_3", "flying_inv_pend_low_cbf_reg_weight_1_seed_4"]
 
-	base_exp_names = [("flying_inv_pend_low_cbf_reg_weight_1_seed_%i" % x) for x in np.arange(1, 8)]
+	# base_exp_names = [("flying_inv_pend_low_cbf_reg_weight_1_seed_%i" % x) for x in np.arange(1, 8)]
 	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1", "flying_inv_pend_low_cbf_reg_weight_10", "flying_inv_pend_low_cbf_reg_weight_100"]
+	# base_exp_names = ['flying_inv_pend_“repro_test_04_14”', 'flying_inv_pend_repro_test']
+	base_exp_names = ['flying_inv_pend_repro_test'] #, 'flying_inv_pend_"repro_test"']
 
 	# To visualize slices for a new experiment
-	"""checkpoint_numbers = []
+	checkpoint_numbers = []
 	exp_names = []
 	for base_exp_name in base_exp_names:
 		data = pickle.load(open("./log/%s/data.pkl" % base_exp_name, 'rb'))
@@ -1015,7 +1017,8 @@ if __name__ == "__main__":
 
 	# TODO: more for CORL
 	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0_reg_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3_reg_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3"]
-	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
+	# base_exp_names = ['flying_inv_pend_“repro_test_04_14”', 'flying_inv_pend_repro_test']
 	# for exp_name in exp_names:
 	# 	debug(exp_name)
 
@@ -1060,7 +1063,7 @@ if __name__ == "__main__":
 
 	# TODO: plot pages of slices over many iterations
 
-	"""for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
+	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 
 			phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 

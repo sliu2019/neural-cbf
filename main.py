@@ -130,7 +130,7 @@ def create_flying_param_dict(args=None):
 
 	return param_dict
 
-def create_quadcopter_param_dict():
+def create_quadcopter_param_dict(args):
 	# Args: for modifying the defaults through args
 	param_dict = {
 		"m": 0.8,
@@ -144,7 +144,11 @@ def create_quadcopter_param_dict():
 	state_index_names = ["px", "py", "pz", "dpx", "dpy", "dpz", "gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha"]  # excluded x, y, z
 	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
 
-	r = 2
+	# r = 2
+	if args.h == 'sum':
+		r = 2
+	elif args.h == 'regular':
+		r = 4
 	x_dim = len(state_index_names)
 	u_dim = 4
 	thresh = np.array([1, 1, 1, 15, 15, 15, math.pi/2, math.pi/2, math.pi, 15, 15, 15], dtype=np.float32)  # avg drone speed is 15-25 m/s
@@ -270,7 +274,7 @@ def main(args):
 		elif args.phi_nn_inputs == "euc":
 			nn_input_modifier = TransformEucNNInput(state_index_dict)
 	elif args.problem == "quadcopter":
-		param_dict = create_quadcopter_param_dict()
+		param_dict = create_quadcopter_param_dict(args)
 
 		r = param_dict["r"]
 		x_dim = param_dict["x_dim"]
@@ -278,8 +282,11 @@ def main(args):
 		x_lim = param_dict["x_lim"]
 
 		# Create phi
-		from src.problems.quadcopter import HMax, XDot, ULimitSetVertices
-		h_fn = HMax(param_dict)
+		from src.problems.quadcopter import H, HSum, XDot, ULimitSetVertices
+		if args.h == "regular":
+			h_fn = H(param_dict)
+		elif args.h == 'sum':
+			h_fn = HSum(param_dict)
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
@@ -356,8 +363,8 @@ def main(args):
 
 
 	# Pass everything to Trainer
-	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)
-	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
+	# trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)
+	# trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
@@ -372,6 +379,25 @@ def main(args):
 	# 	return phi_fn(x, grad_x=grad_x)[:, -1]
 	#
 	# attacker.opt(objective_fn, phi_fn, 0, debug=True)
+
+	# Checking to see if all 4 quadcopter inputs appear in phidot (that is, if grad_phi_g is nonzero)
+	"""N = 5
+	x = torch.rand(N, 12).to(device)
+	x.requires_grad = True
+	phi_value = phi_fn(x)
+	grad_phi = grad([torch.sum(phi_value[:, -1])], x, create_graph=True)[0]  # check
+
+	# IPython.embed()
+	from src.problems.quadcopter import G
+	g_fn = G(param_dict, device)
+
+	g_x = g_fn(x)
+
+	# IPython.embed()
+	grad_phi_g = grad_phi[:, None]@g_x
+	grad_phi_g = grad_phi_g[:, 0]
+	print(grad_phi_g)"""
+
 
 if __name__ == "__main__":
 	parser = create_parser()

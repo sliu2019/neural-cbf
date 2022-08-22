@@ -7,7 +7,7 @@ def create_parser():
 	parser.add_argument('--problem', default='flying_inv_pend', help='problem specifies dynamics, h definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced", "quadcopter"])
 
 	# h(x) (user-specified SI)
-	parser.add_argument('--h', type=str, default='sum', choices=['max', 'sum'], help='For flying inv pend, chose the form of h(x)')
+	parser.add_argument('--h', type=str, default='sum', choices=['max', 'sum', 'regular'], help='Chose the form of h(x). For flying inv pend, chose between max and sum. For quadcopter, chose between sum and regular')
 
 	# Phi
 	parser.add_argument('--phi_design', default="neural", type=str, choices=["neural", "low"])
@@ -52,7 +52,7 @@ def create_parser():
 	# parser.add_argument('--no_softplus_on_obj', action='store_true', help='removes softplus on the objective')
 	# parser.add_argument('--trainer_average_gradients', action='store_true')
 
-	parser.add_argument('--objective_option', type=str, default='regular', choices=['regular', 'softplus', 'weighted_average', 'weighted_average_include_neg_phidot'], help="allow negative pays attention to phi < 0 as well")
+	parser.add_argument('--objective_option', type=str, default='weighted_average', choices=['regular', 'softplus', 'weighted_average', 'weighted_average_include_neg_phidot'], help="allow negative pays attention to phi < 0 as well")
 
 	###################################################################################################################################
 	# # Reg sample keeper
@@ -60,10 +60,10 @@ def create_parser():
 
 	###################################################################################################################################
 	# Attacker: train
-	parser.add_argument('--train_attacker', default='gradient_batch_warmstart', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart_faster'])
+	parser.add_argument('--train_attacker', default='gradient_batch_warmstart_faster', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart_faster'])
 	# parser.add_argument('--gradient_batch_warmstart2_proj_tactic', choices=['gd_step_timeout', 'adam_ba'])
 	parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"])
-	parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="uniform", choices=["uniform", "gaussian"])
+	parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="gaussian", choices=["uniform", "gaussian"])
 	parser.add_argument("--gradient_batch_warmstart_faster_gaussian_t", type=float, default=1.0) # TODO: could shrink as training progresses
 
 	# Gradient batch attacker
