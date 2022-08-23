@@ -127,6 +127,7 @@ def bfs_approx_volume(param_dict, cbf_obj, axes_grid_size):
 		max_phi_vals = phi_vals.max(axis=1)
 
 		if max_phi_vals <= 0:
+			print(n_cells_occupied)
 			n_cells_occupied += 1
 			for child_node in children(current_node):
 				if child_node not in visited:
@@ -410,8 +411,8 @@ def run_exps(args):
 			vol_data = bfs_approx_volume(param_dict, numpy_phi_fn, args.bfs_axes_grid_size) # TODO
 
 		# experiment_dict["percent_of_domain_volume"] = percent_of_domain_volume
-		print("after calling bfs approx volume")
-		IPython.embed()
+		# print("after calling bfs approx volume")
+		# IPython.embed()
 		experiment_dict.update(vol_data)
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)

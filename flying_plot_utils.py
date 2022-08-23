@@ -938,8 +938,12 @@ if __name__ == "__main__":
 	# exp_names = ['quadcopter_h_reg_copter_reg_50']
 	# checkpoint_numbers = [0]
 	# base_exp_names = ['flying_inv_pend_best_p_reuse_100']
-	base_exp_names = ['flying_inv_pend_best_reg_weight_10', 'flying_inv_pend_best_reg_weight_50', 'flying_inv_pend_best_reg_weight_200'] \
+	# Server 4
+	# base_exp_names = ['flying_inv_pend_best_reg_weight_10', 'flying_inv_pend_best_reg_weight_50', 'flying_inv_pend_best_reg_weight_200'] \
 	                 #+ ['flying_inv_pend_best_p_reuse_0', 'flying_inv_pend_best_p_reuse_25', 'flying_inv_pend_best_p_reuse_50', 'flying_inv_pend_best_p_reuse_75', 'flying_inv_pend_best_p_reuse_100']
+	# Server 5
+	# base_exp_names = ['flying_inv_pend_' + x for x in ['repro_test', 'best_critic_bs_10', 'best_critic_bs_50', 'best_critic_bs_100']]
+	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"]
 
 	# To visualize slices for a new experiment
 	checkpoint_numbers = []
