@@ -25,7 +25,6 @@ from flying_rollout_experiment import *
 # For plotting slices
 from flying_plot_utils import plot_interesting_slices
 
-
 def approx_volume(param_dict, cbf_obj, N_samp, x_lim=None):
 	# Or can just increase n_samp for now? Or just find points close to boundary?
 	"""
@@ -288,7 +287,16 @@ def run_exps(args):
 		print("Number of timesteps: %f" % N_steps_max)
 
 		# Create core classes: environment, controller
-		env = FlyingInvertedPendulumEnv(param_dict)
+		model_param_dict = param_dict
+
+		# TODO: rebuttal update
+		if args.mismatched_model_parameter is not None:
+			real_param_dict = param_dict.copy()
+			real_param_dict[args.mismatched_model_parameter] = args.mismatched_model_parameter_true_value
+			env = FlyingInvertedPendulumEnv(model_param_dict=model_param_dict, real_param_dict=real_param_dict, dynamics_noise_spread=args.dynamics_noise_spread)
+		else:
+			env = FlyingInvertedPendulumEnv(model_param_dict=model_param_dict, dynamics_noise_spread=args.dynamics_noise_spread)
+
 		env.dt = args.rollout_dt
 		cbf_controller = CBFController(env, numpy_phi_fn, param_dict, args) # 2nd arg prev. "cbf_obj"
 
@@ -373,6 +381,11 @@ if __name__ == "__main__":
 	parser.add_argument('--rollout_u_ref', type=str, choices=["unactuated", "LQR", "MPC"], default="unactuated")
 	parser.add_argument('--rollout_LQR_q', type=float, default=0.1)
 	parser.add_argument('--rollout_LQR_r', type=float, default=1.0)
+
+	# For rollout robustness experiments
+	parser.add_argument('--dynamics_noise_spread', type=float, default=0.0, help='set std dev of zero-mean, Gaussian noise')
+	parser.add_argument('--mismatched_model_parameter', type=str)
+	parser.add_argument('--mismatched_model_parameter_true_value', type=float)
 
 	# Volume
 	parser.add_argument('--N_samp_volume', type=int, default=100000) # 100K

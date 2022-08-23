@@ -89,7 +89,7 @@ class CBFController:
 		phi_grad = self.cbf_obj.phi_grad(x)
 
 		# print(x.shape)
-		x_next = x + self.env.dt * self.env.x_dot_open_loop(x, self.compute_u_ref(t,
+		x_next = x + self.env.dt * self.env.x_dot_open_loop_model(x, self.compute_u_ref(t,
 		                                                                          x))  # in the absence of safe control, the next state
 		next_phi_val = self.cbf_obj.phi_fn(x_next)
 
@@ -117,9 +117,9 @@ class CBFController:
 
 		# IPython.embed()
 		# Compute the control constraints
-		f_x = self.env._f(x)
+		f_x = self.env._f_model(x)
 		f_x = np.reshape(f_x, (16, 1))
-		g_x = self.env._g(x)
+		g_x = self.env._g_model(x)
 
 		phi_grad = np.reshape(phi_grad, (16, 1))
 		lhs = phi_grad.T @ g_x  # 1 x 4

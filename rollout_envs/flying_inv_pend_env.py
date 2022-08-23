@@ -7,8 +7,8 @@ import mpl_toolkits.mplot3d.axes3d as Axes3D
 
 
 class FlyingInvertedPendulumEnv():
-    def __init__(self, param_dict=None):
-        if param_dict is None:
+    def __init__(self, model_param_dict=None, real_param_dict=None, dynamics_noise_spread=0.0):
+        if model_param_dict is None:
             # Form a default param dict
             sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             from src.argument import create_parser
@@ -16,11 +16,14 @@ class FlyingInvertedPendulumEnv():
 
             parser = create_parser()  # default
             args = parser.parse_known_args()[0]
-            self.param_dict = create_flying_param_dict(args) # default
+            self.model_param_dict = create_flying_param_dict(args) # default
         else:
-            self.param_dict = param_dict
+            self.model_param_dict = model_param_dict
 
-        self.__dict__.update(self.param_dict)  # __dict__ holds and object's attributes
+        self.__dict__.update(self.model_param_dict)  # __dict__ holds and object's attributes
+        assert real_param_dict is None or dynamics_noise_spread == 0.0
+        self.real_param_dict = real_param_dict
+        self.dynamics_noise_spread = dynamics_noise_spread
         state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
                          "dtheta", "x", "y", "z", "dx", "dy", "dz"]
         state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
@@ -57,7 +60,7 @@ class FlyingInvertedPendulumEnv():
         force_vert = force_vert.T.astype("float32")
         return force_vert
 
-    def _f(self, x):
+    def _f_model(self, x):
 
         if len(x.shape) == 1:
             x = x[None] # (1, 16)
@@ -103,7 +106,7 @@ class FlyingInvertedPendulumEnv():
         f = np.vstack([x[:,self.i["dgamma"]], x[:,self.i["dbeta"]], x[:,self.i["dalpha"]], np.zeros(bs), np.zeros(bs), np.zeros(bs), dphi, dtheta, ddphi, ddtheta, x[:,self.i["dx"]], x[:,self.i["dy"]], x[:,self.i["dz"]], ddx, ddy, ddz]).T
         return f
 
-    def _g(self, x):
+    def _g_model(self, x):
         if len(x.shape) == 1:
             x = x[None] # (1, 16)
         # print("g: returns matrix")
@@ -151,21 +154,40 @@ class FlyingInvertedPendulumEnv():
         # print(g)
         return g
 
-    def x_dot_open_loop(self, x, u):
+    def x_dot_open_loop_model(self, x, u):
         if u.ndim == 1:
             u = u[None]
         if x.ndim == 1:
             x = x[None]
 
         # Batched
-        f = self._f(x)
-        g = self._g(x)
+        f = self._f_model(x)
+        g = self._g_model(x)
 
         u_clamped, debug_dict = self.clip_u(u)
         # print("in x_dot_open_loop")
         # IPython.embed()
         rv = f + (g@(u_clamped[:, :, None]))[:, :, 0]
         # rv = np.squeeze(rv)
+        return rv
+
+    def x_dot_open_loop(self, x, u):
+        # TODO: this is very hacky
+        if self.real_param_dict is not None:
+            print("applying model mismatch in env, ln 177")
+            IPython.embed()
+            self.__dict__.update(self.real_param_dict)
+            print("Changed to real params:", self.__dict__)
+            rv = self.x_dot_open_loop_model(x, u)
+            self.__dict__.update(self.model_param_dict)
+            print("Changed back to model params:", self.__dict__)
+        elif self.dynamics_noise_spread != 0:
+            # print("applying stochastic dynamics in env, ln 177")
+            # IPython.embed()
+            x_dot = self.x_dot_open_loop_model(x, u)
+            rv = x_dot + np.random.normal(scale=self.dynamics_noise_spread, size=x_dot.shape)
+        else:
+            rv = self.x_dot_open_loop_model(x, u)
         return rv
 
     def _smooth_clamp(self, motor_impulses):

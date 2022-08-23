@@ -1,0 +1,28 @@
+		parser.add_argument('--dynamics_noise_spread', type=float, default=0.0, help='set std dev of zero-mean, Gaussian noise')
+		parser.add_argument('--mismatched_model_parameter', type=str)
+		parser.add_argument('--mismatched_model_parameter_true_value', type=float)
+
+# Repro test
+nohup python -u run_flying_pend_exps.py --save_fnm repro_test_eval --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref unactuated --rollout_T_max 2.5 --run_length long &> repro_test_eval.out &
+
+# Robustness under LQR and noise
+nohup python -u run_flying_pend_exps.py --save_fnm noise_LQR_0_1 --dynamics_noise_spread 0.1 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref LQR --rollout_T_max 2.5 --rollout_LQR_q 1.0 --run_length long &> noise_LQR_0_1.out &
+
+nohup python -u run_flying_pend_exps.py --save_fnm noise_LQR_0_5 --dynamics_noise_spread 0.5 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref LQR --rollout_T_max 2.5 --rollout_LQR_q 1.0 --run_length long &> noise_LQR_0_5.out &
+
+nohup python -u run_flying_pend_exps.py --save_fnm noise_LQR_1 --dynamics_noise_spread 1.0 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref LQR --rollout_T_max 2.5 --rollout_LQR_q 1.0 --run_length long &> noise_LQR_1.out &
+
+nohup python -u run_flying_pend_exps.py --save_fnm noise_LQR_2 --dynamics_noise_spread 2.0 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref LQR --rollout_T_max 2.5 --rollout_LQR_q 1.0 --run_length long &> noise_LQR_2.out &
+
+
+# Debug
+python -u run_flying_pend_exps.py --save_fnm debug_eval --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref unactuated --rollout_T_max 2.5 --rollout_N_rollout 5 --dynamics_noise_spread 0.1
+
+# Ours, LQR, q = 0.1
+nohup python -u run_flying_pend_exps.py --save_fnm LQR_q_1e_1_long --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref LQR --rollout_T_max 2.5 --rollout_LQR_q 0.1 --run_length long &> lqr_ours_q_1e_1.out &
+
+# Ours, LQR, q = 1.0
+nohup python -u run_flying_pend_exps.py --save_fnm LQR_q_1_long --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref LQR --rollout_T_max 2.5 --rollout_LQR_q 1.0 --run_length long &> lqr_ours_q_1.out &
+
+# Ours, un-actuated
+nohup python -u run_flying_pend_exps.py --save_fnm unactuated_long --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref unactuated --rollout_T_max 2.5 --run_length long &> unactuated_long.out &
