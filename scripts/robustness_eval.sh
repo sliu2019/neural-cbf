@@ -14,8 +14,10 @@
 #nohup python -u run_flying_pend_exps.py --save_fnm noise_LQR_1 --dynamics_noise_spread 1.0 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref LQR --rollout_T_max 2.5 --rollout_LQR_q 1.0 --run_length long &> noise_LQR_1.out &
 #
 #nohup python -u run_flying_pend_exps.py --save_fnm noise_LQR_2 --dynamics_noise_spread 2.0 --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref LQR --rollout_T_max 2.5 --rollout_LQR_q 1.0 --run_length long &> noise_LQR_2.out &
-
 # Server 4
+# Debug BFS volume algorithm
+nohup python -u run_flying_pend_exps.py --save_fnm debug_bfs --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments volume --rollout_u_ref unactuated --rollout_T_max 2.5 --run_length long --volume_alg bfs_grid --bfs_axes_grid_size 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 &> debug_bfs.out &
+
 # Repro test
 nohup python -u run_flying_pend_exps.py --save_fnm repro_test_eval --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 250 --which_experiments rollout --rollout_u_ref unactuated --rollout_T_max 2.5 --run_length long &> repro_test_eval.out &
 

@@ -83,8 +83,7 @@ def bfs_approx_volume(param_dict, cbf_obj, axes_grid_size):
 	Using breadth-first search on the state space grid to approximate volume
 	Assumes we start from origin cell, but we could also sample a cell to start with.
 	"""
-	print("inside bfs approx volume, debugging")
-	IPython.embed()
+
 	from queue import Queue
 	# Q contains states, x
 	x_dim = param_dict["x_dim"]
@@ -101,35 +100,43 @@ def bfs_approx_volume(param_dict, cbf_obj, axes_grid_size):
 	def children(node):
 		# In: tuple
 		# Out: list of tuples
+		# IPython.embed()
 		np_node = np.reshape(np.array(node), (1, -1))
 		potential_children = np.tile(np_node, (2*x_dim, 1))
 		for i in range(x_dim):
 			potential_children[2*i, i] = potential_children[2*i, i] - axes_grid_size[i]
 			potential_children[2*i + 1, i] = potential_children[2*i + 1, i] + axes_grid_size[i]
 
-		in_domain = np.logical_and(potential_children > x_lim[:, 0], potential_children < x_lim[:, 1])
-		in_domain_inds = np.nonzero(in_domain)
+		in_domain = np.logical_and(np.all(potential_children > x_lim[:, 0], axis=1), np.all(potential_children < x_lim[:, 1], axis=1))
+		# print(in_domain)
+		in_domain_inds = np.nonzero(in_domain)[0]
 		children = potential_children[in_domain_inds]
 
 		rv = [tuple(child) for child in children.tolist()]
 		return rv
 
+	# print("inside bfs approx volume, debugging")
+	# IPython.embed()
+
 	n_cells_occupied = 0
 	while not queue.empty():
+		# print(list(queue.queue)) # Prints queue elements
 		current_node = queue.get()
 		np_current_node = np.reshape(np.array(current_node), (1, -1))
 		phi_vals = cbf_obj.phi_fn(np_current_node)
 		max_phi_vals = phi_vals.max(axis=1)
-		n_cells_occupied += (max_phi_vals <= 0)
 
-		for child_node in children(current_node):
-			if child_node not in visited:
-				queue.put(child_node)
-				visited.add(child_node)
+		if max_phi_vals <= 0:
+			n_cells_occupied += 1
+			for child_node in children(current_node):
+				if child_node not in visited:
+					queue.put(child_node)
+					visited.add(child_node)
 
-	total_absolute_volume = n_cells_occupied*np.prod(axes_grid_size)
+	cell_absolute_volume = np.prod(axes_grid_size)
+	total_absolute_volume = n_cells_occupied*cell_absolute_volume
 	percent_of_domain_volume = total_absolute_volume/np.prod(x_lim[:, 1] - x_lim[:, 0])
-	data = {"n_cells_occupied": n_cells_occupied, "total_absolute_volume": total_absolute_volume, "cell_absolute_volume": np.prod(axes_grid_size), "percent_of_domain_volume": percent_of_domain_volume}
+	data = {"n_cells_occupied": n_cells_occupied, "total_absolute_volume": total_absolute_volume, "cell_absolute_volume": cell_absolute_volume, "percent_of_domain_volume": percent_of_domain_volume}
 	return data
 
 
@@ -398,8 +405,8 @@ def run_exps(args):
 			vol_data = approx_volume(param_dict, numpy_phi_fn, args.N_samp_volume, args.volume_x_lim)
 		elif args.volume_alg == "bfs_grid":
 			assert args.bfs_axes_grid_size is not None
-			print("before calling bfs approx volume")
-			IPython.embed()
+			# print("before calling bfs approx volume")
+			# IPython.embed()
 			vol_data = bfs_approx_volume(param_dict, numpy_phi_fn, args.bfs_axes_grid_size) # TODO
 
 		# experiment_dict["percent_of_domain_volume"] = percent_of_domain_volume

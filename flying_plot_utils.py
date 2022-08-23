@@ -325,9 +325,10 @@ def graph_losses(exp_name, debug=True):
 
 	# Trying different tactics to select a training iteration
 
-	IPython.embed()
+	# IPython.embed()
 	# Balancing volume and train loss
 
+	# Method 1 for choosing iteration
 	"""ind_sort_volume = np.argsort(-approx_v)
 	m = len(approx_v)
 	rank_volume = np.zeros(m)
@@ -361,6 +362,7 @@ def graph_losses(exp_name, debug=True):
 		print("At selected checkpoint %i: %.3f loss, %.5f volume" % (checkpoint_ind, train_attack_losses[checkpoint_ind], approx_v[best_balanced_ind]))
 	# IPython.embed()"""
 
+	# Method 2 for choosing iteration
 	# don't use rank, since approx_v has a lot of duplicate values. They won't receive the same rank, which is problematic...
 	"""m = len(approx_v)
 	train_attack_losses_at_checkpoints = train_attack_losses[::n_test_loss_step][:m]
@@ -380,7 +382,7 @@ def graph_losses(exp_name, debug=True):
 		print("At selected checkpoint %i: %.3f loss, %.5f volume, %i:%i h:m" % (checkpoint_ind, train_attack_losses_at_checkpoints[best_balanced_ind], approx_v[best_balanced_ind], t_hours, t_minutes))
 	# IPython.embed()"""
 
-	return checkpoint_ind
+	# return checkpoint_ind
 
 def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
 	"""
