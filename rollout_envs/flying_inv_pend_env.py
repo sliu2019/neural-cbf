@@ -174,13 +174,13 @@ class FlyingInvertedPendulumEnv():
     def x_dot_open_loop(self, x, u):
         # TODO: this is very hacky
         if self.real_param_dict is not None:
-            print("applying model mismatch in env, ln 177")
-            IPython.embed()
+            # print("applying model mismatch in env, ln 177")
+            # IPython.embed()
             self.__dict__.update(self.real_param_dict)
-            print("Changed to real params:", self.__dict__)
+            # print("Changed to real params:", self.__dict__)
             rv = self.x_dot_open_loop_model(x, u)
             self.__dict__.update(self.model_param_dict)
-            print("Changed back to model params:", self.__dict__)
+            # print("Changed back to model params:", self.__dict__)
         elif self.dynamics_noise_spread != 0:
             # print("applying stochastic dynamics in env, ln 177")
             # IPython.embed()

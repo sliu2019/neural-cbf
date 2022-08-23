@@ -3,6 +3,9 @@
 
 # ON SERVER 4
 # Varying regularization weights
+# NEW LAUNCH
+nohup python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 0.0 --objective_option "weighted_average" --phi_nnl "tanh-tanh-softplus" --phi_nn_inputs "euc" --phi_include_xe --train_attacker_n_samples 100 --train_attacker_use_n_step_schedule --train_attacker_max_n_steps 20 --train_attacker_p_reuse 0.5 --train_attacker gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --trainer_n_steps 1500 --affix "best_reg_weight_0" --gpu 0 &> best_reg_weight_0.out &
+
 nohup python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 10.0 --objective_option "weighted_average" --phi_nnl "tanh-tanh-softplus" --phi_nn_inputs "euc" --phi_include_xe --train_attacker_n_samples 100 --train_attacker_use_n_step_schedule --train_attacker_max_n_steps 20 --train_attacker_p_reuse 0.5 --train_attacker gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --trainer_n_steps 1500 --affix "best_reg_weight_10" --gpu 0 &> best_reg_weight_10.out &
 
 nohup python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 50.0 --objective_option "weighted_average" --phi_nnl "tanh-tanh-softplus" --phi_nn_inputs "euc" --phi_include_xe --train_attacker_n_samples 100 --train_attacker_use_n_step_schedule --train_attacker_max_n_steps 20 --train_attacker_p_reuse 0.5 --train_attacker gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --trainer_n_steps 1500 --affix "best_reg_weight_50" --gpu 0 &> best_reg_weight_50.out &

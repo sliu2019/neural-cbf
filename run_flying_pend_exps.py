@@ -75,7 +75,63 @@ def approx_volume(param_dict, cbf_obj, N_samp, x_lim=None):
 
 	# print("Check modification to volume calculation")
 	# IPython.embed()
-	return percent_of_domain_volume
+	data = {"percent_of_domain_volume": percent_of_domain_volume}
+	return data
+
+def bfs_approx_volume(param_dict, cbf_obj, axes_grid_size):
+	"""
+	Using breadth-first search on the state space grid to approximate volume
+	Assumes we start from origin cell, but we could also sample a cell to start with.
+	"""
+	print("inside bfs approx volume, debugging")
+	IPython.embed()
+	from queue import Queue
+	# Q contains states, x
+	x_dim = param_dict["x_dim"]
+	x_lim = param_dict["x_lim"]
+
+	queue = Queue()
+	visited = set()
+
+	start_node = tuple(np.zeros(x_dim)) # TODO
+
+	queue.put(start_node)
+	visited.add(start_node)
+
+	def children(node):
+		# In: tuple
+		# Out: list of tuples
+		np_node = np.reshape(np.array(node), (1, -1))
+		potential_children = np.tile(np_node, (2*x_dim, 1))
+		for i in range(x_dim):
+			potential_children[2*i, i] = potential_children[2*i, i] - axes_grid_size[i]
+			potential_children[2*i + 1, i] = potential_children[2*i + 1, i] + axes_grid_size[i]
+
+		in_domain = np.logical_and(potential_children > x_lim[:, 0], potential_children < x_lim[:, 1])
+		in_domain_inds = np.nonzero(in_domain)
+		children = potential_children[in_domain_inds]
+
+		rv = [tuple(child) for child in children.tolist()]
+		return rv
+
+	n_cells_occupied = 0
+	while not queue.empty():
+		current_node = queue.get()
+		np_current_node = np.reshape(np.array(current_node), (1, -1))
+		phi_vals = cbf_obj.phi_fn(np_current_node)
+		max_phi_vals = phi_vals.max(axis=1)
+		n_cells_occupied += (max_phi_vals <= 0)
+
+		for child_node in children(current_node):
+			if child_node not in visited:
+				queue.put(child_node)
+				visited.add(child_node)
+
+	total_absolute_volume = n_cells_occupied*np.prod(axes_grid_size)
+	percent_of_domain_volume = total_absolute_volume/np.prod(x_lim[:, 1] - x_lim[:, 0])
+	data = {"n_cells_occupied": n_cells_occupied, "total_absolute_volume": total_absolute_volume, "cell_absolute_volume": np.prod(axes_grid_size), "percent_of_domain_volume": percent_of_domain_volume}
+	return data
+
 
 def run_exps(args):
 	"""
@@ -291,8 +347,10 @@ def run_exps(args):
 
 		# TODO: rebuttal update
 		if args.mismatched_model_parameter is not None:
+			# IPython.embed()
 			real_param_dict = param_dict.copy()
-			real_param_dict[args.mismatched_model_parameter] = args.mismatched_model_parameter_true_value
+			for i, param in enumerate(args.mismatched_model_parameter):
+				real_param_dict[param] = args.mismatched_model_parameter_true_value[i]
 			env = FlyingInvertedPendulumEnv(model_param_dict=model_param_dict, real_param_dict=real_param_dict, dynamics_noise_spread=args.dynamics_noise_spread)
 		else:
 			env = FlyingInvertedPendulumEnv(model_param_dict=model_param_dict, dynamics_noise_spread=args.dynamics_noise_spread)
@@ -329,13 +387,29 @@ def run_exps(args):
 
 		# print("volume")
 		# IPython.embed()
-		percent_of_domain_volume = approx_volume(param_dict, numpy_phi_fn, args.N_samp_volume, args.volume_x_lim)
-		experiment_dict["percent_of_domain_volume"] = percent_of_domain_volume
+		"""parser.add_argument('--volume_alg', type=str, choices=['sample', 'bfs_grid'], default='sample')
+		# For sampling alg
+		parser.add_argument('--N_samp_volume', type=int, default=100000)  # 100K
+		parser.add_argument('--volume_x_lim', nargs='+',
+		                    help="if you want to shrink x_lim to help the approx be better; this should just be a flat list of form [LB1, UB1, LB2, UB2, etc.]")  # 100K
+		# For BFS alg
+		parser.add_argument('--bfs_axes_grid_size', type=float, nargs='+')  # 100K"""
+		if args.volume_alg == "sample":
+			vol_data = approx_volume(param_dict, numpy_phi_fn, args.N_samp_volume, args.volume_x_lim)
+		elif args.volume_alg == "bfs_grid":
+			assert args.bfs_axes_grid_size is not None
+			print("before calling bfs approx volume")
+			IPython.embed()
+			vol_data = bfs_approx_volume(param_dict, numpy_phi_fn, args.bfs_axes_grid_size) # TODO
 
+		# experiment_dict["percent_of_domain_volume"] = percent_of_domain_volume
+		print("after calling bfs approx volume")
+		IPython.embed()
+		experiment_dict.update(vol_data)
 		with open(save_fpth, 'wb') as handle:
 			pickle.dump(experiment_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-		print("percent_of_domain_volume: %f" % percent_of_domain_volume)
+		print("percent_of_domain_volume: %f" % vol_data["percent_of_domain_volume"])
 
 	# Maybe analysis is better done in a different folder
 	if "plot_slices" in args.which_analyses:
@@ -384,12 +458,16 @@ if __name__ == "__main__":
 
 	# For rollout robustness experiments
 	parser.add_argument('--dynamics_noise_spread', type=float, default=0.0, help='set std dev of zero-mean, Gaussian noise')
-	parser.add_argument('--mismatched_model_parameter', type=str)
-	parser.add_argument('--mismatched_model_parameter_true_value', type=float)
+	parser.add_argument('--mismatched_model_parameter', type=str, nargs='+')
+	parser.add_argument('--mismatched_model_parameter_true_value', type=float, nargs='+')
 
 	# Volume
+	parser.add_argument('--volume_alg', type=str, choices=['sample', 'bfs_grid'], default='sample')
+	# For sampling alg
 	parser.add_argument('--N_samp_volume', type=int, default=100000) # 100K
 	parser.add_argument('--volume_x_lim', nargs='+', help="if you want to shrink x_lim to help the approx be better; this should just be a flat list of form [LB1, UB1, LB2, UB2, etc.]") # 100K
+	# For BFS alg
+	parser.add_argument('--bfs_axes_grid_size', type=float, nargs='+') # 100K
 
 	# In debug mode (use fewer samples for everything)
 	# parser.add_argument('--debug_mode', action="store_true") # 100K

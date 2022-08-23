@@ -107,7 +107,7 @@ def create_parser():
 
 	# Saving/logging
 	parser.add_argument('--random_seed', default=1, type=int)
-	parser.add_argument('--affix', type=str, default='default', help='the affix for the save folder')
+	parser.add_argument('--affix',  type=str, default='default', help='the affix for the save folder')
 	parser.add_argument('--log_root', default='log',
 	                    help='the directory to save the logs or other imformations (e.g. images)')
 	parser.add_argument('--model_root', default='checkpoint', help='the directory to save the models')

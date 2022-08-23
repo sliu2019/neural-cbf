@@ -183,6 +183,23 @@ def graph_losses(exp_name, debug=True):
 	plt.clf()
 	plt.cla()
 
+	##### Also, plot test losses against wall clock time
+	# print("At line 187, about to plot loss against clock time")
+	# IPython.embed()
+	fig, ax = plt.subplots(1)
+	ax.set_title('Metrics for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps))
+	train_loop_times = np.array(data["train_loop_times"])[::per_n_iterations][:len(percent_infeas_at_boundary)] # in seconds
+	train_loop_times = train_loop_times/3600 # in hours
+
+	ax.plot(train_loop_times, data["V_approx_list"], label="approx. volume", color="green", linewidth=1.0)
+	ax.plot(train_loop_times, percent_infeas_at_boundary, label="% infeas. at boundary", color="blue", linewidth=1.0)
+	ax.plot(train_loop_times, average_infeas_amount, label="average infeas.", linewidth=0.5, color="orange")
+	ax.legend(loc="upper right")
+	plt.xlabel("Clock time (hours)")
+
+	plt.savefig("./log/%s/%s_loss_vs_time.png" % (exp_name, exp_name))
+	plt.clf()
+	plt.cla()
 	#############################################
 	#############################################
 	if debug == True:
@@ -308,7 +325,7 @@ def graph_losses(exp_name, debug=True):
 
 	# Trying different tactics to select a training iteration
 
-	# IPython.embed()
+	IPython.embed()
 	# Balancing volume and train loss
 
 	"""ind_sort_volume = np.argsort(-approx_v)
@@ -330,40 +347,40 @@ def graph_losses(exp_name, debug=True):
 
 	checkpoint_ind = int(checkpoint_ind)
 	print(exp_name)
-	print("At selected checkpoint %i: %.3f loss, %.3f volume" % (checkpoint_ind, train_attack_losses[int(checkpoint_ind/n_checkpoint_step)], approx_v[best_balanced_ind]))
+	print("At selected checkpoint %i: %.3f loss, %.3f volume" % (checkpoint_ind, train_attack_losses[checkpoint_ind], approx_v[best_balanced_ind]))
 
 	print("volume rank: %i, loss rank %i" % (rank_volume[best_balanced_ind], rank_train_loss[best_balanced_ind]))
 	print("\n")
 
 	print("Here are a few other choices of checkpoint")
-	n_top = 15
+	n_top = 10
 	best_balanced_inds = np.argsort(rank_sum)
 	for k in range(n_top):
 		best_balanced_ind = best_balanced_inds[k]
 		checkpoint_ind = best_balanced_ind * n_test_loss_step
-		print("At selected checkpoint %i: %.3f loss, %.5f volume" % (checkpoint_ind, train_attack_losses[int(checkpoint_ind / n_checkpoint_step)], approx_v[best_balanced_ind]))
-	IPython.embed()"""
+		print("At selected checkpoint %i: %.3f loss, %.5f volume" % (checkpoint_ind, train_attack_losses[checkpoint_ind], approx_v[best_balanced_ind]))
+	# IPython.embed()"""
 
-	# # don't use rank, since approx_v has a lot of duplicate values. They won't receive the same rank, which is problematic...
-	# m = len(approx_v)
-	# train_attack_losses_at_checkpoints = train_attack_losses[::n_test_loss_step][:m]
-	# # total_loss = -3*approx_v + train_attack_losses_at_checkpoints + 0.1*np.arange(m)
-	# total_loss = train_attack_losses_at_checkpoints + 0.1*np.arange(m)
-	# # total_loss = train_attack_losses_at_checkpoints
-	# best_inds = np.argsort(total_loss)
-	#
-	# n_top = 15
-	# train_loop_times = data["train_loop_times"]
-	# for k in range(n_top):
-	# 	best_balanced_ind = best_inds[k]
-	# 	checkpoint_ind = best_balanced_ind * n_test_loss_step
-	# 	t_so_far_seconds = train_loop_times[checkpoint_ind]
-	# 	t_hours = t_so_far_seconds // (60 * 60)
-	# 	t_minutes = (t_so_far_seconds - t_hours*60*60)//60
-	# 	print("At selected checkpoint %i: %.3f loss, %.5f volume, %i:%i h:m" % (checkpoint_ind, train_attack_losses_at_checkpoints[best_balanced_ind], approx_v[best_balanced_ind], t_hours, t_minutes))
-	#
-	# # IPython.embed()
-	# return checkpoint_ind
+	# don't use rank, since approx_v has a lot of duplicate values. They won't receive the same rank, which is problematic...
+	"""m = len(approx_v)
+	train_attack_losses_at_checkpoints = train_attack_losses[::n_test_loss_step][:m]
+	# total_loss = -3*approx_v + train_attack_losses_at_checkpoints + 0.1*np.arange(m)
+	total_loss = train_attack_losses_at_checkpoints + 0.1*np.arange(m)
+	# total_loss = train_attack_losses_at_checkpoints
+	best_inds = np.argsort(total_loss)
+
+	n_top = 15
+	train_loop_times = data["train_loop_times"]
+	for k in range(n_top):
+		best_balanced_ind = best_inds[k]
+		checkpoint_ind = best_balanced_ind * n_test_loss_step
+		t_so_far_seconds = train_loop_times[checkpoint_ind]
+		t_hours = t_so_far_seconds // (60 * 60)
+		t_minutes = (t_so_far_seconds - t_hours*60*60)//60
+		print("At selected checkpoint %i: %.3f loss, %.5f volume, %i:%i h:m" % (checkpoint_ind, train_attack_losses_at_checkpoints[best_balanced_ind], approx_v[best_balanced_ind], t_hours, t_minutes))
+	# IPython.embed()"""
+
+	return checkpoint_ind
 
 def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
 	"""
@@ -916,11 +933,14 @@ if __name__ == "__main__":
 	# base_exp_names = ['flying_inv_pend_“repro_test_04_14”', 'flying_inv_pend_repro_test']
 	# base_exp_names = ['flying_inv_pend_repro_test'] #, 'flying_inv_pend_"repro_test"']
 	# base_exp_names = ['flying_inv_pend_h_reg_copter_reg_50']
-	exp_names = ['quadcopter_h_reg_copter_reg_50']
-	checkpoint_numbers = [0]
+	# exp_names = ['quadcopter_h_reg_copter_reg_50']
+	# checkpoint_numbers = [0]
+	# base_exp_names = ['flying_inv_pend_best_p_reuse_100']
+	base_exp_names = ['flying_inv_pend_best_reg_weight_10', 'flying_inv_pend_best_reg_weight_50', 'flying_inv_pend_best_reg_weight_200'] \
+	                 #+ ['flying_inv_pend_best_p_reuse_0', 'flying_inv_pend_best_p_reuse_25', 'flying_inv_pend_best_p_reuse_50', 'flying_inv_pend_best_p_reuse_75', 'flying_inv_pend_best_p_reuse_100']
 
 	# To visualize slices for a new experiment
-	"""checkpoint_numbers = []
+	checkpoint_numbers = []
 	exp_names = []
 	for base_exp_name in base_exp_names:
 		data = pickle.load(open("./log/%s/data.pkl" % base_exp_name, 'rb'))
@@ -1026,10 +1046,10 @@ if __name__ == "__main__":
 	# 	debug(exp_name)
 
 	# TODO: check training progress
-	# for exp_name in base_exp_names:
-	# 	# fill_ci_ki_lists(exp_name)
-	# 	min_attack_loss_ind = graph_losses(exp_name)
-	# 	# checkpoint_numbers.append(min_attack_loss_ind)
+	for exp_name in base_exp_names:
+		# fill_ci_ki_lists(exp_name)
+		min_attack_loss_ind = graph_losses(exp_name)
+		# checkpoint_numbers.append(min_attack_loss_ind)
 
 	# TODO: manually check attacks
 	# with open("./log/%s/data.pkl" % "flying_inv_pend_phi_format_1_seed_0", 'rb') as handle:
@@ -1066,7 +1086,7 @@ if __name__ == "__main__":
 
 	# TODO: plot pages of slices over many iterations
 
-	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
+	"""for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 
 			phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 
