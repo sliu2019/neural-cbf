@@ -359,6 +359,7 @@ def run_exps(args):
 			real_param_dict = param_dict.copy()
 			for i, param in enumerate(args.mismatched_model_parameter):
 				real_param_dict[param] = args.mismatched_model_parameter_true_value[i]
+			print(real_param_dict)
 			env = FlyingInvertedPendulumEnv(model_param_dict=model_param_dict, real_param_dict=real_param_dict, dynamics_noise_spread=args.dynamics_noise_spread)
 		else:
 			env = FlyingInvertedPendulumEnv(model_param_dict=model_param_dict, dynamics_noise_spread=args.dynamics_noise_spread)

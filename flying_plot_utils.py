@@ -341,7 +341,7 @@ def graph_losses(exp_name, debug=True):
 	rank_train_loss[ind_sort_train_loss] = np.arange(m)
 	rank_train_loss = rank_train_loss.astype(int)
 
-	rank_sum = 0.25*rank_volume + rank_train_loss # TODO: checkpoint selection criteria
+	rank_sum = 0.00*rank_volume + rank_train_loss # TODO: checkpoint selection criteria, default weight on rank_volume is 0.25
 	best_balanced_ind = np.argmin(rank_sum)
 
 	checkpoint_ind = best_balanced_ind*n_test_loss_step
@@ -351,7 +351,7 @@ def graph_losses(exp_name, debug=True):
 	print("At selected checkpoint %i: %.3f loss, %.3f volume" % (checkpoint_ind, train_attack_losses[checkpoint_ind], approx_v[best_balanced_ind]))
 
 	print("volume rank: %i, loss rank %i" % (rank_volume[best_balanced_ind], rank_train_loss[best_balanced_ind]))
-	print("\n")
+	# print("\n")
 
 	print("Here are a few other choices of checkpoint")
 	n_top = 10
@@ -360,6 +360,7 @@ def graph_losses(exp_name, debug=True):
 		best_balanced_ind = best_balanced_inds[k]
 		checkpoint_ind = best_balanced_ind * n_test_loss_step
 		print("At selected checkpoint %i: %.3f loss, %.5f volume" % (checkpoint_ind, train_attack_losses[checkpoint_ind], approx_v[best_balanced_ind]))
+	print("\n")
 	# IPython.embed()"""
 
 	# Method 2 for choosing iteration
@@ -382,7 +383,30 @@ def graph_losses(exp_name, debug=True):
 		print("At selected checkpoint %i: %.3f loss, %.5f volume, %i:%i h:m" % (checkpoint_ind, train_attack_losses_at_checkpoints[best_balanced_ind], approx_v[best_balanced_ind], t_hours, t_minutes))
 	# IPython.embed()"""
 
-	# return checkpoint_ind
+	# Method 3
+	# train_attack_losses_at_checkpoints = train_attack_losses[::n_checkpoint_step]
+	# best_inds = np.argsort(train_attack_losses_at_checkpoints)
+	#
+	# print("Here are a few other choices of checkpoint")
+	# n_top = 10
+	# import datetime
+	# for k in range(n_top):
+	# 	best_ind = best_inds[k]
+	# 	# IPython.embed()
+	# 	print("At selected checkpoint %i: %.3f loss." % (best_ind*n_checkpoint_step, train_attack_losses[best_ind*n_checkpoint_step]) + "Took " + str(datetime.timedelta(seconds=data["train_loop_times"][best_ind*n_checkpoint_step])))
+	# print("\n")
+	# # return checkpoint_ind
+
+	best_test_inds = np.argsort(percent_infeas_at_boundary)
+	print("Here are a few other choices of checkpoint")
+	n_top = 10
+	import datetime
+	for k in range(n_top):
+		best_ind = best_test_inds[k]
+		# IPython.embed()
+		real_ind = best_ind*n_test_loss_step
+		print("At selected checkpoint %i: %.3f percent infeas., %.3f avg infeas, %.3f train attack loss" % (real_ind, percent_infeas_at_boundary[best_ind], average_infeas_amount[best_ind], train_attack_losses[real_ind]) + "Took " + str(datetime.timedelta(seconds=data["train_loop_times"][real_ind])))
+	print("\n")
 
 def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
 	"""
@@ -590,6 +614,11 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 			S_vals = np.max(phi_vals, axis=1)  # S = all phi_i <= 0
 			phi_signs = np.sign(S_vals)
 			phi_signs = np.reshape(phi_signs, X.shape)
+
+			print("\n")
+			print(fldr_path, fnm)
+			print(param1, param2, np.mean(phi_signs))
+			print("\n")
 
 			# fig = plt.figure()
 			# ax = fig.add_subplot(111)
@@ -943,10 +972,17 @@ if __name__ == "__main__":
 	                 #+ ['flying_inv_pend_best_p_reuse_0', 'flying_inv_pend_best_p_reuse_25', 'flying_inv_pend_best_p_reuse_50', 'flying_inv_pend_best_p_reuse_75', 'flying_inv_pend_best_p_reuse_100']
 	# Server 5
 	# base_exp_names = ['flying_inv_pend_' + x for x in ['repro_test', 'best_critic_bs_10', 'best_critic_bs_50', 'best_critic_bs_100']]
-	base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"]
+	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"]
+	# base_exp_names = ["flying_inv_pend_best_reg_weight_0", "flying_inv_pend_best_reg_weight_10", "flying_inv_pend_best_reg_weight_50", "flying_inv_pend_best_reg_weight_200"]
+	# # base_exp_names = ["flying_inv_pend_best_reg_weight_200"]*2
+	# exp_names = base_exp_names
+	# # checkpoint_numbers = [490, 500]
+	# checkpoint_numbers = [160, 215, 290, 490]
+
+	base_exp_names = ['flying_inv_pend_best_p_reuse_0', 'flying_inv_pend_best_p_reuse_25', 'flying_inv_pend_best_p_reuse_50', 'flying_inv_pend_best_p_reuse_75', 'flying_inv_pend_best_p_reuse_100']
 
 	# To visualize slices for a new experiment
-	checkpoint_numbers = []
+	"""checkpoint_numbers = []
 	exp_names = []
 	for base_exp_name in base_exp_names:
 		data = pickle.load(open("./log/%s/data.pkl" % base_exp_name, 'rb'))
