@@ -160,14 +160,14 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 				blue_inds = np.argwhere(phi_signs == -1)
 				img[blue_inds[:, 0], blue_inds[:, 1], :] = blue_rgba
 
-				axs[i, j].imshow(img, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
-				# axs[i, j].set_aspect("equal")
-				# axs[i, j].set_aspect("box")
-				axs[i, j].set_aspect(2.0 / axs[i, j].get_data_ratio(), adjustable='box')
+			axs[i, j].imshow(img, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]])
+			# axs[i, j].set_aspect("equal")
+			# axs[i, j].set_aspect("box")
+			axs[i, j].set_aspect(2.0 / axs[i, j].get_data_ratio(), adjustable='box')
 
-				# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
-				axs[i, j].contour(X, Y, np.reshape(phi_vals[:, -1], X.shape), levels=[0.0],
-				           colors=([np.append(dark_blue_rgb, 1.0)]), linewidths=(2,), zorder=1)
+			# phi_vals_numpy = phi_vals[:, -1].detach().cpu().numpy()
+			axs[i, j].contour(X, Y, np.reshape(phi_vals[:, -1], X.shape), levels=[0.0],
+			           colors=([np.append(dark_blue_rgb, 1.0)]), linewidths=(2,), zorder=1)
 
 			# Old below
 			"""axs[i, j].imshow(phi_signs, extent=[x_lim[ind1, 0], x_lim[ind1, 1], x_lim[ind2, 0], x_lim[ind2, 1]], vmin=-1.0, vmax=1.0)
@@ -190,12 +190,18 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 
 			## Title
 			# title = "%s vs. %s" % (param1, param2)
-			axs[i, j].set_xlabel(param1)
-			axs[i, j].set_ylabel(param2)
+			sz = 30
+			axs[i, j].set_xlabel(param1, fontsize=sz)
+			axs[i, j].set_ylabel(param2, fontsize=sz)
+			axs[i, j].set_aspect("equal")
+
 			# TODO: uncomment
 			# if constants_for_other_params:
 			# 	const = constants_for_other_params[i * n_per_row + j]
 			# 	axs[i, j].set_title(const)
+
+			axs[i, j].tick_params(axis="x", labelsize=sz)
+			axs[i, j].tick_params(axis="y", labelsize=sz)
 
 	if fnm is None:
 		fnm = time.strftime('%m_%d_%H:%M:%S')
@@ -375,25 +381,29 @@ def plot_training_losses():
 	"""
 
 if __name__ == "__main__":
-	""""exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"
+	"""exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"
 	checkpoint_number = 250
+
+	# checkpoint_number = 250
+	# params_to_viz_list = [["dtheta", "dbeta"]]
+	# fnm = "dtheta_dbeta_ckpt_250"
 
 	# params_to_viz_list = [["phi", "dphi"]] # TODO
 	# params_to_viz_list = [["beta", "dbeta"]] # TODO
-	params_to_viz_list = [["gamma", "dgamma"]] # TODO
+	# params_to_viz_list = [["gamma", "dgamma"]] # TODO
 	# params_to_viz_list = [["theta", "dtheta"]] # TODO
-	# params_to_viz_list = [["dtheta", "dbeta"]] # TODO
+	params_to_viz_list = [["dtheta", "dbeta"]] # TODO
 	# params_to_viz_list = [["dphi", "dgamma"]] # TODO
 
 	# fnm = "beta_dbeta_slice" # TODO
 	# fnm = "theta_dtheta_slice" # TODO
 	# fnm = "theta_dtheta_larger_slice" # TODO
-	# fnm = "dtheta_dbeta_slice" # TODO
+	fnm = "dtheta_dbeta_slice" # TODO
 	# fnm = "dphi_dgamma_slice" # TODO
-	fnm = "gamma_dgamma_larger_slice" # TODO
+	# fnm = "gamma_dgamma_larger_slice" # TODO
 	fldr_path = os.path.join("./log", exp_name)
 
-	ub = 15.0
+	ub = 20.0
 	thresh = np.array([math.pi / 3, math.pi / 3, math.pi, ub, ub, ub, math.pi / 3, math.pi / 3, ub, ub],
 	                  dtype=np.float32) # angular velocities bounds probably much higher in reality (~10-20 for drone, which can do 3 flips in 1 sec).
 
@@ -412,17 +422,15 @@ if __name__ == "__main__":
 	axs = plot_invariant_set_slices(baseline_phi_fn, baseline_param_dict, fldr_path=fldr_path,
 	                                which_params=params_to_viz_list,
 	                                constants_for_other_params=constants_for_other_params_list, fnm=fnm)
-
-	###############################
+	# ###############################
 	phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 	param_dict["x_lim"] = x_lim
 	axs = plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list,
 	                          constants_for_other_params=constants_for_other_params_list, fnm=fnm, pass_axs=axs)
-
 	# print("ln 235")
 	# IPython.embed()"""
 
-	plot_training_losses()
+	# plot_training_losses()
 
 	# for seed_num in range(5):
 	# 	exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % seed_num

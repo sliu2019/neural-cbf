@@ -24,6 +24,10 @@ class ICCBF(nn.Module):
 		# IPython.embed()
 		# bs = x.size()[0]
 
+		if grad_x == False:
+			orig_req_grad_setting = x.requires_grad # Basically only useful if x.requires_grad was False before
+			x.requires_grad = True
+
 		hi = self.h_fn(x) # bs x 1, the zeroth derivative
 
 		hi_list = [hi] # bs x 1
@@ -38,9 +42,7 @@ class ICCBF(nn.Module):
 		# Evaluate every X against multiple U
 		xdot = self.xdot_fn(X, U)
 
-		orig_req_grad_setting = x.requires_grad
-		x.requires_grad = True
-
+		# IPython.embed()
 		for i in range(self.N): # N+1: just how it's defined in paper
 			# phi_value = self.phi_fn(x)
 			# grad_phi = grad([torch.sum(phi_value[:, -1])], x, create_graph=True)[0]  # check
@@ -62,7 +64,8 @@ class ICCBF(nn.Module):
 			hi = hiplus1
 
 		# IPython.embed()
-		x.requires_grad = orig_req_grad_setting
+		if grad_x == False:
+			x.requires_grad = orig_req_grad_setting
 
 		result = torch.cat(hi_list, dim=1)
 		return result

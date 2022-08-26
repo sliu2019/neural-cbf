@@ -313,6 +313,11 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=None, mpc=Fal
 	phi_signs = torch.sign(S_vals).detach().cpu().numpy()
 	phi_signs = np.reshape(phi_signs, X.shape)
 
+	# TODO: rebuttal
+	our_safe_set_volume_as_percent = np.mean(phi_signs == -1)
+	print("Our safe set's vol: ", our_safe_set_volume_as_percent)
+	# IPython.embed()
+
 	# fig, axes = plt.subplots(1, 2) # (1, 2)
 	fig, ax = plt.subplots(1, 1) # (1, 2)
 
@@ -352,6 +357,13 @@ def plot_2d_attacks_from_loaded(checkpoint_number, exp_name, fname=None, mpc=Fal
 		mpc_bool_layer = np.zeros(shp)
 		neg_inds = mpc_data["neg_inds"]
 		mpc_bool_layer[neg_inds[:, 0], neg_inds[:, 1]] = mpc_data["exists_soln_bools"]
+
+		# TODO: rebuttal
+		# IPython.embed()
+		mpc_safe_set_volume_as_percent = np.mean(mpc_bool_layer)
+		print("MPC safe set's vol: ", mpc_safe_set_volume_as_percent)
+		percent_diff = np.abs(our_safe_set_volume_as_percent - mpc_safe_set_volume_as_percent)*100/((our_safe_set_volume_as_percent + mpc_safe_set_volume_as_percent)/2.0)
+		print("Percent difference in ours vs. MPC safe set volume is: %.3f percent" % percent_diff) # 5.276 percent
 
 		mpc_layer = np.zeros((shp[0], shp[1], 3))
 		inside_inds = np.argwhere(mpc_bool_layer == 1)
@@ -651,13 +663,13 @@ if __name__=="__main__":
 	# "mpc_delta_0.050000_dt_0.050000_horizon_30.pkl"
 
 	# for MPC
-	# exp_name = "cartpole_reduced_debugpinch1_softplus_s3"
-	# # plot_2d_attacks_from_loaded(750, exp_name, fname="corl_figure_it_%i" % 750, mpc=True)
-	# plot_2d_attacks_from_loaded(750, exp_name, fname="test", mpc=True)
+	exp_name = "cartpole_reduced_debugpinch1_softplus_s3"
+	# plot_2d_attacks_from_loaded(750, exp_name, fname="corl_figure_it_%i" % 750, mpc=True)
+	plot_2d_attacks_from_loaded(750, exp_name, fname="debug", mpc=True)
 
 	# plot without counterexamples
-	exp_name = "cartpole_reduced_debugpinch1_softplus_s3"
-	# checkpoints = [0, 80, 170, 210]
-	checkpoints = [20]
-	for ckpt in checkpoints:
-		plot_2d_attacks_from_loaded(ckpt, exp_name, fname="learner_%i.png" % ckpt)
+	# exp_name = "cartpole_reduced_debugpinch1_softplus_s3"
+	# # checkpoints = [0, 80, 170, 210]
+	# checkpoints = [20]
+	# for ckpt in checkpoints:
+	# 	plot_2d_attacks_from_loaded(ckpt, exp_name, fname="learner_%i.png" % ckpt)

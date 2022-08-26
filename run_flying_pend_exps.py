@@ -239,7 +239,41 @@ def run_exps(args):
 
 		save_fldrpth = "./log/%s" % args.exp_name_to_load
 		# IPython.embed()
+	elif args.which_cbf == "iccbf":
+		coeffs = args.iccbf_coefficients
+		exps = args.iccbf_exponents
+
+		from src.phi_designs.iccbf import KappaPolynomial, ICCBF
+		assert len(coeffs) == len(exps)
+		class_kappa_fns = []
+		for i in range(len(coeffs)):
+			kappa_i = KappaPolynomial(coeffs[i], exps[i])
+			class_kappa_fns.append(kappa_i)
+
+		# Everything else
+		from src.problems.flying_inv_pend import HSum, XDot, ULimitSetVertices
+		# NOTE: USING DEFAULT PARAM DICT
+		from src.argument import create_parser
+		parser = create_parser() # default
+		parser_args = parser.parse_known_args()[0]
+		from main import create_flying_param_dict
+		param_dict = create_flying_param_dict(parser_args) # default
+
+		h_fn = HSum(param_dict)
+		xdot_fn = XDot(param_dict, device)
+		uvertices_fn = ULimitSetVertices(param_dict, device)
+
+		torch_phi_fn = ICCBF(h_fn, xdot_fn, uvertices_fn, class_kappa_fns, param_dict["x_dim"], param_dict["u_dim"], device)
+		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+
+		save_fldrpth = "./iccbf_outputs/" + "_".join(["%.2f-%.2f" % (coeffs[i], exps[i]) for i in range(len(coeffs))])
+		if not os.path.exists(save_fldrpth):
+			os.makedirs(save_fldrpth)
+		# IPython.embed()
 	else:
+		numpy_phi_fn = None
+		save_fldrpth = None
+		param_dict = None
 		raise NotImplementedError
 
 	########## Saving and logging ############
@@ -439,11 +473,13 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='All experiments for flying pendulum')
 	parser.add_argument('--save_fnm', type=str, default="debug", help="conscisely describes the hyperparameters of this run")
-	parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES", "low-heuristic", "low-gradient"], required=True)
+	parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES", "low-heuristic", "low-gradient", "iccbf"], required=True)
 
 	parser.add_argument('--exp_name_to_load', type=str) # flying_inv_pend_first_run
 	parser.add_argument('--checkpoint_number_to_load', type=int, help="for our CBF", default=0)
 	parser.add_argument('--low_cbf_params', type=float, nargs='+', help="for which_cbf == low-heuristic")
+	parser.add_argument('--iccbf_coefficients', type=float, nargs='+')
+	parser.add_argument('--iccbf_exponents', type=float, nargs='+')
 
 	parser.add_argument('--which_experiments', nargs='+', default=["average_boundary", "worst_boundary", "rollout", "volume"], type=str)
 	parser.add_argument('--which_analyses', nargs='+', default=["plot_slices"], type=str) # TODO: add "animate_rollout" later
