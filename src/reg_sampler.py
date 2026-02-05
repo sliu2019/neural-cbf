@@ -9,7 +9,7 @@ import torch.optim as optim
 import time
 from src.utils import *
 
-class RandomInsideRegSampler():
+class RegSampler():
     """
     candidate_samples uniformly in rho's zero sublevel set
     """

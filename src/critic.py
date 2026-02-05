@@ -13,7 +13,7 @@ import math
 import torch.multiprocessing as mp
 
 
-class GradientBatchWarmstartDesign2Critic():
+class Critic():
     """
     We apply speed-ups to boundary sampling.
     The aim is to still sample quickly when the safe set is small.
@@ -27,7 +27,7 @@ class GradientBatchWarmstartDesign2Critic():
                  lr=1e-3, \
                  p_reuse=0.7,\
                  projection_tolerance=1e-1, projection_lr=1e-2, projection_time_limit=3.0, verbose=False, critic_use_n_step_schedule=False,\
-                 boundary_sampling_speedup_method="sequential", boundary_sampling_method="gaussian", gaussian_t=1.0, boundary_sampling_time_limit=25):
+                 boundary_sampling_speedup_method="sequential", boundary_sampling_method="gaussian", gaussian_t=1.0):
         # boundary_sampling_option: ["sequential", "gpu_parallelized", "cpu_parallelized"]
         # boundary_sampling_method; ["uniform", "gaussian"]
 
@@ -196,7 +196,7 @@ class GradientBatchWarmstartDesign2Critic():
         return sample
 
     def _sample_in_safe_set(self, phi_fn, random_seed=None):
-        # IPython.embed()
+
         if random_seed:
             torch.manual_seed(random_seed)
             np.random.seed(random_seed)
@@ -213,7 +213,6 @@ class GradientBatchWarmstartDesign2Critic():
             # Check if samples in invariant set
             phi_vals = phi_fn(samples_torch)
             max_phi_vals = torch.max(phi_vals, dim=1)[0]
-            # print(phi_vals)
 
             # Save good samples
             ind = torch.argwhere(max_phi_vals <= 0).flatten()
@@ -247,7 +246,6 @@ class GradientBatchWarmstartDesign2Critic():
             # print("does not intersect")
             return None
 
-        # IPython.embed()
         t0 = time.perf_counter()
         while True:
             # print(left_weight, right_weight)
@@ -318,7 +316,6 @@ class GradientBatchWarmstartDesign2Critic():
         while n_remaining_to_sample > 0:
             if self.verbose:
                 print(".", end=" ")
-            # IPython.embed()
             intersection = self._sample_segment_intersect_boundary(phi_fn)
             if intersection is not None:
                 # samples.append(intersection.view(1, -1))
@@ -331,15 +328,52 @@ class GradientBatchWarmstartDesign2Critic():
             n_segments_sampled += 1
             # self.logger.info("%i segments" % n_segments_sampled)
 
-            # TODO
-            tnow = time.perf_counter()
-            if (tnow-t0) > self.boundary_sampling_time_limit and n_remaining_to_sample == n_samples:
-                break
-
         # samples = torch.cat(samples, dim=0)
         # self.logger.info("Done with sampling points on the boundary...")
         tf = time.perf_counter()
         debug_dict = {"t_sample_boundary": (tf- t0), "n_segments_sampled": n_segments_sampled}
+        return samples, debug_dict
+
+    def _sample_points_on_boundary_gpu_parallelized(self, phi_fn, n_samples):
+
+        t0 = time.perf_counter()
+        phi_fn.share_memory() # Adds to Queue, which is shared between processes?
+
+        # Everything done in torch
+        samples = []
+        n_remaining_to_sample = n_samples
+
+        random_start = 0
+        random_bs = 1000
+        random_seeds = np.arange(random_start, random_start + random_bs * n_samples) # This should be enough. If it isn't, code will error out
+        np.random.shuffle(random_seeds)  # in place
+
+        it = 0
+        while n_remaining_to_sample > 0:
+            batch_random_seeds = random_seeds[it * self.n_gpu:(it + 1) * self.n_gpu]
+            if batch_random_seeds.size < self.n_gpu:
+                # need more random seeds
+                random_start = random_start + random_bs * n_samples
+                random_seeds = np.arange(random_start,
+                                         random_start + random_bs * n_samples)  # This should be enough. If it isn't, code will error out
+                np.random.shuffle(random_seeds)
+
+            final_arg = [[phi_fn, batch_random_seeds[i]] for i in range(self.n_gpu)]
+            result = self.pool.starmap(self._sample_segment_intersect_boundary, final_arg)
+
+            for intersection in result:
+                if intersection is not None:
+                    samples.append(intersection.view(1, -1))
+                    n_remaining_to_sample -= 1 # could go negative!
+
+            it += 1
+            # self.logger.info("%i segments sampled" % (it*self.n_gpu))
+
+
+        samples = torch.cat(samples[:n_samples], dim=0)
+        # self.logger.info("Done with sampling points on the boundary...")
+        tf = time.perf_counter()
+        debug_dict = {"t_sample_boundary": (tf- t0), "n_segments_sampled": (it*self.n_gpu)}
         return samples, debug_dict
 
     def _sample_points_on_boundary(self, phi_fn, n_samples):
@@ -348,11 +382,12 @@ class GradientBatchWarmstartDesign2Critic():
         # boundary_sampling_option: ["sequential", "gpu_parallelized", "cpu_parallelized"]
         # boundary_sampling_method; ["uniform", "gaussian"]
         """
-
-        if self.boundary_sampling_speedup_method == "sequential":
+        if self.boundary_sampling_speedup_method == "gpu_parallelized":
+            samples, debug_dict = self._sample_points_on_boundary_gpu_parallelized(phi_fn, n_samples)
+        elif self.boundary_sampling_speedup_method == "sequential":
             samples, debug_dict = self._sample_points_on_boundary_sequential(phi_fn, n_samples)
-        else:
-            print("self.boundary_sampling_option != sequential hasn't been implemented....")
+        elif self.boundary_sampling_speedup_method == "cpu_parallelized":
+            print("self.boundary_sampling_option == cpu_parallelized hasn't been implemented....")
             raise NotImplementedError
         return samples, debug_dict
 

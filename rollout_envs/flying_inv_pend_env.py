@@ -11,10 +11,10 @@ class FlyingInvertedPendulumEnv():
         if model_param_dict is None:
             # Form a default param dict
             sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            from src.argument import create_parser
+            from create_arg_parser import create_arg_parser
             from main import create_flying_param_dict
 
-            parser = create_parser()  # default
+            parser = create_arg_parser()  # default
             args = parser.parse_known_args()[0]
             self.model_param_dict = create_flying_param_dict(args) # default
         else:

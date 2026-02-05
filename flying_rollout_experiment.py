@@ -407,8 +407,8 @@ def run_rollout_experiment(args):
 		# from main import create_flying_param_dict
 		# param_dict = create_flying_param_dict(args)
 
-		from src.argument import create_parser
-		parser = create_parser()
+		from create_arg_parser import create_arg_parser
+		parser = create_arg_parser()
 		cbf_train_args, _ = parser.parse_known_args() # allows us to ignore unknown args
 
 		from main import create_flying_param_dict

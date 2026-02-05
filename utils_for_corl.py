@@ -18,7 +18,7 @@ from phi_numpy_wrapper import PhiNumpy
 # 	sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
 # from cmaes.utils import load_philow_and_params
 
-from src.attacks.gradient_batch_critic_warmstart_faster import GradientBatchWarmstartFasterCritic
+from src.attacks.gradient_batch_critic_warmstart_faster import Critic
 from main import SaturationRisk
 
 # For rollouts
@@ -34,10 +34,10 @@ class FlyingInvertedPendulumEnv():
 		if param_dict is None:
 			# Form a default param dict
 			sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-			from src.argument import create_parser
+			from create_arg_parser import create_arg_parser
 			from main import create_flying_param_dict
 
-			parser = create_parser()  # default
+			parser = create_arg_parser()  # default
 			args = parser.parse_known_args()[0]
 			self.param_dict = create_flying_param_dict(args)  # default
 		else:

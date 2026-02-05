@@ -1,7 +1,7 @@
 import argparse
 import math
 
-def create_parser():
+def create_arg_parser():
 	# Problem
 	parser = argparse.ArgumentParser(description='CBF synthesis')
 	parser.add_argument('--problem', default='flying_inv_pend', help='problem specifies dynamics, rho definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced", "quadcopter"])

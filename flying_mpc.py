@@ -19,9 +19,9 @@ np.random.seed(2022)
 
 g = 9.81
 
-from src.argument import create_parser
+from create_arg_parser import create_arg_parser
 
-parser = create_parser()  # default
+parser = create_arg_parser()  # default
 default_args = parser.parse_known_args()[0]
 from main import create_flying_param_dict
 

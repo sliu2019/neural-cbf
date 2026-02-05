@@ -9,7 +9,7 @@ import IPython
 from dotmap import DotMap
 import torch
 import pickle
-from src.argument import create_parser, print_args
+from create_arg_parser import create_arg_parser, print_args
 
 def create_logger(save_path='', file_type='', level='debug'):
 
@@ -51,7 +51,7 @@ def save_args(args, file_name):
 		json.dump(args.__dict__, f, indent=2)
 
 def load_args(file_name):
-	parser = create_parser()
+	parser = create_arg_parser()
 	args = parser.parse_known_args()[0]
 	# args = parser() # TODO
 	with open(file_name, 'r') as f:

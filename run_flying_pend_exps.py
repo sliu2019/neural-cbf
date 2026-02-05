@@ -14,7 +14,7 @@ from phi_numpy_wrapper import PhiNumpy
 # 	sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
 # from cmaes.utils import load_philow_and_params
 
-from src.attacks.gradient_batch_critic_warmstart_faster import GradientBatchWarmstartFasterCritic
+from src.attacks.gradient_batch_critic_warmstart_faster import Critic
 from main import SaturationRisk
 
 # For rollouts
@@ -253,8 +253,8 @@ def run_exps(args):
 		# Everything else
 		from src.problems.flying_inv_pend import HSum, XDot, ULimitSetVertices
 		# NOTE: USING DEFAULT PARAM DICT
-		from src.argument import create_parser
-		parser = create_parser() # default
+		from create_arg_parser import create_arg_parser
+		parser = create_arg_parser() # default
 		parser_args = parser.parse_known_args()[0]
 		from main import create_flying_param_dict
 		param_dict = create_flying_param_dict(parser_args) # default
@@ -314,6 +314,7 @@ def run_exps(args):
 		n_samples = args.boundary_n_samples
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
 <<<<<<< HEAD
+<<<<<<< HEAD
 		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, gaussian_t=args.boundary_gaussian_t, verbose=True) # o.w. default args
 		boundary_samples, debug_dict = attacker._sample_points_on_boundary(torch_phi_fn, n_samples)
 ||||||| parent of c225af8 (renamed: h to rho, attacker to critic, trainer to learner, objective to sat risk. Should be more consistent with paper)
@@ -321,6 +322,11 @@ def run_exps(args):
 		boundary_samples, debug_dict = attacker._sample_points_on_boundary(torch_phi_fn, n_samples)
 =======
 		critic = GradientBatchWarmstartFasterCritic(torch_x_lim, device, None, gaussian_t=args.boundary_gaussian_t, verbose=True, projection_lr=args.boundary_projection_lr) # o.w. default args
+||||||| parent of b7ac0a4 (in the middle of simplifying options and hardcoding best options)
+		critic = GradientBatchWarmstartFasterCritic(torch_x_lim, device, None, gaussian_t=args.boundary_gaussian_t, verbose=True, projection_lr=args.boundary_projection_lr) # o.w. default args
+=======
+		critic = Critic(torch_x_lim, device, None, gaussian_t=args.boundary_gaussian_t, verbose=True, projection_lr=args.boundary_projection_lr) # o.w. default args
+>>>>>>> b7ac0a4 (in the middle of simplifying options and hardcoding best options)
 		boundary_samples, debug_dict = critic._sample_points_on_boundary(torch_phi_fn, n_samples)
 >>>>>>> c225af8 (renamed: h to rho, attacker to critic, trainer to learner, objective to sat risk. Should be more consistent with paper)
 		# boundary_samples = torch.rand((10000, 10))*100
@@ -360,12 +366,18 @@ def run_exps(args):
 
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
 <<<<<<< HEAD
+<<<<<<< HEAD
 		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples, gaussian_t=args.worst_boundary_gaussian_t, verbose=True, p_reuse=1.0) # o.w. default args
 ||||||| parent of c225af8 (renamed: h to rho, attacker to critic, trainer to learner, objective to sat risk. Should be more consistent with paper)
 		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples, gaussian_t=args.worst_boundary_gaussian_t, verbose=True, p_reuse=1.0, projection_lr=args.worst_boundary_projection_lr) # o.w. default args
 =======
 		critic = GradientBatchWarmstartFasterCritic(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples, gaussian_t=args.worst_boundary_gaussian_t, verbose=True, p_reuse=1.0, projection_lr=args.worst_boundary_projection_lr) # o.w. default args
 >>>>>>> c225af8 (renamed: h to rho, attacker to critic, trainer to learner, objective to sat risk. Should be more consistent with paper)
+||||||| parent of b7ac0a4 (in the middle of simplifying options and hardcoding best options)
+		critic = GradientBatchWarmstartFasterCritic(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples, gaussian_t=args.worst_boundary_gaussian_t, verbose=True, p_reuse=1.0, projection_lr=args.worst_boundary_projection_lr) # o.w. default args
+=======
+		critic = Critic(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples, gaussian_t=args.worst_boundary_gaussian_t, verbose=True, p_reuse=1.0, projection_lr=args.worst_boundary_projection_lr) # o.w. default args
+>>>>>>> b7ac0a4 (in the middle of simplifying options and hardcoding best options)
 		iteration = 0 # dictates the number of grad steps, if you're using a step schedule. but we're not.
 
 		if "average_boundary" in args.which_experiments:

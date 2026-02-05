@@ -2,24 +2,25 @@ import torch
 from torch import nn
 from torch.autograd import grad
 
-from src.attacks.basic_critic import BasicCritic
-from src.attacks.gradient_batch_critic import GradientBatchCritic
-from src.attacks.gradient_batch_critic_warmstart import GradientBatchWarmstartCritic
+# from src.attacks.basic_critic import BasicCritic
+# from src.attacks.gradient_batch_critic import GradientBatchCritic
+# from src.attacks.gradient_batch_critic_warmstart import GradientBatchWarmstartCritic
 # from src.attacks.gradient_batch_critic_warmstart_2 import GradientBatchWarmstartCritic2
-from src.attacks.gradient_batch_critic_warmstart_faster import GradientBatchWarmstartFasterCritic
+from critic import Critic
 from src.learner import Learner
-from src.reg_samplers.boundary import BoundaryRegSampler
-from src.reg_samplers.random import RandomRegSampler
-from src.reg_samplers.fixed import FixedRegSampler
-from src.reg_samplers.random_inside import RandomInsideRegSampler
-reg_samplers_name_to_class_dict = {"boundary": BoundaryRegSampler, "random": RandomRegSampler, "fixed": FixedRegSampler, "random_inside": RandomInsideRegSampler}
+# from src.reg_samplers.boundary import BoundaryRegSampler
+# from src.reg_samplers.random import RandomRegSampler
+# from src.reg_samplers.fixed import FixedRegSampler
 
-from src.phi_designs.low_phi import LowPhi
-from src.phi_designs.neural_phi import NeuralPhi
+from reg_sampler import RegSampler
+# reg_samplers_name_to_class_dict = {"boundary": BoundaryRegSampler, "random": RandomRegSampler, "fixed": FixedRegSampler, "random_inside": RandomInsideRegSampler}
+
+# from src.phi_designs.low_phi import LowPhi
+from neural_phi import NeuralPhi
 # phi_designs_name_to_class_dict = {"neural": NeuralPhi, "low": LowPhi}
 
 from src.utils import *
-from src.argument import create_parser, print_args
+from create_arg_parser import create_arg_parser, print_args
 
 import os
 import math
@@ -193,55 +194,7 @@ def main(args):
 	device = torch.device(dev)
 
 	# Selecting problem
-	if args.problem == "cartpole_reduced":
-		r = 2
-		x_dim = 2
-		u_dim = 1
-		# x_lim = np.array([[-math.pi, math.pi], [-5, 5]], dtype=np.float32)
-		x_lim = np.array([[-math.pi, math.pi], [-args.max_angular_velocity, args.max_angular_velocity]], dtype=np.float32)
-
-		# Create phi
-		from src.problems.cartpole_reduced import H, XDot, ULimitSetVertices
-
-		if args.physical_difficulty == 'easy': # medium length pole
-			param_dict = {
-				"I": 1.2E-3,
-				"m": 0.127,
-				"M": 1.0731,
-				"l": 0.3365
-				# "max_theta": math.pi / 2.0,
-				# "max_force": 15.0
-			}
-		elif args.physical_difficulty == 'hard': # long pole
-			param_dict = {
-				"I": 7.88E-3,
-				"m": 0.230,
-				"M": 1.0731,
-				"l": 0.6413
-				# "max_theta": math.pi / 4.0,
-				# "max_force": 1.0
-			}
-
-		param_dict["max_theta"] = args.max_theta
-		param_dict["max_force"] = args.max_force
-
-		h_fn = H(param_dict)
-		xdot_fn = XDot(param_dict)
-		uvertices_fn = ULimitSetVertices(param_dict, device)
-
-		n_mesh_grain = args.reg_sample_distance
-		XXX = np.meshgrid(*[np.arange(r[0], r[1], n_mesh_grain) for r in x_lim])
-		reg_samples = np.concatenate([x.flatten()[:, None] for x in XXX], axis=1)
-		reg_samples = torch.from_numpy(reg_samples.astype(np.float32)).to(device)
-		reg_sampler = FixedRegSampler(x_lim, device, logger, samples=reg_samples)
-
-		if args.phi_include_xe:
-			x_e = torch.zeros(1, x_dim)
-		else:
-			x_e = None
-
-		nn_input_modifier = None
-	elif args.problem == "flying_inv_pend":
+	if args.problem == "flying_inv_pend":
 		param_dict = create_flying_param_dict(args)
 
 		r = param_dict["r"]
@@ -259,7 +212,8 @@ def main(args):
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
-		reg_sampler = reg_samplers_name_to_class_dict[args.reg_sampler](x_lim, device, logger, n_samples=args.reg_n_samples)
+		# reg_sampler = reg_samplers_name_to_class_dict[args.reg_sampler](x_lim, device, logger, n_samples=args.reg_n_samples)
+		reg_sampler = RegSampler(x_lim, device, logger, n_samples=args.reg_n_samples)
 
 		if args.phi_include_xe:
 			x_e = torch.zeros(1, x_dim)
@@ -273,31 +227,6 @@ def main(args):
 			nn_input_modifier = None
 		elif args.phi_nn_inputs == "euc":
 			nn_input_modifier = TransformEucNNInput(state_index_dict)
-	elif args.problem == "quadcopter":
-		param_dict = create_quadcopter_param_dict(args)
-
-		r = param_dict["r"]
-		x_dim = param_dict["x_dim"]
-		u_dim = param_dict["u_dim"]
-		x_lim = param_dict["x_lim"]
-
-		# Create phi
-		from src.problems.quadcopter import H, HSum, XDot, ULimitSetVertices
-		# IPython.embed()
-		if args.rho == "reg":
-			h_fn = H(param_dict)
-		elif args.rho == 'sum':
-			h_fn = HSum(param_dict)
-		xdot_fn = XDot(param_dict, device)
-		uvertices_fn = ULimitSetVertices(param_dict, device)
-
-		reg_sampler = reg_samplers_name_to_class_dict[args.reg_sampler](x_lim, device, logger, n_samples=args.reg_n_samples)
-
-		x_e = None
-
-		# Passing in subset of state to NN
-		state_index_dict = param_dict["state_index_dict"]
-		nn_input_modifier = None
 	else:
 		raise NotImplementedError
 
@@ -314,10 +243,10 @@ def main(args):
 	x_lim = torch.tensor(x_lim).to(device)
 
 	# Create CBF, etc.
-	if args.phi_design == "neural":
-		phi_fn = NeuralPhi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
-	elif args.phi_design == "low":
-		phi_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
+	# if args.phi_design == "neural":
+	phi_fn = NeuralPhi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
+	# elif args.phi_design == "low":
+	# 	phi_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
 
 	saturation_risk = SaturationRisk(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
 	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, reg_transform=args.reg_transform)
@@ -328,28 +257,21 @@ def main(args):
 	reg_fn = reg_fn.to(device)
 
 	# Create critic
-	if args.critic == "basic":
-		critic = BasicCritic(x_lim, device, stopping_condition="early_stopping")
-	elif args.critic == "gradient_batch":
-		critic = GradientBatchCritic(x_lim, device, logger, n_samples=args.critic_n_samples, stopping_condition=args.critic_stopping_condition, lr=args.critic_lr, projection_tolerance=args.critic_projection_tolerance, projection_lr=args.critic_projection_lr)
-	elif args.critic == "gradient_batch_warmstart":
-		critic = GradientBatchWarmstartCritic(x_lim, device, logger, n_samples=args.critic_n_samples, stopping_condition=args.critic_stopping_condition, max_n_steps=args.critic_max_n_steps,lr=args.critic_lr, projection_tolerance=args.critic_projection_tolerance, projection_lr=args.critic_projection_lr, projection_time_limit=args.critic_projection_time_limit, critic_use_n_step_schedule=args.critic_use_n_step_schedule)
-	elif args.critic == "gradient_batch_warmstart_faster":
-		critic = GradientBatchWarmstartFasterCritic(x_lim, device, logger, n_samples=args.critic_n_samples,
-		                                                stopping_condition=args.critic_stopping_condition,
-		                                                max_n_steps=args.critic_max_n_steps,
-		                                                lr=args.critic_lr,
-		                                                projection_tolerance=args.critic_projection_tolerance,
-		                                                projection_lr=args.critic_projection_lr,
-		                                                projection_time_limit=args.critic_projection_time_limit,
-		                                                critic_use_n_step_schedule=args.critic_use_n_step_schedule,
-		                                                boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method,boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
-		                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
-		                                                p_reuse=args.critic_p_reuse)
+	critic = Critic(x_lim, device, logger, n_samples=args.critic_n_samples,
+													stopping_condition=args.critic_stopping_condition,
+													max_n_steps=args.critic_max_n_steps,
+													lr=args.critic_lr,
+													projection_tolerance=args.critic_projection_tolerance,
+													projection_lr=args.critic_projection_lr,
+													projection_time_limit=args.critic_projection_time_limit,
+													critic_use_n_step_schedule=args.critic_use_n_step_schedule,
+													boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method,boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
+													gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
+													p_reuse=args.critic_p_reuse)
 
 	# Create test critic
 	# Note: doesn't matter that we're passing train params. We're only using test_critic to sample on boundary
-	test_critic = GradientBatchWarmstartFasterCritic(x_lim, device, logger, n_samples=args.critic_n_samples,
+	test_critic = Critic(x_lim, device, logger, n_samples=args.critic_n_samples,
 	                                                stopping_condition=args.critic_stopping_condition,
 	                                                max_n_steps=args.critic_max_n_steps,
 	                                                lr=args.critic_lr,
@@ -401,7 +323,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-	parser = create_parser()
+	parser = create_arg_parser()
 	args = parser.parse_known_args()[0]
 	torch.manual_seed(args.random_seed)
 	np.random.seed(args.random_seed)
