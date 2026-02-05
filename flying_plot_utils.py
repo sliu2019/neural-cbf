@@ -8,8 +8,8 @@ import pickle
 import time, os, glob, re
 import numpy as np
 
-# from main import Phi, Objective, Regularizer
-from main import Objective, Regularizer
+# from main import Phi, SaturationRisk, Regularizer
+from main import SaturationRisk, Regularizer
 from src.phi_designs.neural_phi import NeuralPhi
 from src.phi_designs.low_phi import LowPhi
 from src.utils import *
@@ -47,9 +47,9 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 
 	# Create phi
 	from src.problems.flying_inv_pend import HMax, HSum, XDot, ULimitSetVertices
-	if args.h == "sum":
+	if args.rho == "sum":
 		h_fn = HSum(param_dict)
-	elif args.h == "max":
+	elif args.rho == "max":
 		h_fn = HMax(param_dict)
 
 	xdot_fn = XDot(param_dict, device)
@@ -89,12 +89,12 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	else:
 		phi_fn = NeuralPhi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
 
-	# objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
+	# saturation_risk = SaturationRisk(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
 	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)
-	# objective_fn = objective_fn.to(device)
+	# saturation_risk = saturation_risk.to(device)
 	# reg_fn = reg_fn.to(device)
 
 	print("Phi param before load:")
@@ -140,7 +140,7 @@ def graph_losses(exp_name, debug=True):
 	suptitle_size = 8 # default is 10
 	n_it_so_far = len(data["train_losses"]) - 1
 	fig, axs = plt.subplots(2, sharex=True)
-	fig.suptitle('Metrics for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps), fontsize=suptitle_size)
+	fig.suptitle('Metrics for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.learner_n_steps), fontsize=suptitle_size)
 
 	#############################################
 	axs[0].set_title("Train metrics")
@@ -187,7 +187,7 @@ def graph_losses(exp_name, debug=True):
 	# print("At line 187, about to plot loss against clock time")
 	# IPython.embed()
 	fig, ax = plt.subplots(1)
-	ax.set_title('Metrics for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps))
+	ax.set_title('Metrics for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.learner_n_steps))
 	train_loop_times = np.array(data["train_loop_times"])[::per_n_iterations][:len(percent_infeas_at_boundary)] # in seconds
 	train_loop_times = train_loop_times/3600 # in hours
 
@@ -209,7 +209,7 @@ def graph_losses(exp_name, debug=True):
 		###################################
 		n_it_so_far = len(data["train_losses"])
 		fig, axs = plt.subplots(3, sharex=True)
-		fig.suptitle('Timing debug for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps), fontsize=suptitle_size)
+		fig.suptitle('Timing debug for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.learner_n_steps), fontsize=suptitle_size)
 
 		#############################################
 		axs[0].set_title("Timing metrics")
@@ -244,7 +244,7 @@ def graph_losses(exp_name, debug=True):
 		########## Other debug ###########
 		###################################
 		fig, axs = plt.subplots(4, sharex=True)
-		fig.suptitle('Debug for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.trainer_n_steps), fontsize=suptitle_size)
+		fig.suptitle('Debug for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.learner_n_steps), fontsize=suptitle_size)
 
 		#############################################
 		axs[0].set_title("Attack improvement after opt.")
@@ -313,7 +313,7 @@ def graph_losses(exp_name, debug=True):
 	n_test_loss_step = args.n_test_loss_step
 	n_checkpoint_step = args.n_checkpoint_step
 
-	# print("For experiment %s, at iteration %i/%i" % (exp_name, n_it_so_far, args.trainer_n_steps))
+	# print("For experiment %s, at iteration %i/%i" % (exp_name, n_it_so_far, args.learner_n_steps))
 	# min_attack_ind = np.argmin(train_attack_losses)
 
 	# print("Total iterations (so far): %i" % N_it)
@@ -380,7 +380,7 @@ def graph_losses(exp_name, debug=True):
 		t_so_far_seconds = train_loop_times[checkpoint_ind]
 		t_hours = t_so_far_seconds // (60 * 60)
 		t_minutes = (t_so_far_seconds - t_hours*60*60)//60
-		print("At selected checkpoint %i: %.3f loss, %.5f volume, %i:%i h:m" % (checkpoint_ind, train_attack_losses_at_checkpoints[best_balanced_ind], approx_v[best_balanced_ind], t_hours, t_minutes))
+		print("At selected checkpoint %i: %.3f loss, %.5f volume, %i:%i rho:m" % (checkpoint_ind, train_attack_losses_at_checkpoints[best_balanced_ind], approx_v[best_balanced_ind], t_hours, t_minutes))
 	# IPython.embed()"""
 
 	# Method 3
@@ -824,7 +824,7 @@ def debug(exp_name):
 		# TODO
 		print("\n")
 
-def find_attacker_n_reuse(exp_name):
+def find_critic_n_reuse(exp_name):
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
 
@@ -954,7 +954,7 @@ if __name__ == "__main__":
 	# base_exp_names = ["flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_150", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_200", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_150", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_200", "flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_150"]
 
 	# base_exp_names = ["flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_150", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_200"]hio
-	# find_attacker_n_reuse("flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50")
+	# find_critic_n_reuse("flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50")
 
 	# base_exp_names = ["flying_inv_pend_ESG_reg_softplus_random_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_150", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_200"]
 

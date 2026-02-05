@@ -15,7 +15,7 @@ Try one of these with softplus at end
 
 For timing:
 Try
-	parser.add_argument('--train_attacker', default='gradient_batch_warmstart', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart2'])
+	parser.add_argument('--critic', default='gradient_batch_warmstart', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart2'])
 	# TODO: new below
 		parser.add_argument('--gradient_batch_warmstart2_proj_tactic', choices=['gd_step_timeout', 'adam_ba'])
 
@@ -32,27 +32,27 @@ whether or not softplus is on the objective
 				# TODO: the fact that this is not = self.args.n_checkpoint_step necessarily means that you might have to refactor stuff in flying_rollout_experiment
 
 
-nohup python main.py --problem flying_inv_pend --phi_format 2 --phi_nn_inputs "angles_derivs_no_yaw" --phi_include_xe --phi_nn_dimension "32-32" --no_softplus_on_obj --train_attacker_n_samples 120 --train_attacker_max_n_steps 50 --train_attacker_use_n_step_schedule --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 4000 --reg_sampler fixed --reg_weight 0.0 --random_seed 1 --affix phi_format_2_seed_1 --gpu 3  &> phi_format_2_seed_1.out &
+nohup python main.py --problem flying_inv_pend --phi_format 2 --phi_nn_inputs "angles_derivs_no_yaw" --phi_include_xe --phi_nn_dimension "32-32" --no_softplus_on_obj --critic_n_samples 120 --critic_max_n_steps 50 --critic_use_n_step_schedule --critic_projection_lr 1e-2 --learner_stopping_condition n_steps --learner_n_steps 4000 --reg_sampler fixed --reg_weight 0.0 --random_seed 1 --affix phi_format_2_seed_1 --gpu 3  &> phi_format_2_seed_1.out &
 
 # Debug main, phi_fn
 python main.py --problem flying_inv_pend --phi_nn_dimension 32-32 --phi_nnl tanh-tanh-softplus --phi_include_xe --phi_nn_inputs euc --affix debug
 
-# Debug trainer
-python main.py --problem flying_inv_pend --phi_nn_dimension 32-32 --phi_nnl tanh-tanh-softplus --phi_include_xe --phi_nn_inputs euc --affix debug --no_softplus_on_obj --train_attacker_n_samples 10 --train_attacker_max_n_steps 2  --train_attacker_use_n_step_schedule --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 4000 --reg_sampler fixed --reg_weight 0.0 --trainer_average_gradients
+# Debug learner
+python main.py --problem flying_inv_pend --phi_nn_dimension 32-32 --phi_nnl tanh-tanh-softplus --phi_include_xe --phi_nn_inputs euc --affix debug --no_softplus_on_obj --critic_n_samples 10 --critic_max_n_steps 2  --critic_use_n_step_schedule --critic_projection_lr 1e-2 --learner_stopping_condition n_steps --learner_n_steps 4000 --reg_sampler fixed --reg_weight 0.0 --learner_average_gradients
 
 # Try with reg: (check if grad norm is being computed)
 # Data: do we see CPU clogging? Do we fill out the data correctly? (Examine)
-python main.py --problem flying_inv_pend --phi_nn_dimension 32-32 --phi_nnl tanh-tanh-softplus --phi_include_xe --phi_nn_inputs euc --affix debug --no_softplus_on_obj --train_attacker_n_samples 10 --train_attacker_max_n_steps 2  --train_attacker_use_n_step_schedule --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 4000 --reg_sampler random --reg_weight 10.0 --trainer_average_gradients
+python main.py --problem flying_inv_pend --phi_nn_dimension 32-32 --phi_nnl tanh-tanh-softplus --phi_include_xe --phi_nn_inputs euc --affix debug --no_softplus_on_obj --critic_n_samples 10 --critic_max_n_steps 2  --critic_use_n_step_schedule --critic_projection_lr 1e-2 --learner_stopping_condition n_steps --learner_n_steps 4000 --reg_sampler random --reg_weight 10.0 --learner_average_gradients
 
 # Testing test metric and logging
-python main.py --problem flying_inv_pend --phi_nn_dimension 32-32 --phi_nnl tanh-tanh-softplus --phi_include_xe --phi_nn_inputs euc --affix debug --train_attacker_n_samples 10 --train_attacker_max_n_steps 2 --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 4000 --reg_sampler random --reg_weight 10.0 --objective_option weighted_average
+python main.py --problem flying_inv_pend --phi_nn_dimension 32-32 --phi_nnl tanh-tanh-softplus --phi_include_xe --phi_nn_inputs euc --affix debug --critic_n_samples 10 --critic_max_n_steps 2 --critic_projection_lr 1e-2 --learner_stopping_condition n_steps --learner_n_steps 4000 --reg_sampler random --reg_weight 10.0 --objective_option weighted_average
 
 
-# Testing new attacker
-python main.py --problem flying_inv_pend --phi_nn_dimension 32-32 --phi_nnl tanh-tanh-softplus --phi_include_xe --phi_nn_inputs euc --affix debug --no_softplus_on_obj --train_attacker_n_samples 10 --train_attacker_max_n_steps 2 --train_attacker_projection_lr 1e-2 --trainer_stopping_condition n_steps --trainer_n_steps 4000 --reg_sampler random --reg_weight 10.0 --trainer_average_gradients --train_attacker gradient_batch_warmstart2 --gradient_batch_warmstart2_proj_tactic adam_ba
+# Testing new critic
+python main.py --problem flying_inv_pend --phi_nn_dimension 32-32 --phi_nnl tanh-tanh-softplus --phi_include_xe --phi_nn_inputs euc --affix debug --no_softplus_on_obj --critic_n_samples 10 --critic_max_n_steps 2 --critic_projection_lr 1e-2 --learner_stopping_condition n_steps --learner_n_steps 4000 --reg_sampler random --reg_weight 10.0 --learner_average_gradients --critic gradient_batch_warmstart2 --gradient_batch_warmstart2_proj_tactic adam_ba
 
 
-#	parser.add_argument('--train_attacker', default='gradient_batch_warmstart', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart2'])
+#	parser.add_argument('--critic', default='gradient_batch_warmstart', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart2'])
 #	parser.add_argument('--gradient_batch_warmstart2_proj_tactic', choices=['gd_step_timeout', 'adam_ba'])
 
 

@@ -14,8 +14,8 @@ from phi_numpy_wrapper import PhiNumpy
 # 	sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
 # from cmaes.utils import load_philow_and_params
 
-from src.attacks.gradient_batch_attacker_warmstart_faster import GradientBatchWarmstartFasterAttacker
-from main import Objective
+from src.attacks.gradient_batch_critic_warmstart_faster import GradientBatchWarmstartFasterCritic
+from main import SaturationRisk
 
 # For rollouts
 # from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
@@ -303,8 +303,8 @@ def run_exps(args):
 	logger = None # doesn't matter, isn't used
 	obj_args = None # currently not used, but sometimes used to set options
 
-	objective_fn = Objective(torch_phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, obj_args)
-	objective_fn = objective_fn.to(device)
+	saturation_risk = SaturationRisk(torch_phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, obj_args)
+	saturation_risk = saturation_risk.to(device)
 
 	# call separate functions for each test
 	if "average_boundary" in args.which_experiments:
@@ -313,12 +313,20 @@ def run_exps(args):
 
 		n_samples = args.boundary_n_samples
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
+<<<<<<< HEAD
 		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, gaussian_t=args.boundary_gaussian_t, verbose=True) # o.w. default args
 		boundary_samples, debug_dict = attacker._sample_points_on_boundary(torch_phi_fn, n_samples)
+||||||| parent of c225af8 (renamed: h to rho, attacker to critic, trainer to learner, objective to sat risk. Should be more consistent with paper)
+		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, gaussian_t=args.boundary_gaussian_t, verbose=True, projection_lr=args.boundary_projection_lr) # o.w. default args
+		boundary_samples, debug_dict = attacker._sample_points_on_boundary(torch_phi_fn, n_samples)
+=======
+		critic = GradientBatchWarmstartFasterCritic(torch_x_lim, device, None, gaussian_t=args.boundary_gaussian_t, verbose=True, projection_lr=args.boundary_projection_lr) # o.w. default args
+		boundary_samples, debug_dict = critic._sample_points_on_boundary(torch_phi_fn, n_samples)
+>>>>>>> c225af8 (renamed: h to rho, attacker to critic, trainer to learner, objective to sat risk. Should be more consistent with paper)
 		# boundary_samples = torch.rand((10000, 10))*100
 		# debug_dict = {}
 
-		obj_values = objective_fn(boundary_samples)
+		obj_values = saturation_risk(boundary_samples)
 
 		# Compute metrics
 		n_infeasible = int(torch.sum(obj_values > 0))
@@ -344,26 +352,32 @@ def run_exps(args):
 		# print("worst_boundary")
 		# IPython.embed()
 		"""
-		For now, you can use your attacker 
-		(But of course, you can write a slower, better test-time attacker) 
+		For now, you can use your critic 
+		(But of course, you can write a slower, better test-time critic) 
 		"""
 		n_samples = args.worst_boundary_n_samples
 		n_opt_steps = args.worst_boundary_n_opt_steps
 
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
+<<<<<<< HEAD
 		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples, gaussian_t=args.worst_boundary_gaussian_t, verbose=True, p_reuse=1.0) # o.w. default args
+||||||| parent of c225af8 (renamed: h to rho, attacker to critic, trainer to learner, objective to sat risk. Should be more consistent with paper)
+		attacker = GradientBatchWarmstartFasterAttacker(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples, gaussian_t=args.worst_boundary_gaussian_t, verbose=True, p_reuse=1.0, projection_lr=args.worst_boundary_projection_lr) # o.w. default args
+=======
+		critic = GradientBatchWarmstartFasterCritic(torch_x_lim, device, None, max_n_steps=n_opt_steps, n_samples=n_samples, gaussian_t=args.worst_boundary_gaussian_t, verbose=True, p_reuse=1.0, projection_lr=args.worst_boundary_projection_lr) # o.w. default args
+>>>>>>> c225af8 (renamed: h to rho, attacker to critic, trainer to learner, objective to sat risk. Should be more consistent with paper)
 		iteration = 0 # dictates the number of grad steps, if you're using a step schedule. but we're not.
 
 		if "average_boundary" in args.which_experiments:
 			# reuse the boundary points computed there
 			# saves time
-			attacker.X_saved = boundary_samples
-			obj_vals = objective_fn(boundary_samples.view(-1, 10)) # TODO: hard-coded dim
-			attacker.obj_vals_saved = obj_vals
-		x_worst, debug_dict = attacker.opt(objective_fn, torch_phi_fn, iteration, debug=True)
+			critic.X_saved = boundary_samples
+			obj_vals = saturation_risk(boundary_samples.view(-1, 10)) # TODO: hard-coded dim
+			critic.obj_vals_saved = obj_vals
+		x_worst, debug_dict = critic.opt(saturation_risk, torch_phi_fn, iteration, debug=True)
 
 		x_worst = torch.reshape(x_worst, (1, 10))
-		obj_values = objective_fn(x_worst)
+		obj_values = saturation_risk(x_worst)
 
 		worst_infeasible_amount = torch.max(obj_values) # could be negative
 		experiment_dict["worst_infeasible_amount"] = worst_infeasible_amount.detach().cpu().numpy()

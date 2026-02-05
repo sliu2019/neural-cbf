@@ -2,12 +2,12 @@ import torch
 from torch import nn
 from torch.autograd import grad
 
-from src.attacks.basic_attacker import BasicAttacker
-from src.attacks.gradient_batch_attacker import GradientBatchAttacker
-from src.attacks.gradient_batch_attacker_warmstart import GradientBatchWarmstartAttacker
-# from src.attacks.gradient_batch_attacker_warmstart_2 import GradientBatchWarmstartAttacker2
-from src.attacks.gradient_batch_attacker_warmstart_faster import GradientBatchWarmstartFasterAttacker
-from src.trainer import Trainer
+from src.attacks.basic_critic import BasicCritic
+from src.attacks.gradient_batch_critic import GradientBatchCritic
+from src.attacks.gradient_batch_critic_warmstart import GradientBatchWarmstartCritic
+# from src.attacks.gradient_batch_critic_warmstart_2 import GradientBatchWarmstartCritic2
+from src.attacks.gradient_batch_critic_warmstart_faster import GradientBatchWarmstartFasterCritic
+from src.learner import Learner
 from src.reg_samplers.boundary import BoundaryRegSampler
 from src.reg_samplers.random import RandomRegSampler
 from src.reg_samplers.fixed import FixedRegSampler
@@ -28,7 +28,7 @@ import pickle
 # TODO: comment this out before a run
 # from global_settings import *
 
-class Objective(nn.Module):
+class SaturationRisk(nn.Module):
 	def __init__(self, phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args):
 		super().__init__()
 		vars = locals()  # dict of local names
@@ -145,9 +145,9 @@ def create_quadcopter_param_dict(args):
 	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
 
 	# r = 2
-	if args.h == 'sum':
+	if args.rho == 'sum':
 		r = 2
-	elif args.h == 'reg':
+	elif args.rho == 'reg':
 		r = 4
 	x_dim = len(state_index_names)
 	u_dim = 4
@@ -251,9 +251,9 @@ def main(args):
 
 		# Create phi
 		from src.problems.flying_inv_pend import HMax, HSum, XDot, ULimitSetVertices
-		if args.h == "sum":
+		if args.rho == "sum":
 			h_fn = HSum(param_dict)
-		elif args.h == "max":
+		elif args.rho == "max":
 			h_fn = HMax(param_dict)
 
 		xdot_fn = XDot(param_dict, device)
@@ -284,9 +284,9 @@ def main(args):
 		# Create phi
 		from src.problems.quadcopter import H, HSum, XDot, ULimitSetVertices
 		# IPython.embed()
-		if args.h == "reg":
+		if args.rho == "reg":
 			h_fn = H(param_dict)
-		elif args.h == 'sum':
+		elif args.rho == 'sum':
 			h_fn = HSum(param_dict)
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
@@ -319,67 +319,67 @@ def main(args):
 	elif args.phi_design == "low":
 		phi_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
 
-	objective_fn = Objective(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
+	saturation_risk = SaturationRisk(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
 	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, reg_transform=args.reg_transform)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)
-	objective_fn = objective_fn.to(device)
+	saturation_risk = saturation_risk.to(device)
 	reg_fn = reg_fn.to(device)
 
-	# Create attacker
-	if args.train_attacker == "basic":
-		attacker = BasicAttacker(x_lim, device, stopping_condition="early_stopping")
-	elif args.train_attacker == "gradient_batch":
-		attacker = GradientBatchAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr)
-	elif args.train_attacker == "gradient_batch_warmstart":
-		attacker = GradientBatchWarmstartAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples, stopping_condition=args.train_attacker_stopping_condition, max_n_steps=args.train_attacker_max_n_steps,lr=args.train_attacker_lr, projection_tolerance=args.train_attacker_projection_tolerance, projection_lr=args.train_attacker_projection_lr, projection_time_limit=args.train_attacker_projection_time_limit, train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule)
-	elif args.train_attacker == "gradient_batch_warmstart_faster":
-		attacker = GradientBatchWarmstartFasterAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples,
-		                                                stopping_condition=args.train_attacker_stopping_condition,
-		                                                max_n_steps=args.train_attacker_max_n_steps,
-		                                                lr=args.train_attacker_lr,
-		                                                projection_tolerance=args.train_attacker_projection_tolerance,
-		                                                projection_lr=args.train_attacker_projection_lr,
-		                                                projection_time_limit=args.train_attacker_projection_time_limit,
-		                                                train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule,
+	# Create critic
+	if args.critic == "basic":
+		critic = BasicCritic(x_lim, device, stopping_condition="early_stopping")
+	elif args.critic == "gradient_batch":
+		critic = GradientBatchCritic(x_lim, device, logger, n_samples=args.critic_n_samples, stopping_condition=args.critic_stopping_condition, lr=args.critic_lr, projection_tolerance=args.critic_projection_tolerance, projection_lr=args.critic_projection_lr)
+	elif args.critic == "gradient_batch_warmstart":
+		critic = GradientBatchWarmstartCritic(x_lim, device, logger, n_samples=args.critic_n_samples, stopping_condition=args.critic_stopping_condition, max_n_steps=args.critic_max_n_steps,lr=args.critic_lr, projection_tolerance=args.critic_projection_tolerance, projection_lr=args.critic_projection_lr, projection_time_limit=args.critic_projection_time_limit, critic_use_n_step_schedule=args.critic_use_n_step_schedule)
+	elif args.critic == "gradient_batch_warmstart_faster":
+		critic = GradientBatchWarmstartFasterCritic(x_lim, device, logger, n_samples=args.critic_n_samples,
+		                                                stopping_condition=args.critic_stopping_condition,
+		                                                max_n_steps=args.critic_max_n_steps,
+		                                                lr=args.critic_lr,
+		                                                projection_tolerance=args.critic_projection_tolerance,
+		                                                projection_lr=args.critic_projection_lr,
+		                                                projection_time_limit=args.critic_projection_time_limit,
+		                                                critic_use_n_step_schedule=args.critic_use_n_step_schedule,
 		                                                boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method,boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
 		                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
-		                                                p_reuse=args.train_attacker_p_reuse)
+		                                                p_reuse=args.critic_p_reuse)
 
-	# Create test attacker
-	# Note: doesn't matter that we're passing train params. We're only using test_attacker to sample on boundary
-	test_attacker = GradientBatchWarmstartFasterAttacker(x_lim, device, logger, n_samples=args.train_attacker_n_samples,
-	                                                stopping_condition=args.train_attacker_stopping_condition,
-	                                                max_n_steps=args.train_attacker_max_n_steps,
-	                                                lr=args.train_attacker_lr,
-	                                                projection_tolerance=args.train_attacker_projection_tolerance,
-	                                                projection_lr=args.train_attacker_projection_lr,
-	                                                projection_time_limit=args.train_attacker_projection_time_limit,
-	                                                train_attacker_use_n_step_schedule=args.train_attacker_use_n_step_schedule,
+	# Create test critic
+	# Note: doesn't matter that we're passing train params. We're only using test_critic to sample on boundary
+	test_critic = GradientBatchWarmstartFasterCritic(x_lim, device, logger, n_samples=args.critic_n_samples,
+	                                                stopping_condition=args.critic_stopping_condition,
+	                                                max_n_steps=args.critic_max_n_steps,
+	                                                lr=args.critic_lr,
+	                                                projection_tolerance=args.critic_projection_tolerance,
+	                                                projection_lr=args.critic_projection_lr,
+	                                                projection_time_limit=args.critic_projection_time_limit,
+	                                                critic_use_n_step_schedule=args.critic_use_n_step_schedule,
 	                                                boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method,
 	                                                boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
 	                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
-	                                                p_reuse=args.train_attacker_p_reuse)
+	                                                p_reuse=args.critic_p_reuse)
 
 
-	# Pass everything to Trainer
-	trainer = Trainer(args, logger, attacker, test_attacker, reg_sampler, param_dict, device)
-	trainer.train(objective_fn, reg_fn, phi_fn, xdot_fn)
+	# Pass everything to learner
+	learner = Learner(args, logger, critic, test_critic, reg_sampler, param_dict, device)
+	learner.train(saturation_risk, reg_fn, phi_fn, xdot_fn)
 
 	##############################################################
 	#####################      Testing      ######################
 
 	### Fill out ###
 
-	# Testing gradient_batch_attacker_warmstart_2
+	# Testing gradient_batch_critic_warmstart_2
 	# cpu_handle = torch.device("cpu")
 	# cpu_phi_fn = phi_fn.to(cpu_handle)
 
 	# def surface_fn(x, grad_x=False):
 	# 	return phi_fn(x, grad_x=grad_x)[:, -1]
 	#
-	# attacker.opt(objective_fn, phi_fn, 0, debug=True)
+	# critic.opt(saturation_risk, phi_fn, 0, debug=True)
 
 	# Checking to see if all 4 quadcopter inputs appear in phidot (that is, if grad_phi_g is nonzero)
 	"""N = 5

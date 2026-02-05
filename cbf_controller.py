@@ -80,10 +80,10 @@ class CBFController:
 		Q = 2 * np.array([[1.0, 0], [0, 0]])
 		p = np.array([[-2.0 * u_ref], [w]])
 		G = np.array([[qp_lhs, -1.0], [1, 0], [-1, 0], [0, -1]])
-		h = np.array([[qp_rhs], [max_force], [max_force], [0.0]])
+		rho = np.array([[qp_rhs], [max_force], [max_force], [0.0]])
 
 		try:
-			sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(h))
+			sol_obj = solvers.qp(matrix(Q), matrix(p), matrix(G), matrix(rho))
 		except:
 			# IPython.embed()
 			exit(0)

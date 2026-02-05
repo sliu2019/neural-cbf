@@ -506,7 +506,7 @@ def run_rollout_experiment(args):
 	#####################################
 	# Plot EXITED trajectories ONLY (we choose the 5 with the largest violation)
 	#####################################
-	# TODO: should we be maximizing h instead of phi?
+	# TODO: should we be maximizing rho instead of phi?
 	# if which_cbf == "ours":
 	# 	rollouts = info_dicts["x"]
 	# 	phi_vals = info_dicts["phi_vals"]  # (N_desired_rollout, T_max, r+1)

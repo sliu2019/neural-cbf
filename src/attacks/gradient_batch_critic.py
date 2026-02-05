@@ -8,7 +8,7 @@ import torch.optim as optim
 import time
 from src.utils import *
 
-class GradientBatchAttacker():
+class GradientBatchCritic():
 	"""
 	Gradient-based attack, but parallelized across many initializations
 	"""
@@ -26,7 +26,7 @@ class GradientBatchAttacker():
 
 		self.x_dim = self.x_lim.shape[0]
 
-		# print("Initializing GradientBatchAttacker")
+		# print("Initializing GradientBatchCritic")
 		# IPython.embed()
 
 		# Compute 2n facets volume of n-dim hypercube (actually n facets because they come in pairs)
@@ -113,13 +113,13 @@ class GradientBatchAttacker():
 		rv_x = torch.cat(x_list)
 		return rv_x
 
-	def step(self, objective_fn, phi_fn, x, mode="dG"):
+	def step(self, saturation_risk, phi_fn, x, mode="dG"):
 		# It makes less sense to use an adaptive LR method here, if you think about it
 		t0 = time.perf_counter()
 		x_batch = x.view(-1, self.x_dim)
 		x_batch.requires_grad = True
 
-		obj_val = -objective_fn(x_batch)
+		obj_val = -saturation_risk(x_batch)
 		obj_grad = grad([torch.sum(obj_val)], x_batch)[0]
 
 		phi_val = phi_fn(x_batch)
@@ -319,7 +319,7 @@ class GradientBatchAttacker():
 		# self.logger.info("Done with sampling points on the boundary...")
 		return samples
 
-	def opt(self, objective_fn, phi_fn, debug=False, mode="dG"):
+	def opt(self, saturation_risk, phi_fn, debug=False, mode="dG"):
 
 		print("Opt mode: ", mode)
 		X_init = self.sample_points_on_boundary(phi_fn, mode=mode)
@@ -330,13 +330,13 @@ class GradientBatchAttacker():
 
 		while True:
 			# print(i)
-			X = self.step(objective_fn, phi_fn, X, mode=mode)
+			X = self.step(saturation_risk, phi_fn, X, mode=mode)
 
 			if self.stopping_condition == "n_steps":
 				if (i > self.max_n_steps):
 					break
 			elif self.stopping_condition == "early_stopping":
-				obj_vals = objective_fn(X.view(-1, self.x_dim))
+				obj_vals = saturation_risk(X.view(-1, self.x_dim))
 				# obj_val = torch.max(obj_vals)
 				# early_stopping(obj_val)
 
@@ -350,7 +350,7 @@ class GradientBatchAttacker():
 			i += 1
 
 		# Returning a single attack
-		obj_vals = objective_fn(X)
+		obj_vals = saturation_risk(X)
 		max_ind = torch.argmax(obj_vals)
 
 		# print(X)

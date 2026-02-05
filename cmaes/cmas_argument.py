@@ -21,7 +21,7 @@ def create_parser():
 	# parser.add_argument('--exp_prefix', default="flying_pend", type=str)
 	parser.add_argument('--exp_name', default="debug", type=str)
 
-	# Objective specific
+	# SaturationRisk specific
 	parser.add_argument('--FlyingPendEvaluator_reg_weight', default=1.0, type=int)
 	parser.add_argument('--FlyingPendEvaluator_n_samples', default=10e4, type=int)
 

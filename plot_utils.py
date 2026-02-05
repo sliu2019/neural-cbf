@@ -8,14 +8,14 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import axes3d
 import math
-# from main import Phi, Objective, Regularizer # note: phi now defined below
+# from main import Phi, SaturationRisk, Regularizer # note: phi now defined below
 # from src.argument import parser, print_args
 from src.utils import *
 import torch
 import pickle
 # from phi_baseline import PhiBaseline
-from src.attacks.gradient_batch_attacker import GradientBatchAttacker
-from src.attacks.gradient_batch_attacker_warmstart import GradientBatchWarmstartAttacker
+from src.attacks.gradient_batch_critic import GradientBatchCritic
+from src.attacks.gradient_batch_critic_warmstart import GradientBatchWarmstartCritic
 from PIL import Image
 
 from torch.autograd import grad
@@ -49,7 +49,7 @@ class Phi(nn.Module):
 		print("At initialization: k0 is %f" % self.k0.item())
 		#############################################################
 		hidden_dims = args.phi_nn_dimension.split("-")
-		hidden_dims = [int(h) for h in hidden_dims]
+		hidden_dims = [int(rho) for rho in hidden_dims]
 
 		net_layers = []
 		prev_dim = self.x_dim
@@ -176,8 +176,8 @@ def graph_log_file_2(exp_name, mode='train'):
 	# print(train_attack_losses[-20:])
 	# print(timings[-1])
 	# totalsec = timings[-1]
-	# print("Total training time: %i h, %i m" % (totalsec/3600, totalsec % 60))
-	# print("%i h, %i m" % (totalsec/3600, totalsec % 60))
+	# print("Total training time: %i rho, %i m" % (totalsec/3600, totalsec % 60))
+	# print("%i rho, %i m" % (totalsec/3600, totalsec % 60))
 	print("%.5f" % np.min(train_attack_losses))
 	# IPython.embed()
 

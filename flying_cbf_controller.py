@@ -146,8 +146,8 @@ class CBFController:
 		# G[5:9, 0:4] = np.eye(4)
 		# G[-1, -1] = -1.0
 		#
-		# h = np.concatenate([np.array([rhs]), np.zeros(4), np.ones(4), np.zeros(1)])
-		# h = np.reshape(h, (-1, 1))
+		# rho = np.concatenate([np.array([rhs]), np.zeros(4), np.ones(4), np.zeros(1)])
+		# rho = np.reshape(rho, (-1, 1))
 
 		P = np.zeros((9, 9))
 		P[:4, :4] = 2 *np.eye(4)
@@ -155,7 +155,7 @@ class CBFController:
 		q[:4, 0] = -2*u_ref
 		q[-1, 0] = w
 
-		# G <= h
+		# G <= rho
 		G = np.zeros((10,9))
 		G[0, :4] = lhs
 		G[0, -1] = -1.0
@@ -164,10 +164,10 @@ class CBFController:
 		G[5:9, 4:8] = np.eye(4)
 		G[9, -1] = -1.0
 
-		h = np.zeros((10, 1))
-		h[0, 0] = rhs
+		rho = np.zeros((10, 1))
+		rho[0, 0] = rhs
 		##
-		h[5:9, 0] = 1.0
+		rho[5:9, 0] = 1.0
 
 		A = np.zeros((4, 9))
 		A[:4, :4] = -np.eye(4)
@@ -178,8 +178,8 @@ class CBFController:
 		# IPython.embed()
 
 		try:
-			# sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h))
-			sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h), matrix(A), matrix(b))
+			# sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(rho))
+			sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(rho), matrix(A), matrix(b))
 		except:
 			# IPython.embed()
 			print("QP solve was unsuccessful, with status: %s " % sol_obj["status"])

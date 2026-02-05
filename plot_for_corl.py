@@ -270,9 +270,9 @@ def load_philow_and_params(exp_name=None, checkpoint_number=None):
 
 	# Create phi
 	from src.problems.flying_inv_pend import HMax, HSum, XDot
-	if args.h == "sum":
+	if args.rho == "sum":
 		h_fn = HSum(param_dict)
-	elif args.h == "max":
+	elif args.rho == "max":
 		h_fn = HMax(param_dict)
 
 	xdot_fn = XDot(param_dict, device)
@@ -357,12 +357,12 @@ def plot_training_losses():
 		t_hours = t_so_far_seconds // (60 * 60)
 		t_minutes = (t_so_far_seconds - t_hours*60*60)//60
 
-		print("Training took %i:%i h:m" % (t_hours, t_minutes))
+		print("Training took %i:%i rho:m" % (t_hours, t_minutes))
 
 
 	avg_h = np.mean(all_times)/(60*60.0)
 	std_h = np.std(all_times)/(60.0*60)
-	print("On average, training took %.3f +/- %.3f h" % (avg_h, std_h))
+	print("On average, training took %.3f +/- %.3f rho" % (avg_h, std_h))
 
 	# plt.legend(loc="upper right")
 	legend_str = "Dashed: train loss (sat. risk)\nSolid: test loss (% non-sat. states)"
@@ -372,12 +372,12 @@ def plot_training_losses():
 
 	"""
 	Timing results
-	Training took 11:21 h:m
-	Training took 17:45 h:m
-	Training took 20:47 h:m
-	Training took 11:40 h:m
-	Training took 10:29 h:m
-	On average, training took 14.412 +/- 4.101 h
+	Training took 11:21 rho:m
+	Training took 17:45 rho:m
+	Training took 20:47 rho:m
+	Training took 11:40 rho:m
+	Training took 10:29 rho:m
+	On average, training took 14.412 +/- 4.101 rho
 	"""
 
 if __name__ == "__main__":

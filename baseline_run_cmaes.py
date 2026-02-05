@@ -207,7 +207,7 @@ if __name__ == "__main__":
 	parser.add_argument('--exp_name', default="debug", type=str)
 	parser.add_argument('--random_seed', default=0, type=int)
 
-	# Objective specific
+	# SaturationRisk specific
 	parser.add_argument('--FlyingPendEvaluator_reg_weight', default=0.0, type=float)
 	parser.add_argument('--FlyingPendEvaluator_n_samples', default=100000, type=int)
 	parser.add_argument('--FlyingPendEvaluator_objective_type', default="n_feasible", type=str, choices=["n_feasible", "avg_amount_infeasible", "max_amount_infeasible"]) # note: we are maximizing

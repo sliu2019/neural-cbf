@@ -4,9 +4,9 @@ from torch.autograd import grad
 
 class NeuralPhi(nn.Module):
 	# Note: currently, we have a implementation which is generic to any r. May be slow
-	def __init__(self, h_fn, xdot_fn, r, x_dim, u_dim, device, args, nn_input_modifier=None, x_e=None):
+	def __init__(self, rho_fn, xdot_fn, r, x_dim, u_dim, device, args, nn_input_modifier=None, x_e=None):
 		"""
-		:param h_fn:
+		:param rho_fn:
 		:param xdot_fn:
 		:param r:
 		:param x_dim:
@@ -39,7 +39,7 @@ class NeuralPhi(nn.Module):
 
 		print("At initialization: k0 is %f" % self.k0.item())
 		#############################################################
-		self.net_reshape_h = self._create_net()
+		self.net_reshape_rho = self._create_net()
 
 		# if phi_reshape_dh:
 		# 	self.net_reshape_dh = self._create_net()
@@ -51,7 +51,7 @@ class NeuralPhi(nn.Module):
 		# IPython.embed()
 
 		hidden_dims = self.args.phi_nn_dimension.split("-")
-		hidden_dims = [int(h) for h in hidden_dims]
+		hidden_dims = [int(rho) for rho in hidden_dims]
 		hidden_dims.append(1)
 
 		# Input dim:
@@ -114,37 +114,37 @@ class NeuralPhi(nn.Module):
 
 		if self.x_e is None:
 			if self.nn_input_modifier is None:
-				beta_net_value = self.net_reshape_h(x)
+				beta_net_value = self.net_reshape_rho(x)
 			else:
-				beta_net_value = self.net_reshape_h(self.nn_input_modifier(x))
-			new_h = nn.functional.softplus(beta_net_value) + k0*self.h_fn(x)
+				beta_net_value = self.net_reshape_rho(self.nn_input_modifier(x))
+			new_rho = nn.functional.softplus(beta_net_value) + k0*self.rho_fn(x)
 		else:
 			if self.nn_input_modifier is None:
-				beta_net_value = self.net_reshape_h(x)
-				beta_net_xe_value = self.net_reshape_h(self.x_e)
+				beta_net_value = self.net_reshape_rho(x)
+				beta_net_xe_value = self.net_reshape_rho(self.x_e)
 			else:
-				beta_net_value = self.net_reshape_h(self.nn_input_modifier(x))
-				beta_net_xe_value = self.net_reshape_h(self.nn_input_modifier(self.x_e))
+				beta_net_value = self.net_reshape_rho(self.nn_input_modifier(x))
+				beta_net_xe_value = self.net_reshape_rho(self.nn_input_modifier(self.x_e))
 
-			new_h = torch.square(beta_net_value - beta_net_xe_value) + k0*self.h_fn(x)
+			new_rho = torch.square(beta_net_value - beta_net_xe_value) + k0*self.rho_fn(x)
 
-		h_ith_deriv = self.h_fn(x) # bs x 1, the zeroth derivative
+		rho_itrho_deriv = self.rho_fn(x) # bs x 1, the zeroth derivative
 
-		h_derivs = h_ith_deriv # bs x 1
+		rho_derivs = rho_itrho_deriv # bs x 1
 		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device)) # bs x x_dim
 
 		for i in range(self.r-1):
-			grad_h_ith = grad([torch.sum(h_ith_deriv)], x, create_graph=True)[0] # bs x x_dim; create_graph ensures gradient is computed through the gradient operation
-			h_ith_deriv = (grad_h_ith.unsqueeze(dim=1)).bmm(f_val.unsqueeze(dim=2)) # bs x 1 x 1
-			h_ith_deriv = h_ith_deriv[:, :, 0] # bs x 1
-			h_derivs = torch.cat((h_derivs, h_ith_deriv), dim=1)
+			grad_rho_ith = grad([torch.sum(rho_itrho_deriv)], x, create_graph=True)[0] # bs x x_dim; create_graph ensures gradient is computed through the gradient operation
+			rho_itrho_deriv = (grad_rho_ith.unsqueeze(dim=1)).bmm(f_val.unsqueeze(dim=2)) # bs x 1 x 1
+			rho_itrho_deriv = rho_itrho_deriv[:, :, 0] # bs x 1
+			rho_derivs = torch.cat((rho_derivs, rho_itrho_deriv), dim=1)
 
 		if grad_x == False:
 			x.requires_grad = orig_req_grad_setting
 		#####################################################################
 		# Turn gradient tracking off for x
-		result = h_derivs.mm(ki_all.t())
-		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_h
+		result = rho_derivs.mm(ki_all.t())
+		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_rho
 
 		result = torch.cat((result, phi_r_minus_1_star), dim=1)
 

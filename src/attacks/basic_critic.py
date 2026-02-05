@@ -7,7 +7,7 @@ from torch.autograd import grad
 import torch.optim as optim
 
 # TODO: implement early stopping
-class BasicAttacker():
+class BasicCritic():
 	"""
 	The most bare-bones, no frills attack.
 	"""
@@ -44,14 +44,14 @@ class BasicAttacker():
 			x = torch.minimum(torch.maximum(x, self.x_lim[:, 0]), self.x_lim[:, 1])
 		return x
 
-	def step(self, objective_fn, phi_fn, x):
+	def step(self, saturation_risk, phi_fn, x):
 		# It makes less sense to use an adaptive LR method here, if you think about it
 		# requires_grad_before = x.requires_grad
 
 		# IPython.embed()
 		x_batch = x.view(1, -1)
 		x_batch.requires_grad = True
-		obj_val = -objective_fn(x_batch)
+		obj_val = -saturation_risk(x_batch)
 		# print(obj_val)
 		phi_val = phi_fn(x_batch)
 		obj_grad = grad([obj_val], x_batch)[0].squeeze()
@@ -75,7 +75,7 @@ class BasicAttacker():
 		# x.requires_grad = requires_grad_before
 		return x
 
-	def opt(self, objective_fn, phi_fn):
+	def opt(self, saturation_risk, phi_fn):
 		# Sample 1 point well within box
 		random = torch.rand(self.x_dim).to(self.device)
 		x = random*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
@@ -88,12 +88,12 @@ class BasicAttacker():
 		i = 0
 		prev_objective = float("inf")
 		while not should_stop:
-			x = self.step(objective_fn, phi_fn, x)
+			x = self.step(saturation_risk, phi_fn, x)
 
 			if self.stopping_condition == "n_steps":
 				should_stop = (i > self.max_n_steps)
 			elif self.stopping_condition == "early_stopping":
-				objective = objective_fn(x.view(1, -1))[0, 0]
+				objective = saturation_risk(x.view(1, -1))[0, 0]
 				# TODO: there should be a more sophisticated way to detect convergence
 				# TODO: think - Anusha's code
 				should_stop = abs(prev_objective-objective) < self.early_stopping

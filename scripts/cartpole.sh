@@ -11,6 +11,6 @@ nohup python -u main.py --problem cartpole_reduced --physical_difficulty easy --
 # python -u main.py --problem cartpole_reduced --affix debug
 
 
-python -u main.py --affix exp1a --n_checkpoint_step 3 --train_attacker_projection_stop_threshold 1e-1 --test_attacker_projection_stop_threshold 1e-1 --train_attacker_projection_lr 1.0 --test_attacker_projection_lr 1.0 --trainer_early_stopping_patience 10
+python -u main.py --affix exp1a --n_checkpoint_step 3 --critic_projection_stop_threshold 1e-1 --test_critic_projection_stop_threshold 1e-1 --critic_projection_lr 1.0 --test_critic_projection_lr 1.0 --learner_early_stopping_patience 10
 
-python -u main.py --affix exp1a --n_checkpoint_step 1 --trainer_early_stopping_patience 10 --train_attacker_projection_stop_threshold 1e-2 --test_attacker_projection_stop_threshold 1e-2
+python -u main.py --affix exp1a --n_checkpoint_step 1 --learner_early_stopping_patience 10 --critic_projection_stop_threshold 1e-2 --test_critic_projection_stop_threshold 1e-2

@@ -14,7 +14,7 @@ It can also be used within our gradient-based, min-max training algorithm
 """
 
 # Noe: we're assuming r = 2 here
-# Note: in our reshaping, we'll also assume the form of h (although the original class is agnostic to h)
+# Note: in our reshaping, we'll also assume the form of rho (although the original class is agnostic to rho)
 class LowPhi(nn.Module):
 	def __init__(self, h_fn, xdot_fn, x_dim, u_dim, device, param_dict):
 		# TODO: doesn't take in r, assumes r = 2

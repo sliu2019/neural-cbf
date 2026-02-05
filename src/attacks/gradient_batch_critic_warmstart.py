@@ -10,7 +10,7 @@ from src.utils import *
 import IPython
 import multiprocessing as mp
 
-class GradientBatchWarmstartAttacker():
+class GradientBatchWarmstartCritic():
     """
     Gradient-based attack, but parallelized across many initializations
     """
@@ -20,7 +20,7 @@ class GradientBatchWarmstartAttacker():
                  stopping_condition="n_steps", max_n_steps=10, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
                  lr=1e-3, \
                  p_reuse=0.7,\
-                 projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=3.0, verbose=False, train_attacker_use_n_step_schedule=False): # TODO: verbose
+                 projection_tolerance=1e-1, projection_lr=1e-4, projection_time_limit=3.0, verbose=False, critic_use_n_step_schedule=False): # TODO: verbose
         vars = locals()  # dict of local names
         self.__dict__.update(vars)  # __dict__ holds and object's attributes
         del self.__dict__["self"]  # don't need `self`
@@ -95,14 +95,14 @@ class GradientBatchWarmstartAttacker():
         # IPython.embed()
         return rv_x
 
-    def _step(self, objective_fn, surface_fn, x):
+    def _step(self, saturation_risk, surface_fn, x):
         # It makes less sense to use an adaptive LR method here, if you think about it
         t0_step = time.perf_counter()
 
         x_batch = x.view(-1, self.x_dim)
         x_batch.requires_grad = True
 
-        obj_val = -objective_fn(x_batch) # maximizing
+        obj_val = -saturation_risk(x_batch) # maximizing
         obj_grad = grad([torch.sum(obj_val)], x_batch)[0]
 
         normal_to_manifold = grad([torch.sum(surface_fn(x_batch))], x_batch)[0]
@@ -246,7 +246,7 @@ class GradientBatchWarmstartAttacker():
 
         return samples
 
-    def opt(self, objective_fn, surface_fn, iteration, debug=False):
+    def opt(self, saturation_risk, surface_fn, iteration, debug=False):
         t0_opt = time.perf_counter()
 
         if self.X_saved is None:
@@ -290,18 +290,18 @@ class GradientBatchWarmstartAttacker():
         # logging
         t_grad_step = []
         t_reproject = []
-        obj_vals = objective_fn(X.view(-1, self.x_dim))
+        obj_vals = saturation_risk(X.view(-1, self.x_dim))
         init_best_attack_value = torch.max(obj_vals).item()
 
-        # train_attacker_use_n_step_schedule
+        # critic_use_n_step_schedule
         max_n_steps = self.max_n_steps
-        if self.train_attacker_use_n_step_schedule:
+        if self.critic_use_n_step_schedule:
             max_n_steps = (0.5*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
             print("Max_n_steps: %i" % max_n_steps)
         while True:
             # print("Inner max step #%i" % i)
-            X, step_debug_dict = self._step(objective_fn, surface_fn, X) # Take gradient steps on all candidate attacks
-            # obj_vals = objective_fn(X.view(-1, self.x_dim))
+            X, step_debug_dict = self._step(saturation_risk, surface_fn, X) # Take gradient steps on all candidate attacks
+            # obj_vals = saturation_risk(X.view(-1, self.x_dim))
 
             # Logging
             t_grad_step.append(step_debug_dict["t_grad_step"])
@@ -319,7 +319,7 @@ class GradientBatchWarmstartAttacker():
             #     if early_stopping.early_stop:
             #         break
             #     elif i > 400: # Hard-coded n_{max iter}
-            #         print("Attacker exceeded time limit")
+            #         print("Critic exceeded time limit")
             #         break
             i += 1
 
@@ -327,7 +327,7 @@ class GradientBatchWarmstartAttacker():
 
         # Save for warmstart
         self.X_saved = X
-        obj_vals = objective_fn(X.view(-1, self.x_dim))
+        obj_vals = saturation_risk(X.view(-1, self.x_dim))
         self.obj_vals_saved = obj_vals
 
         # Returning a single attack
@@ -343,7 +343,7 @@ class GradientBatchWarmstartAttacker():
             t_init = tf_init - t0_opt
             t_total_opt = tf_opt - t0_opt
 
-            # TODO: do not change the names in the dict here! Names are matched to trainer.py
+            # TODO: do not change the names in the dict here! Names are matched to learner.py
             debug_dict = {"X_init": X_init, "X_init_reuse": X_reuse_init, "X_init_random": X_random_init, "X_final": X, "X_obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_steps": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt}
 
             # debug_dict = {"X_init": X_init, "X_reuse_init": X_reuse_init, "X_random_init": X_random_init, "X": X, "obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_step": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt}

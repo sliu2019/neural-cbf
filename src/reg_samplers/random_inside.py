@@ -11,7 +11,7 @@ from src.utils import *
 
 class RandomInsideRegSampler():
     """
-    candidate_samples uniformly in h's zero sublevel set
+    candidate_samples uniformly in rho's zero sublevel set
     """
     # Note: this is not batch compliant.
 
@@ -26,7 +26,7 @@ class RandomInsideRegSampler():
         self.bs = 100 # for evaluating on phi_fn
 
     def get_samples(self, phi_fn):
-        # TODO: assuming phi_fn(x)[:, 0] is h(x)!!!! If it is not, this will not work
+        # TODO: assuming phi_fn(x)[:, 0] is rho(x)!!!! If it is not, this will not work
         # print("inside RandomInside sampler, get_ssamples")
         # IPython.embed()
 

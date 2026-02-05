@@ -18,8 +18,8 @@ import math
 from src.phi_designs.neural_phi import NeuralPhi
 from src.phi_designs.low_phi import LowPhi
 
-class Trainer():
-	def __init__(self, args, logger, attacker, test_attacker, reg_sampler, param_dict, device):
+class learnerDesign2():
+	def __init__(self, args, logger, critic, test_critic, reg_sampler, param_dict, device):
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
 		del self.__dict__["self"]  # don't need `self`
@@ -34,7 +34,7 @@ class Trainer():
 		self.x_dim = x_lim.shape[0]
 		self.x_lim_interval_sizes = np.reshape(x_lim[:, 1] - x_lim[:, 0], (1, self.x_dim))
 
-	def train(self, objective_fn, reg_fn, phi_fn, xdot_fn):
+	def train(self, saturation_risk, reg_fn, phi_fn, xdot_fn):
 		##################################
 		######### Set up saving ##########
 		##################################
@@ -88,19 +88,19 @@ class Trainer():
 		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
 		pos_params = [p_dict[name] for name in phi_fn.pos_param_names]
 
-		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.trainer_lr)
+		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.learner_lr)
 
-		# if self.args.trainer_lr_scheduler:
+		# if self.args.learner_lr_scheduler:
 		# 	print("creating lr scheduler")
 		# 	IPython.embed()
-		# 	if self.args.trainer_lr_scheduler == "exponential_reduction":
-		# 		lr_scheduler = ExponentialLR(optimizer, gamma=self.args.trainer_lr_scheduler_exponential_reduction_gamma)
-		# 	elif self.args.trainer_lr_scheduler == "reduce_on_plateau":
+		# 	if self.args.learner_lr_scheduler == "exponential_reduction":
+		# 		lr_scheduler = ExponentialLR(optimizer, gamma=self.args.learner_lr_scheduler_exponential_reduction_gamma)
+		# 	elif self.args.learner_lr_scheduler == "reduce_on_plateau":
 		# 		lr_scheduler = ReduceLROnPlateau(optimizer, factor=0.9, )
 		# 		# torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
 		# 		# TODO: SIMIN YOU HAVEN'T FINISHED HERE!!!
 
-		early_stopping = EarlyStopping(patience=self.args.trainer_early_stopping_patience, min_delta=1e-2)
+		early_stopping = EarlyStopping(patience=self.args.learner_early_stopping_patience, min_delta=1e-2)
 
 		_iter = 0
 		t0 = time.perf_counter()
@@ -116,20 +116,20 @@ class Trainer():
 			X_reg = self.reg_sampler.get_samples(phi_fn)
 			reg_value = reg_fn(X_reg)
 
-			# Note: this won't work for the regular attacker
-			x, debug_dict = self.attacker.opt(objective_fn, phi_fn, _iter, debug=True)
+			# Note: this won't work for the regular critic
+			x, debug_dict = self.critic.opt(saturation_risk, phi_fn, _iter, debug=True)
 			X = debug_dict["X_final"]
 
 			optimizer.zero_grad()
 
 			if self.args.objective_option == "regular":
 				x_batch = x.view(1, -1)
-				attack_value = objective_fn(x_batch)[0, 0]
+				attack_value = saturation_risk(x_batch)[0, 0]
 			elif self.args.objective_option == "softplus":
 				x_batch = x.view(1, -1)
-				attack_value = nn.functional.softplus(objective_fn(x_batch)[0, 0])
+				attack_value = nn.functional.softplus(saturation_risk(x_batch)[0, 0])
 			elif self.args.objective_option == "weighted_average":
-				# obj = objective_fn(X)
+				# obj = saturation_risk(X)
 				# mask_neg = obj >= 0 # zeros out entries where obj < 0: actually, just use softplus on the objective
 				# with torch.no_grad():
 				# 	if torch.any(mask_neg):
@@ -143,7 +143,7 @@ class Trainer():
 				# torch.exp overflows easily; torch.nn.functional.softmax is way better
 
 				c = 0.1
-				obj = objective_fn(X)
+				obj = saturation_risk(X)
 				pos_inds = torch.where(obj >= 0) # tuple of 2D inds
 				pos_obj = obj[pos_inds[0], pos_inds[1]]
 				pos_obj = pos_obj.flatten()
@@ -154,7 +154,7 @@ class Trainer():
 			elif self.args.objective_option == "weighted_average_include_neg_phidot":
 				# Eliminates the "relu" effect on above
 				c = 0.1
-				obj = objective_fn(X)
+				obj = saturation_risk(X)
 				obj = obj.flatten()
 				with torch.no_grad():
 					w = torch.nn.functional.softmax(c*obj, dim=0)
@@ -162,7 +162,7 @@ class Trainer():
 
 			# For logging
 			x_batch = x.view(1, -1)
-			max_value = objective_fn(x_batch)[0, 0]
+			max_value = saturation_risk(x_batch)[0, 0]
 
 			objective_value = attack_value + reg_value
 
@@ -310,8 +310,8 @@ class Trainer():
 
 				# Sample on boundary
 				t0_test_boundary = time.perf_counter()
-				boundary_samples, debug_dict = self.test_attacker._sample_points_on_boundary(phi_fn, self.args.test_N_boundary_samples) # test_attacker now using "faster" version
-				boundary_samples_obj_value = objective_fn(boundary_samples)
+				boundary_samples, debug_dict = self.test_critic._sample_points_on_boundary(phi_fn, self.args.test_N_boundary_samples) # test_critic now using "faster" version
+				boundary_samples_obj_value = saturation_risk(boundary_samples)
 				boundary_samples_obj_value = boundary_samples_obj_value.detach().cpu().numpy()
 				data_dict["boundary_samples_obj_values"].append(boundary_samples_obj_value)
 
@@ -332,7 +332,7 @@ class Trainer():
 				data_dict["test_t_total"].append(tf_test-t0_test)
 				data_dict["test_t_boundary"].append(tf_test-t0_test_boundary)
 
-			if self.args.trainer_stopping_condition == "early_stopping":
+			if self.args.learner_stopping_condition == "early_stopping":
 				# early_stopping(test_loss) # TODO: should technically use test_loss, but we're not computing it
 				# TODO: early stopper almost does the opposite of what we want.
 				# We'd like to end training after loss does not increase (spike) in a while
@@ -340,12 +340,12 @@ class Trainer():
 				early_stopping(objective_value)
 				if early_stopping.early_stop:
 					break
-			elif self.args.trainer_stopping_condition == "n_steps":
-				if _iter > self.args.trainer_n_steps:
+			elif self.args.learner_stopping_condition == "n_steps":
+				if _iter > self.args.learner_n_steps:
 					break
 
 			# IPython.embed()
-			# print(self.args.trainer_stopping_condition)
+			# print(self.args.learner_stopping_condition)
 			# print(_iter)
 			_iter += 1
 

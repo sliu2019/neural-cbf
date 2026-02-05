@@ -126,9 +126,9 @@ def setup_solver(args):
 	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
 	signed_eps = -sign(cos_cos) * eps
 	delta = acos(cos_cos + signed_eps)
-	h = delta ** 2 + gamma_int ** 2 + beta_int ** 2 - delta_safety_limit ** 2
-	cost = fmax(0, h)  # we are in a casadi symbolic environment
-	# cost = h # TODO
+	rho = delta ** 2 + gamma_int ** 2 + beta_int ** 2 - delta_safety_limit ** 2
+	cost = fmax(0, rho)  # we are in a casadi symbolic environment
+	# cost = rho # TODO
 	model.set_expression('cost', cost)
 
 	# Finally,
@@ -158,9 +158,9 @@ def setup_solver(args):
 	eps = 1e-4  # prevents nan when cos_cos = +/- 1 (at x = 0)
 	signed_eps = -sign(cos_cos) * eps
 	delta = acos(cos_cos + signed_eps)
-	h = delta ** 2 + gamma_int ** 2 + beta_int ** 2 - delta_safety_limit ** 2
-	# lterm = h
-	lterm = fmax(0, h)  # we are in a casadi symbolic environment
+	rho = delta ** 2 + gamma_int ** 2 + beta_int ** 2 - delta_safety_limit ** 2
+	# lterm = rho
+	lterm = fmax(0, rho)  # we are in a casadi symbolic environment
 	mpc.set_objective(lterm=lterm, mterm=lterm)
 
 	# Set state and control limits

@@ -40,7 +40,7 @@ class FlyingPendSSA:
         phi_1 = abs(theta) - self.theta_max + self.c2 * np.sign(theta) * dtheta
         return phi_1
 
-    def h(self,x):
+    def rho(self,x):
         try:
             assert len(x.shape) == 2 and x.shape[1] >= 10
         except:
@@ -334,8 +334,8 @@ class FlyingPendSSA:
         # -u <= umax
         # c >= 0, c is the slack variable
         G = np.array([[A, -1.0], [1, 0], [-1, 0], [0, -1]])
-        h = np.array([[b], [self.env.max_force], [self.env.max_force], [0.0]])
-        sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h))
+        rho = np.array([[b], [self.env.max_force], [self.env.max_force], [0.0]])
+        sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(rho))
         sol_var = sol_obj['x']
 
         return sol_var
@@ -418,11 +418,11 @@ class FlyingPendSSA:
         G[5:9, 0:4] = np.eye(4)
         G[-1, -1] = -1.0
 
-        h = np.concatenate([np.array([rhs]), np.zeros(4), np.ones(4), np.zeros(1)])
-        h = np.reshape(h, (-1, 1))
+        rho = np.concatenate([np.array([rhs]), np.zeros(4), np.ones(4), np.zeros(1)])
+        rho = np.reshape(rho, (-1, 1))
 
         try:
-            sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h))
+            sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(rho))
         except:
             print("QP solve was unsuccessful, with status: %s " % sol_obj["status"])
             print("Go to line 96 in flying_cbf_controller")

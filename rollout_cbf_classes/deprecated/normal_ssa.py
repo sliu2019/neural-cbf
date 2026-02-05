@@ -97,8 +97,8 @@ class SSA:
         # -u <= umax
         # c >= 0, c is the slack variable 
         G = np.array([[A, -1.0], [1, 0], [-1, 0], [0, -1]])
-        h = np.array([[b], [self.env.max_force], [self.env.max_force], [0.0]])
-        sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h))
+        rho = np.array([[b], [self.env.max_force], [self.env.max_force], [0.0]])
+        sol_obj = solvers.qp(matrix(P), matrix(q), matrix(G), matrix(rho))
         sol_var = sol_obj['x']
 
         return sol_var

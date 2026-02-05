@@ -8,21 +8,21 @@
 # Default in Tianhao's code is 1.0
 # Running the only version that converged, but took five-ever to converge
 
-# Objective: n_feasible
+# SaturationRisk: n_feasible
 nohup python -u baseline_run_cmaes.py --FlyingPendEvaluator_reg_weight 1e-1 --populate_num 500 --elite_ratio 1e-2 --epoch 20 --init_sigma_ratio 0.5 --exp_name n_feasible_reg_weight_1e_1 &> n_feasible_reg_weight_1e_1.out &
 
 nohup python -u baseline_run_cmaes.py --FlyingPendEvaluator_reg_weight 5e-2 --populate_num 500 --elite_ratio 1e-2 --epoch 20 --init_sigma_ratio 0.5 --exp_name n_feasible_reg_weight_5e_2 &> n_feasible_reg_weight_5e_2.out &
 
 nohup python -u baseline_run_cmaes.py --FlyingPendEvaluator_reg_weight 1e-2 --populate_num 500 --elite_ratio 1e-2 --epoch 20 --init_sigma_ratio 0.5 --exp_name n_feasible_reg_weight_1e_2 &> n_feasible_reg_weight_1e_2.out &
 
-# Objective: avg_amount_infeasible
+# SaturationRisk: avg_amount_infeasible
 nohup python -u baseline_run_cmaes.py --FlyingPendEvaluator_reg_weight 10 --populate_num 500 --elite_ratio 1e-2 --epoch 20 --init_sigma_ratio 0.5 --FlyingPendEvaluator_objective_type avg_amount_infeasible --exp_name avg_amount_infeasible_reg_weight_10 &> avg_amount_infeasible_reg_weight_10.out &
 
 nohup python -u baseline_run_cmaes.py --FlyingPendEvaluator_reg_weight 50 --populate_num 500 --elite_ratio 1e-2 --epoch 20 --init_sigma_ratio 0.5 --FlyingPendEvaluator_objective_type avg_amount_infeasible --exp_name avg_amount_infeasible_reg_weight_50 &> avg_amount_infeasible_reg_weight_50.out &
 
 nohup python -u baseline_run_cmaes.py --FlyingPendEvaluator_reg_weight 100 --populate_num 500 --elite_ratio 1e-2 --epoch 20 --init_sigma_ratio 0.5 --FlyingPendEvaluator_objective_type avg_amount_infeasible --exp_name avg_amount_infeasible_reg_weight_100 &> avg_amount_infeasible_reg_weight_100.out &
 
-# Objective: max_amount_infeasible
+# SaturationRisk: max_amount_infeasible
 nohup python -u baseline_run_cmaes.py --FlyingPendEvaluator_reg_weight 15 --populate_num 500 --elite_ratio 1e-2 --epoch 20 --init_sigma_ratio 0.5 --FlyingPendEvaluator_objective_type max_amount_infeasible --exp_name max_amount_infeasible_reg_weight_15 &> max_amount_infeasible_reg_weight_15.out &
 
 nohup python -u baseline_run_cmaes.py --FlyingPendEvaluator_reg_weight 75 --populate_num 500 --elite_ratio 1e-2 --epoch 20 --init_sigma_ratio 0.5 --FlyingPendEvaluator_objective_type max_amount_infeasible --exp_name max_amount_infeasible_reg_weight_75 &> max_amount_infeasible_reg_weight_75.out &

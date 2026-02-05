@@ -1,0 +1,24 @@
+# Trying design 2
+
+#nohup python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 150.0 --objective_option "weighted_average" --phi_nnl "tanh-tanh-softplus" --phi_nn_inputs "euc" --phi_include_xe --critic_n_samples 500 --critic_use_n_step_schedule --critic_max_n_steps 20 --critic_p_reuse 0.5 --critic gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --affix "repro_test" --gpu 0 &> repro_test.out &
+
+# Base command
+nohup python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 150.0 --reg_n_samples 1000 --objective_option "weighted_average" --phi_nnl "tanh-tanh-none" --phi_nn_inputs "euc" --critic_n_samples 100 --critic_use_n_step_schedule --critic_max_n_steps 20 --critic_p_reuse 0.0 --critic gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --affix "design_2" --gpu 0 &> design_2.out &
+
+nohup python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 200.0 --reg_n_samples 1000 --objective_option "weighted_average" --phi_nnl "tanh-tanh-none" --phi_nn_inputs "euc" --critic_n_samples 100 --critic_use_n_step_schedule --critic_max_n_steps 20 --critic_p_reuse 0.0 --critic gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --affix "design_2_reg_weight_200" --gpu 0 &> design_2_reg_weight_200.out &
+
+nohup python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 200.0 --reg_n_samples 250 --objective_option "weighted_average" --phi_nnl "tanh-tanh-none" --phi_nn_inputs "euc" --critic_n_samples 100 --critic_use_n_step_schedule --critic_max_n_steps 20 --critic_p_reuse 0.0 --critic gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --affix "design_2_reg_samples_250" --gpu 1 &> design_2_reg_samples_250.out &
+
+nohup python main.py --reg_transform "sigmoid" --reg_sampler "random" --reg_weight 200.0 --reg_n_samples 250 --objective_option "weighted_average" --phi_nnl "tanh-tanh-none" --phi_nn_inputs "euc" --critic_n_samples 100 --critic_use_n_step_schedule --critic_max_n_steps 20 --critic_p_reuse 0.0 --critic gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --affix "design_2_reg_random" --gpu 1 &> design_2_reg_random.out &
+
+
+#nohup python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 150.0 --objective_option "weighted_average" --phi_nnl "tanh-tanh-softplus" --phi_nn_inputs "euc" --phi_include_xe --critic_n_samples 100 --critic_use_n_step_schedule --critic gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --affix "ESG_reg_speedup_weight_150_seed_0_again" --gpu 0 &> ESG_reg_speedup_weight_150_seed_0_again.out &
+
+
+python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 150.0 --objective_option "weighted_average" --phi_nnl "tanh-tanh-softplus" --phi_nn_inputs "euc" --phi_include_xe --critic_n_samples 500 --critic_use_n_step_schedule --critic_max_n_steps 20 --critic_p_reuse 0.5 --critic gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --affix "debug" --gpu 0
+
+
+python main.py --reg_transform "sigmoid" --reg_sampler "random" --reg_weight 150.0 --reg_n_samples 250 --objective_option "weighted_average" --phi_nnl "tanh-tanh-none" --phi_nn_inputs "euc" --critic_n_samples 100 --critic_use_n_step_schedule --critic_max_n_steps 20 --critic_p_reuse 0.0 --critic gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --affix "debug" --gpu 0
+
+# Debug
+python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 150.0 --objective_option "weighted_average" --phi_nnl "tanh-tanh-softplus" --phi_nn_inputs "euc" --phi_include_xe --critic_n_samples 500 --critic_use_n_step_schedule --critic_max_n_steps 20 --critic_p_reuse 0.5 --critic gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --affix "debug" --gpu 2
