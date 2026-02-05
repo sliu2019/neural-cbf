@@ -23,11 +23,23 @@ class Critic():
 	2. Different boundary sampling routines
     """
     def __init__(self, x_lim, device, logger, n_samples=60, \
-                 stopping_condition="n_steps", max_n_steps=50, early_stopping_min_delta=1e-3, early_stopping_patience=50,\
-                 lr=1e-3, \
-                 p_reuse=0.7,\
-                 projection_tolerance=1e-1, projection_lr=1e-2, projection_time_limit=3.0, verbose=False, critic_use_n_step_schedule=False,\
-                 boundary_sampling_speedup_method="sequential", boundary_sampling_method="gaussian", gaussian_t=1.0):
+                # stopping_condition="n_steps",\
+                max_n_steps=50,\
+                # early_stopping_min_delta=1e-3,\
+                # early_stopping_patience=50,\
+                # lr=1e-3, \
+                # p_reuse=0.0, \
+                # projection_tolerance=1e-1,\
+                # projection_lr=1e-2,\
+                # projection_time_limit=3.0,\
+                verbose=False,\
+                # critic_use_n_step_schedule=False,\
+                # boundary_sampling_speedup_method="sequential",\
+                # boundary_sampling_method="gaussian",\
+                # gaussian_t=1.0
+                ):
+        
+        # TODO: get rid of reuse functionality 
         # boundary_sampling_option: ["sequential", "gpu_parallelized", "cpu_parallelized"]
         # boundary_sampling_method; ["uniform", "gaussian"]
 
@@ -35,7 +47,17 @@ class Critic():
         self.__dict__.update(vars)  # __dict__ holds and object's attributes
         del self.__dict__["self"]  # don't need `self`
 
-        assert stopping_condition in ["n_steps", "early_stopping"]
+        # TODO: Putting all the hardcoded stuff here for now
+        self.gaussian_t = 1.0 
+        self.p_reuse = 0.0
+        self.projection_tolerance = 1e-1 # when to consider a point "projected"
+        self.projection_lr=1e-2
+        self.projection_time_limit=3.0
+        self.lr = 1e-3
+        self.early_stopping_min_delta=1e-3
+        self.early_stopping_patience=50
+
+        # assert stopping_condition in ["n_steps", "early_stopping"]
 
         self.x_dim = self.x_lim.shape[0]
 
@@ -293,12 +315,12 @@ class Critic():
 
     def _sample_segment_intersect_boundary(self, phi_fn, random_seed=None):
         # boundary_sampling_method; ["uniform", "gaussian"]
-        if self.boundary_sampling_method == "uniform":
-            outer = self._sample_on_cube(random_seed=random_seed)
-            center = self._sample_in_cube(random_seed=random_seed)
-        elif self.boundary_sampling_method == "gaussian":
-            center = self._sample_in_safe_set(phi_fn, random_seed=random_seed)
-            outer = self._sample_in_gaussian(center)
+        # if self.boundary_sampling_method == "uniform":
+        #     outer = self._sample_on_cube(random_seed=random_seed)
+        #     center = self._sample_in_cube(random_seed=random_seed)
+        # elif self.boundary_sampling_method == "gaussian":
+        center = self._sample_in_safe_set(phi_fn, random_seed=random_seed)
+        outer = self._sample_in_gaussian(center)
 
         intersection = self._intersect_segment_with_manifold(center, outer, phi_fn)
         return intersection
@@ -444,10 +466,10 @@ class Critic():
         init_best_attack_value = torch.max(obj_vals).item()
 
         # critic_use_n_step_schedule
-        max_n_steps = self.max_n_steps
-        if self.critic_use_n_step_schedule:
-            max_n_steps = (0.5*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
-            print("Max_n_steps: %i" % max_n_steps)
+        # max_n_steps = self.max_n_steps
+        # if self.critic_use_n_step_schedule:
+        max_n_steps = (0.5*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
+        print("Max_n_steps: %i" % max_n_steps)
         while True:
             if self.verbose:
                 print("Counterex. max. step #%i" % i)
@@ -461,12 +483,12 @@ class Critic():
             dist_diff_after_proj.append(step_debug_dict["dist_diff_after_proj"])
 
             # Loop break condition
-            if self.stopping_condition == "n_steps":
-                if (i > max_n_steps):
-                    break
-            elif self.stopping_condition == "early_stopping":
-                print("Not recommended to use this option; it will run for hundreds of steps before stopping")
-                raise NotImplementedError
+            # if self.stopping_condition == "n_steps":
+            if (i > max_n_steps):
+                break
+            # elif self.stopping_condition == "early_stopping":
+            #     print("Not recommended to use this option; it will run for hundreds of steps before stopping")
+            #     raise NotImplementedError
             # elif self.stopping_condition == "early_stopping": # Note: the stopping criteria is so strict that this is effectively the same as using n_steps = 400
             #     early_stopping(obj_vals)
             #     if early_stopping.early_stop:

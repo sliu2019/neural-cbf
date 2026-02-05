@@ -41,19 +41,25 @@ def create_arg_parser():
 	# parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"]) # TODO: hardcode sequential 
 	# parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="gaussian", choices=["uniform", "gaussian"]) # TODO: hardcode gaussian 
 	# parser.add_argument("--gradient_batch_warmstart_faster_gaussian_t", type=float, default=1.0) # TODO: could shrink as training progresses
+
+	# parser.add_argument('--critic', default='gradient_batch_warmstart_faster', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart_faster']) # TODO: hardcode 
+	# parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"]) # TODO: hardcode sequential 
+	# parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="gaussian", choices=["uniform", "gaussian"]) # TODO: hardcode gaussian 
+	# parser.add_argument("--gradient_batch_warmstart_faster_gaussian_t", type=float, default=1.0) # TODO: could shrink as training progresses
 	
 	# Gradient batch critic
 	parser.add_argument('--critic_n_samples', default=60, type=int) # TODO: Keep 
-	parser.add_argument('--critic_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping']) # Hardcode n steps 
-	parser.add_argument('--critic_max_n_steps', default=50, type=int) # TODO: 20 in 04-22 run 
-	parser.add_argument('--critic_p_reuse', default=0.7, type=float) # TODO: 0.0 in 04-22 run 
-	parser.add_argument('--critic_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"') 
-	parser.add_argument('--critic_projection_lr', default=1e-2, type=float) # changed from 1e-4 to increase proj speed
-	parser.add_argument('--critic_projection_time_limit', default=3.0, type=float)
-	parser.add_argument('--critic_lr', default=1e-3, type=float)
+	# parser.add_argument('--critic_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping']) # Hardcode n steps 
+	parser.add_argument('--critic_max_n_steps', default=20, type=int) # TODO: 20 in 04-22 run 
+	# parser.add_argument('--critic_use_n_step_schedule', action='store_true', help='use a schedule (starting with >>>max_n_steps and exponentially decreasing down to it') # TODO: hardcode True - best in 04-22-24 repro run 
+	# parser.add_argument('--critic_p_reuse', default=0.7, type=float) # TODO: 0.0 in 04-22 run 
 
-	parser.add_argument('--critic_use_n_step_schedule', action='store_true', help='use a schedule (starting with >>>max_n_steps and exponentially decreasing down to it') # TODO: hardcode True - best in 04-22-24 repro run 
+	# parser.add_argument('--critic_lr', default=1e-3, type=float)
 
+	# parser.add_argument('--critic_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"') 
+	# parser.add_argument('--critic_projection_lr', default=1e-2, type=float) # changed from 1e-4 to increase proj speed
+	# parser.add_argument('--critic_projection_time_limit', default=3.0, type=float)
+	
 	############################################################################
 	# Critic: test
 	parser.add_argument('--test_N_volume_samples', default=2500, type=int)

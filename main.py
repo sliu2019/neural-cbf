@@ -257,32 +257,35 @@ def main(args):
 	reg_fn = reg_fn.to(device)
 
 	# Create critic
-	critic = Critic(x_lim, device, logger, n_samples=args.critic_n_samples,
-													stopping_condition=args.critic_stopping_condition,
-													max_n_steps=args.critic_max_n_steps,
-													lr=args.critic_lr,
-													projection_tolerance=args.critic_projection_tolerance,
-													projection_lr=args.critic_projection_lr,
-													projection_time_limit=args.critic_projection_time_limit,
-													critic_use_n_step_schedule=args.critic_use_n_step_schedule,
-													boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method,boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
-													gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
-													p_reuse=args.critic_p_reuse)
+	critic = Critic(x_lim, device, logger, n_samples=args.critic_n_samples,\
+											# stopping_condition=args.critic_stopping_condition,
+											max_n_steps=args.critic_max_n_steps, \
+											# lr=args.critic_lr, \
+											# projection_tolerance=args.critic_projection_tolerance,
+											# projection_lr=args.critic_projection_lr,
+											# projection_time_limit=args.critic_projection_time_limit,
+											# critic_use_n_step_schedule=args.critic_use_n_step_schedule,
+											# boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method,
+											# boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
+											# gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
+											# p_reuse=args.critic_p_reuse
+											)
 
 	# Create test critic
 	# Note: doesn't matter that we're passing train params. We're only using test_critic to sample on boundary
-	test_critic = Critic(x_lim, device, logger, n_samples=args.critic_n_samples,
-	                                                stopping_condition=args.critic_stopping_condition,
-	                                                max_n_steps=args.critic_max_n_steps,
-	                                                lr=args.critic_lr,
-	                                                projection_tolerance=args.critic_projection_tolerance,
-	                                                projection_lr=args.critic_projection_lr,
-	                                                projection_time_limit=args.critic_projection_time_limit,
-	                                                critic_use_n_step_schedule=args.critic_use_n_step_schedule,
-	                                                boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method,
-	                                                boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
-	                                                gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
-	                                                p_reuse=args.critic_p_reuse)
+	test_critic = Critic(x_lim, device, logger, n_samples=args.critic_n_samples, \
+												# stopping_condition=args.critic_stopping_condition,
+												max_n_steps=args.critic_max_n_steps, \
+												# lr=args.critic_lr, \
+												# projection_tolerance=args.critic_projection_tolerance,
+												# projection_lr=args.critic_projection_lr,
+												# projection_time_limit=args.critic_projection_time_limit,
+												# critic_use_n_step_schedule=args.critic_use_n_step_schedule,
+												# boundary_sampling_speedup_method=args.gradient_batch_warmstart_faster_speedup_method,
+												# boundary_sampling_method=args.gradient_batch_warmstart_faster_sampling_method,
+												# gaussian_t=args.gradient_batch_warmstart_faster_gaussian_t,
+												# p_reuse=args.critic_p_reuse
+												)
 
 
 	# Pass everything to learner

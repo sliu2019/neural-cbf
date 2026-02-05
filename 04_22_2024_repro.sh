@@ -16,4 +16,4 @@ nohup python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --r
 
 # 02-25-26 new commands 
 # 4 PM EST
-python main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 150.0 --objective_option "weighted_average" --phi_nnl "tanh-tanh-softplus" --phi_nn_inputs "euc" --phi_include_xe --critic_n_samples 500 --critic_use_n_step_schedule --critic_max_n_steps 20 --critic_p_reuse 0.5 --critic gradient_batch_warmstart_faster --gradient_batch_warmstart_faster_speedup_method sequential --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --affix "repro_after_delete" --gpu 1
+nohup python -u main.py --reg_transform "sigmoid" --reg_sampler "random_inside" --reg_weight 150.0 --objective_option "weighted_average" --phi_nnl "tanh-tanh-softplus" --phi_nn_inputs "euc" --phi_include_xe --critic_n_samples 500 --critic_use_n_step_schedule --critic_max_n_steps 20 --critic_p_reuse 0.5 --gradient_batch_warmstart_faster_sampling_method gaussian --random_seed 0 --affix "repro_after_delete" --gpu 0 &> repro_after_delete.out &

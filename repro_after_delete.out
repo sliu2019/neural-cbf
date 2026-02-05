@@ -1,5 +1,406 @@
 nohup: ignoring input
-Traceback (most recent call last):
-  File "main.py", line 9, in <module>
-    from critic import Critic
-ModuleNotFoundError: No module named 'critic'
+problem          : flying_inv_pend
+rho              : sum
+phi_design       : neural
+phi_nn_dimension : 64-64
+phi_nnl          : tanh-tanh-softplus
+phi_ci_init_range : 0.01
+phi_include_xe   : True
+phi_nn_inputs    : euc
+physical_difficulty : easy
+max_angular_velocity : 5.0
+max_theta        : 0.7853981633974483
+max_force        : 22.0
+pend_length      : 3.0
+box_ang_vel_limit : 20.0
+reg_weight       : 150.0
+reg_sample_distance : 0.1
+reg_sampler      : random_inside
+reg_n_samples    : 250
+reg_transform    : sigmoid
+objective_option : weighted_average
+gradient_batch_warmstart_faster_speedup_method : sequential
+gradient_batch_warmstart_faster_sampling_method : gaussian
+gradient_batch_warmstart_faster_gaussian_t : 1.0
+critic_n_samples : 500
+critic_stopping_condition : n_steps
+critic_max_n_steps : 20
+critic_p_reuse   : 0.5
+critic_projection_tolerance : 0.1
+critic_projection_lr : 0.01
+critic_projection_time_limit : 3.0
+critic_lr        : 0.001
+critic_use_n_step_schedule : True
+test_N_volume_samples : 2500
+test_N_boundary_samples : 2500
+learner_stopping_condition : n_steps
+learner_early_stopping_patience : 100
+learner_n_steps  : 3000
+learner_lr       : 0.001
+random_seed      : 0
+affix            : repro_after_delete
+log_root         : log
+model_root       : checkpoint
+n_checkpoint_step : 5
+n_test_loss_step : 25
+gpu              : 0
+log_folder       : log/flying_inv_pend_repro_after_delete
+model_folder     : checkpoint/flying_inv_pend_repro_after_delete
+At initialization: k0 is 0.007682
+Max_n_steps: 30
+Attack: reprojection exited on timeout, max dist from =0 boundary:  1.0625309944152832
+Attack: reprojection exited on timeout, max dist from =0 boundary:  3.0938820838928223
+Attack: reprojection exited on timeout, max dist from =0 boundary:  1.2094379663467407
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.7839080691337585
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6365969777107239
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.7446972131729126
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6476711630821228
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6875576972961426
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6830393075942993
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6468169093132019
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6249475479125977
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6152595281600952
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6065741777420044
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6626303791999817
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5806939601898193
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5810744166374207
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6355978846549988
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5369014739990234
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6676537990570068
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5596328973770142
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6181762218475342
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5812538862228394
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5807470083236694
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5959664583206177
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6391862630844116
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6302996277809143
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5269094705581665
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5212581157684326
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5837264060974121
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6058207750320435
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5799548625946045
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5797412991523743
+Reg grad norm: 0.542
+total grad norm: 2.507
+
+==================== evaluation at iteration: 0 ====================
+train total loss: 90.991%
+train max loss: 31.411%, reg loss: 75.489%
+time spent training so far: 0:02:12.547465
+train attack total time: 132.207s
+train attack init time: 32.180s
+train attack avg grad step time: 0.074s
+train attack avg reproj time: 3.050s
+
+
+train attack loss increase over inner max: 10.539
+OOM debug. Mem allocated and reserved: 2552320.000000, 10485760.000000
+Parameter containing:
+tensor([[0.0087]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.0040]], device='cuda:0', requires_grad=True)
+============================ end of evaluation ============================
+
+Saving at:  log/flying_inv_pend_repro_after_delete/data.pkl
+
+++++++++++++++++++++ computing test stats ++++++++++++++++++++
+v approx: 4.360% of volume
+percentage infeasible at boundary: 29.88%
+mean, std amount infeasible at boundary: 2.17 +/- 11.27
+max amount infeasible at boundary: 525.14
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3136852979660034
+Max_n_steps: 29
+Attack: reprojection exited on timeout, max dist from =0 boundary:  1.2065813541412354
+Attack: reprojection exited on timeout, max dist from =0 boundary:  1.2327721118927002
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6272455453872681
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5918657779693604
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5327436923980713
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.49717503786087036
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5982038378715515
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5941308736801147
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.49301138520240784
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5611437559127808
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5129332542419434
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.566437304019928
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.532076358795166
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5465472936630249
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4774736166000366
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5094236731529236
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5163022875785828
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5222546458244324
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.47742849588394165
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5668578147888184
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.548543393611908
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4684736728668213
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5172891616821289
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5123231410980225
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.48959141969680786
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5093502998352051
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4398272633552551
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5121800303459167
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4128292202949524
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4486193358898163
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5033310651779175
+Reg grad norm: 0.461
+total grad norm: 2.255
+
+==================== evaluation at iteration: 1 ====================
+train total loss: 88.207%
+train max loss: 26.878%, reg loss: 75.456%
+time spent training so far: 0:06:43.635964
+train attack total time: 116.259s
+train attack init time: 19.374s
+train attack avg grad step time: 0.073s
+train attack avg reproj time: 3.051s
+
+
+train attack loss increase over inner max: -1.609
+OOM debug. Mem allocated and reserved: 2937344.000000, 35651584.000000
+Parameter containing:
+tensor([[0.0097]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.0030]], device='cuda:0', requires_grad=True)
+============================ end of evaluation ============================
+
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3004557490348816
+Max_n_steps: 29
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.9763908386230469
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.7845813035964966
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5733398199081421
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4970274269580841
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5349334478378296
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5270379781723022
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5148631930351257
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5277807712554932
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5364598631858826
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5383044481277466
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4873189628124237
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5142943859100342
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5023963451385498
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4849521219730377
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4946438670158386
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5055439472198486
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4324238896369934
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4610389173030853
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4917922019958496
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.48738574981689453
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.46844565868377686
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.475061297416687
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5284328460693359
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4568999111652374
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4955255687236786
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.419750839471817
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5068516135215759
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4494973421096802
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.44043901562690735
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5022530555725098
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4655475616455078
+Reg grad norm: 0.519
+total grad norm: 2.177
+
+==================== evaluation at iteration: 2 ====================
+train total loss: 86.717%
+train max loss: 25.280%, reg loss: 75.459%
+time spent training so far: 0:08:39.306174
+train attack total time: 115.338s
+train attack init time: 18.426s
+train attack avg grad step time: 0.072s
+train attack avg reproj time: 3.052s
+
+
+train attack loss increase over inner max: 0.250
+OOM debug. Mem allocated and reserved: 2937344.000000, 35651584.000000
+Parameter containing:
+tensor([[0.0107]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.0020]], device='cuda:0', requires_grad=True)
+============================ end of evaluation ============================
+
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.22848226130008698
+Max_n_steps: 29
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.687066912651062
+Attack: reprojection exited on timeout, max dist from =0 boundary:  1.0524828433990479
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.712056040763855
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5095064640045166
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5119432806968689
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.486729234457016
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5147527456283569
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.502079963684082
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5006883144378662
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.48593294620513916
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4678691625595093
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4678241014480591
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.43200618028640747
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5144036412239075
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.48167240619659424
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.48997992277145386
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.49836036562919617
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.42399531602859497
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3974314033985138
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4716537594795227
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4680255949497223
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.48502278327941895
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4519858658313751
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4253060519695282
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.40920785069465637
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4477952718734741
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.42156150937080383
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4247242212295532
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.39547327160835266
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4056527614593506
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.40594062209129333
+Reg grad norm: 0.500
+total grad norm: 2.039
+
+==================== evaluation at iteration: 3 ====================
+train total loss: 86.217%
+train max loss: 28.936%, reg loss: 75.307%
+time spent training so far: 0:10:35.261678
+train attack total time: 115.550s
+train attack init time: 18.458s
+train attack avg grad step time: 0.076s
+train attack avg reproj time: 3.054s
+
+
+train attack loss increase over inner max: 6.673
+OOM debug. Mem allocated and reserved: 2937856.000000, 35651584.000000
+Parameter containing:
+tensor([[0.0117]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.0010]], device='cuda:0', requires_grad=True)
+============================ end of evaluation ============================
+
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.26213544607162476
+Max_n_steps: 29
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5933166742324829
+Attack: reprojection exited on timeout, max dist from =0 boundary:  1.5877617597579956
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6779581308364868
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5319024324417114
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5430572628974915
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.40597593784332275
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5055311918258667
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.41739505529403687
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.44706323742866516
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4324278235435486
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.41423141956329346
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3511831760406494
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4416946768760681
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4278187155723572
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4457799196243286
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4227021336555481
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4152464270591736
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4539610743522644
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3799149692058563
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4458242356777191
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.41594433784484863
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.39332127571105957
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4155410826206207
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3587179183959961
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4189288020133972
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.40580472350120544
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.421270489692688
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4303058683872223
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3636895418167114
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.32565152645111084
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.34501177072525024
+Reg grad norm: 0.527
+total grad norm: 3.011
+
+==================== evaluation at iteration: 4 ====================
+train total loss: 85.004%
+train max loss: 24.778%, reg loss: 75.389%
+time spent training so far: 0:12:30.084292
+train attack total time: 114.484s
+train attack init time: 17.685s
+train attack avg grad step time: 0.073s
+train attack avg reproj time: 3.048s
+
+
+train attack loss increase over inner max: -1.208
+OOM debug. Mem allocated and reserved: 2937344.000000, 35651584.000000
+Parameter containing:
+tensor([[0.0126]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+============================ end of evaluation ============================
+
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.22279110550880432
+Max_n_steps: 29
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.729478120803833
+Attack: reprojection exited on timeout, max dist from =0 boundary:  1.9784709215164185
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.6978166103363037
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.46160387992858887
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4277837872505188
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.39141449332237244
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4078337550163269
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.39859649538993835
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.39701956510543823
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.41692930459976196
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.38106557726860046
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.36343058943748474
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4341355562210083
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4418901205062866
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.39579522609710693
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.422850638628006
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4217725396156311
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3677474856376648
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.36782529950141907
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.39611610770225525
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3494110107421875
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.40162986516952515
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3857172727584839
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4053395986557007
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.39891308546066284
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3895820379257202
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4144884943962097
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3831450343132019
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.39790618419647217
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4029964208602905
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3811246156692505
+Reg grad norm: 0.632
+total grad norm: 2.578
+
+==================== evaluation at iteration: 5 ====================
+train total loss: 83.189%
+train max loss: 18.817%, reg loss: 75.241%
+time spent training so far: 0:14:26.351080
+train attack total time: 115.911s
+train attack init time: 18.915s
+train attack avg grad step time: 0.074s
+train attack avg reproj time: 3.053s
+
+
+train attack loss increase over inner max: -3.490
+OOM debug. Mem allocated and reserved: 2937344.000000, 35651584.000000
+Parameter containing:
+tensor([[0.0136]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+============================ end of evaluation ============================
+
+Saving at:  log/flying_inv_pend_repro_after_delete/data.pkl
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.24130882322788239
+Max_n_steps: 29
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.5267282724380493
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.8429250717163086
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.570765495300293
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.438915491104126
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.40096062421798706
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4266338050365448
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3898691236972809
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4814814031124115
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4302980899810791
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.39091581106185913
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.41695213317871094
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.45484089851379395
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.40228939056396484
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3886767625808716
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.406822144985199
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3962695002555847
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.4265159070491791
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3842664957046509
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.386514276266098
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.40676045417785645
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.3960692286491394
