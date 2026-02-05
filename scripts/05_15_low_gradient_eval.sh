@@ -1,2 +1,0 @@
-
-nohup python -u run_flying_pend_exps.py --save_fnm long_length_ckpt_2625 --which_cbf low-gradient --exp_name_to_load flying_inv_pend_low_cbf_reg_weight_1 --checkpoint_number_to_load 2625 --run_length long &> eval_low_gradient.out &

@@ -55,13 +55,13 @@ class Critic():
 
         # For multiproc
         self.n_gpu = torch.cuda.device_count()
-        if self.boundary_sampling_speedup_method == "gpu_parallelized":
-            self.pool = mp.Pool(self.n_gpu) # torch pool
-            try:
-                mp.set_start_method('spawn')
-            except RuntimeError:
-                print("Couldn't set start_method as spawn, in init")
-                IPython.embed()
+        # if self.boundary_sampling_speedup_method == "gpu_parallelized":
+        #     self.pool = mp.Pool(self.n_gpu) # torch pool
+        #     try:
+        #         mp.set_start_method('spawn')
+        #     except RuntimeError:
+        #         print("Couldn't set start_method as spawn, in init")
+        #         IPython.embed()
 
     def __getstate__(self): # can't pickle pool object; creating threads will pickle self
         self_dict = self.__dict__.copy()
@@ -382,13 +382,13 @@ class Critic():
         # boundary_sampling_option: ["sequential", "gpu_parallelized", "cpu_parallelized"]
         # boundary_sampling_method; ["uniform", "gaussian"]
         """
-        if self.boundary_sampling_speedup_method == "gpu_parallelized":
-            samples, debug_dict = self._sample_points_on_boundary_gpu_parallelized(phi_fn, n_samples)
-        elif self.boundary_sampling_speedup_method == "sequential":
-            samples, debug_dict = self._sample_points_on_boundary_sequential(phi_fn, n_samples)
-        elif self.boundary_sampling_speedup_method == "cpu_parallelized":
-            print("self.boundary_sampling_option == cpu_parallelized hasn't been implemented....")
-            raise NotImplementedError
+        # if self.boundary_sampling_speedup_method == "gpu_parallelized":
+        #     samples, debug_dict = self._sample_points_on_boundary_gpu_parallelized(phi_fn, n_samples)
+        # elif self.boundary_sampling_speedup_method == "sequential":
+        samples, debug_dict = self._sample_points_on_boundary_sequential(phi_fn, n_samples)
+        # elif self.boundary_sampling_speedup_method == "cpu_parallelized":
+        #     print("self.boundary_sampling_option == cpu_parallelized hasn't been implemented....")
+        #     raise NotImplementedError
         return samples, debug_dict
 
     def opt(self, saturation_risk, phi_fn, iteration, debug=False):

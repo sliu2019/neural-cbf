@@ -27,73 +27,21 @@ def create_arg_parser():
 	parser.add_argument('--box_ang_vel_limit', default=20.0, type=float)
 
 	# Reg
-<<<<<<< HEAD
-	parser.add_argument('--reg_weight', default=0.0, type=float, help='the weight on the volume term')
-	parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task')
-	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed', 'random_inside', 'random_inside_then_boundary'], help="random_inside_then_boundary switches from RI to bdry after vol drops")
-	parser.add_argument('--reg_n_samples', type=int, default=250)
-	parser.add_argument('--reg_transform', type=str, default="sigmoid", choices=["sigmoid", "softplus"])
-	# parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
-||||||| parent of be3c453 (deleted some unnecessary folders and files)
 	parser.add_argument('--reg_weight', default=0.0, type=float, help='the weight on the volume term') # TODO: KEEP 
 	parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task') # TODO: unused?
 	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed', 'random_inside', 'random_inside_then_boundary'], help="random_inside_then_boundary switches from RI to bdry after vol drops") # TODO: harcode - random_inside in best run (4-22-24) repro 
 	parser.add_argument('--reg_n_samples', type=int, default=250) # TODO: KEEP 
 	parser.add_argument('--reg_transform', type=str, default="sigmoid", choices=["sigmoid", "softplus"]) # TODO: hardcode - sigmoid in best run (4-22-24 repro) 
-	# parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
-=======
-	parser.add_argument('--reg_weight', default=0.0, type=float, help='the weight on the volume term') # TODO: KEEP 
-	parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task') # TODO: unused?
-	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed', 'random_inside', 'random_inside_then_boundary'], help="random_inside_then_boundary switches from RI to bdry after vol drops") # TODO: harcode - random_inside in best run (4-22-24) repro 
-	parser.add_argument('--reg_n_samples', type=int, default=250) # TODO: KEEP 
-	parser.add_argument('--reg_transform', type=str, default="sigmoid", choices=["sigmoid", "softplus"]) # TODO: hardcode - sigmoid in best run (4-22-24 repro) 
->>>>>>> be3c453 (deleted some unnecessary folders and files)
 
-<<<<<<< HEAD
-	# parser.add_argument('--g_input_is_xy', action='store_true')
-
-	# SaturationRisk
-	# parser.add_argument('--no_softplus_on_obj', action='store_true', help='removes softplus on the objective')
-	# parser.add_argument('--learner_average_gradients', action='store_true')
-
-	parser.add_argument('--objective_option', type=str, default='weighted_average', choices=['regular', 'softplus', 'weighted_average', 'weighted_average_include_neg_phidot'], help="allow negative pays attention to phi < 0 as well")
-
-	###################################################################################################################################
-	# # Reg sample keeper
-	# parser.add_argument('--reg_n_samples', default=50, type=int)
-||||||| parent of be3c453 (deleted some unnecessary folders and files)
-	# parser.add_argument('--g_input_is_xy', action='store_true')
-
-	# SaturationRisk
-	# parser.add_argument('--no_softplus_on_obj', action='store_true', help='removes softplus on the objective')
-	# parser.add_argument('--learner_average_gradients', action='store_true')
-
-	parser.add_argument('--objective_option', type=str, default='weighted_average', choices=['regular', 'softplus', 'weighted_average', 'weighted_average_include_neg_phidot'], help="allow negative pays attention to phi < 0 as well") # TODO: what's this? harcode default 
-
-	###################################################################################################################################
-	# # Reg sample keeper
-	# parser.add_argument('--reg_n_samples', default=50, type=int)
-=======
 	parser.add_argument('--objective_option', type=str, default='weighted_average', choices=['regular', 'softplus', 'weighted_average', 'weighted_average_include_neg_phidot'], help="allow negative pays attention to phi < 0 as well") # TODO: what's this? harcode default
->>>>>>> be3c453 (deleted some unnecessary folders and files)
-
 	###################################################################################################################################
-	# Critic: train
-	parser.add_argument('--critic', default='gradient_batch_warmstart_faster', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart_faster']) # TODO: hardcode 
-<<<<<<< HEAD
-	# parser.add_argument('--gradient_batch_warmstart2_proj_tactic', choices=['gd_step_timeout', 'adam_ba'])
-	parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"])
-	parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="gaussian", choices=["uniform", "gaussian"])
-||||||| parent of be3c453 (deleted some unnecessary folders and files)
-	# parser.add_argument('--gradient_batch_warmstart2_proj_tactic', choices=['gd_step_timeout', 'adam_ba'])
-	parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"]) # TODO: hardcode sequential 
-	parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="gaussian", choices=["uniform", "gaussian"]) # TODO: hardcode gaussian 
-=======
-	parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"]) # TODO: hardcode sequential 
-	parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="gaussian", choices=["uniform", "gaussian"]) # TODO: hardcode gaussian 
->>>>>>> be3c453 (deleted some unnecessary folders and files)
-	parser.add_argument("--gradient_batch_warmstart_faster_gaussian_t", type=float, default=1.0) # TODO: could shrink as training progresses
+	# Critic parameters
 
+	# parser.add_argument('--critic', default='gradient_batch_warmstart_faster', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart_faster']) # TODO: hardcode 
+	# parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"]) # TODO: hardcode sequential 
+	# parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="gaussian", choices=["uniform", "gaussian"]) # TODO: hardcode gaussian 
+	# parser.add_argument("--gradient_batch_warmstart_faster_gaussian_t", type=float, default=1.0) # TODO: could shrink as training progresses
+	
 	# Gradient batch critic
 	parser.add_argument('--critic_n_samples', default=60, type=int) # TODO: Keep 
 	parser.add_argument('--critic_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping']) # Hardcode n steps 
