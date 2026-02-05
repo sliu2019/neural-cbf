@@ -4,27 +4,47 @@ import math
 def create_arg_parser():
 	# Problem
 	parser = argparse.ArgumentParser(description='CBF synthesis')
-	parser.add_argument('--problem', default='flying_inv_pend', help='problem specifies dynamics, rho definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced", "quadcopter"])
+	parser.add_argument('--problem', default='flying_inv_pend', help='problem specifies dynamics, rho definition, U_limits, etc.', choices=["flying_inv_pend"])
 
-	parser.add_argument('--rho', type=str, default='sum', choices=['max', 'sum', 'reg'], help='Chose the form of rho(x). For flying inv pend, chose between max and sum. For quadcopter, chose between sum and regular') # TODO: hardcode 
+	# parser.add_argument('--rho', type=str, default='sum', choices=['max', 'sum', 'reg'], help='Chose the form of rho(x). For flying inv pend, chose between max and sum. For quadcopter, chose between sum and regular') # TODO: hardcode 
 
-	# Phi
-	parser.add_argument('--phi_design', default="neural", type=str, choices=["neural", "low"]) # TODO: hardcode
-	parser.add_argument('--phi_nn_dimension', default="64-64", type=str, help='for neural CBF: specify the hidden dimension') # TODO: hardcode
-	parser.add_argument('--phi_nnl', default="tanh-tanh-none", type=str, help='for neural CBF: can also do tanh-tanh-softplus') # TODO: hardcode tanh-tanh-softplus from ablation_server_5 and 04-22-24
-	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='for neural CBF: c_i are initialized uniformly within the range [0, x]')
-	parser.add_argument('--phi_include_xe', action='store_true', help='for neural CBF') # TODO: hardcode as True
-	parser.add_argument('--phi_nn_inputs', type=str, default="spherical", choices=["spherical", "euc"], help='for neural CBF: which coordinates? spherical or euclidean') # TODO: hardcode euc
+	# Phi (neural CBF) parameters defining the structure of the CBF
+	# parser.add_argument('--phi_design', default="neural", type=str, choices=["neural", "low"]) # TODO: hardcode
+	# parser.add_argument('--phi_nn_dimension', default="64-64", type=str, help='for neural CBF: specify the hidden dimension') # TODO: hardcode
+	# parser.add_argument('--phi_nnl', default="tanh-tanh-none", type=str, choices=) # TODO: hardcode tanh-tanh-softplus from ablation_server_5 and 04-22-24
+	# parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='for neural CBF: c_i are initialized uniformly within the range [0, x]')
+	# parser.add_argument('--phi_include_xe', action='store_true', help='for neural CBF') # TODO: hardcode as True
+	# parser.add_argument('--phi_nn_inputs', type=str, default="spherical", choices=["spherical", "euc"], help='for neural CBF: which coordinates? spherical or euclidean') # TODO: hardcode euc
 
 	# Parameters for cartpole only
+<<<<<<< HEAD
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole')
 	parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol
 	parser.add_argument('--max_theta', default=math.pi/4.0, type=float)
 	parser.add_argument('--max_force', default=22.0, type=float)
+||||||| parent of 55a3d5c (refactored phi, cartpole, objective; repro_after_phi_param)
+	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole') # TODO: hardcode
+	parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol # TODO: move this to the system spec 
+	parser.add_argument('--max_theta', default=math.pi/4.0, type=float) # TODO: move this to the system spec 
+	parser.add_argument('--max_force', default=22.0, type=float) # TODO: move this to the system spec 
+=======
+	# parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole') # TODO: hardcode
+	# parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol # TODO: move this to the system spec 
+	# parser.add_argument('--max_theta', default=math.pi/4.0, type=float) # TODO: move this to the system spec 
+	# parser.add_argument('--max_force', default=22.0, type=float) # TODO: move this to the system spec 
+>>>>>>> 55a3d5c (refactored phi, cartpole, objective; repro_after_phi_param)
 
 	# Parameters for flying cartpole only
+<<<<<<< HEAD
 	parser.add_argument('--pend_length', default=3.0, type=float)
 	parser.add_argument('--box_ang_vel_limit', default=20.0, type=float)
+||||||| parent of 55a3d5c (refactored phi, cartpole, objective; repro_after_phi_param)
+	parser.add_argument('--pend_length', default=3.0, type=float) # TODO: move this to the system spec 
+	parser.add_argument('--box_ang_vel_limit', default=20.0, type=float) # TODO: move this to the system spec 
+=======
+	# parser.add_argument('--pend_length', default=3.0, type=float) # TODO: move this to the system spec 
+	# parser.add_argument('--box_ang_vel_limit', default=20.0, type=float) # TODO: move this to the system spec 
+>>>>>>> 55a3d5c (refactored phi, cartpole, objective; repro_after_phi_param)
 
 	# Regularization parameters 
 	parser.add_argument('--reg_weight', default=150.0, type=float, help='the weight on the volume term') # TODO: KEEP 

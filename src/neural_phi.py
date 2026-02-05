@@ -26,11 +26,13 @@ class NeuralPhi(nn.Module):
 		# turn Namespace into dict
 		args_dict = vars(args)
 
+		self.phi_ci_init_range = 1e-2 # c_i are initialized uniformly within the range [0, phi_ci_init_range]
+
 		# Note: by default, it registers parameters by their variable name
-		self.ci = nn.Parameter(args.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
+		self.ci = nn.Parameter(self.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
 		# rng = args.phi_k0_init_max - args.phi_k0_init_min
 		# self.k0 = nn.Parameter(rng*torch.rand(1, 1) + args.phi_k0_init_min)
-		self.k0 = nn.Parameter(args.phi_ci_init_range*torch.rand(1, 1))
+		self.k0 = nn.Parameter(self.phi_ci_init_range*torch.rand(1, 1))
 
 		# IPython.embed()s
 		# To enforce strict positivity for both
@@ -50,9 +52,11 @@ class NeuralPhi(nn.Module):
 		# print("create_net")
 		# IPython.embed()
 
-		hidden_dims = self.args.phi_nn_dimension.split("-")
-		hidden_dims = [int(rho) for rho in hidden_dims]
-		hidden_dims.append(1)
+		# hidden_dims = self.args.phi_nn_dimension.split("-")
+		# hidden_dims = [int(rho) for rho in hidden_dims]
+		# hidden_dims.append(1)
+
+		hidden_dims = [64, 64, 1]
 
 		# Input dim:
 		if self.nn_input_modifier is None:
@@ -61,8 +65,9 @@ class NeuralPhi(nn.Module):
 			prev_dim = self.nn_input_modifier.output_dim
 
 		# phi_nnl = args_dict.get("phi_nnl", "relu") # return relu if var "phi_nnl" not on namespace
-		phi_nnls = self.args.phi_nnl.split("-")
-		assert len(phi_nnls) == len(hidden_dims)
+		# phi_nnls = self.args.phi_nnl.split("-")
+		phi_nnls = ["tanh", "tanh", "softplus"]
+		# assert len(phi_nnls) == len(hidden_dims)
 
 		net_layers = []
 		for hidden_dim, phi_nnl in zip(hidden_dims, phi_nnls):

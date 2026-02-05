@@ -7,30 +7,30 @@ import IPython
 import math
 
 g = 9.81
-class RhoMax(nn.Module):
-	def __init__(self, param_dict):
-		super().__init__()
-		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes
-		self.i = self.state_index_dict
+# class RhoMax(nn.Module):
+# 	def __init__(self, param_dict):
+# 		super().__init__()
+# 		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes
+# 		self.i = self.state_index_dict
 
-	def forward(self, x):
-		# The way these are implemented should be batch compliant
-		# Return value is size (bs, 1)
+# 	def forward(self, x):
+# 		# The way these are implemented should be batch compliant
+# 		# Return value is size (bs, 1)
 
-		# print("Inside HMax forward")
-		# IPython.embed()
-		theta = x[:, [self.i["theta"]]]
-		phi = x[:, [self.i["phi"]]]
-		gamma = x[:, [self.i["gamma"]]]
-		beta = x[:, [self.i["beta"]]]
+# 		# print("Inside HMax forward")
+# 		# IPython.embed()
+# 		theta = x[:, [self.i["theta"]]]
+# 		phi = x[:, [self.i["phi"]]]
+# 		gamma = x[:, [self.i["gamma"]]]
+# 		beta = x[:, [self.i["beta"]]]
 
-		cos_cos = torch.cos(theta)*torch.cos(phi)
-		eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
-		with torch.no_grad():
-			signed_eps = -torch.sign(cos_cos)*eps
-		delta = torch.acos(cos_cos + signed_eps)
-		rv = torch.maximum(torch.maximum(delta**2, gamma**2), beta**2) - self.delta_safety_limit**2
-		return rv
+# 		cos_cos = torch.cos(theta)*torch.cos(phi)
+# 		eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
+# 		with torch.no_grad():
+# 			signed_eps = -torch.sign(cos_cos)*eps
+# 		delta = torch.acos(cos_cos + signed_eps)
+# 		rv = torch.maximum(torch.maximum(delta**2, gamma**2), beta**2) - self.delta_safety_limit**2
+# 		return rv
 
 class RhoSum(nn.Module):
 	def __init__(self, param_dict):

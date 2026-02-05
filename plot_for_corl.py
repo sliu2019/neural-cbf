@@ -270,10 +270,10 @@ def load_philow_and_params(exp_name=None, checkpoint_number=None):
 
 	# Create phi
 	from src.problems.flying_inv_pend import RhoMax, RhoSum, XDot
-	if args.rho == "sum":
-		h_fn = RhoSum(param_dict)
-	elif args.rho == "max":
-		h_fn = RhoMax(param_dict)
+	# if args.rho == "sum":
+	h_fn = RhoSum(param_dict)
+	# elif args.rho == "max":
+		# h_fn = RhoMax(param_dict)
 
 	xdot_fn = XDot(param_dict, device)
 

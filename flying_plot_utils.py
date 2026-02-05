@@ -57,10 +57,10 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 
 	# reg_sampler = reg_samplers_name_to_class_dict[args.reg_sampler](x_lim, device, logger, n_samples=args.reg_n_samples)
 
-	if args.phi_include_xe:
-		x_e = torch.zeros(1, x_dim)
-	else:
-		x_e = None
+	# if args.phi_include_xe:
+	x_e = torch.zeros(1, x_dim)
+	# else:
+	# 	x_e = None
 
 	# Passing in subset of state to NN
 	from src.utils import IndexNNInput, TransformEucNNInput

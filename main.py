@@ -103,7 +103,9 @@ def create_flying_param_dict(args=None):
 		"k2": 0.05,
 		"m_p": 0.04, # 5% of quad weight
 		"L_p": 3.0, # Prev: 0.03
-		'delta_safety_limit': math.pi / 4  # should be <= math.pi/4
+		"delta_safety_limit": math.pi / 4,  # should be <= math.pi/4,
+		"L_p": 3.0, # pendulum length
+		"box_ang_vel_limit": 20.0,
 	}
 	param_dict["M"] = param_dict["m"] + param_dict["m_p"]
 	state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
@@ -113,7 +115,7 @@ def create_flying_param_dict(args=None):
 	r = 2
 	x_dim = len(state_index_names)
 	u_dim = 4
-	ub = args.box_ang_vel_limit
+	ub = param_dict["box_ang_vel_limit"]
 	thresh = np.array([math.pi / 3, math.pi / 3, math.pi, ub, ub, ub, math.pi / 3, math.pi / 3, ub, ub],
 	                  dtype=np.float32) # angular velocities bounds probably much higher in reality (~10-20 for drone, which can do 3 flips in 1 sec).
 
@@ -127,43 +129,43 @@ def create_flying_param_dict(args=None):
 	param_dict["x_lim"] = x_lim
 
 	# write args into the param_dict
-	param_dict["L_p"] = args.pend_length
+	# param_dict["L_p"] = pend_length
 
 	return param_dict
 
-def create_quadcopter_param_dict(args):
-	# Args: for modifying the defaults through args
-	param_dict = {
-		"m": 0.8,
-		"J_x": 0.005,
-		"J_y": 0.005,
-		"J_z": 0.009,
-		"l": 0.15, # TODO: this param differs from flying inverted pendulum
-		"k1": 4.0,
-		"k2": 0.05
-	}
-	state_index_names = ["px", "py", "pz", "dpx", "dpy", "dpz", "gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha"]  # excluded x, y, z
-	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+# def create_quadcopter_param_dict(args):
+# 	# Args: for modifying the defaults through args
+# 	param_dict = {
+# 		"m": 0.8,
+# 		"J_x": 0.005,
+# 		"J_y": 0.005,
+# 		"J_z": 0.009,
+# 		"l": 0.15, # TODO: this param differs from flying inverted pendulum
+# 		"k1": 4.0,
+# 		"k2": 0.05
+# 	}
+# 	state_index_names = ["px", "py", "pz", "dpx", "dpy", "dpz", "gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha"]  # excluded x, y, z
+# 	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
 
-	# r = 2
-	if args.rho == 'sum':
-		r = 2
-	elif args.rho == 'reg':
-		r = 4
-	x_dim = len(state_index_names)
-	u_dim = 4
-	thresh = np.array([1, 1, 1, 15, 15, 15, math.pi/2, math.pi/2, math.pi, 15, 15, 15], dtype=np.float32)  # avg drone speed is 15-25 m/s
+# 	# r = 2
+# 	if args.rho == 'sum':
+# 		r = 2
+# 	elif args.rho == 'reg':
+# 		r = 4
+# 	x_dim = len(state_index_names)
+# 	u_dim = 4
+# 	thresh = np.array([1, 1, 1, 15, 15, 15, math.pi/2, math.pi/2, math.pi, 15, 15, 15], dtype=np.float32)  # avg drone speed is 15-25 m/s
 
-	x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
+# 	x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
 
-	# Save stuff in param dict
-	param_dict["state_index_dict"] = state_index_dict
-	param_dict["r"] = r
-	param_dict["x_dim"] = x_dim
-	param_dict["u_dim"] = u_dim
-	param_dict["x_lim"] = x_lim
+# 	# Save stuff in param dict
+# 	param_dict["state_index_dict"] = state_index_dict
+# 	param_dict["r"] = r
+# 	param_dict["x_dim"] = x_dim
+# 	param_dict["u_dim"] = u_dim
+# 	param_dict["x_lim"] = x_lim
 
-	return param_dict
+# 	return param_dict
 
 def main(args):
 	# Boilerplate for saving
@@ -215,18 +217,18 @@ def main(args):
 		# reg_sampler = reg_samplers_name_to_class_dict[args.reg_sampler](x_lim, device, logger, n_samples=args.reg_n_samples)
 		reg_sampler = RegSampler(x_lim, device, logger, n_samples=args.reg_n_samples)
 
-		if args.phi_include_xe:
-			x_e = torch.zeros(1, x_dim)
-		else:
-			x_e = None
+		# if args.phi_include_xe:
+		x_e = torch.zeros(1, x_dim)
+		# else:
+			# x_e = None
 
 		# Passing in subset of state to NN
 		from src.utils import IndexNNInput, TransformEucNNInput
 		state_index_dict = param_dict["state_index_dict"]
-		if args.phi_nn_inputs == "spherical":
-			nn_input_modifier = None
-		elif args.phi_nn_inputs == "euc":
-			nn_input_modifier = TransformEucNNInput(state_index_dict)
+		# if args.phi_nn_inputs == "spherical":
+		# 	nn_input_modifier = None
+		# elif args.phi_nn_inputs == "euc":
+		nn_input_modifier = TransformEucNNInput(state_index_dict)
 	else:
 		raise NotImplementedError
 
