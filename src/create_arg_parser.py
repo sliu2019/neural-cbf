@@ -26,14 +26,15 @@ def create_arg_parser():
 	parser.add_argument('--pend_length', default=3.0, type=float)
 	parser.add_argument('--box_ang_vel_limit', default=20.0, type=float)
 
-	# Reg
-	parser.add_argument('--reg_weight', default=0.0, type=float, help='the weight on the volume term') # TODO: KEEP 
-	parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task') # TODO: unused?
-	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed', 'random_inside', 'random_inside_then_boundary'], help="random_inside_then_boundary switches from RI to bdry after vol drops") # TODO: harcode - random_inside in best run (4-22-24) repro 
+	# Regularization parameters 
+	parser.add_argument('--reg_weight', default=150.0, type=float, help='the weight on the volume term') # TODO: KEEP 
+	# parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task') # TODO: unused?
+	# parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed', 'random_inside', 'random_inside_then_boundary'], help="random_inside_then_boundary switches from RI to bdry after vol drops") # TODO: harcode - random_inside in best run (4-22-24) repro 
 	parser.add_argument('--reg_n_samples', type=int, default=250) # TODO: KEEP 
-	parser.add_argument('--reg_transform', type=str, default="sigmoid", choices=["sigmoid", "softplus"]) # TODO: hardcode - sigmoid in best run (4-22-24 repro) 
+	# parser.add_argument('--reg_transform', type=str, default="sigmoid", choices=["sigmoid", "softplus"]) # TODO: hardcode - sigmoid in best run (4-22-24 repro) 
 
-	parser.add_argument('--objective_option', type=str, default='weighted_average', choices=['regular', 'softplus', 'weighted_average', 'weighted_average_include_neg_phidot'], help="allow negative pays attention to phi < 0 as well") # TODO: what's this? harcode default
+	# parser.add_argument('--objective_option', type=str, default='weighted_average', choices=['regular', 'softplus', 'weighted_average', 'weighted_average_include_neg_phidot'], help="allow negative pays attention to phi < 0 as well") # TODO: what's this? harcode default
+
 	###################################################################################################################################
 	# Critic parameters
 

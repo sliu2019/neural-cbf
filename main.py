@@ -73,7 +73,7 @@ class SaturationRisk(nn.Module):
 		return result
 
 class Regularizer(nn.Module):
-	def __init__(self, phi_fn, device, reg_weight=0.0, reg_transform="sigmoid"):
+	def __init__(self, phi_fn, device, reg_weight=0.0): #, reg_transform="sigmoid"):
 		super().__init__()
 		vars = locals()  # dict of local names
 		self.__dict__.update(vars)  # __dict__ holds and object's attributes
@@ -84,10 +84,10 @@ class Regularizer(nn.Module):
 		all_phi_values = self.phi_fn(x)
 		max_phi_values = torch.max(all_phi_values, dim=1)[0]
 
-		if self.reg_transform == "sigmoid":
-			transform_of_max_phi = torch.sigmoid(0.3*max_phi_values)
-		elif self.reg_transform == "softplus":
-			transform_of_max_phi = nn.functional.softplus(max_phi_values)
+		# if self.reg_transform == "sigmoid":
+		transform_of_max_phi = torch.sigmoid(0.3*max_phi_values)
+		# elif self.reg_transform == "softplus":
+		# 	transform_of_max_phi = nn.functional.softplus(max_phi_values)
 		reg = self.reg_weight*torch.mean(transform_of_max_phi)
 		return reg
 
@@ -249,7 +249,7 @@ def main(args):
 	# 	phi_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
 
 	saturation_risk = SaturationRisk(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
-	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight, reg_transform=args.reg_transform)
+	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight) #, reg_transform=args.reg_transform)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)
