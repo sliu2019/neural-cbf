@@ -6,21 +6,21 @@ from torch.autograd import grad
 # from src.attacks.gradient_batch_critic import GradientBatchCritic
 # from src.attacks.gradient_batch_critic_warmstart import GradientBatchWarmstartCritic
 # from src.attacks.gradient_batch_critic_warmstart_2 import GradientBatchWarmstartCritic2
-from critic import Critic
+from src.critic import Critic
 from src.learner import Learner
 # from src.reg_samplers.boundary import BoundaryRegSampler
 # from src.reg_samplers.random import RandomRegSampler
 # from src.reg_samplers.fixed import FixedRegSampler
 
-from reg_sampler import RegSampler
+from src.reg_sampler import RegSampler
 # reg_samplers_name_to_class_dict = {"boundary": BoundaryRegSampler, "random": RandomRegSampler, "fixed": FixedRegSampler, "random_inside": RandomInsideRegSampler}
 
 # from src.phi_designs.low_phi import LowPhi
-from neural_phi import NeuralPhi
+from src.neural_phi import NeuralPhi
 # phi_designs_name_to_class_dict = {"neural": NeuralPhi, "low": LowPhi}
 
 from src.utils import *
-from create_arg_parser import create_arg_parser, print_args
+from src.create_arg_parser import create_arg_parser, print_args
 
 import os
 import math

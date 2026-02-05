@@ -15,8 +15,8 @@ import math
 # from torch.optim.lr_scheduler import ReduceLROnPlateau, ExponentialLR
 # lr_scheduler_str_to_class_dict = {"exponential_reduction":0, "reduce_on_plateau":0}
 
-from src.phi_designs.neural_phi import NeuralPhi
-from src.phi_designs.low_phi import LowPhi
+from src.neural_phi import NeuralPhi
+# from src.low_phi import LowPhi
 
 class Learner():
 	def __init__(self, args, logger, critic, test_critic, reg_sampler, param_dict, device):
@@ -51,12 +51,12 @@ class Learner():
 			"test_t_boundary": []
 		}
 
-		if isinstance(phi_fn, NeuralPhi):
-			data_dict["ci_list"] = []
-			data_dict["k0_list"] = []
-		elif isinstance(phi_fn, LowPhi):
-			data_dict["ci_list"] = []
-			data_dict["ki_list"] = []
+		# if isinstance(phi_fn, NeuralPhi):
+		data_dict["ci_list"] = []
+		data_dict["k0_list"] = []
+		# elif isinstance(phi_fn, LowPhi):
+		# 	data_dict["ci_list"] = []
+		# 	data_dict["ki_list"] = []
 
 		train_attack_dict = {"train_attacks": [],
 			"train_attack_X_init": [],
@@ -253,17 +253,17 @@ class Learner():
 			iteration_info_dict.update(debug_dict)
 
 			# Misc saving
-			if isinstance(phi_fn, NeuralPhi):
-				iteration_info_dict["ci_list"] = phi_fn.ci
-				iteration_info_dict["k0_list"] = phi_fn.k0
-				print(phi_fn.k0)
-				print(phi_fn.ci)
+			# if isinstance(phi_fn, NeuralPhi):
+			iteration_info_dict["ci_list"] = phi_fn.ci
+			iteration_info_dict["k0_list"] = phi_fn.k0
+			print(phi_fn.k0)
+			print(phi_fn.ci)
 
-			if isinstance(phi_fn, LowPhi):
-				iteration_info_dict["ci_list"] = phi_fn.ci
-				iteration_info_dict["ki_list"] = phi_fn.ki
-				self.logger.info(phi_fn.ki)
-				self.logger.info(phi_fn.ci)
+			# if isinstance(phi_fn, LowPhi):
+			# 	iteration_info_dict["ci_list"] = phi_fn.ci
+			# 	iteration_info_dict["ki_list"] = phi_fn.ki
+			# 	self.logger.info(phi_fn.ki)
+			# 	self.logger.info(phi_fn.ci)
 
 			# Merge into info_dict
 			for key, value in iteration_info_dict.items():
