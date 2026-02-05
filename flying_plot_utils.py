@@ -10,12 +10,12 @@ import numpy as np
 
 # from main import Phi, SaturationRisk, Regularizer
 from main import SaturationRisk, Regularizer
-from src.phi_designs.neural_phi import NeuralPhi
+from neural_phi import NeuralPhi
 from src.phi_designs.low_phi import LowPhi
 from src.utils import *
 
 from src.phi_designs.low_phi import LowPhi
-from src.phi_designs.neural_phi import NeuralPhi
+from neural_phi import NeuralPhi
 
 # Make numpy and torch deterministic (for rand phi and attack/reg sampling)
 seed = 3
@@ -46,11 +46,11 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	x_lim = param_dict["x_lim"]
 
 	# Create phi
-	from src.problems.flying_inv_pend import HMax, HSum, XDot, ULimitSetVertices
+	from src.problems.flying_inv_pend import RhoMax, RhoSum, XDot, ULimitSetVertices
 	if args.rho == "sum":
-		h_fn = HSum(param_dict)
+		h_fn = RhoSum(param_dict)
 	elif args.rho == "max":
-		h_fn = HMax(param_dict)
+		h_fn = RhoMax(param_dict)
 
 	xdot_fn = XDot(param_dict, device)
 	uvertices_fn = ULimitSetVertices(param_dict, device)

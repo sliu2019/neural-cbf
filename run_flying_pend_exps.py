@@ -14,7 +14,7 @@ from phi_numpy_wrapper import PhiNumpy
 # 	sys.path.extend(['/home/simin/anaconda3/envs/si_feas_env/lib/python38.zip', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/lib-dynload', '/home/simin/anaconda3/envs/si_feas_env/lib/python3.8/site-packages'])
 # from cmaes.utils import load_philow_and_params
 
-from src.attacks.gradient_batch_critic_warmstart_faster import Critic
+from critic import Critic
 from main import SaturationRisk
 
 # For rollouts
@@ -189,83 +189,86 @@ def run_exps(args):
 
 	device = torch.device("cpu")
 	# load phi, phi_torch
-	if args.which_cbf == "ours":
-		# print("loading phi for ours")
-		# IPython.embed()
+	# if args.which_cbf == "ours":
+	
+	# print("loading phi for ours")
+	# IPython.embed()
 
-		torch_phi_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
-		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+	torch_phi_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
+	numpy_phi_fn = PhiNumpy(torch_phi_fn)
 
-		save_fldrpth = "./log/%s" % args.exp_name_to_load
-	elif args.which_cbf == "low-CMAES":
-		# print("loading phi for low-CMAES")
-		# IPython.embed()
-		from cmaes.utils import load_philow_and_params
-		torch_phi_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
-		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+	save_fldrpth = "./log/%s" % args.exp_name_to_load
 
-		data = pickle.load(open(os.path.join("cmaes", args.exp_name_to_load, "data.pkl"), "rb"))
-		mu = data["mu"][args.checkpoint_number_to_load]
-		print("*************************************************")
-		print("Parameters found by CMAES are:")
-		print(mu)
-		print("*************************************************")
-		# IPython.embed()
+	# elif args.which_cbf == "low-CMAES":
+	# 	# print("loading phi for low-CMAES")
+	# 	# IPython.embed()
+	# 	from cmaes.utils import load_philow_and_params
+	# 	torch_phi_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
+	# 	numpy_phi_fn = PhiNumpy(torch_phi_fn)
 
-		state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])} # todo: this is not very generic
-		numpy_phi_fn.set_params(state_dict)
+	# 	data = pickle.load(open(os.path.join("cmaes", args.exp_name_to_load, "data.pkl"), "rb"))
+	# 	mu = data["mu"][args.checkpoint_number_to_load]
+	# 	print("*************************************************")
+	# 	print("Parameters found by CMAES are:")
+	# 	print(mu)
+	# 	print("*************************************************")
+	# 	# IPython.embed()
 
-		save_fldrpth = "./cmaes/%s" % args.exp_name_to_load
-	elif args.which_cbf == "low-heuristic":
-		from cmaes.utils import load_philow_and_params
-		torch_phi_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
-		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+	# 	state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])} # todo: this is not very generic
+	# 	numpy_phi_fn.set_params(state_dict)
 
-		# print("loading phi for low-heuristic")
-		# IPython.embed()
-		mu = args.low_cbf_params
-		state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])} # todo: this is not very generic
-		numpy_phi_fn.set_params(state_dict)
+	# 	save_fldrpth = "./cmaes/%s" % args.exp_name_to_load
+	# elif args.which_cbf == "low-heuristic":
+	# 	from cmaes.utils import load_philow_and_params
+	# 	torch_phi_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
+	# 	numpy_phi_fn = PhiNumpy(torch_phi_fn)
 
-		save_fldrpth = "./low_heuristic/k1_%.2f_k2_%.2f_k3_%.2f" % (mu[2], mu[0], mu[1]) # Note: named using Overleaf convention, but args are passed using another convention (swap 1st entry to end)
-		if not os.path.exists(save_fldrpth):
-			os.makedirs(save_fldrpth)
+	# 	# print("loading phi for low-heuristic")
+	# 	# IPython.embed()
+	# 	mu = args.low_cbf_params
+	# 	state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])} # todo: this is not very generic
+	# 	numpy_phi_fn.set_params(state_dict)
+
+	# 	save_fldrpth = "./low_heuristic/k1_%.2f_k2_%.2f_k3_%.2f" % (mu[2], mu[0], mu[1]) # Note: named using Overleaf convention, but args are passed using another convention (swap 1st entry to end)
+	# 	if not os.path.exists(save_fldrpth):
+	# 		os.makedirs(save_fldrpth)
 
 		# print("ln 156")
 		# IPython.embed()
-	elif args.which_cbf == "low-gradient":
-		torch_phi_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
-		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+	# elif args.which_cbf == "low-gradient":
+	# 	torch_phi_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
+	# 	numpy_phi_fn = PhiNumpy(torch_phi_fn)
 
-		save_fldrpth = "./log/%s" % args.exp_name_to_load
-		# IPython.embed()
-	elif args.which_cbf == "iccbf":
-		coeffs = args.iccbf_coefficients
-		exps = args.iccbf_exponents
+	# 	save_fldrpth = "./log/%s" % args.exp_name_to_load
+	# 	# IPython.embed()
+	# elif args.which_cbf == "iccbf":
+	# 	coeffs = args.iccbf_coefficients
+	# 	exps = args.iccbf_exponents
 
-		from src.phi_designs.iccbf import KappaPolynomial, ICCBF
-		assert len(coeffs) == len(exps)
-		class_kappa_fns = []
-		for i in range(len(coeffs)):
-			kappa_i = KappaPolynomial(coeffs[i], exps[i])
-			class_kappa_fns.append(kappa_i)
+	# 	from src.phi_designs.iccbf import KappaPolynomial, ICCBF
+	# 	assert len(coeffs) == len(exps)
+	# 	class_kappa_fns = []
+	# 	for i in range(len(coeffs)):
+	# 		kappa_i = KappaPolynomial(coeffs[i], exps[i])
+	# 		class_kappa_fns.append(kappa_i)
 
-		# Everything else
-		from src.problems.flying_inv_pend import HSum, XDot, ULimitSetVertices
-		# NOTE: USING DEFAULT PARAM DICT
-		from create_arg_parser import create_arg_parser
-		parser = create_arg_parser() # default
-		parser_args = parser.parse_known_args()[0]
-		from main import create_flying_param_dict
-		param_dict = create_flying_param_dict(parser_args) # default
+	# 	# Everything else
+	# 	from src.problems.flying_inv_pend import RhoSum, XDot, ULimitSetVertices
+	# 	# NOTE: USING DEFAULT PARAM DICT
+	# 	from create_arg_parser import create_arg_parser
+	# 	parser = create_arg_parser() # default
+	# 	parser_args = parser.parse_known_args()[0]
+	# 	from main import create_flying_param_dict
+	# 	param_dict = create_flying_param_dict(parser_args) # default
 
-		h_fn = HSum(param_dict)
-		xdot_fn = XDot(param_dict, device)
-		uvertices_fn = ULimitSetVertices(param_dict, device)
+	# 	h_fn = RhoSum(param_dict)
+	# 	xdot_fn = XDot(param_dict, device)
+	# 	uvertices_fn = ULimitSetVertices(param_dict, device)
 
-		torch_phi_fn = ICCBF(h_fn, xdot_fn, uvertices_fn, class_kappa_fns, param_dict["x_dim"], param_dict["u_dim"], device)
-		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+	# 	torch_phi_fn = ICCBF(h_fn, xdot_fn, uvertices_fn, class_kappa_fns, param_dict["x_dim"], param_dict["u_dim"], device)
+	# 	numpy_phi_fn = PhiNumpy(torch_phi_fn)
 
+<<<<<<< HEAD
 		save_fldrpth = "./iccbf_outputs/" + "_".join(["%.2f-%.2f" % (coeffs[i], exps[i]) for i in range(len(coeffs))])
 		if not os.path.exists(save_fldrpth):
 			os.makedirs(save_fldrpth)
@@ -275,6 +278,29 @@ def run_exps(args):
 		save_fldrpth = None
 		param_dict = None
 		raise NotImplementedError
+||||||| parent of be3c453 (deleted some unnecessary folders and files)
+		save_fldrpth = "./iccbf_outputs/" + "_".join(["%.3f-%.3f" % (coeffs[i], exps[i]) for i in range(len(coeffs))])
+		if not os.path.exists(save_fldrpth):
+			os.makedirs(save_fldrpth)
+		# print(save_fldrpth)
+		# IPython.embed()
+	else:
+		numpy_phi_fn = None
+		save_fldrpth = None
+		param_dict = None
+		raise NotImplementedError
+=======
+	# 	save_fldrpth = "./iccbf_outputs/" + "_".join(["%.3f-%.3f" % (coeffs[i], exps[i]) for i in range(len(coeffs))])
+	# 	if not os.path.exists(save_fldrpth):
+	# 		os.makedirs(save_fldrpth)
+	# 	# print(save_fldrpth)
+	# 	# IPython.embed()
+	# else:
+	numpy_phi_fn = None
+	save_fldrpth = None
+	param_dict = None
+	raise NotImplementedError
+>>>>>>> be3c453 (deleted some unnecessary folders and files)
 
 	########## Saving and logging ############
 	save_fpth = os.path.join(save_fldrpth, "%s_exp_data.pkl" % args.save_fnm)
@@ -499,7 +525,7 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='All experiments for flying pendulum')
 	parser.add_argument('--save_fnm', type=str, default="debug", help="conscisely describes the hyperparameters of this run")
-	parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES", "low-heuristic", "low-gradient", "iccbf"], required=True)
+	# parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES", "low-heuristic", "low-gradient", "iccbf"], required=True)
 
 	parser.add_argument('--exp_name_to_load', type=str) # flying_inv_pend_first_run
 	parser.add_argument('--checkpoint_number_to_load', type=int, help="for our CBF", default=0)

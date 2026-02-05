@@ -203,11 +203,11 @@ def main(args):
 		x_lim = param_dict["x_lim"]
 
 		# Create phi
-		from src.problems.flying_inv_pend import HMax, HSum, XDot, ULimitSetVertices
+		from src.problems.flying_inv_pend import RhoMax, RhoSum, XDot, ULimitSetVertices
 		if args.rho == "sum":
-			h_fn = HSum(param_dict)
+			h_fn = RhoSum(param_dict)
 		elif args.rho == "max":
-			h_fn = HMax(param_dict)
+			h_fn = RhoMax(param_dict)
 
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)

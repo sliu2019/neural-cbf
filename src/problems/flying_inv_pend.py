@@ -7,7 +7,7 @@ import IPython
 import math
 
 g = 9.81
-class HMax(nn.Module):
+class RhoMax(nn.Module):
 	def __init__(self, param_dict):
 		super().__init__()
 		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes
@@ -32,7 +32,7 @@ class HMax(nn.Module):
 		rv = torch.maximum(torch.maximum(delta**2, gamma**2), beta**2) - self.delta_safety_limit**2
 		return rv
 
-class HSum(nn.Module):
+class RhoSum(nn.Module):
 	def __init__(self, param_dict):
 		super().__init__()
 		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes

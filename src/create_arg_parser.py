@@ -6,7 +6,6 @@ def create_arg_parser():
 	parser = argparse.ArgumentParser(description='CBF synthesis')
 	parser.add_argument('--problem', default='flying_inv_pend', help='problem specifies dynamics, rho definition, U_limits, etc.', choices=["cartpole", "flying_inv_pend", "cartpole_reduced", "quadcopter"])
 
-	# rho(x) (user-specified SI)
 	parser.add_argument('--rho', type=str, default='sum', choices=['max', 'sum', 'reg'], help='Chose the form of rho(x). For flying inv pend, chose between max and sum. For quadcopter, chose between sum and regular') # TODO: hardcode 
 
 	# Phi
@@ -14,19 +13,8 @@ def create_arg_parser():
 	parser.add_argument('--phi_nn_dimension', default="64-64", type=str, help='for neural CBF: specify the hidden dimension') # TODO: hardcode
 	parser.add_argument('--phi_nnl', default="tanh-tanh-none", type=str, help='for neural CBF: can also do tanh-tanh-softplus') # TODO: hardcode tanh-tanh-softplus from ablation_server_5 and 04-22-24
 	parser.add_argument('--phi_ci_init_range', default=1e-2, type=float, help='for neural CBF: c_i are initialized uniformly within the range [0, x]')
-	# parser.add_argument('--phi_k0_init_min', default=0.0, type=float)
-	# parser.add_argument('--phi_k0_init_max', default=1.0, type=float)
 	parser.add_argument('--phi_include_xe', action='store_true', help='for neural CBF') # TODO: hardcode as True
 	parser.add_argument('--phi_nn_inputs', type=str, default="spherical", choices=["spherical", "euc"], help='for neural CBF: which coordinates? spherical or euclidean') # TODO: hardcode euc
-
-	# parser.add_argument('--phi_reshape_h', action='store_true', help='reshape rho')
-	# parser.add_argument('--phi_reshape_dh', action='store_true', help="reshape dh by setting dh = d/dt(rho + reshape). rho will be reshape independently by default")
-	# parser.add_argument('--phi_format', type=int, default=0, choices=[0, 1, 2])
-	"""
-	Style 0: phi = phi_0 + gnn 
-	Style 1: phi = phi_0_star + k_1 dot(phi_0)
-	Style 2: phi = phi_0_star + k_1 dot(phi_0_star)
-	"""
 
 	# Parameters for cartpole only
 	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole')
@@ -39,13 +27,29 @@ def create_arg_parser():
 	parser.add_argument('--box_ang_vel_limit', default=20.0, type=float)
 
 	# Reg
+<<<<<<< HEAD
 	parser.add_argument('--reg_weight', default=0.0, type=float, help='the weight on the volume term')
 	parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task')
 	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed', 'random_inside', 'random_inside_then_boundary'], help="random_inside_then_boundary switches from RI to bdry after vol drops")
 	parser.add_argument('--reg_n_samples', type=int, default=250)
 	parser.add_argument('--reg_transform', type=str, default="sigmoid", choices=["sigmoid", "softplus"])
 	# parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
+||||||| parent of be3c453 (deleted some unnecessary folders and files)
+	parser.add_argument('--reg_weight', default=0.0, type=float, help='the weight on the volume term') # TODO: KEEP 
+	parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task') # TODO: unused?
+	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed', 'random_inside', 'random_inside_then_boundary'], help="random_inside_then_boundary switches from RI to bdry after vol drops") # TODO: harcode - random_inside in best run (4-22-24) repro 
+	parser.add_argument('--reg_n_samples', type=int, default=250) # TODO: KEEP 
+	parser.add_argument('--reg_transform', type=str, default="sigmoid", choices=["sigmoid", "softplus"]) # TODO: hardcode - sigmoid in best run (4-22-24 repro) 
+	# parser.add_argument('--reg_xe', default=0.0, type=float) # deprecated
+=======
+	parser.add_argument('--reg_weight', default=0.0, type=float, help='the weight on the volume term') # TODO: KEEP 
+	parser.add_argument('--reg_sample_distance', default=0.1, type=float, help='grid sampling param for the cartpole task') # TODO: unused?
+	parser.add_argument('--reg_sampler', type=str, default="random", choices=['boundary', 'random', 'fixed', 'random_inside', 'random_inside_then_boundary'], help="random_inside_then_boundary switches from RI to bdry after vol drops") # TODO: harcode - random_inside in best run (4-22-24) repro 
+	parser.add_argument('--reg_n_samples', type=int, default=250) # TODO: KEEP 
+	parser.add_argument('--reg_transform', type=str, default="sigmoid", choices=["sigmoid", "softplus"]) # TODO: hardcode - sigmoid in best run (4-22-24 repro) 
+>>>>>>> be3c453 (deleted some unnecessary folders and files)
 
+<<<<<<< HEAD
 	# parser.add_argument('--g_input_is_xy', action='store_true')
 
 	# SaturationRisk
@@ -57,13 +61,37 @@ def create_arg_parser():
 	###################################################################################################################################
 	# # Reg sample keeper
 	# parser.add_argument('--reg_n_samples', default=50, type=int)
+||||||| parent of be3c453 (deleted some unnecessary folders and files)
+	# parser.add_argument('--g_input_is_xy', action='store_true')
+
+	# SaturationRisk
+	# parser.add_argument('--no_softplus_on_obj', action='store_true', help='removes softplus on the objective')
+	# parser.add_argument('--learner_average_gradients', action='store_true')
+
+	parser.add_argument('--objective_option', type=str, default='weighted_average', choices=['regular', 'softplus', 'weighted_average', 'weighted_average_include_neg_phidot'], help="allow negative pays attention to phi < 0 as well") # TODO: what's this? harcode default 
+
+	###################################################################################################################################
+	# # Reg sample keeper
+	# parser.add_argument('--reg_n_samples', default=50, type=int)
+=======
+	parser.add_argument('--objective_option', type=str, default='weighted_average', choices=['regular', 'softplus', 'weighted_average', 'weighted_average_include_neg_phidot'], help="allow negative pays attention to phi < 0 as well") # TODO: what's this? harcode default
+>>>>>>> be3c453 (deleted some unnecessary folders and files)
 
 	###################################################################################################################################
 	# Critic: train
 	parser.add_argument('--critic', default='gradient_batch_warmstart_faster', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart', 'gradient_batch_warmstart_faster']) # TODO: hardcode 
+<<<<<<< HEAD
 	# parser.add_argument('--gradient_batch_warmstart2_proj_tactic', choices=['gd_step_timeout', 'adam_ba'])
 	parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"])
 	parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="gaussian", choices=["uniform", "gaussian"])
+||||||| parent of be3c453 (deleted some unnecessary folders and files)
+	# parser.add_argument('--gradient_batch_warmstart2_proj_tactic', choices=['gd_step_timeout', 'adam_ba'])
+	parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"]) # TODO: hardcode sequential 
+	parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="gaussian", choices=["uniform", "gaussian"]) # TODO: hardcode gaussian 
+=======
+	parser.add_argument("--gradient_batch_warmstart_faster_speedup_method", type=str, default="sequential", choices=["sequential", "gpu_parallelized", "cpu_parallelized"]) # TODO: hardcode sequential 
+	parser.add_argument("--gradient_batch_warmstart_faster_sampling_method", type=str, default="gaussian", choices=["uniform", "gaussian"]) # TODO: hardcode gaussian 
+>>>>>>> be3c453 (deleted some unnecessary folders and files)
 	parser.add_argument("--gradient_batch_warmstart_faster_gaussian_t", type=float, default=1.0) # TODO: could shrink as training progresses
 
 	# Gradient batch critic
@@ -78,19 +106,8 @@ def create_arg_parser():
 
 	parser.add_argument('--critic_use_n_step_schedule', action='store_true', help='use a schedule (starting with >>>max_n_steps and exponentially decreasing down to it') # TODO: hardcode True - best in 04-22-24 repro run 
 
-	# parser.add_argument('--critic_adaptive_lr', action='store_true')
 	############################################################################
 	# Critic: test
-	# parser.add_argument('--test_critic', default='gradient_batch', choices=['basic', 'gradient_batch', 'gradient_batch_warmstart'])
-	#
-	# # Gradient batch critic
-	# parser.add_argument('--test_critic_n_samples', default=50, type=int)
-	# parser.add_argument('--test_critic_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping'])
-	# parser.add_argument('--test_critic_max_n_steps', default=200, type=int) # TODO
-	# parser.add_argument('--test_critic_projection_tolerance', default=1e-1, type=float, help='when to consider a point "projected"')
-	# parser.add_argument('--test_critic_projection_lr', default=1e-4, type=float)
-	# parser.add_argument('--test_critic_lr', default=1e-3, type=float)
-
 	parser.add_argument('--test_N_volume_samples', default=2500, type=int)
 	parser.add_argument('--test_N_boundary_samples', default=2500, type=int)
 	###################################################################################################################################
@@ -100,10 +117,6 @@ def create_arg_parser():
 	parser.add_argument('--learner_early_stopping_patience', default=100, type=int)
 	parser.add_argument('--learner_n_steps', default=3000, type=int, help='if stopping condition is n_steps, specify the number here')
 	parser.add_argument('--learner_lr', default=1e-3, type=float)
-	# parser.add_argument('--train_mode', default='dG', choices=['dG', 'dS'])
-	# parser.add_argument('--learner_type', type=str, default="Adam")
-	# parser.add_argument('--learner_lr_scheduler', type=str, choices=["exponential_reduction", "reduce_on_plateau"]) # TODO: not implemented
-	# parser.add_argument('--learner_lr_scheduler_exponential_reduction_gamma', type=float, default=0.992, help="the multiplicative factor; lr goes by alpha^t") # TODO: not implemented
 
 	# Saving/logging
 	parser.add_argument('--random_seed', default=1, type=int)

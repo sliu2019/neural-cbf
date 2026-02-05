@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/siminliu/SP21/research/cbf_synthesis/mpc_inverted_pendulum.py", line 4, in <module>
-    import do_mpc
-ModuleNotFoundError: No module named 'do_mpc'
