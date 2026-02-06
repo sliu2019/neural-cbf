@@ -1,3 +1,8 @@
 log/
+<<<<<<< HEAD
 __pycache__/
 checkpoint/
+||||||| parent of 5ace6f3 (almost done simplifying parameters, but couldn't replicate tests)
+=======
+checkpoint/
+>>>>>>> 5ace6f3 (almost done simplifying parameters, but couldn't replicate tests)

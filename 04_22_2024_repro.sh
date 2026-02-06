@@ -24,3 +24,6 @@ nohup python -u main.py --reg_transform "sigmoid" --reg_sampler "random_inside" 
 
 # 6 PM EST 
 nohup python -u main.py --reg_weight 150.0 --phi_nnl "tanh-tanh-softplus" --phi_nn_inputs "euc" --phi_include_xe --critic_n_samples 500 --critic_max_n_steps 20 --random_seed 0 --affix "repro_after_reg_param" --gpu 2 &> repro_after_reg_param.out &
+
+# 6:30 PM EST
+nohup python -u main.py --reg_weight 150.0 --phi_nnl "tanh-tanh-softplus" --phi_nn_inputs "euc" --phi_include_xe --critic_n_samples 500 --critic_max_n_steps 20 --random_seed 0 --affix "repro_after_reg_param" --gpu 2 &> repro_after_reg_param.out &

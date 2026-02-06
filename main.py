@@ -205,11 +205,11 @@ def main(args):
 		x_lim = param_dict["x_lim"]
 
 		# Create phi
-		from src.problems.flying_inv_pend import RhoMax, RhoSum, XDot, ULimitSetVertices
-		if args.rho == "sum":
-			h_fn = RhoSum(param_dict)
-		elif args.rho == "max":
-			h_fn = RhoMax(param_dict)
+		from src.problems.flying_inv_pend import RhoSum, XDot, ULimitSetVertices
+		# if args.rho == "sum":
+		rho_fn = RhoSum(param_dict)
+		# elif args.rho == "max":
+		# 	rho_fn = RhoMax(param_dict)
 
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
@@ -237,7 +237,7 @@ def main(args):
 		pickle.dump(param_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 	# Send all modules to the correct device
-	h_fn = h_fn.to(device)
+	rho_fn = rho_fn.to(device)
 	xdot_fn = xdot_fn.to(device)
 	uvertices_fn = uvertices_fn.to(device)
 	if x_e is not None:
@@ -246,9 +246,9 @@ def main(args):
 
 	# Create CBF, etc.
 	# if args.phi_design == "neural":
-	phi_fn = NeuralPhi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
+	phi_fn = NeuralPhi(rho_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
 	# elif args.phi_design == "low":
-	# 	phi_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
+	# 	phi_fn = LowPhi(rho_fn, xdot_fn, x_dim, u_dim, device, param_dict)
 
 	saturation_risk = SaturationRisk(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
 	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight) #, reg_transform=args.reg_transform)
