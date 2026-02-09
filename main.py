@@ -36,10 +36,6 @@ from src.reg_sampler import RegSampler
 
 from src.utils import *
 
-
-# TODO: comment this out before a run
-# from global_settings import *
-
 class SaturationRisk(nn.Module):
 	"""Computes worst-case CBF derivative over control limit set vertices.
 
@@ -125,10 +121,6 @@ class SaturationRisk(nn.Module):
 		# Take minimum over all control vertices (best-case saturation on a given state)
 		phidot, _ = torch.min(phidot_cand, 1)  # (bs,)
 
-		# if self.args.no_softplus_on_obj:
-		# 	result = phidot
-		# else:
-		# 	result = nn.functional.softplus(phidot) # using softplus on loss!!!
 		result = phidot
 		result = result.view(-1, 1) # ensures bs x 1
 
@@ -137,7 +129,7 @@ class SaturationRisk(nn.Module):
 class RegularizationLoss(nn.Module):
 	"""Volume regularization loss to maximize the safe set.
 
-	Implements the regularization term from liu23e.pdf Eq. 4. This term
+	Implements the regularization term from liu23e.pdf Eq. 7. This term
 	encourages the neural CBF to produce a large safe set by penalizing
 	states where φ(x) is close to 0 (boundary).
 
@@ -179,9 +171,9 @@ class RegularizationLoss(nn.Module):
 
 		# Apply sigmoid transform: sigmoid(0.3·φ)
 		# The 0.3 scaling factor adjusts sensitivity:
-		# - States far inside (φ << 0): sigmoid ≈ 0, little penalty
-		# - States near boundary (φ ≈ 0): sigmoid ≈ 0.5, moderate penalty
-		# - States outside (φ > 0): sigmoid ≈ 1, high penalty
+		# - States far inside (φ << 0): sigmoid ≈ 0, little gradient
+		# - States near boundary (φ ≈ 0): sigmoid ≈ 0.5, large gradient 
+		# - States outside (φ > 0): sigmoid ≈ 1, little gradient
 		transform_of_max_phi = torch.sigmoid(0.3*max_phi_values)  # (bs,)
 
 		# Weighted mean over batch
@@ -359,7 +351,6 @@ def main(args):
 		os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 		dev = "cuda:%i" % (args.gpu)
 	else:
-		# dev = "cpu"
 		raise NotImplementedError
 	device = torch.device(dev)
 

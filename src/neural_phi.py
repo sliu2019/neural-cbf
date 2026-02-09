@@ -3,7 +3,7 @@
 This module implements the neural CBF design described in liu23e.pdf Section 3.1.
 The CBF uses a higher-order modified structure to handle systems with input constraints:
 
-    φ*(x) = Π_{i=0}^{r-1} (1 + c_i ∂^i/∂t^i) [ρ(x) - ρ* + β(x)]
+    φ*(x) = [Π_{i=0}^{r-1} (1 + c_i ∂^i/∂t^i) ρ(x)] + ρ(x) - ρ* 
 
 where:
 - ρ(x) is the base safety specification (e.g., angles from vertical)
