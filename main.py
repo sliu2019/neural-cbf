@@ -86,13 +86,13 @@ class SaturationRisk(nn.Module):
 		Algorithm:
 		1. Get all vertices of the control limit polytope U
 		2. Compute φ̇(x, u) = ∇φ(x) · f(x,u) for each vertex u
-		3. Return minimum over all vertices (worst-case saturation)
+		3. Return minimum over all vertices (best-case saturation at x)
 
 		Args:
 			x: Batch of states (bs, x_dim)
 
 		Returns:
-			Minimum φ̇ values (bs, 1) - negative means safety violation risk
+			$\mathcal{L}(x, \theta)$ values (bs, 1)
 		"""
 		# Get vertices of control limit set (polytope with n_vertices corners)
 		u_lim_set_vertices = self.uvertices_fn(x)  # (bs, n_vertices, u_dim)
@@ -122,7 +122,7 @@ class SaturationRisk(nn.Module):
 		phidot_cand = xdot.unsqueeze(1).bmm(grad_phi.unsqueeze(2))  # (bs*n_vertices, 1, 1)
 		phidot_cand = torch.reshape(phidot_cand, (-1, n_vertices))  # (bs, n_vertices)
 
-		# Take minimum over all control vertices (worst-case saturation)
+		# Take minimum over all control vertices (best-case saturation on a given state)
 		phidot, _ = torch.min(phidot_cand, 1)  # (bs,)
 
 		# if self.args.no_softplus_on_obj:
