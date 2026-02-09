@@ -1,30 +1,20 @@
 import torch
 from torch import nn
 from torch.autograd import grad
-
-# from src.attacks.basic_critic import BasicCritic
-# from src.attacks.gradient_batch_critic import GradientBatchCritic
-# from src.attacks.gradient_batch_critic_warmstart import GradientBatchWarmstartCritic
-# from src.attacks.gradient_batch_critic_warmstart_2 import GradientBatchWarmstartCritic2
-from src.critic import Critic
-from src.learner import Learner
-# from src.reg_samplers.boundary import BoundaryRegSampler
-# from src.reg_samplers.random import RandomRegSampler
-# from src.reg_samplers.fixed import FixedRegSampler
-
-from src.reg_sampler import RegSampler
-# reg_samplers_name_to_class_dict = {"boundary": BoundaryRegSampler, "random": RandomRegSampler, "fixed": FixedRegSampler, "random_inside": RandomInsideRegSampler}
-
-# from src.phi_designs.low_phi import LowPhi
-from src.neural_phi import NeuralPhi
-# phi_designs_name_to_class_dict = {"neural": NeuralPhi, "low": LowPhi}
-
-from src.utils import *
-from src.create_arg_parser import create_arg_parser, print_args
-
 import os
 import math
 import pickle
+
+
+from src.create_arg_parser import create_arg_parser, print_args
+from src.neural_phi import NeuralPhi
+
+from src.critic import Critic
+from src.learner import Learner
+from src.reg_sampler import RegSampler
+
+from src.utils import *
+
 
 # TODO: comment this out before a run
 # from global_settings import *
@@ -72,7 +62,7 @@ class SaturationRisk(nn.Module):
 
 		return result
 
-class Regularizer(nn.Module):
+class RegularizationLoss(nn.Module):
 	def __init__(self, phi_fn, device, reg_weight=0.0): #, reg_transform="sigmoid"):
 		super().__init__()
 		vars = locals()  # dict of local names
@@ -133,40 +123,6 @@ def create_flying_param_dict(args=None):
 
 	return param_dict
 
-# def create_quadcopter_param_dict(args):
-# 	# Args: for modifying the defaults through args
-# 	param_dict = {
-# 		"m": 0.8,
-# 		"J_x": 0.005,
-# 		"J_y": 0.005,
-# 		"J_z": 0.009,
-# 		"l": 0.15, # TODO: this param differs from flying inverted pendulum
-# 		"k1": 4.0,
-# 		"k2": 0.05
-# 	}
-# 	state_index_names = ["px", "py", "pz", "dpx", "dpy", "dpz", "gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha"]  # excluded x, y, z
-# 	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
-
-# 	# r = 2
-# 	if args.rho == 'sum':
-# 		r = 2
-# 	elif args.rho == 'reg':
-# 		r = 4
-# 	x_dim = len(state_index_names)
-# 	u_dim = 4
-# 	thresh = np.array([1, 1, 1, 15, 15, 15, math.pi/2, math.pi/2, math.pi, 15, 15, 15], dtype=np.float32)  # avg drone speed is 15-25 m/s
-
-# 	x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
-
-# 	# Save stuff in param dict
-# 	param_dict["state_index_dict"] = state_index_dict
-# 	param_dict["r"] = r
-# 	param_dict["x_dim"] = x_dim
-# 	param_dict["u_dim"] = u_dim
-# 	param_dict["x_lim"] = x_lim
-
-# 	return param_dict
-
 def main(args):
 	# Boilerplate for saving
 	# IPython.embed()
@@ -192,7 +148,8 @@ def main(args):
 		os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 		dev = "cuda:%i" % (args.gpu)
 	else:
-		dev = "cpu"
+		# dev = "cpu"
+		raise NotImplementedError
 	device = torch.device(dev)
 
 	# Selecting problem
@@ -251,7 +208,7 @@ def main(args):
 	# 	phi_fn = LowPhi(rho_fn, xdot_fn, x_dim, u_dim, device, param_dict)
 
 	saturation_risk = SaturationRisk(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
-	reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight) #, reg_transform=args.reg_transform)
+	reg_fn = RegularizationLoss(phi_fn, device, reg_weight=args.reg_weight) #, reg_transform=args.reg_transform)
 
 	# Send remaining modules to the correct device
 	phi_fn = phi_fn.to(device)
@@ -328,8 +285,12 @@ def main(args):
 
 
 if __name__ == "__main__":
+	# Parse command line arguments 
 	parser = create_arg_parser()
 	args = parser.parse_known_args()[0]
+
+	# Set seeds 
 	torch.manual_seed(args.random_seed)
 	np.random.seed(args.random_seed)
+
 	main(args)

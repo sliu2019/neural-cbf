@@ -49,7 +49,7 @@ def create_arg_parser():
 	# parser.add_argument("--gradient_batch_warmstart_faster_gaussian_t", type=float, default=1.0) # TODO: could shrink as training progresses
 	
 	# Gradient batch critic
-	parser.add_argument('--critic_n_samples', default=60, type=int) # TODO: Keep 
+	parser.add_argument('--critic_n_samples', default=50, type=int) # TODO: Keep 
 	# parser.add_argument('--critic_stopping_condition', default='n_steps', choices=['n_steps', 'early_stopping']) # Hardcode n steps 
 	parser.add_argument('--critic_max_n_steps', default=20, type=int) # TODO: 20 in 04-22 run 
 	# parser.add_argument('--critic_use_n_step_schedule', action='store_true', help='use a schedule (starting with >>>max_n_steps and exponentially decreasing down to it') # TODO: hardcode True - best in 04-22-24 repro run 

@@ -9,12 +9,12 @@ import time, os, glob, re
 import numpy as np
 
 # from main import Phi, SaturationRisk, Regularizer
-from main import SaturationRisk, Regularizer
+from main import SaturationRisk, RegularizationLoss
 from neural_phi import NeuralPhi
-from src.phi_designs.low_phi import LowPhi
+# from src.phi_designs.low_phi import LowPhi
 from src.utils import *
 
-from src.phi_designs.low_phi import LowPhi
+# from src.phi_designs.low_phi import LowPhi
 from neural_phi import NeuralPhi
 
 # Make numpy and torch deterministic (for rand phi and attack/reg sampling)
@@ -47,10 +47,10 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 
 	# Create phi
 	from src.problems.flying_inv_pend import RhoMax, RhoSum, XDot, ULimitSetVertices
-	if args.rho == "sum":
-		h_fn = RhoSum(param_dict)
-	elif args.rho == "max":
-		h_fn = RhoMax(param_dict)
+	# if args.rho == "sum":
+	h_fn = RhoSum(param_dict)
+	# elif args.rho == "max":
+		# h_fn = RhoMax(param_dict)
 
 	xdot_fn = XDot(param_dict, device)
 	uvertices_fn = ULimitSetVertices(param_dict, device)
@@ -410,39 +410,39 @@ def graph_losses(exp_name, debug=True):
 	# print("\n")
 
 	# Method 5: first time test loss < thresh
-	# percent_infeas_thresh = 0.25
-	# inds = np.argwhere(np.array(percent_infeas_at_boundary) < percent_infeas_thresh)
-	#
-	# # IPython.embed()
-	#
-	# sorted_inds = np.sort(inds)
-	#
-	# print("Here are a few other choices of checkpoint")
-	# n_top = min(inds.size, 10)
-	# import datetime
-	# for k in range(n_top):
-	# 	best_ind = int(sorted_inds[k])
-	# 	# IPython.embed()
-	# 	real_ind = best_ind*n_test_loss_step
-	# 	# real_ind = best_ind
-	# 	print("At selected checkpoint %i: %.3f percent infeas., %.3f avg infeas, %.3f train attack loss" % (real_ind, percent_infeas_at_boundary[best_ind], average_infeas_amount[best_ind], train_attack_losses[real_ind]) + "Took " + str(datetime.timedelta(seconds=data["train_loop_times"][real_ind])))
-	# 	# print("At selected checkpoint %i: %.3f train attack loss" % (real_ind, train_attack_losses[real_ind]) + "Took " + str(
-	# 	# 	datetime.timedelta(seconds=data["train_loop_times"][real_ind])))
-	# print("\n")
-
-	# checking difference between train and test
-	boundary_samples_obj_values = data["boundary_samples_obj_values"]
-	test_attack_losses = np.array([np.max(boundary_samples_obj_value) for boundary_samples_obj_value in boundary_samples_obj_values])
-	train_attack_losses = np.array(data["train_attack_losses"][::n_test_loss_step])[:len(test_attack_losses)]
+	percent_infeas_thresh = 1.0
+	inds = np.argwhere(np.array(percent_infeas_at_boundary) < percent_infeas_thresh)
 
 	# IPython.embed()
-	diff = test_attack_losses - train_attack_losses
-	relu_diff = np.maximum(diff, np.zeros_like(diff))
 
-	print(np.mean(relu_diff), np.std(relu_diff))
+	sorted_inds = np.sort(inds)
 
-	plt.plot(diff)
-	plt.savefig("./log/%s/%s_test_train_diff.png" % (exp_name, exp_name))
+	print("Here are a few other choices of checkpoint")
+	n_top = min(inds.size, 10)
+	import datetime
+	for k in range(n_top):
+		best_ind = int(sorted_inds[k])
+		# IPython.embed()
+		real_ind = best_ind*n_test_loss_step
+		# real_ind = best_ind
+		print("At selected checkpoint %i: %.3f percent infeas., %.3f avg infeas, %.3f train attack loss" % (real_ind, percent_infeas_at_boundary[best_ind], average_infeas_amount[best_ind], train_attack_losses[real_ind]) + "Took " + str(datetime.timedelta(seconds=data["train_loop_times"][real_ind])))
+		# print("At selected checkpoint %i: %.3f train attack loss" % (real_ind, train_attack_losses[real_ind]) + "Took " + str(
+		# 	datetime.timedelta(seconds=data["train_loop_times"][real_ind])))
+	print("\n")
+
+	# checking difference between train and test
+	# boundary_samples_obj_values = data["boundary_samples_obj_values"]
+	# test_attack_losses = np.array([np.max(boundary_samples_obj_value) for boundary_samples_obj_value in boundary_samples_obj_values])
+	# train_attack_losses = np.array(data["train_attack_losses"][::n_test_loss_step])[:len(test_attack_losses)]
+	#
+	# # IPython.embed()
+	# diff = test_attack_losses - train_attack_losses
+	# relu_diff = np.maximum(diff, np.zeros_like(diff))
+	#
+	# print(np.mean(relu_diff), np.std(relu_diff))
+	#
+	# plt.plot(diff)
+	# plt.savefig("./log/%s/%s_test_train_diff.png" % (exp_name, exp_name))
 
 
 def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
@@ -609,8 +609,10 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 			if i*n_per_row + j >= len(params_to_viz):
 				break
 			# for param_pair in params_to_viz:
+			# IPython.embed()
 			param_pair = params_to_viz[i*n_per_row + j]
 			param1, param2 = param_pair
+			print(param_pair) # TODO
 
 			ind1 = state_index_dict[param1]
 			ind2 = state_index_dict[param2]
@@ -641,6 +643,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 
 			phi_vals = []
 			for k in range(math.ceil(all_size/batch_size)):
+				print("%i/%i" % (k, math.ceil(all_size/batch_size)))
 				batch_input = input[k*batch_size: min(all_size, (k+1)*batch_size)]
 				batch_input = batch_input.astype("float32")
 				batch_input_torch = torch.from_numpy(batch_input)
@@ -651,13 +654,15 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 			## Process phi values
 			phi_vals = np.concatenate((phi_vals), axis=0)
 			S_vals = np.max(phi_vals, axis=1)  # S = all phi_i <= 0
+			# print(S_vals)
+			print(np.mean(S_vals), np.std(S_vals), np.max(S_vals))
 			phi_signs = np.sign(S_vals)
 			phi_signs = np.reshape(phi_signs, X.shape)
 
 			# print("\n")
 			slice_volume = np.mean(phi_signs == -1)
 			vol_over_slices += slice_volume
-			print(param1, param2, slice_volume)
+			# print(param1, param2, slice_volume)
 			# print("\n")
 
 			# fig = plt.figure()
@@ -1024,15 +1029,19 @@ if __name__ == "__main__":
 	# checkpoint_numbers = [180, 405, 290]
 
 	# base_exp_names = ['flying_inv_pend_best_p_reuse_0', 'flying_inv_pend_best_p_reuse_25', 'flying_inv_pend_best_p_reuse_50', 'flying_inv_pend_best_p_reuse_75', 'flying_inv_pend_best_p_reuse_100']
+	# base_exp_names = [x + "_bs_10" for x in ['flying_inv_pend_best_p_reuse_0', 'flying_inv_pend_best_p_reuse_25', 'flying_inv_pend_best_p_reuse_50', 'flying_inv_pend_best_p_reuse_75', 'flying_inv_pend_best_p_reuse_100']]
 	# exp_names = []
-	base_exp_names = ['flying_inv_pend_' + x for x in ['best_critic_bs_10', 'best_critic_bs_50', 'best_critic_bs_100', 'repro_test']] # 'repro_test',
-	checkpoint_numbers = [np.arange(750, 800, 5), np.arange(350, 400, 5), np.arange(175, 225, 5), np.arange(250, 300, 5)]
-	exp_names = []
-	for i, arr in enumerate(checkpoint_numbers):
-		exp_names.extend([base_exp_names[i]]*arr.size)
-
-	checkpoint_numbers = np.concatenate(checkpoint_numbers)
+	# base_exp_names = ['flying_inv_pend_' + x for x in ['best_critic_bs_10', 'best_critic_bs_50', 'best_critic_bs_100', 'repro_test']] # 'repro_test',
+	# checkpoint_numbers = [np.arange(750, 800, 5), np.arange(350, 400, 5), np.arange(175, 225, 5), np.arange(250, 300, 5)]
+	# exp_names = []
+	# for i, arr in enumerate(checkpoint_numbers):
+	# 	exp_names.extend([base_exp_names[i]]*arr.size)
+	#
+	# checkpoint_numbers = np.concatenate(checkpoint_numbers)
 	# IPython.embed()
+
+	exp_names = ["flying_inv_pend_" + x for x in ["design_2", "design_2_reg_weight_200", "design_2_reg_random", "design_2_reg_samples_250"]]
+	checkpoint_numbers = [0]*4
 
 	# To visualize slices for a new experiment
 	"""checkpoint_numbers = []
