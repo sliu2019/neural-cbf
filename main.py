@@ -1,3 +1,21 @@
+"""Main entry point for neural Control Barrier Function synthesis training.
+
+This module implements the learner-critic training framework for synthesizing
+neural CBFs that respect input saturation constraints, as described in
+"Safe control under input limits with neural control barrier functions"
+(liu23e, CoRL 2022).
+
+The training optimizes a neural network to represent a modified CBF that
+ensures safety even when control inputs saturate. The method uses:
+- Learner: Minimizes saturation risk + volume regularization
+- Critic: Finds worst-case counterexamples via gradient ascent on boundary
+
+System: Flying inverted pendulum (10D state, 4D control)
+Output: Trained neural CBF checkpoints and training statistics
+
+References:
+    liu23e.pdf Section 3 (Method), Section 4 (Experiments), Algorithm 1
+"""
 import torch
 from torch import nn
 from torch.autograd import grad
@@ -20,38 +38,89 @@ from src.utils import *
 # from global_settings import *
 
 class SaturationRisk(nn.Module):
+	"""Computes worst-case CBF derivative over control limit set vertices.
+
+	This loss function implements the saturation avoidance objective from
+	liu23e.pdf Eq. 4. For each state x on the boundary, it evaluates:
+
+		min_{u ∈ vertices(U)} φ̇(x, u) = ∇φ(x)·f(x,u)
+
+	where the minimum is taken over all vertices of the polytopic control
+	limit set U. A negative value indicates the CBF derivative is negative
+	even with worst-case saturated control, violating the forward invariance
+	condition and potentially causing safety violations.
+
+	The critic maximizes this loss to find states where saturation causes
+	problems, and the learner minimizes it to eliminate such violations.
+
+	Attributes:
+		phi_fn: Neural CBF function returning (bs, r+1) with φ* in last column
+		xdot_fn: System dynamics f(x,u) returning state derivatives (bs, x_dim)
+		uvertices_fn: Returns control polytope vertices (bs, n_vertices, u_dim)
+		x_dim: State space dimension
+		u_dim: Control input dimension
+		device: PyTorch device for computation
+		logger: Logger instance (for debugging)
+		args: Training arguments namespace (currently unused)
+
+	Returns:
+		When called: Tensor (bs, 1) with minimum φ̇ values (saturation risk)
+	"""
 	def __init__(self, phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args):
 		super().__init__()
-		vars = locals()  # dict of local names
-		self.__dict__.update(vars)  # __dict__ holds and object's attributes
-		del self.__dict__["self"]  # don't need `self`
+		self.phi_fn = phi_fn
+		self.xdot_fn = xdot_fn
+		self.uvertices_fn = uvertices_fn
+		self.x_dim = x_dim
+		self.u_dim = u_dim
+		self.device = device
+		self.logger = logger
+		self.args = args
 
 	def forward(self, x):
-		# The way these are implemented should be batch compliant
-		u_lim_set_vertices = self.uvertices_fn(x) # (bs, n_vertices, u_dim), can be a function of x_batch
+		"""Computes minimum CBF derivative over control limit vertices.
+
+		Algorithm:
+		1. Get all vertices of the control limit polytope U
+		2. Compute φ̇(x, u) = ∇φ(x) · f(x,u) for each vertex u
+		3. Return minimum over all vertices (worst-case saturation)
+
+		Args:
+			x: Batch of states (bs, x_dim)
+
+		Returns:
+			Minimum φ̇ values (bs, 1) - negative means safety violation risk
+		"""
+		# Get vertices of control limit set (polytope with n_vertices corners)
+		u_lim_set_vertices = self.uvertices_fn(x)  # (bs, n_vertices, u_dim)
 		n_vertices = u_lim_set_vertices.size()[1]
 
-		# Evaluate every X against multiple U
-		U = torch.reshape(u_lim_set_vertices, (-1, self.u_dim)) # (bs x n_vertices, u_dim)
-		X = (x.unsqueeze(1)).repeat(1, n_vertices, 1) # (bs, n_vertices, x_dim)
-		X = torch.reshape(X, (-1, self.x_dim)) # (bs x n_vertices, x_dim)
+		# Reshape to evaluate all (state, control) pairs in parallel
+		# We need to evaluate xdot at every (x[i], u_vertex[j]) combination
+		U = torch.reshape(u_lim_set_vertices, (-1, self.u_dim))  # (bs*n_vertices, u_dim)
+		X = (x.unsqueeze(1)).repeat(1, n_vertices, 1)  # (bs, n_vertices, x_dim)
+		X = torch.reshape(X, (-1, self.x_dim))  # (bs*n_vertices, x_dim)
 
-		xdot = self.xdot_fn(X, U)
+		# Compute state derivatives f(x,u) for all combinations
+		xdot = self.xdot_fn(X, U)  # (bs*n_vertices, x_dim)
 
+		# Compute gradient of CBF: ∇φ(x)
 		orig_req_grad_setting = x.requires_grad
 		x.requires_grad = True
-		phi_value = self.phi_fn(x)
-		grad_phi = grad([torch.sum(phi_value[:, -1])], x, create_graph=True)[0] # check
+		phi_value = self.phi_fn(x)  # (bs, r+1)
+		grad_phi = grad([torch.sum(phi_value[:, -1])], x, create_graph=True)[0]  # (bs, x_dim)
 		x.requires_grad = orig_req_grad_setting
 
-		grad_phi = (grad_phi.unsqueeze(1)).repeat(1, n_vertices, 1)
-		grad_phi = torch.reshape(grad_phi, (-1, self.x_dim))
+		# Broadcast gradient to match all vertex evaluations
+		grad_phi = (grad_phi.unsqueeze(1)).repeat(1, n_vertices, 1)  # (bs, n_vertices, x_dim)
+		grad_phi = torch.reshape(grad_phi, (-1, self.x_dim))  # (bs*n_vertices, x_dim)
 
-		# Dot product
-		phidot_cand = xdot.unsqueeze(1).bmm(grad_phi.unsqueeze(2))
-		phidot_cand = torch.reshape(phidot_cand, (-1, n_vertices)) # bs x n_vertices
+		# Compute Lie derivative: φ̇ = ∇φ · f(x,u) for all vertices
+		phidot_cand = xdot.unsqueeze(1).bmm(grad_phi.unsqueeze(2))  # (bs*n_vertices, 1, 1)
+		phidot_cand = torch.reshape(phidot_cand, (-1, n_vertices))  # (bs, n_vertices)
 
-		phidot, _ = torch.min(phidot_cand, 1)
+		# Take minimum over all control vertices (worst-case saturation)
+		phidot, _ = torch.min(phidot_cand, 1)  # (bs,)
 
 		# if self.args.no_softplus_on_obj:
 		# 	result = phidot
@@ -63,26 +132,80 @@ class SaturationRisk(nn.Module):
 		return result
 
 class RegularizationLoss(nn.Module):
-	def __init__(self, phi_fn, device, reg_weight=0.0): #, reg_transform="sigmoid"):
+	"""Volume regularization loss to maximize the safe set.
+
+	Implements the regularization term from liu23e.pdf Eq. 4. This term
+	encourages the neural CBF to produce a large safe set by penalizing
+	states where φ(x) is close to 0 (boundary).
+
+	The loss uses sigmoid transform of max φ values:
+		L_reg = weight · mean(sigmoid(0.3 · max_i φ_i(x)))
+
+	States deep inside safe set (φ << 0) contribute little, while states
+	near boundary (φ ≈ 0) contribute more. This provides gradient signal
+	to expand the safe set.
+
+	Attributes:
+		phi_fn: Neural CBF function
+		device: PyTorch device
+		reg_weight: Coefficient for regularization term (default: 0.0)
+	"""
+	def __init__(self, phi_fn, device, reg_weight=0.0):
 		super().__init__()
-		vars = locals()  # dict of local names
-		self.__dict__.update(vars)  # __dict__ holds and object's attributes
-		del self.__dict__["self"]  # don't need `self`
+		self.phi_fn = phi_fn
+		self.device = device
+		self.reg_weight = reg_weight
 		assert reg_weight >= 0.0
 
 	def forward(self, x):
-		all_phi_values = self.phi_fn(x)
-		max_phi_values = torch.max(all_phi_values, dim=1)[0]
+		"""Computes volume regularization loss.
 
-		# if self.reg_transform == "sigmoid":
-		transform_of_max_phi = torch.sigmoid(0.3*max_phi_values)
-		# elif self.reg_transform == "softplus":
-		# 	transform_of_max_phi = nn.functional.softplus(max_phi_values)
+		Args:
+			x: Batch of sampled states (bs, x_dim), typically sampled
+			   uniformly inside the safe set zero-sublevel
+
+		Returns:
+			Scalar regularization loss (encourages large safe set)
+		"""
+		# Evaluate all φ_i(x) for i=0..r (CBF and its higher-order terms)
+		all_phi_values = self.phi_fn(x)  # (bs, r+1)
+
+		# Safe set condition: max_i φ_i(x) ≤ 0
+		# Taking max gives tightest constraint
+		max_phi_values = torch.max(all_phi_values, dim=1)[0]  # (bs,)
+
+		# Apply sigmoid transform: sigmoid(0.3·φ)
+		# The 0.3 scaling factor adjusts sensitivity:
+		# - States far inside (φ << 0): sigmoid ≈ 0, little penalty
+		# - States near boundary (φ ≈ 0): sigmoid ≈ 0.5, moderate penalty
+		# - States outside (φ > 0): sigmoid ≈ 1, high penalty
+		transform_of_max_phi = torch.sigmoid(0.3*max_phi_values)  # (bs,)
+
+		# Weighted mean over batch
 		reg = self.reg_weight*torch.mean(transform_of_max_phi)
 		return reg
 
 def create_flying_param_dict(args=None):
-	# Args: for modifying the defaults through args
+	"""Creates parameter dictionary for flying inverted pendulum system.
+
+	Defines physical parameters, state space bounds, and system dimensions
+	for the quadrotor with attached pendulum (10D state, 4D control).
+
+	Args:
+		args: Optional argparse.Namespace to override default parameters
+		      (currently unused, parameters are hardcoded)
+
+	Returns:
+		dict: Parameter dictionary with keys:
+			Physical: m, J_x, J_y, J_z, l, k1, k2, m_p, L_p, M
+			Safety: delta_safety_limit, box_ang_vel_limit
+			Dimensions: x_dim, u_dim, r
+			Bounds: x_lim (state space bounds)
+			Mappings: state_index_dict
+
+	Reference:
+		liu23e.pdf Section 4 for system description and parameters
+	"""
 	param_dict = {
 		"m": 0.8,
 		"J_x": 0.005,

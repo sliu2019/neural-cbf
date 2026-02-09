@@ -1133,3 +1133,2199 @@ train attack loss increase over inner max: -1.590
 OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
 ============================ end of evaluation ============================
 
+
+++++++++++++++++++++ computing test stats ++++++++++++++++++++
+v approx: 6.360% of volume
+percentage infeasible at boundary: 26.88%
+mean, std amount infeasible at boundary: 1.29 +/- 2.91
+max amount infeasible at boundary: 26.75
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Reg grad norm: 0.281
+total grad norm: 6.248
+
+==================== evaluation at iteration: 51 ====================
+train total loss: 86.625%
+train max loss: 20.878%, reg loss: 75.073%
+time spent training so far: 0:19:47.592838
+train attack total time: 16.750s
+train attack init time: 2.642s
+train attack avg grad step time: 0.087s
+train attack avg reproj time: 0.432s
+
+
+train attack loss increase over inner max: 1.160
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.321
+total grad norm: 4.101
+
+==================== evaluation at iteration: 52 ====================
+train total loss: 87.526%
+train max loss: 20.732%, reg loss: 75.022%
+time spent training so far: 0:20:01.639010
+train attack total time: 13.633s
+train attack init time: 2.594s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.337s
+
+
+train attack loss increase over inner max: -0.436
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.295
+total grad norm: 5.807
+
+==================== evaluation at iteration: 53 ====================
+train total loss: 87.487%
+train max loss: 20.396%, reg loss: 74.971%
+time spent training so far: 0:20:14.592466
+train attack total time: 12.587s
+train attack init time: 2.901s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.285s
+
+
+train attack loss increase over inner max: -0.562
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.294
+total grad norm: 6.760
+
+==================== evaluation at iteration: 54 ====================
+train total loss: 89.026%
+train max loss: 25.423%, reg loss: 75.186%
+time spent training so far: 0:20:30.071483
+train attack total time: 15.080s
+train attack init time: 2.495s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.397s
+
+
+train attack loss increase over inner max: 4.845
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.316
+total grad norm: 3.496
+
+==================== evaluation at iteration: 55 ====================
+train total loss: 88.131%
+train max loss: 25.320%, reg loss: 75.120%
+time spent training so far: 0:20:41.603473
+train attack total time: 11.192s
+train attack init time: 2.213s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.259s
+
+
+train attack loss increase over inner max: -0.009
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.325
+total grad norm: 3.514
+
+==================== evaluation at iteration: 56 ====================
+train total loss: 88.635%
+train max loss: 24.781%, reg loss: 75.135%
+time spent training so far: 0:20:53.933287
+train attack total time: 11.990s
+train attack init time: 2.556s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.275s
+
+
+train attack loss increase over inner max: -0.151
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.302
+total grad norm: 2.571
+
+==================== evaluation at iteration: 57 ====================
+train total loss: 87.489%
+train max loss: 24.433%, reg loss: 75.361%
+time spent training so far: 0:21:06.231464
+train attack total time: 11.943s
+train attack init time: 2.316s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.285s
+
+
+train attack loss increase over inner max: -0.464
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.353
+total grad norm: 3.989
+
+==================== evaluation at iteration: 58 ====================
+train total loss: 88.105%
+train max loss: 23.953%, reg loss: 75.121%
+time spent training so far: 0:21:20.046247
+train attack total time: 13.443s
+train attack init time: 2.318s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.340s
+
+
+train attack loss increase over inner max: -0.741
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.342
+total grad norm: 2.438
+
+==================== evaluation at iteration: 59 ====================
+train total loss: 87.710%
+train max loss: 22.741%, reg loss: 75.415%
+time spent training so far: 0:21:31.315377
+train attack total time: 10.943s
+train attack init time: 2.014s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.257s
+
+
+train attack loss increase over inner max: -1.263
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.323
+total grad norm: 5.674
+
+==================== evaluation at iteration: 60 ====================
+train total loss: 86.548%
+train max loss: 21.067%, reg loss: 75.196%
+time spent training so far: 0:21:46.106268
+train attack total time: 14.440s
+train attack init time: 2.598s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.367s
+
+
+train attack loss increase over inner max: -2.047
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.338
+total grad norm: 5.265
+
+==================== evaluation at iteration: 61 ====================
+train total loss: 86.446%
+train max loss: 19.691%, reg loss: 75.337%
+time spent training so far: 0:22:02.727838
+train attack total time: 16.241s
+train attack init time: 2.843s
+train attack avg grad step time: 0.088s
+train attack avg reproj time: 0.424s
+
+
+train attack loss increase over inner max: -1.326
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.219
+total grad norm: 2.554
+
+==================== evaluation at iteration: 62 ====================
+train total loss: 85.583%
+train max loss: 19.651%, reg loss: 75.144%
+time spent training so far: 0:22:16.754691
+train attack total time: 13.675s
+train attack init time: 2.955s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.325s
+
+
+train attack loss increase over inner max: -0.183
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.230
+total grad norm: 3.295
+
+==================== evaluation at iteration: 63 ====================
+train total loss: 85.473%
+train max loss: 18.575%, reg loss: 75.268%
+time spent training so far: 0:22:32.828720
+train attack total time: 15.694s
+train attack init time: 2.699s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.413s
+
+
+train attack loss increase over inner max: -0.984
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.150
+total grad norm: 3.247
+
+==================== evaluation at iteration: 64 ====================
+train total loss: 85.978%
+train max loss: 18.116%, reg loss: 74.991%
+time spent training so far: 0:22:46.511940
+train attack total time: 13.344s
+train attack init time: 2.410s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.333s
+
+
+train attack loss increase over inner max: 0.032
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.158
+total grad norm: 2.888
+
+==================== evaluation at iteration: 65 ====================
+train total loss: 85.866%
+train max loss: 17.906%, reg loss: 75.092%
+time spent training so far: 0:23:01.494124
+train attack total time: 14.631s
+train attack init time: 2.431s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.383s
+
+
+train attack loss increase over inner max: -0.158
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.148
+total grad norm: 2.957
+
+==================== evaluation at iteration: 66 ====================
+train total loss: 86.603%
+train max loss: 19.717%, reg loss: 75.007%
+time spent training so far: 0:23:16.005795
+train attack total time: 14.162s
+train attack init time: 2.217s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.373s
+
+
+train attack loss increase over inner max: 2.150
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.135
+total grad norm: 4.710
+
+==================== evaluation at iteration: 67 ====================
+train total loss: 84.885%
+train max loss: 19.029%, reg loss: 75.027%
+time spent training so far: 0:23:28.249061
+train attack total time: 11.902s
+train attack init time: 2.137s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.288s
+
+
+train attack loss increase over inner max: -0.391
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.135
+total grad norm: 3.208
+
+==================== evaluation at iteration: 68 ====================
+train total loss: 85.171%
+train max loss: 18.153%, reg loss: 75.116%
+time spent training so far: 0:23:39.511643
+train attack total time: 10.919s
+train attack init time: 2.484s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.239s
+
+
+train attack loss increase over inner max: -0.609
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.188
+total grad norm: 4.637
+
+==================== evaluation at iteration: 69 ====================
+train total loss: 86.948%
+train max loss: 20.894%, reg loss: 75.130%
+time spent training so far: 0:23:58.499016
+train attack total time: 18.654s
+train attack init time: 2.165s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.572s
+
+
+train attack loss increase over inner max: 2.989
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.188
+total grad norm: 5.223
+
+==================== evaluation at iteration: 70 ====================
+train total loss: 87.166%
+train max loss: 23.147%, reg loss: 75.054%
+time spent training so far: 0:24:09.523063
+train attack total time: 10.698s
+train attack init time: 2.140s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.255s
+
+
+train attack loss increase over inner max: 1.916
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.237
+total grad norm: 5.893
+
+==================== evaluation at iteration: 71 ====================
+train total loss: 88.667%
+train max loss: 23.237%, reg loss: 75.114%
+time spent training so far: 0:24:23.936006
+train attack total time: 14.021s
+train attack init time: 2.233s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.385s
+
+
+train attack loss increase over inner max: -0.025
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.241
+total grad norm: 3.922
+
+==================== evaluation at iteration: 72 ====================
+train total loss: 87.652%
+train max loss: 22.074%, reg loss: 75.158%
+time spent training so far: 0:24:38.605457
+train attack total time: 14.314s
+train attack init time: 2.294s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.394s
+
+
+train attack loss increase over inner max: -0.213
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.270
+total grad norm: 5.616
+
+==================== evaluation at iteration: 73 ====================
+train total loss: 86.984%
+train max loss: 21.109%, reg loss: 74.987%
+time spent training so far: 0:24:49.932236
+train attack total time: 10.955s
+train attack init time: 2.184s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.264s
+
+
+train attack loss increase over inner max: -0.992
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.214
+total grad norm: 3.253
+
+==================== evaluation at iteration: 74 ====================
+train total loss: 87.043%
+train max loss: 20.740%, reg loss: 75.002%
+time spent training so far: 0:25:01.109202
+train attack total time: 10.836s
+train attack init time: 2.174s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.259s
+
+
+train attack loss increase over inner max: -0.551
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.224
+total grad norm: 2.925
+
+==================== evaluation at iteration: 75 ====================
+train total loss: 86.525%
+train max loss: 20.202%, reg loss: 75.100%
+time spent training so far: 0:25:12.172200
+train attack total time: 10.671s
+train attack init time: 2.266s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.249s
+
+
+train attack loss increase over inner max: -0.540
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+
+++++++++++++++++++++ computing test stats ++++++++++++++++++++
+v approx: 4.920% of volume
+percentage infeasible at boundary: 25.52%
+mean, std amount infeasible at boundary: 1.26 +/- 2.94
+max amount infeasible at boundary: 23.41
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Reg grad norm: 0.287
+total grad norm: 3.250
+
+==================== evaluation at iteration: 76 ====================
+train total loss: 87.456%
+train max loss: 19.832%, reg loss: 74.995%
+time spent training so far: 0:27:32.962834
+train attack total time: 12.530s
+train attack init time: 2.479s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.314s
+
+
+train attack loss increase over inner max: -0.789
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.239
+total grad norm: 3.942
+
+==================== evaluation at iteration: 77 ====================
+train total loss: 84.899%
+train max loss: 18.976%, reg loss: 75.105%
+time spent training so far: 0:27:44.973952
+train attack total time: 11.658s
+train attack init time: 2.689s
+train attack avg grad step time: 0.087s
+train attack avg reproj time: 0.268s
+
+
+train attack loss increase over inner max: -0.827
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.247
+total grad norm: 4.524
+
+==================== evaluation at iteration: 78 ====================
+train total loss: 85.018%
+train max loss: 18.680%, reg loss: 75.061%
+time spent training so far: 0:27:58.218599
+train attack total time: 12.864s
+train attack init time: 3.068s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.303s
+
+
+train attack loss increase over inner max: -0.583
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.237
+total grad norm: 4.808
+
+==================== evaluation at iteration: 79 ====================
+train total loss: 87.356%
+train max loss: 20.540%, reg loss: 75.071%
+time spent training so far: 0:28:10.876819
+train attack total time: 12.211s
+train attack init time: 2.382s
+train attack avg grad step time: 0.090s
+train attack avg reproj time: 0.300s
+
+
+train attack loss increase over inner max: 2.400
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.194
+total grad norm: 2.660
+
+==================== evaluation at iteration: 80 ====================
+train total loss: 86.959%
+train max loss: 22.725%, reg loss: 74.974%
+time spent training so far: 0:28:24.238566
+train attack total time: 12.926s
+train attack init time: 2.439s
+train attack avg grad step time: 0.087s
+train attack avg reproj time: 0.329s
+
+
+train attack loss increase over inner max: 2.656
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.251
+total grad norm: 4.517
+
+==================== evaluation at iteration: 81 ====================
+train total loss: 85.529%
+train max loss: 22.042%, reg loss: 75.132%
+time spent training so far: 0:28:35.820341
+train attack total time: 11.194s
+train attack init time: 2.510s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.260s
+
+
+train attack loss increase over inner max: -0.297
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.192
+total grad norm: 4.245
+
+==================== evaluation at iteration: 82 ====================
+train total loss: 87.300%
+train max loss: 21.468%, reg loss: 75.255%
+time spent training so far: 0:28:48.612358
+train attack total time: 12.413s
+train attack init time: 2.689s
+train attack avg grad step time: 0.088s
+train attack avg reproj time: 0.298s
+
+
+train attack loss increase over inner max: -0.461
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.256
+total grad norm: 4.755
+
+==================== evaluation at iteration: 83 ====================
+train total loss: 88.429%
+train max loss: 20.937%, reg loss: 75.198%
+time spent training so far: 0:29:01.421951
+train attack total time: 12.419s
+train attack init time: 2.723s
+train attack avg grad step time: 0.086s
+train attack avg reproj time: 0.299s
+
+
+train attack loss increase over inner max: -0.113
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.246
+total grad norm: 3.607
+
+==================== evaluation at iteration: 84 ====================
+train total loss: 86.144%
+train max loss: 20.547%, reg loss: 75.078%
+time spent training so far: 0:29:14.660892
+train attack total time: 12.847s
+train attack init time: 2.683s
+train attack avg grad step time: 0.087s
+train attack avg reproj time: 0.316s
+
+
+train attack loss increase over inner max: -0.602
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.266
+total grad norm: 4.078
+
+==================== evaluation at iteration: 85 ====================
+train total loss: 86.551%
+train max loss: 20.048%, reg loss: 75.213%
+time spent training so far: 0:29:26.451866
+train attack total time: 11.409s
+train attack init time: 2.384s
+train attack avg grad step time: 0.087s
+train attack avg reproj time: 0.271s
+
+
+train attack loss increase over inner max: -0.403
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.288
+total grad norm: 4.470
+
+==================== evaluation at iteration: 86 ====================
+train total loss: 87.211%
+train max loss: 20.534%, reg loss: 75.220%
+time spent training so far: 0:29:38.708904
+train attack total time: 11.882s
+train attack init time: 2.622s
+train attack avg grad step time: 0.089s
+train attack avg reproj time: 0.278s
+
+
+train attack loss increase over inner max: 0.771
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.327
+total grad norm: 5.097
+
+==================== evaluation at iteration: 87 ====================
+train total loss: 88.216%
+train max loss: 20.555%, reg loss: 75.270%
+time spent training so far: 0:29:51.333679
+train attack total time: 12.250s
+train attack init time: 2.393s
+train attack avg grad step time: 0.086s
+train attack avg reproj time: 0.305s
+
+
+train attack loss increase over inner max: -0.563
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+
+Max_n_steps: 25
+Parameter containing:
+tensor([[0.0390]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 25
+Parameter containing:
+tensor([[0.0395]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 25
+Parameter containing:
+tensor([[0.0399]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 25
+Parameter containing:
+tensor([[0.0404]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 25
+Parameter containing:
+tensor([[0.0408]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 25
+Parameter containing:
+tensor([[0.0412]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 25
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.11706492304801941
+Parameter containing:
+tensor([[0.0416]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 25
+Parameter containing:
+tensor([[0.0420]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0423]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0427]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0431]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0435]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0438]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0441]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0444]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0447]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0449]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0452]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.1189926415681839
+Parameter containing:
+tensor([[0.0456]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0459]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0462]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0464]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0467]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0470]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 24
+Parameter containing:
+tensor([[0.0473]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0476]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0478]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0481]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0484]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0486]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0489]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0492]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 23
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.14134429395198822
+Parameter containing:
+tensor([[0.0494]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0496]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.2101573795080185
+Parameter containing:
+tensor([[0.0499]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0501]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0503]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0505]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0506]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0507]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0508]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0509]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0510]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0511]], device='cuda:0', requires_grad=True)============================ end of evaluation ============================
+
+Reg grad norm: 0.353
+total grad norm: 3.105
+
+==================== evaluation at iteration: 88 ====================
+train total loss: 87.095%
+train max loss: 20.105%, reg loss: 75.092%
+time spent training so far: 0:30:06.012284
+train attack total time: 14.297s
+train attack init time: 2.699s
+train attack avg grad step time: 0.088s
+train attack avg reproj time: 0.373s
+
+
+train attack loss increase over inner max: 0.140
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.345
+total grad norm: 4.387
+
+==================== evaluation at iteration: 89 ====================
+train total loss: 86.245%
+train max loss: 18.743%, reg loss: 75.154%
+time spent training so far: 0:30:17.999934
+train attack total time: 11.578s
+train attack init time: 2.726s
+train attack avg grad step time: 0.087s
+train attack avg reproj time: 0.264s
+
+
+train attack loss increase over inner max: -0.691
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.290
+total grad norm: 3.715
+
+==================== evaluation at iteration: 90 ====================
+train total loss: 85.137%
+train max loss: 17.876%, reg loss: 75.074%
+time spent training so far: 0:30:30.832258
+train attack total time: 12.432s
+train attack init time: 3.012s
+train attack avg grad step time: 0.087s
+train attack avg reproj time: 0.287s
+
+
+train attack loss increase over inner max: -1.179
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.316
+total grad norm: 5.308
+
+==================== evaluation at iteration: 91 ====================
+train total loss: 86.383%
+train max loss: 19.279%, reg loss: 75.071%
+time spent training so far: 0:30:41.608646
+train attack total time: 10.431s
+train attack init time: 2.342s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.251s
+
+
+train attack loss increase over inner max: 1.071
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.270
+total grad norm: 3.308
+
+==================== evaluation at iteration: 92 ====================
+train total loss: 86.993%
+train max loss: 19.725%, reg loss: 75.062%
+time spent training so far: 0:30:51.864165
+train attack total time: 9.930s
+train attack init time: 2.413s
+train attack avg grad step time: 0.086s
+train attack avg reproj time: 0.225s
+
+
+train attack loss increase over inner max: 0.844
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.209
+total grad norm: 3.588
+
+==================== evaluation at iteration: 93 ====================
+train total loss: 87.242%
+train max loss: 19.850%, reg loss: 75.010%
+time spent training so far: 0:31:04.836728
+train attack total time: 12.643s
+train attack init time: 2.236s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.347s
+
+
+train attack loss increase over inner max: -0.245
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.205
+total grad norm: 3.681
+
+==================== evaluation at iteration: 94 ====================
+train total loss: 85.882%
+train max loss: 20.074%, reg loss: 75.082%
+time spent training so far: 0:31:18.147766
+train attack total time: 12.987s
+train attack init time: 2.145s
+train attack avg grad step time: 0.088s
+train attack avg reproj time: 0.360s
+
+
+train attack loss increase over inner max: 0.384
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.201
+total grad norm: 4.145
+
+==================== evaluation at iteration: 95 ====================
+train total loss: 85.754%
+train max loss: 19.321%, reg loss: 75.104%
+time spent training so far: 0:31:29.914110
+train attack total time: 11.410s
+train attack init time: 2.307s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.292s
+
+
+train attack loss increase over inner max: -0.501
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.124
+total grad norm: 2.009
+
+==================== evaluation at iteration: 96 ====================
+train total loss: 87.182%
+train max loss: 19.701%, reg loss: 75.018%
+time spent training so far: 0:31:40.335681
+train attack total time: 10.045s
+train attack init time: 2.492s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.228s
+
+
+train attack loss increase over inner max: 0.581
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.140
+total grad norm: 2.370
+
+==================== evaluation at iteration: 97 ====================
+train total loss: 87.472%
+train max loss: 19.676%, reg loss: 75.168%
+time spent training so far: 0:31:50.871713
+train attack total time: 10.182s
+train attack init time: 2.454s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.234s
+
+
+train attack loss increase over inner max: 0.378
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.113
+total grad norm: 2.406
+
+==================== evaluation at iteration: 98 ====================
+train total loss: 85.183%
+train max loss: 18.718%, reg loss: 74.850%
+time spent training so far: 0:32:03.547526
+train attack total time: 12.334s
+train attack init time: 2.308s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.332s
+
+
+train attack loss increase over inner max: -1.011
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.125
+total grad norm: 2.524
+
+==================== evaluation at iteration: 99 ====================
+train total loss: 88.744%
+train max loss: 26.456%, reg loss: 75.116%
+time spent training so far: 0:32:14.109262
+train attack total time: 10.206s
+train attack init time: 2.349s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.241s
+
+
+train attack loss increase over inner max: 5.554
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.139
+total grad norm: 2.729
+
+==================== evaluation at iteration: 100 ====================
+train total loss: 87.013%
+train max loss: 25.899%, reg loss: 74.995%
+time spent training so far: 0:32:27.928162
+train attack total time: 13.470s
+train attack init time: 2.558s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.368s
+
+
+train attack loss increase over inner max: -0.607
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+
+++++++++++++++++++++ computing test stats ++++++++++++++++++++
+v approx: 6.320% of volume
+percentage infeasible at boundary: 26.72%
+mean, std amount infeasible at boundary: 1.29 +/- 2.92
+max amount infeasible at boundary: 26.53
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Reg grad norm: 0.168
+total grad norm: 2.537
+
+==================== evaluation at iteration: 101 ====================
+train total loss: 88.247%
+train max loss: 25.319%, reg loss: 75.290%
+time spent training so far: 0:34:37.943185
+train attack total time: 10.964s
+train attack init time: 2.265s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.276s
+
+
+train attack loss increase over inner max: -0.827
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.167
+total grad norm: 2.953
+
+==================== evaluation at iteration: 102 ====================
+train total loss: 88.293%
+train max loss: 24.178%, reg loss: 75.144%
+time spent training so far: 0:34:52.333982
+train attack total time: 14.042s
+train attack init time: 2.529s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.392s
+
+
+train attack loss increase over inner max: -1.308
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.229
+total grad norm: 3.084
+
+==================== evaluation at iteration: 103 ====================
+train total loss: 87.833%
+train max loss: 23.385%, reg loss: 75.084%
+time spent training so far: 0:35:05.533479
+train attack total time: 12.833s
+train attack init time: 2.253s
+train attack avg grad step time: 0.086s
+train attack avg reproj time: 0.352s
+
+
+train attack loss increase over inner max: -1.281
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.238
+total grad norm: 3.371
+
+==================== evaluation at iteration: 104 ====================
+train total loss: 89.214%
+train max loss: 22.802%, reg loss: 74.980%
+time spent training so far: 0:35:18.083604
+train attack total time: 12.191s
+train attack init time: 2.269s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.327s
+
+
+train attack loss increase over inner max: -0.731
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.255
+total grad norm: 4.922
+
+==================== evaluation at iteration: 105 ====================
+train total loss: 87.977%
+train max loss: 23.227%, reg loss: 75.161%
+time spent training so far: 0:35:30.900861
+train attack total time: 12.475s
+train attack init time: 2.286s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.338s
+
+
+train attack loss increase over inner max: 0.706
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.323
+total grad norm: 3.257
+
+==================== evaluation at iteration: 106 ====================
+train total loss: 87.265%
+train max loss: 22.836%, reg loss: 75.136%
+time spent training so far: 0:35:40.915168
+train attack total time: 9.646s
+train attack init time: 2.163s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.225s
+
+
+train attack loss increase over inner max: -0.120
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.356
+total grad norm: 4.261
+
+==================== evaluation at iteration: 107 ====================
+train total loss: 87.919%
+train max loss: 21.735%, reg loss: 75.074%
+time spent training so far: 0:35:53.767382
+train attack total time: 12.505s
+train attack init time: 2.187s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.342s
+
+
+train attack loss increase over inner max: -1.320
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.382
+total grad norm: 4.060
+
+==================== evaluation at iteration: 108 ====================
+train total loss: 87.751%
+train max loss: 20.174%, reg loss: 75.135%
+time spent training so far: 0:36:04.781415
+train attack total time: 10.667s
+train attack init time: 2.440s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.256s
+
+
+train attack loss increase over inner max: -0.791
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.445
+total grad norm: 4.903
+
+==================== evaluation at iteration: 109 ====================
+train total loss: 87.227%
+train max loss: 20.796%, reg loss: 75.117%
+time spent training so far: 0:36:19.662697
+train attack total time: 14.455s
+train attack init time: 2.699s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.402s
+
+
+train attack loss increase over inner max: 1.463
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.515
+total grad norm: 5.390
+
+==================== evaluation at iteration: 110 ====================
+train total loss: 86.126%
+train max loss: 20.185%, reg loss: 75.213%
+time spent training so far: 0:36:29.383920
+train attack total time: 9.349s
+train attack init time: 2.167s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.212s
+
+
+train attack loss increase over inner max: -0.089
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.625
+total grad norm: 5.515
+
+==================== evaluation at iteration: 111 ====================
+train total loss: 88.157%
+train max loss: 24.118%, reg loss: 75.185%
+time spent training so far: 0:36:39.943827
+train attack total time: 10.186s
+train attack init time: 2.307s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.242s
+
+
+train attack loss increase over inner max: 4.548
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.605
+total grad norm: 4.700
+
+==================== evaluation at iteration: 112 ====================
+train total loss: 88.258%
+train max loss: 23.560%, reg loss: 75.259%
+time spent training so far: 0:36:51.498825
+train attack total time: 11.186s
+train attack init time: 2.162s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.289s
+
+
+train attack loss increase over inner max: 0.018
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.731
+total grad norm: 4.425
+
+==================== evaluation at iteration: 113 ====================
+train total loss: 89.726%
+train max loss: 28.032%, reg loss: 75.271%
+time spent training so far: 0:37:07.318938
+train attack total time: 15.477s
+train attack init time: 2.247s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.464s
+
+
+train attack loss increase over inner max: 4.049
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.792
+total grad norm: 19.004
+
+==================== evaluation at iteration: 114 ====================
+train total loss: 90.237%
+train max loss: 26.793%, reg loss: 75.215%
+time spent training so far: 0:37:19.127037
+train attack total time: 11.466s
+train attack init time: 2.433s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.290s
+
+
+train attack loss increase over inner max: -1.340
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.834
+total grad norm: 13.687
+
+==================== evaluation at iteration: 115 ====================
+train total loss: 87.502%
+train max loss: 26.293%, reg loss: 75.069%
+time spent training so far: 0:37:32.362352
+train attack total time: 12.875s
+train attack init time: 2.215s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.356s
+
+
+train attack loss increase over inner max: -0.951
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.893
+total grad norm: 10.050
+
+==================== evaluation at iteration: 116 ====================
+train total loss: 88.768%
+train max loss: 25.562%, reg loss: 75.277%
+time spent training so far: 0:37:42.829158
+train attack total time: 10.104s
+train attack init time: 2.727s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.219s
+
+
+train attack loss increase over inner max: -0.260
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.736
+total grad norm: 9.610
+
+==================== evaluation at iteration: 117 ====================
+train total loss: 87.308%
+train max loss: 23.790%, reg loss: 75.185%
+time spent training so far: 0:38:01.101025
+train attack total time: 17.927s
+train attack init time: 2.367s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.562s
+
+
+train attack loss increase over inner max: -1.044
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.628
+total grad norm: 5.195
+
+==================== evaluation at iteration: 118 ====================
+train total loss: 86.074%
+train max loss: 23.117%, reg loss: 75.228%
+time spent training so far: 0:38:15.100525
+train attack total time: 13.653s
+train attack init time: 2.269s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.386s
+
+
+train attack loss increase over inner max: -1.233
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.567
+total grad norm: 6.259
+
+==================== evaluation at iteration: 119 ====================
+train total loss: 88.326%
+train max loss: 25.393%, reg loss: 75.240%
+time spent training so far: 0:38:25.825231
+train attack total time: 10.324s
+train attack init time: 2.073s
+train attack avg grad step time: 0.082s
+train attack avg reproj time: 0.259s
+
+
+train attack loss increase over inner max: 2.269
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.470
+total grad norm: 4.759
+
+==================== evaluation at iteration: 120 ====================
+train total loss: 87.799%
+train max loss: 24.415%, reg loss: 75.172%
+time spent training so far: 0:38:39.702117
+train attack total time: 13.517s
+train attack init time: 2.217s
+train attack avg grad step time: 0.086s
+train attack avg reproj time: 0.382s
+
+
+train attack loss increase over inner max: -1.175
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.370
+total grad norm: 5.343
+
+==================== evaluation at iteration: 121 ====================
+train total loss: 87.255%
+train max loss: 23.801%, reg loss: 75.259%
+time spent training so far: 0:38:51.965837
+train attack total time: 11.925s
+train attack init time: 2.239s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.333s
+
+
+train attack loss increase over inner max: -0.765
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.377
+total grad norm: 4.210
+
+==================== evaluation at iteration: 122 ====================
+train total loss: 87.379%
+train max loss: 22.663%, reg loss: 75.156%
+time spent training so far: 0:39:02.618571
+train attack total time: 10.279s
+train attack init time: 2.380s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.257s
+
+
+train attack loss increase over inner max: -0.823
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.404
+total grad norm: 3.313
+
+==================== evaluation at iteration: 123 ====================
+train total loss: 87.242%
+train max loss: 21.272%, reg loss: 75.231%
+time spent training so far: 0:39:17.060976
+train attack total time: 14.110s
+train attack init time: 2.498s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.418s
+
+
+train attack loss increase over inner max: -1.725
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.282
+total grad norm: 3.837
+
+==================== evaluation at iteration: 124 ====================
+train total loss: 85.743%
+train max loss: 20.457%, reg loss: 75.009%
+time spent training so far: 0:39:31.070016
+train attack total time: 13.660s
+train attack init time: 2.251s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.410s
+
+
+train attack loss increase over inner max: -0.957
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.315
+total grad norm: 4.029
+
+==================== evaluation at iteration: 125 ====================
+train total loss: 85.610%
+train max loss: 20.239%, reg loss: 75.181%
+time spent training so far: 0:39:42.046384
+train attack total time: 10.623s
+train attack init time: 2.235s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.278s
+
+
+train attack loss increase over inner max: -0.532
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+
+++++++++++++++++++++ computing test stats ++++++++++++++++++++
+v approx: 4.800% of volume
+percentage infeasible at boundary: 24.52%
+mean, std amount infeasible at boundary: 1.17 +/- 2.75
+max amount infeasible at boundary: 17.56
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Reg grad norm: 0.297
+total grad norm: 4.687
+
+==================== evaluation at iteration: 126 ====================
+train total loss: 86.500%
+train max loss: 19.569%, reg loss: 75.103%
+time spent training so far: 0:41:54.646375
+train attack total time: 14.174s
+train attack init time: 2.774s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.408s
+
+
+train attack loss increase over inner max: -0.630
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.298
+total grad norm: 3.911
+
+==================== evaluation at iteration: 127 ====================
+train total loss: 86.283%
+train max loss: 18.498%, reg loss: 75.151%
+time spent training so far: 0:42:08.210130
+train attack total time: 13.222s
+train attack init time: 2.428s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.382s
+
+
+train attack loss increase over inner max: -0.859
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.377
+total grad norm: 5.058
+
+==================== evaluation at iteration: 128 ====================
+train total loss: 86.807%
+train max loss: 22.023%, reg loss: 75.262%
+time spent training so far: 0:42:18.867652
+train attack total time: 10.329s
+train attack init time: 2.163s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.268s
+
+
+train attack loss increase over inner max: 3.885
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.334
+total grad norm: 4.372
+
+==================== evaluation at iteration: 129 ====================
+train total loss: 86.458%
+train max loss: 20.339%, reg loss: 75.098%
+time spent training so far: 0:42:33.883710
+train attack total time: 14.693s
+train attack init time: 2.342s
+train attack avg grad step time: 0.086s
+train attack avg reproj time: 0.448s
+
+
+train attack loss increase over inner max: -1.516
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.357
+total grad norm: 4.595
+
+==================== evaluation at iteration: 130 ====================
+train total loss: 85.521%
+train max loss: 18.140%, reg loss: 75.176%
+time spent training so far: 0:42:46.918367
+train attack total time: 12.646s
+train attack init time: 2.438s
+train attack avg grad step time: 0.086s
+train attack avg reproj time: 0.355s
+
+
+train attack loss increase over inner max: -2.237
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.424
+total grad norm: 5.535
+
+==================== evaluation at iteration: 131 ====================
+train total loss: 87.364%
+train max loss: 21.702%, reg loss: 75.030%
+time spent training so far: 0:42:57.429392
+train attack total time: 10.122s
+train attack init time: 2.106s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.260s
+
+
+train attack loss increase over inner max: 3.959
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0513]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0514]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 23
+Parameter containing:
+tensor([[0.0515]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0517]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0519]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0520]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0521]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0523]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0524]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0524]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0525]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0526]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0526]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0527]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0526]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0526]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0525]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.21827587485313416
+Parameter containing:
+tensor([[0.0524]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0524]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0523]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0522]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0522]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0522]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0523]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0525]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0527]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0531]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0535]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0540]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Attack: reprojection exited on timeout, max dist from =0 boundary:  0.27988192439079285
+Parameter containing:
+tensor([[0.0545]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0551]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0556]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 22
+Parameter containing:
+tensor([[0.0562]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 21
+Parameter containing:
+tensor([[0.0566]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 21
+Parameter containing:
+tensor([[0.0571]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 21
+Parameter containing:
+tensor([[0.0574]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 21
+Parameter containing:
+tensor([[0.0577]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 21
+Parameter containing:
+tensor([[0.0580]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 21
+Parameter containing:
+tensor([[0.0583]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 21
+Parameter containing:
+tensor([[0.0585]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 21
+Parameter containing:
+tensor([[0.0586]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 21
+Parameter containing:
+tensor([[0.0587]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 21
+Parameter containing:
+tensor([[0.0589]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 21
+Parameter containing:
+tensor([[0.0590]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)============================ end of evaluation ============================
+
+Reg grad norm: 0.411
+total grad norm: 3.791
+
+==================== evaluation at iteration: 132 ====================
+train total loss: 85.971%
+train max loss: 19.187%, reg loss: 75.224%
+time spent training so far: 0:43:09.447778
+train attack total time: 11.659s
+train attack init time: 2.404s
+train attack avg grad step time: 0.087s
+train attack avg reproj time: 0.312s
+
+
+train attack loss increase over inner max: -1.273
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.373
+total grad norm: 3.316
+
+==================== evaluation at iteration: 133 ====================
+train total loss: 86.138%
+train max loss: 19.011%, reg loss: 75.177%
+time spent training so far: 0:43:20.736046
+train attack total time: 10.902s
+train attack init time: 2.697s
+train attack avg grad step time: 0.086s
+train attack avg reproj time: 0.268s
+
+
+train attack loss increase over inner max: -0.313
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.367
+total grad norm: 4.671
+
+==================== evaluation at iteration: 134 ====================
+train total loss: 89.377%
+train max loss: 26.805%, reg loss: 75.230%
+time spent training so far: 0:43:35.096988
+train attack total time: 13.992s
+train attack init time: 2.436s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.415s
+
+
+train attack loss increase over inner max: 7.387
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.602
+total grad norm: 2.812
+
+==================== evaluation at iteration: 135 ====================
+train total loss: 89.282%
+train max loss: 28.284%, reg loss: 75.195%
+time spent training so far: 0:43:45.182044
+train attack total time: 9.727s
+train attack init time: 2.045s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.247s
+
+
+train attack loss increase over inner max: 1.948
+OOM debug. Mem allocated and reserved: 1094144.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.554
+total grad norm: 4.990
+
+==================== evaluation at iteration: 136 ====================
+train total loss: 89.375%
+train max loss: 25.882%, reg loss: 75.238%
+time spent training so far: 0:43:59.028786
+train attack total time: 13.474s
+train attack init time: 2.294s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.399s
+
+
+train attack loss increase over inner max: -2.362
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.461
+total grad norm: 3.931
+
+==================== evaluation at iteration: 137 ====================
+train total loss: 87.457%
+train max loss: 25.311%, reg loss: 75.141%
+time spent training so far: 0:44:10.047943
+train attack total time: 10.622s
+train attack init time: 2.373s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.270s
+
+
+train attack loss increase over inner max: -0.342
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.519
+total grad norm: 5.485
+
+==================== evaluation at iteration: 138 ====================
+train total loss: 88.190%
+train max loss: 23.272%, reg loss: 75.269%
+time spent training so far: 0:44:22.750080
+train attack total time: 12.344s
+train attack init time: 2.354s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.346s
+
+
+train attack loss increase over inner max: -1.775
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.542
+total grad norm: 5.977
+
+==================== evaluation at iteration: 139 ====================
+train total loss: 88.012%
+train max loss: 23.550%, reg loss: 75.417%
+time spent training so far: 0:44:33.698280
+train attack total time: 10.573s
+train attack init time: 2.519s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.264s
+
+
+train attack loss increase over inner max: 0.090
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.379
+total grad norm: 5.640
+
+==================== evaluation at iteration: 140 ====================
+train total loss: 86.459%
+train max loss: 21.912%, reg loss: 75.183%
+time spent training so far: 0:44:45.593135
+train attack total time: 11.539s
+train attack init time: 2.121s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.323s
+
+
+train attack loss increase over inner max: -1.519
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.441
+total grad norm: 4.434
+
+==================== evaluation at iteration: 141 ====================
+train total loss: 85.619%
+train max loss: 20.396%, reg loss: 75.148%
+time spent training so far: 0:44:59.313598
+train attack total time: 13.355s
+train attack init time: 2.037s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.405s
+
+
+train attack loss increase over inner max: -0.903
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.452
+total grad norm: 5.546
+
+==================== evaluation at iteration: 142 ====================
+train total loss: 85.027%
+train max loss: 20.074%, reg loss: 75.271%
+time spent training so far: 0:45:09.507622
+train attack total time: 9.816s
+train attack init time: 2.237s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.241s
+
+
+train attack loss increase over inner max: -0.149
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.466
+total grad norm: 8.369
+
+==================== evaluation at iteration: 143 ====================
+train total loss: 87.335%
+train max loss: 23.416%, reg loss: 75.218%
+time spent training so far: 0:45:19.499294
+train attack total time: 9.642s
+train attack init time: 2.542s
+train attack avg grad step time: 0.086s
+train attack avg reproj time: 0.220s
+
+
+train attack loss increase over inner max: 4.152
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.475
+total grad norm: 6.266
+
+==================== evaluation at iteration: 144 ====================
+train total loss: 85.724%
+train max loss: 21.871%, reg loss: 75.253%
+time spent training so far: 0:45:31.048142
+train attack total time: 11.182s
+train attack init time: 2.134s
+train attack avg grad step time: 0.083s
+train attack avg reproj time: 0.307s
+
+
+train attack loss increase over inner max: -2.075
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.462
+total grad norm: 6.719
+
+==================== evaluation at iteration: 145 ====================
+train total loss: 84.680%
+train max loss: 22.178%, reg loss: 75.174%
+time spent training so far: 0:45:41.536461
+train attack total time: 10.119s
+train attack init time: 1.976s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.267s
+
+
+train attack loss increase over inner max: 0.333
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.530
+total grad norm: 6.817
+
+==================== evaluation at iteration: 146 ====================
+train total loss: 87.788%
+train max loss: 21.765%, reg loss: 75.237%
+time spent training so far: 0:45:52.970305
+train attack total time: 11.079s
+train attack init time: 2.533s
+train attack avg grad step time: 0.085s
+train attack avg reproj time: 0.283s
+
+
+train attack loss increase over inner max: 0.251
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.615
+total grad norm: 9.744
+
+==================== evaluation at iteration: 147 ====================
+train total loss: 85.118%
+train max loss: 20.289%, reg loss: 75.210%
+time spent training so far: 0:46:07.791662
+train attack total time: 14.471s
+train attack init time: 2.020s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.454s
+
+
+train attack loss increase over inner max: -1.419
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.577
+total grad norm: 6.972
+
+==================== evaluation at iteration: 148 ====================
+train total loss: 84.376%
+train max loss: 19.698%, reg loss: 75.114%
+time spent training so far: 0:46:21.695190
+train attack total time: 13.515s
+train attack init time: 2.307s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.400s
+
+
+train attack loss increase over inner max: -0.531
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.480
+total grad norm: 4.393
+
+==================== evaluation at iteration: 149 ====================
+train total loss: 84.982%
+train max loss: 18.492%, reg loss: 75.216%
+time spent training so far: 0:46:31.840799
+train attack total time: 9.783s
+train attack init time: 2.019s
+train attack avg grad step time: 0.084s
+train attack avg reproj time: 0.250s
+
+
+train attack loss increase over inner max: -0.688
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 0.673
+total grad norm: 5.973
+
+==================== evaluation at iteration: 150 ====================
+train total loss: 86.822%
+train max loss: 21.439%, reg loss: 75.210%
+time spent training so far: 0:46:43.184155
+train attack total time: 10.981s
+train attack init time: 1.959s
+train attack avg grad step time: 0.086s
+train attack avg reproj time: 0.303s
+
+
+train attack loss increase over inner max: 0.034
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+

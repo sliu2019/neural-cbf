@@ -1,3 +1,14 @@
+"""Utility functions and classes for neural CBF training.
+
+This module provides supporting functionality for the neural Control Barrier Function
+synthesis pipeline:
+- Logging setup (console + file output)
+- Model checkpointing (save/load PyTorch models)
+- Early stopping for training convergence
+- Input transformations for neural networks (coordinate system conversions)
+
+The utilities support the training framework described in liu23e.pdf.
+"""
 import os
 import json
 import logging
@@ -12,6 +23,16 @@ import pickle
 from src.create_arg_parser import create_arg_parser, print_args
 
 def create_logger(save_path='', file_type='', level='debug'):
+	"""Creates logger with both console and file output.
+
+	Args:
+		save_path: Directory path for log file. If empty, no file logging.
+		file_type: Prefix for log filename (e.g., 'train' creates 'train_log.txt')
+		level: Logging level ('debug' or 'info')
+
+	Returns:
+		logging.Logger: Configured logger instance
+	"""
 
 	if level == 'debug':
 		_level = logging.DEBUG
@@ -36,21 +57,56 @@ def create_logger(save_path='', file_type='', level='debug'):
 
 
 def save_model(model, file_name):
+	"""Saves PyTorch model state dict to file.
+
+	Args:
+		model: PyTorch nn.Module instance
+		file_name: Path where model will be saved (.pth extension)
+	"""
 	torch.save(model.state_dict(), file_name)
 
 def load_model(model, file_name):
+	"""Loads PyTorch model state dict from file.
+
+	Args:
+		model: PyTorch nn.Module instance to load weights into
+		file_name: Path to saved model checkpoint (.pth file)
+
+	Note:
+		Uses CPU mapping to enable loading GPU-trained models on CPU.
+	"""
 	model.load_state_dict(
 		torch.load(file_name, map_location=lambda storage, loc: storage))
 
 def makedirs(path):
+	"""Creates directory if it doesn't exist (equivalent to mkdir -p).
+
+	Args:
+		path: Directory path to create
+	"""
 	if not os.path.exists(path):
 		os.makedirs(path)
 
 def save_args(args, file_name):
+	"""Saves command-line arguments to JSON file for reproducibility.
+
+	Args:
+		args: argparse.Namespace with parsed arguments
+		file_name: Path to JSON file where args will be saved
+	"""
 	with open(file_name, 'w') as f:
 		json.dump(args.__dict__, f, indent=2)
 
 def load_args(file_name):
+	"""Loads previously saved arguments from JSON file.
+
+	Args:
+		file_name: Path to JSON file containing saved arguments
+
+	Returns:
+		argparse.Namespace: Loaded arguments with defaults from parser
+		                     overridden by saved values
+	"""
 	parser = create_arg_parser()
 	args = parser.parse_known_args()[0]
 	# args = parser() # TODO
@@ -60,16 +116,26 @@ def load_args(file_name):
 
 
 class EarlyStopping():
-	"""
-	Early stopping to stop the training when the loss does not improve after
-	certain epochs.
+	"""Early stopping to terminate training when loss stops improving.
+
+	Tracks best loss seen so far and counts consecutive epochs without
+	sufficient improvement. Stops training after patience is exceeded.
+
+	Attributes:
+		patience: Number of epochs to wait before stopping
+		min_delta: Minimum loss improvement to reset patience counter
+		counter: Current count of non-improving epochs
+		best_loss: Best loss value seen so far
+		early_stop: Flag indicating whether to stop training
 	"""
 	def __init__(self, patience=3, min_delta=0):
-		"""
-		:param patience: how many epochs to wait before stopping when loss is
-			   not improving
-		:param min_delta: minimum difference between new loss and old loss for
-			   new loss to be considered as an improvement
+		"""Initializes early stopping monitor.
+
+		Args:
+			patience: How many epochs to wait before stopping when loss
+			         is not improving (default: 3)
+			min_delta: Minimum loss decrease to count as improvement
+			          (default: 0, any decrease counts)
 		"""
 		self.patience = patience
 		self.min_delta = min_delta
@@ -78,6 +144,14 @@ class EarlyStopping():
 		self.early_stop = False
 
 	def __call__(self, test_loss):
+		"""Updates early stopping state with new loss value.
+
+		Args:
+			test_loss: Current loss value (scalar or tensor)
+
+		Side Effects:
+			Updates self.best_loss, self.counter, and self.early_stop
+		"""
 		if self.best_loss == None:
 			self.best_loss = test_loss
 		elif self.best_loss - test_loss > self.min_delta:
@@ -91,16 +165,30 @@ class EarlyStopping():
 
 
 class EarlyStoppingBatch():
-	"""
-	Like EarlyStopping, but stops when all members of batch meet the individual stopping criteria.
-	Note: this is used for attacks, so loss is being maximized
+	"""Batch-wise early stopping for adversarial optimization (maximization).
+
+	Unlike regular EarlyStopping, this tracks improvement for each element in
+	a batch independently. Training stops only when ALL batch elements have
+	stopped improving. Used for critic's counterexample search where we
+	maximize saturation risk across multiple candidate states.
+
+	Note: This monitors MAXIMIZATION (increasing loss), not minimization.
+
+	Attributes:
+		patience: Number of steps to wait per batch element
+		min_delta: Minimum loss increase to count as improvement
+		counter: Per-element counter of non-improving steps (bs,)
+		best_loss: Best loss per element (bs,)
+		early_stop_vec: Per-element stopping flags (bs,)
+		early_stop: Global flag (True when all elements stopped)
 	"""
 	def __init__(self, bs, patience=3, min_delta=1e-1):
-		"""
-		:param patience: how many epochs to wait before stopping when loss is
-			   not improving
-		:param min_delta: minimum difference between new loss and old loss for
-			   new loss to be considered as an improvement
+		"""Initializes batch early stopping monitor.
+
+		Args:
+			bs: Batch size (number of independent optimization problems)
+			patience: Steps to wait per element before marking as converged
+			min_delta: Minimum loss increase to count as improvement (default: 0.1)
 		"""
 		self.patience = patience
 		self.min_delta = min_delta
@@ -111,6 +199,15 @@ class EarlyStoppingBatch():
 		self.early_stop = False
 
 	def __call__(self, test_loss):
+		"""Updates early stopping state for each batch element.
+
+		Args:
+			test_loss: Current loss values for batch (bs, 1) tensor
+
+		Side Effects:
+			Updates best_loss, counter, early_stop_vec, and early_stop.
+			Prints message when all elements have converged.
+		"""
 		if self.best_loss == None:
 			self.best_loss = test_loss
 
@@ -133,28 +230,75 @@ class EarlyStoppingBatch():
 			self.early_stop = True
 
 class IndexNNInput(nn.Module):
+	"""Selects subset of input dimensions for neural network.
+
+	Simple input preprocessor that selects specific state dimensions
+	before passing to neural network. Used to train on partial state
+	observations.
+
+	Attributes:
+		which_ind: Indices of dimensions to keep
+		output_dim: Number of output dimensions
+	"""
 	def __init__(self, which_ind):
-		"""
-		:param which_ind: flat numpy array
+		"""Initializes dimension selector.
+
+		Args:
+			which_ind: Array or list of indices to select from input
 		"""
 		self.which_ind = which_ind
 		self.output_dim = len(which_ind)
 
 	def forward(self, x):
+		"""Selects specified dimensions from input.
+
+		Args:
+			x: Input tensor (bs, input_dim)
+
+		Returns:
+			Tensor (bs, output_dim) with selected dimensions
+		"""
 		return x[:, self.which_ind]
 
 
 class TransformEucNNInput(nn.Module):
-	# Note: this is specific to FlyingInvPend
+	"""Transforms spherical coordinates to Euclidean for neural network input.
+
+	Flying inverted pendulum uses spherical coordinates (angles), but neural
+	networks work better with Euclidean representations. This transform converts:
+	- Quadrotor angles (α, β, γ) → direction vector (kx, ky, kz) + velocity
+	- Pendulum angles (φ, θ) → Euclidean position + velocity
+
+	This makes the representation more smooth and easier to learn.
+	See liu23e.pdf Section 4 for coordinate system details.
+
+	Attributes:
+		state_index_dict: Mapping from state names to indices
+		output_dim: Output dimension (12: 6 quad + 6 pendulum)
+	"""
 	def __init__(self, state_index_dict):
-		"""
-		:param which_ind: flat numpy array
+		"""Initializes coordinate transform.
+
+		Args:
+			state_index_dict: Dict mapping state names (e.g., 'alpha', 'phi')
+			                 to their indices in the state vector
 		"""
 		super().__init__()
 		self.state_index_dict = state_index_dict
 		self.output_dim = 12
 
 	def forward(self, x):
+		"""Converts spherical state to Euclidean representation.
+
+		Args:
+			x: State tensor in spherical coordinates (bs, 10)
+			   [γ, β, α, dγ, dβ, dα, φ, θ, dφ, dθ]
+
+		Returns:
+			Tensor (bs, 12) in Euclidean coordinates:
+			[x_quad, y_quad, z_quad, vx_quad, vy_quad, vz_quad,
+			 x_pend, y_pend, z_pend, vx_pend, vy_pend, vz_pend]
+		"""
 		alpha = x[:, self.state_index_dict["alpha"]]
 		beta = x[:, self.state_index_dict["beta"]]
 		gamma = x[:, self.state_index_dict["gamma"]]
@@ -169,13 +313,14 @@ class TransformEucNNInput(nn.Module):
 		dphi = x[:, self.state_index_dict["dphi"]]
 		dtheta = x[:, self.state_index_dict["dtheta"]]
 
-		# print("inside TransformEucNNInput's forward()")
-		# IPython.embed()
-
+		# Convert quadrotor orientation (α, β, γ) to Euclidean direction vectors
+		# These represent the quadrotor's attitude as a rotation matrix columns
 		x_quad = torch.cos(alpha)*torch.sin(beta)*torch.cos(gamma) + torch.sin(alpha)*torch.sin(gamma)
 		y_quad = torch.sin(alpha)*torch.sin(beta)*torch.cos(gamma) - torch.cos(alpha)*torch.sin(gamma)
 		z_quad = torch.cos(beta)*torch.cos(gamma)
 
+		# Compute velocity of quadrotor direction vectors using chain rule
+		# v = ∂pos/∂angles · angular_velocities
 		d_x_quad_d_alpha = torch.sin(alpha)*torch.sin(beta)*torch.cos(gamma) - torch.cos(alpha)*torch.sin(gamma)
 		d_x_quad_d_beta = -torch.cos(alpha)*torch.cos(beta)*torch.cos(gamma)
 		d_x_quad_d_gamma = torch.cos(alpha)*torch.sin(beta)*torch.sin(gamma) - torch.sin(alpha)*torch.cos(gamma)
@@ -188,6 +333,8 @@ class TransformEucNNInput(nn.Module):
 
 		v_z_quad = dbeta*torch.sin(beta)*torch.cos(gamma) + dgamma*torch.cos(beta)*torch.sin(gamma)
 
+		# Convert pendulum angles (φ, θ) to Euclidean position
+		# Pendulum hangs below quadrotor, (φ, θ) define spherical coordinates
 		x_pend = torch.sin(theta)*torch.cos(phi)
 		y_pend = -torch.sin(phi)
 		z_pend = torch.cos(theta)*torch.cos(phi)
