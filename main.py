@@ -22,6 +22,9 @@ from torch.autograd import grad
 import os
 import math
 import pickle
+from dataclasses import dataclass, field
+from typing import Dict
+import numpy as np
 
 
 from src.create_arg_parser import create_arg_parser, print_args
@@ -185,11 +188,124 @@ class RegularizationLoss(nn.Module):
 		reg = self.reg_weight*torch.mean(transform_of_max_phi)
 		return reg
 
+
+@dataclass
+class FlyingPendulumConfig:
+	"""Configuration for flying inverted pendulum system parameters.
+
+	This dataclass provides type-safe configuration for the quadrotor with
+	attached inverted pendulum system, replacing the untyped param_dict.
+
+	Physical Parameters:
+		m: Quadrotor mass [kg]
+		m_p: Pendulum mass [kg]
+		M: Total mass (computed as m + m_p) [kg]
+		L_p: Pendulum length [m]
+		J_x, J_y, J_z: Moments of inertia [kg·m²]
+		l: Quadrotor arm length [m]
+		k1: Thrust coefficient [N·s²]
+		k2: Drag coefficient [N·m·s²]
+
+	Safety Parameters:
+		delta_safety_limit: Maximum allowed angle from vertical [rad]
+		box_ang_vel_limit: Angular velocity bounds [rad/s]
+
+	System Dimensions:
+		x_dim: State space dimension (10)
+		u_dim: Control input dimension (4)
+		r: Relative degree of CBF (2)
+
+	State Space:
+		state_index_dict: Mapping from state names to indices
+		x_lim: State space bounds (x_dim, 2) with [min, max] per dimension
+
+	Reference:
+		liu23e.pdf Section 4 for parameter values and system description
+	"""
+	# Physical parameters (quadrotor)
+	m: float = 0.8
+	J_x: float = 0.005
+	J_y: float = 0.005
+	J_z: float = 0.009
+	l: float = 1.5
+	k1: float = 4.0
+	k2: float = 0.05
+
+	# Physical parameters (pendulum)
+	m_p: float = 0.04  # 5% of quadrotor weight
+	L_p: float = 3.0
+
+	# Safety parameters
+	delta_safety_limit: float = math.pi / 4  # Should be <= π/4
+	box_ang_vel_limit: float = 20.0
+
+	# System dimensions (computed in __post_init__)
+	r: int = 2
+	x_dim: int = 10
+	u_dim: int = 4
+
+	# Derived parameters (computed in __post_init__)
+	M: float = field(init=False)  # Total mass
+	state_index_dict: Dict[str, int] = field(init=False)
+	x_lim: np.ndarray = field(init=False)
+
+	def __post_init__(self):
+		"""Computes derived parameters from base parameters."""
+		# Total mass
+		self.M = self.m + self.m_p
+
+		# State indexing
+		state_index_names = [
+			"gamma", "beta", "alpha",      # Quadrotor angles
+			"dgamma", "dbeta", "dalpha",   # Quadrotor angular velocities
+			"phi", "theta",                # Pendulum angles
+			"dphi", "dtheta"               # Pendulum angular velocities
+		]
+		self.state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+
+		# State space bounds
+		ub = self.box_ang_vel_limit
+		thresh = np.array([
+			math.pi / 3, math.pi / 3, math.pi,  # Quadrotor angle limits
+			ub, ub, ub,                         # Quadrotor velocity limits
+			math.pi / 3, math.pi / 3,           # Pendulum angle limits
+			ub, ub                              # Pendulum velocity limits
+		], dtype=np.float32)
+
+		self.x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)
+
+	def to_dict(self) -> Dict:
+		"""Converts config to dictionary for backward compatibility.
+
+		Returns:
+			dict: Parameter dictionary with all attributes
+		"""
+		return {
+			"m": self.m,
+			"J_x": self.J_x,
+			"J_y": self.J_y,
+			"J_z": self.J_z,
+			"l": self.l,
+			"k1": self.k1,
+			"k2": self.k2,
+			"m_p": self.m_p,
+			"L_p": self.L_p,
+			"M": self.M,
+			"delta_safety_limit": self.delta_safety_limit,
+			"box_ang_vel_limit": self.box_ang_vel_limit,
+			"r": self.r,
+			"x_dim": self.x_dim,
+			"u_dim": self.u_dim,
+			"state_index_dict": self.state_index_dict,
+			"x_lim": self.x_lim,
+		}
+
+
 def create_flying_param_dict(args=None):
 	"""Creates parameter dictionary for flying inverted pendulum system.
 
-	Defines physical parameters, state space bounds, and system dimensions
-	for the quadrotor with attached pendulum (10D state, 4D control).
+	Instantiates FlyingPendulumConfig with default parameters and converts
+	to dictionary for backward compatibility with existing code.
 
 	Args:
 		args: Optional argparse.Namespace to override default parameters
@@ -205,44 +321,16 @@ def create_flying_param_dict(args=None):
 
 	Reference:
 		liu23e.pdf Section 4 for system description and parameters
+
+	Note:
+		This function now uses FlyingPendulumConfig dataclass internally
+		for type safety, but returns a dict for backward compatibility.
 	"""
-	param_dict = {
-		"m": 0.8,
-		"J_x": 0.005,
-		"J_y": 0.005,
-		"J_z": 0.009,
-		"l": 1.5,
-		"k1": 4.0,
-		"k2": 0.05,
-		"m_p": 0.04, # 5% of quad weight
-		"L_p": 3.0, # Prev: 0.03
-		"delta_safety_limit": math.pi / 4,  # should be <= math.pi/4,
-		"L_p": 3.0, # pendulum length
-		"box_ang_vel_limit": 20.0,
-	}
-	param_dict["M"] = param_dict["m"] + param_dict["m_p"]
-	state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
-	                     "dtheta"]  # excluded x, y, z
-	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+	# Create typed config with default parameters
+	config = FlyingPendulumConfig()
 
-	r = 2
-	x_dim = len(state_index_names)
-	u_dim = 4
-	ub = param_dict["box_ang_vel_limit"]
-	thresh = np.array([math.pi / 3, math.pi / 3, math.pi, ub, ub, ub, math.pi / 3, math.pi / 3, ub, ub],
-	                  dtype=np.float32) # angular velocities bounds probably much higher in reality (~10-20 for drone, which can do 3 flips in 1 sec).
-
-	x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
-
-	# Save stuff in param dict
-	param_dict["state_index_dict"] = state_index_dict
-	param_dict["r"] = r
-	param_dict["x_dim"] = x_dim
-	param_dict["u_dim"] = u_dim
-	param_dict["x_lim"] = x_lim
-
-	# write args into the param_dict
-	# param_dict["L_p"] = pend_length
+	# Convert to dict for backward compatibility with existing code
+	param_dict = config.to_dict()
 
 	return param_dict
 

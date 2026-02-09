@@ -1,158 +1,292 @@
+"""Neural Control Barrier Function (CBF) implementation using modified CBF construction.
+
+This module implements the neural CBF design described in liu23e.pdf Section 3.1.
+The CBF uses a higher-order modified structure to handle systems with input constraints:
+
+    φ*(x) = Π_{i=0}^{r-1} (1 + c_i ∂^i/∂t^i) [ρ(x) - ρ* + β(x)]
+
+where:
+- ρ(x) is the base safety specification (e.g., angles from vertical)
+- β(x) is a neural network that reshapes the safe set
+- c_i are learnable positive coefficients
+- r is the relative degree (typically 2 for control-affine systems)
+
+The modified CBF structure ensures that the zero-sublevel set {x : φ*(x) ≤ 0}
+is forward invariant even under input saturation constraints.
+
+Key Implementation Details:
+- Lie derivatives L_f^k(ρ) are computed recursively using automatic differentiation
+- Coefficients c_i are converted to k_i via binomial expansion for stability
+- Network β reshapes ρ to enlarge the safe set while maintaining safety
+
+References:
+    liu23e.pdf Section 3.1 (Neural CBF Design), Appendix A (Mathematical Details)
+"""
 import torch
 from torch import nn
 from torch.autograd import grad
 
 class NeuralPhi(nn.Module):
-	# Note: currently, we have a implementation which is generic to any r. May be slow
+	"""Neural Control Barrier Function using modified CBF construction.
+
+	Implements the neural CBF design from liu23e.pdf Section 3.1. The CBF uses
+	a modified higher-order structure to handle input saturation:
+
+	    φ*(x) = Π_{i=0}^{r-1} (1 + c_i ∂^i/∂t^i) [ρ(x) - ρ* + β(x)]
+
+	The network learns:
+	- β(x): Neural network (MLP) that reshapes the base safety specification
+	- c_i: Positive coefficients that define the modified CBF structure
+	- k0: Scaling coefficient for ρ(x)
+
+	The forward pass computes all φ_i(x) for i=0..r, where φ_r(x) = φ*(x)
+	is the final CBF used for safety certification.
+
+	Attributes:
+		rho_fn: Base safety specification ρ(x) (e.g., RhoSum for angle constraints)
+		xdot_fn: System dynamics f(x,u) for computing Lie derivatives
+		r: Relative degree of CBF (default: 2)
+		x_dim: State space dimension
+		u_dim: Control input dimension
+		device: PyTorch device for computation
+		args: Training arguments (currently unused)
+		nn_input_modifier: Optional input transform (e.g., spherical to Euclidean)
+		x_e: Optional equilibrium point for centering β network
+		ci: Learnable coefficients (r-1,) - must be positive
+		k0: Learnable scaling (1,) - must be positive
+		net_reshape_rho: MLP for β(x)
+		pos_param_names: List of parameters constrained to be positive
+		exclude_from_gradient_param_names: Parameters excluded from gradient updates
+
+	Note:
+		Implementation is generic to any relative degree r, which may be slower
+		than a hardcoded r=2 version but provides flexibility.
+	"""
 	def __init__(self, rho_fn, xdot_fn, r, x_dim, u_dim, device, args, nn_input_modifier=None, x_e=None):
+		"""Initializes Neural CBF with modified structure.
+
+		Args:
+			rho_fn: Base safety specification function ρ: R^x_dim → R
+			xdot_fn: System dynamics f: R^x_dim × R^u_dim → R^x_dim
+			r: Relative degree (typically 2 for control-affine systems)
+			x_dim: State space dimension
+			u_dim: Control input dimension
+			device: PyTorch device (cuda or cpu)
+			args: Training arguments namespace (for future extensions)
+			nn_input_modifier: Optional transform applied before β network
+			                   (e.g., TransformEucNNInput for coordinate conversion)
+			x_e: Optional equilibrium point. If provided, uses squared difference
+			     β(x) - β(x_e) for better centering around equilibrium
 		"""
-		:param rho_fn:
-		:param xdot_fn:
-		:param r:
-		:param x_dim:
-		:param u_dim:
-		:param device:
-		:param args:
-		:param nn_input_modifier:
-		:param x_e:
-		"""
-		# Later: args specifying how beta is parametrized
 		super().__init__()
-		variables = locals()  # dict of local names
-		self.__dict__.update(variables)  # __dict__ holds and object's attributes
-		del self.__dict__["self"]  # don't need `self`
-		assert r>=0
+		self.rho_fn = rho_fn
+		self.xdot_fn = xdot_fn
+		self.r = r
+		self.x_dim = x_dim
+		self.u_dim = u_dim
+		self.device = device
+		self.args = args
+		self.nn_input_modifier = nn_input_modifier
+		self.x_e = x_e
+		assert r >= 0
 
-		# turn Namespace into dict
-		args_dict = vars(args)
+		# Initialize learnable parameters for modified CBF structure
+		# Small initialization helps stability during early training
+		self.phi_ci_init_range = 1e-2
 
-		self.phi_ci_init_range = 1e-2 # c_i are initialized uniformly within the range [0, phi_ci_init_range]
+		# c_i coefficients: define the modified CBF structure (r-1 coefficients)
+		# These are converted to k_i via binomial expansion (see forward())
+		self.ci = nn.Parameter(self.phi_ci_init_range*torch.rand(r-1, 1))
 
-		# Note: by default, it registers parameters by their variable name
-		self.ci = nn.Parameter(self.phi_ci_init_range*torch.rand(r-1, 1)) # if ci in small range, ki will be much larger
-		# rng = args.phi_k0_init_max - args.phi_k0_init_min
-		# self.k0 = nn.Parameter(rng*torch.rand(1, 1) + args.phi_k0_init_min)
+		# k0: scaling coefficient for ρ(x) term
 		self.k0 = nn.Parameter(self.phi_ci_init_range*torch.rand(1, 1))
 
-		# IPython.embed()s
-		# To enforce strict positivity for both
+		# Minimum values to enforce strict positivity after projection
+		# During training, parameters are clipped to max(param, param_min)
 		self.ci_min = 1e-2
 		self.k0_min = 1e-2
 
 		print("At initialization: k0 is %f" % self.k0.item())
-		#############################################################
+
+		# Create neural network β(x) for reshaping ρ(x)
 		self.net_reshape_rho = self._create_net()
 
-		# if phi_reshape_dh:
-		# 	self.net_reshape_dh = self._create_net()
+		# Specify which parameters must remain positive (enforced in learner)
 		self.pos_param_names = ["ci", "k0"]
+		# Parameters to exclude from standard gradient updates (if needed)
 		self.exclude_from_gradient_param_names = ["ci", "k0"]
 
 	def _create_net(self):
-		# print("create_net")
-		# IPython.embed()
+		"""Creates MLP for β(x) that reshapes the base safety specification.
 
-		# hidden_dims = self.args.phi_nn_dimension.split("-")
-		# hidden_dims = [int(rho) for rho in hidden_dims]
-		# hidden_dims.append(1)
+		Architecture: 2-layer MLP with tanh activations, softplus output
+		- Hidden layers: 64-64
+		- Activations: tanh-tanh-softplus
+		- Input: Either raw state or transformed state (via nn_input_modifier)
+		- Output: Scalar β(x) ≥ 0 (softplus ensures positivity)
 
+		The softplus output ensures β(x) ≥ 0, which helps with optimization
+		stability and interpretation (β enlarges the safe set).
+
+		Returns:
+			nn.Sequential: MLP network for β(x)
+		"""
+		# Network architecture (hardcoded from best configuration)
 		hidden_dims = [64, 64, 1]
-
-		# Input dim:
-		if self.nn_input_modifier is None:
-			prev_dim = self.x_dim
-		else:
-			prev_dim = self.nn_input_modifier.output_dim
-
-		# phi_nnl = args_dict.get("phi_nnl", "relu") # return relu if var "phi_nnl" not on namespace
-		# phi_nnls = self.args.phi_nnl.split("-")
 		phi_nnls = ["tanh", "tanh", "softplus"]
-		# assert len(phi_nnls) == len(hidden_dims)
 
+		# Determine input dimension
+		if self.nn_input_modifier is None:
+			prev_dim = self.x_dim  # Use raw state
+		else:
+			prev_dim = self.nn_input_modifier.output_dim  # Use transformed state
+
+		# Build network layer by layer
 		net_layers = []
 		for hidden_dim, phi_nnl in zip(hidden_dims, phi_nnls):
 			net_layers.append(nn.Linear(prev_dim, hidden_dim))
+			# Add activation function
 			if phi_nnl == "relu":
 				net_layers.append(nn.ReLU())
 			elif phi_nnl == "tanh":
 				net_layers.append(nn.Tanh())
 			elif phi_nnl == "softplus":
-				net_layers.append(nn.Softplus())
+				net_layers.append(nn.Softplus())  # Output layer: ensures β(x) ≥ 0
 			prev_dim = hidden_dim
+
 		net = nn.Sequential(*net_layers)
 		return net
 
 	def forward(self, x, grad_x=False):
-		# The way these are implemented should be batch compliant
-		# Assume x is (bs, x_dim)
-		# RV is (bs, r+1)
+		"""Computes modified CBF φ*(x) and all intermediate φ_i(x) values.
 
-		# print("inside phi's forward")
-		# IPython.embed()
-		k0 = self.k0 + self.k0_min
-		ci = self.ci + self.ci_min
+		This implements the forward pass of the neural CBF, computing:
+		1. β(x): Neural network output
+		2. ρ'(x) = k0·ρ(x) + β(x): Reshaped safety specification
+		3. L_f^i(ρ): Lie derivatives for i=0..r-1
+		4. φ_i(x): Modified CBF terms for i=0..r
 
-		# Convert ci to ki
+		The modified CBF structure from liu23e.pdf Appendix A.1:
+		    φ_i(x) = Σ_{j=0}^{i} k_{ij} · L_f^j(ρ)(x)
+
+		where k_{ij} are computed from c_i via binomial expansion to ensure
+		smoothness and proper conditioning.
+
+		Args:
+			x: Batch of states (bs, x_dim)
+			grad_x: If True, preserves requires_grad setting of x.
+			       If False, temporarily enables gradients for Lie derivative computation.
+
+		Returns:
+			Tensor (bs, r+1) where:
+			- Column i contains φ_i(x) for i=0..r-1
+			- Column r contains φ*(x) = φ_{r-1}(x) - φ_0(x) + ρ'(x)
+			The last column φ*(x) is the final CBF used for safety certification.
+
+		Note:
+			Batch-compliant implementation. All operations support arbitrary batch sizes.
+		"""
+		# Enforce positivity constraints on learned parameters
+		k0 = self.k0 + self.k0_min  # Ensures k0 ≥ k0_min > 0
+		ci = self.ci + self.ci_min  # Ensures all c_i ≥ ci_min > 0
+
+		# Convert c_i coefficients to k_i via binomial expansion
+		# This implements the recursive formula from Appendix A.1:
+		#   k_{i+1} = (1, c_i) * k_i  (convolution with [1, c_i])
+		# Starting with k_0 = [1], we build k_1, k_2, ..., k_{r-1}
 		ki = torch.tensor([[1.0]])
-		ki_all = torch.zeros(self.r, self.r).to(self.device) # phi_i coefficients are in row i
+		ki_all = torch.zeros(self.r, self.r).to(self.device)  # Row i stores coefficients for φ_i
 		ki_all[0, 0:ki.numel()] = ki
-		for i in range(self.r-1): # A is current coeffs
-			A = torch.zeros(torch.numel(ki)+1, 2)
-			A[:-1, [0]] = ki
-			A[1:, [1]] = ki
 
-			# Note: to preserve gradient flow, have to assign mat entries to ci not create with ci (i.e. torch.tensor([ci[0]]))
+		for i in range(self.r-1):
+			# Build convolution matrix for multiplication with [1, c_i]
+			A = torch.zeros(torch.numel(ki)+1, 2)
+			A[:-1, [0]] = ki  # Shifted by 0
+			A[1:, [1]] = ki   # Shifted by 1
+
+			# Binomial coefficients [1, c_i]
+			# Important: Use tensor assignment to preserve gradient flow through c_i
 			binomial = torch.ones((2, 1))
 			binomial[1] = ci[i]
+
+			# Compute k_{i+1} via convolution
 			ki = A.mm(binomial)
-
 			ki_all[i+1, 0:ki.numel()] = ki.view(1, -1)
-			# Ultimately, ki should be r x 1
 
-		# Compute higher-order Lie derivatives
-		#####################################################################
-		# Turn gradient tracking on for x
+		###############################################################################
+		# Compute reshaped safety specification ρ'(x) = k0·ρ(x) + β(x)
+		###############################################################################
 		bs = x.size()[0]
+
+		# Temporarily enable gradients on x if needed (for Lie derivative computation)
 		if grad_x == False:
-			orig_req_grad_setting = x.requires_grad # Basically only useful if x.requires_grad was False before
+			orig_req_grad_setting = x.requires_grad
 			x.requires_grad = True
 
+		# Compute β(x) using neural network
 		if self.x_e is None:
+			# Standard case: β(x) directly
 			if self.nn_input_modifier is None:
 				beta_net_value = self.net_reshape_rho(x)
 			else:
 				beta_net_value = self.net_reshape_rho(self.nn_input_modifier(x))
+			# Apply softplus for numerical stability (β ≥ 0)
 			new_rho = nn.functional.softplus(beta_net_value) + k0*self.rho_fn(x)
 		else:
+			# Equilibrium-centered case: (β(x) - β(x_e))^2
+			# This centers the modification around equilibrium x_e
 			if self.nn_input_modifier is None:
 				beta_net_value = self.net_reshape_rho(x)
 				beta_net_xe_value = self.net_reshape_rho(self.x_e)
 			else:
 				beta_net_value = self.net_reshape_rho(self.nn_input_modifier(x))
 				beta_net_xe_value = self.net_reshape_rho(self.nn_input_modifier(self.x_e))
-
 			new_rho = torch.square(beta_net_value - beta_net_xe_value) + k0*self.rho_fn(x)
 
-		rho_itrho_deriv = self.rho_fn(x) # bs x 1, the zeroth derivative
+		###############################################################################
+		# Compute Lie derivatives L_f^i(ρ) for i=0..r-1
+		###############################################################################
+		# The k-th Lie derivative satisfies the recursion:
+		#   L_f^0(ρ) = ρ(x)
+		#   L_f^{k+1}(ρ) = ∇(L_f^k(ρ)) · f(x,0)
+		#
+		# This is computed using automatic differentiation (grad) with create_graph=True
+		# to preserve gradient flow for the outer training loop.
 
-		rho_derivs = rho_itrho_deriv # bs x 1
-		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device)) # bs x x_dim
+		rho_itrho_deriv = self.rho_fn(x)  # L_f^0(ρ) = ρ(x) (bs, 1)
+		rho_derivs = rho_itrho_deriv  # Accumulate all derivatives (bs, 1)
 
+		# Evaluate drift dynamics f(x,0) - control set to zero for Lie derivatives
+		f_val = self.xdot_fn(x, torch.zeros(bs, self.u_dim).to(self.device))  # (bs, x_dim)
+
+		# Recursively compute higher-order Lie derivatives
 		for i in range(self.r-1):
-			grad_rho_ith = grad([torch.sum(rho_itrho_deriv)], x, create_graph=True)[0] # bs x x_dim; create_graph ensures gradient is computed through the gradient operation
-			rho_itrho_deriv = (grad_rho_ith.unsqueeze(dim=1)).bmm(f_val.unsqueeze(dim=2)) # bs x 1 x 1
-			rho_itrho_deriv = rho_itrho_deriv[:, :, 0] # bs x 1
-			rho_derivs = torch.cat((rho_derivs, rho_itrho_deriv), dim=1)
+			# Compute gradient: ∇(L_f^i(ρ))
+			# create_graph=True enables second-order gradients needed for training
+			grad_rho_ith = grad([torch.sum(rho_itrho_deriv)], x, create_graph=True)[0]  # (bs, x_dim)
 
+			# Take directional derivative along f: ∇(L_f^i(ρ)) · f(x,0)
+			# This gives L_f^{i+1}(ρ)
+			rho_itrho_deriv = (grad_rho_ith.unsqueeze(dim=1)).bmm(f_val.unsqueeze(dim=2))  # (bs, 1, 1)
+			rho_itrho_deriv = rho_itrho_deriv[:, :, 0]  # (bs, 1)
+
+			# Accumulate derivative
+			rho_derivs = torch.cat((rho_derivs, rho_itrho_deriv), dim=1)  # (bs, i+2)
+
+		# Restore original gradient setting
 		if grad_x == False:
 			x.requires_grad = orig_req_grad_setting
-		#####################################################################
-		# Turn gradient tracking off for x
-		result = rho_derivs.mm(ki_all.t())
-		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_rho
 
-		result = torch.cat((result, phi_r_minus_1_star), dim=1)
+		###############################################################################
+		# Compute modified CBF terms φ_i(x) = Σ_{j=0}^{i} k_{ij} · L_f^j(ρ)
+		###############################################################################
+		result = rho_derivs.mm(ki_all.t())  # (bs, r)
 
-		# print("inside Phi's forward")
-		# IPython.embed()
+		# Compute final CBF: φ*(x) = φ_{r-1}(x) - φ_0(x) + ρ'(x)
+		# This is the complete modified CBF from liu23e.pdf Eq. 2
+		phi_r_minus_1_star = result[:, [-1]] - result[:, [0]] + new_rho  # (bs, 1)
+
+		# Return all φ_i for i=0..r-1 plus final φ*
+		result = torch.cat((result, phi_r_minus_1_star), dim=1)  # (bs, r+1)
+
 		return result

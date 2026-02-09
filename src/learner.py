@@ -1,3 +1,27 @@
+"""Learner module for neural CBF training loop.
+
+Implements the learner component of the learner-critic framework from liu23e.pdf
+Algorithm 1. The learner minimizes the combined objective:
+
+    Loss = max_x∈∂S (saturation_risk(x)) + λ·regularization(x)
+
+where:
+- saturation_risk measures worst-case CBF derivative under input saturation
+- regularization encourages large safe set volume
+- ∂S is the CBF boundary (φ=0)
+
+The critic provides counterexamples (max saturation_risk), and the learner
+updates the neural CBF to eliminate violations while maximizing safe set volume.
+
+Key Features:
+- Weighted average objective over batch (softmax weighting for stability)
+- Positive parameter projection (c_i, k0 must stay positive)
+- Periodic testing (volume estimation, boundary violation checks)
+- Checkpointing and data logging
+
+References:
+    liu23e.pdf Section 3.3 (Training), Algorithm 1
+"""
 import torch
 from torch import nn
 import torch.optim as optim
@@ -12,29 +36,84 @@ import datetime
 import pickle
 import math
 
-# from torch.optim.lr_scheduler import ReduceLROnPlateau, ExponentialLR
-# lr_scheduler_str_to_class_dict = {"exponential_reduction":0, "reduce_on_plateau":0}
-
 from src.neural_phi import NeuralPhi
-# from src.low_phi import LowPhi
 
 class Learner():
+	"""Orchestrates neural CBF training via learner-critic optimization.
+
+	The learner minimizes saturation risk + regularization using gradient descent,
+	while the critic provides worst-case counterexamples. Training loop alternates:
+	1. Critic finds states on boundary with highest saturation risk
+	2. Learner updates CBF to reduce risk at those states
+	3. Regularization encourages large safe set
+	4. Periodic testing measures safe set volume and boundary violations
+
+	Attributes:
+		args: Training arguments (learning rate, stopping conditions, etc.)
+		logger: Logger for training progress
+		critic: Finds counterexamples during training
+		test_critic: Evaluates boundary violations (testing only)
+		reg_sampler: Samples points for regularization
+		param_dict: System parameters and bounds
+		device: PyTorch device
+		save_folder: Directory name for outputs
+		log_folder: Full path to log directory
+		data_save_fpth: Path to training data pickle file
+		x_lim: State space bounds
+		x_dim: State dimension
+		x_lim_interval_sizes: Width of each state dimension
+	"""
 	def __init__(self, args, logger, critic, test_critic, reg_sampler, param_dict, device):
-		vars = locals()  # dict of local names
-		self.__dict__.update(vars)  # __dict__ holds and object's attributes
-		del self.__dict__["self"]  # don't need `self`
+		"""Initializes learner with training configuration.
+
+		Args:
+			args: argparse.Namespace with training hyperparameters
+			logger: Logger instance
+			critic: Critic for finding counterexamples
+			test_critic: Separate critic for testing (uses same config)
+			reg_sampler: Sampler for regularization loss
+			param_dict: System parameters (x_lim, etc.)
+			device: PyTorch device
+		"""
+		self.args = args
+		self.logger = logger
+		self.critic = critic
+		self.test_critic = test_critic
+		self.reg_sampler = reg_sampler
+		self.param_dict = param_dict
+		self.device = device
 
 		self.save_folder = '%s_%s' % (self.args.problem, self.args.affix)
 		self.log_folder = os.path.join(self.args.log_root, self.save_folder)
 		self.data_save_fpth = os.path.join(self.log_folder, "data.pkl")
 
-		# For approximating volume
+		# State space info for volume approximation
 		x_lim = param_dict["x_lim"]
 		self.x_lim = x_lim
 		self.x_dim = x_lim.shape[0]
 		self.x_lim_interval_sizes = np.reshape(x_lim[:, 1] - x_lim[:, 0], (1, self.x_dim))
 
 	def train(self, saturation_risk, reg_fn, phi_fn, xdot_fn):
+		"""Main training loop implementing Algorithm 1 from liu23e.pdf.
+
+		Alternates between:
+		- Critic: Find worst counterexamples (maximize saturation_risk)
+		- Learner: Update CBF (minimize saturation_risk + regularization)
+
+		Uses weighted average objective with softmax weights for stability.
+		Periodically tests safe set volume and boundary violations.
+
+		Args:
+			saturation_risk: SaturationRisk loss function
+			reg_fn: RegularizationLoss function
+			phi_fn: Neural CBF (NeuralPhi instance)
+			xdot_fn: System dynamics
+
+		Side Effects:
+			- Saves checkpoints to model_folder every n_checkpoint_step iterations
+			- Logs training data to data.pkl
+			- Prints progress and statistics to logger
+		"""
 		##################################
 		######### Set up saving ##########
 		##################################
@@ -143,12 +222,16 @@ class Learner():
 			# TODO: above implementation will fail when obj contains large values (>1000).
 			# torch.exp overflows easily; torch.nn.functional.softmax is way better
 
-			c = 0.1
+			# Compute weighted average objective using softmax weighting
+			# Only positive violations (φ̇ ≥ 0) contribute to loss
+			# Softmax concentrates on worst violations while maintaining gradients from all
+			c = 0.1  # Temperature: higher c = more focus on worst case
 			obj = saturation_risk(X)
-			pos_inds = torch.where(obj >= 0) # tuple of 2D inds
-			pos_obj = obj[pos_inds[0], pos_inds[1]]
-			pos_obj = pos_obj.flatten()
-			# IPython.embed()
+			pos_inds = torch.where(obj >= 0)  # Only violations (φ̇ ≥ 0)
+			pos_obj = obj[pos_inds[0], pos_inds[1]].flatten()
+
+			# Compute softmax weights: w_i ∝ exp(c·φ̇_i)
+			# Detach weights to treat as constants (avoids double-gradient issues)
 			with torch.no_grad():
 				w = torch.nn.functional.softmax(c*pos_obj, dim=0)
 			attack_value = torch.dot(w.flatten(), pos_obj.flatten())
