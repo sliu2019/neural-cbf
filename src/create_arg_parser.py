@@ -17,34 +17,14 @@ def create_arg_parser():
 	# parser.add_argument('--phi_nn_inputs', type=str, default="spherical", choices=["spherical", "euc"], help='for neural CBF: which coordinates? spherical or euclidean') # TODO: hardcode euc
 
 	# Parameters for cartpole only
-<<<<<<< HEAD
-	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole')
-	parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol
-	parser.add_argument('--max_theta', default=math.pi/4.0, type=float)
-	parser.add_argument('--max_force', default=22.0, type=float)
-||||||| parent of 55a3d5c (refactored phi, cartpole, objective; repro_after_phi_param)
-	parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole') # TODO: hardcode
-	parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol # TODO: move this to the system spec 
-	parser.add_argument('--max_theta', default=math.pi/4.0, type=float) # TODO: move this to the system spec 
-	parser.add_argument('--max_force', default=22.0, type=float) # TODO: move this to the system spec 
-=======
 	# parser.add_argument('--physical_difficulty', default='easy', choices=['hard', 'easy'], help='long or medium pole') # TODO: hardcode
 	# parser.add_argument('--max_angular_velocity', default=5.0, type=float) # between 1-10 lol # TODO: move this to the system spec 
 	# parser.add_argument('--max_theta', default=math.pi/4.0, type=float) # TODO: move this to the system spec 
 	# parser.add_argument('--max_force', default=22.0, type=float) # TODO: move this to the system spec 
->>>>>>> 55a3d5c (refactored phi, cartpole, objective; repro_after_phi_param)
 
 	# Parameters for flying cartpole only
-<<<<<<< HEAD
-	parser.add_argument('--pend_length', default=3.0, type=float)
-	parser.add_argument('--box_ang_vel_limit', default=20.0, type=float)
-||||||| parent of 55a3d5c (refactored phi, cartpole, objective; repro_after_phi_param)
-	parser.add_argument('--pend_length', default=3.0, type=float) # TODO: move this to the system spec 
-	parser.add_argument('--box_ang_vel_limit', default=20.0, type=float) # TODO: move this to the system spec 
-=======
 	# parser.add_argument('--pend_length', default=3.0, type=float) # TODO: move this to the system spec 
 	# parser.add_argument('--box_ang_vel_limit', default=20.0, type=float) # TODO: move this to the system spec 
->>>>>>> 55a3d5c (refactored phi, cartpole, objective; repro_after_phi_param)
 
 	# Regularization parameters 
 	parser.add_argument('--reg_weight', default=150.0, type=float, help='the weight on the volume term') # TODO: KEEP 
