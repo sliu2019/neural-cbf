@@ -85,13 +85,13 @@ class CBFController:
 		# return u_ref, debug_dict
 
 
-		phi_vals = self.cbf_obj.phi_fn(x)  # This is an array of (1, r+1), where r is the degree
+		phi_vals = self.cbf_obj.phi_star_fn(x)  # This is an array of (1, r+1), where r is the degree
 		phi_grad = self.cbf_obj.phi_grad(x)
 
 		# print(x.shape)
 		x_next = x + self.env.dt * self.env.x_dot_open_loop_model(x, self.compute_u_ref(t,
 		                                                                          x))  # in the absence of safe control, the next state
-		next_phi_val = self.cbf_obj.phi_fn(x_next)
+		next_phi_val = self.cbf_obj.phi_star_fn(x_next)
 
 		dist_between_xs = np.linalg.norm(x_next - x)
 		phi_grad_mag = np.linalg.norm(phi_grad)

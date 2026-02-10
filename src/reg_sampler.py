@@ -56,7 +56,7 @@ class RegSampler():
 		self.x_lim_interval_sizes = np.reshape(x_lim[:, 1] - x_lim[:, 0], (1, self.x_dim))
 		self.bs = 100  # Batch size for parallel φ evaluations
 
-	def get_samples(self, phi_fn: Callable) -> torch.Tensor:
+	def get_samples(self, phi_star_fn: Callable) -> torch.Tensor:
 		"""Generates samples uniformly from ρ(x) ≤ 0 region using rejection sampling.
 
 		Algorithm:
@@ -66,7 +66,7 @@ class RegSampler():
 		4. Repeat until n_samples collected
 
 		Args:
-			phi_fn: Neural CBF function (returns (bs, r+1) with ρ in column 0)
+			phi_star_fn: Neural CBF function (returns (bs, r+1) with ρ in column 0)
 
 		Returns:
 			Tensor (n_samples, x_dim) of states satisfying ρ(x) ≤ 0
@@ -81,7 +81,7 @@ class RegSampler():
 			candidate_samples_torch = torch.from_numpy(candidate_samples_numpy.astype("float32")).to(self.device)
 
 			# Evaluate φ(x) to get ρ(x) = φ_0(x)
-			phi_vals = phi_fn(candidate_samples_torch)
+			phi_vals = phi_star_fn(candidate_samples_torch)
 
 			# Keep samples where ρ(x) ≤ 0 (base safety specification)
 			h_vals = phi_vals[:, 0]  # ρ(x) is the first component

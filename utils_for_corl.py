@@ -436,9 +436,9 @@ if __name__ == "__main__":
 		__setattr__ = dict.__setitem__
 		__delattr__ = dict.__delitem__
 
-	torch_phi_fn, param_dict = load_phi_and_params(exp_name=exp_name,
+	torch_phi_star_fn, param_dict = load_phi_and_params(exp_name=exp_name,
 	                                               checkpoint_number=250)
-	numpy_phi_fn = PhiNumpy(torch_phi_fn)
+	numpy_phi_star_fn = PhiNumpy(torch_phi_star_fn)
 
 	save_fldrpth = "./log/%s" % exp_name
 
@@ -453,7 +453,7 @@ if __name__ == "__main__":
 	env.dt = rollout_dt
 	controller_args = {"rollout_u_ref": "LQR", "rollout_LQR_q":1.0, "rollout_LQR_r":1.0}
 	controller_args = dotdict(controller_args)
-	cbf_controller = CBFController(env, numpy_phi_fn, param_dict, args)  # 2nd arg prev. "cbf_obj"
+	cbf_controller = CBFController(env, numpy_phi_star_fn, param_dict, args)  # 2nd arg prev. "cbf_obj"
 
 	x0 = np.random.normal(scale=0.1, size=(1, 16))
 	d = simulate_rollout(env, N_steps_max, cbf_controller, x0)

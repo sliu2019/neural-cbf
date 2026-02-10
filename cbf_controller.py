@@ -37,15 +37,15 @@ class CBFController:
 		qp_rhs = None
 		################
 
-		# phi_vals = numpy_phi_fn(x) # This is an array of (1, r+1), where r is the degree
+		# phi_vals = numpy_phi_star_fn(x) # This is an array of (1, r+1), where r is the degree
 		# phi_grad = numpy_phi_grad(x)
 
-		phi_vals = self.cbf_obj.phi_fn(x)  # This is an array of (1, r+1), where r is the degree
+		phi_vals = self.cbf_obj.phi_star_fn(x)  # This is an array of (1, r+1), where r is the degree
 		phi_grad = self.cbf_obj.phi_grad(x)
 
 		x_next = x + self.env.dt * self.env.x_dot_open_loop(x, self.compute_u_ref(t,
 		                                                                          x))  # in the absence of safe control, the next state
-		next_phi_val = self.cbf_obj.phi_fn(x_next)
+		next_phi_val = self.cbf_obj.phi_star_fn(x_next)
 
 		# IPython.embed()
 		if phi_vals[0, -1] > 0:  # Outside

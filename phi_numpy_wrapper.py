@@ -7,12 +7,12 @@ from torch.autograd import grad
 
 
 class PhiNumpy:
-	def __init__(self, torch_phi_fn):
-		self.torch_phi_fn = torch_phi_fn
+	def __init__(self, torch_phi_star_fn):
+		self.torch_phi_star_fn = torch_phi_star_fn
 
 	def set_params(self, state_dict):
 		# TODO: probably should have some checks on this
-		self.torch_phi_fn.load_state_dict(state_dict, strict=False)
+		self.torch_phi_star_fn.load_state_dict(state_dict, strict=False)
 
 	def _convert_angle_to_negpi_pi_interval(self, angle):
 		new_angle = np.arctan2(np.sin(angle), np.cos(angle))
@@ -35,14 +35,14 @@ class PhiNumpy:
 
 		return x_torch
 
-	def phi_fn(self, x):  # Batched
+	def phi_star_fn(self, x):  # Batched
 		"""
         :param x: (N_batch, 16)
         :return: (N_batch, r+1) where r is degree
         """
 
 		x_torch = self._x_numpy_to_x_torch(x)
-		phi_torch = self.torch_phi_fn(x_torch)
+		phi_torch = self.torch_phi_star_fn(x_torch)
 		phi_numpy = phi_torch.detach().cpu().numpy()
 
 		return phi_numpy
@@ -57,7 +57,7 @@ class PhiNumpy:
 		x_torch.requires_grad = True
 
 		# Compute phi grad
-		phi_vals = self.torch_phi_fn(x_torch)
+		phi_vals = self.torch_phi_star_fn(x_torch)
 		phi_val = torch.sum(phi_vals[:, -1])
 		phi_grad = grad([phi_val], x_torch)[0]
 

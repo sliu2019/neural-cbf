@@ -97,7 +97,7 @@ class Learner():
 		self.test_N_boundary_samples = 2500
 
 	def train(self, saturation_risk: Callable, reg_fn: Callable,
-	          phi_fn: torch.nn.Module, xdot_fn: Callable) -> None:
+	          phi_star_fn: torch.nn.Module, xdot_fn: Callable) -> None:
 		"""Main training loop implementing Algorithm 1 from liu23e.pdf.
 
 		Alternates between:
@@ -110,7 +110,7 @@ class Learner():
 		Args:
 			saturation_risk: SaturationRisk loss function
 			reg_fn: RegularizationLoss function
-			phi_fn: Neural CBF (NeuralPhi instance)
+			phi_star_fn: Neural CBF (NeuralPhi instance)
 			xdot_fn: System dynamics
 
 		Side Effects:
@@ -164,10 +164,10 @@ class Learner():
 
 		###########  Done  ###########
 		##############################
-		p_dict = {p[0]:p[1] for p in phi_fn.named_parameters()}
-		pos_params = [p_dict[name] for name in phi_fn.pos_param_names]
+		p_dict = {p[0]:p[1] for p in phi_star_fn.named_parameters()}
+		pos_params = [p_dict[name] for name in phi_star_fn.pos_param_names]
 
-		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.learner_lr)
+		optimizer = optim.Adam(phi_star_fn.parameters(), lr=self.args.learner_lr)
 
 		# early_stopping = EarlyStopping(patience=self.args.learner_early_stopping_patience, min_delta=1e-2)
 
@@ -175,15 +175,15 @@ class Learner():
 		t0 = time.perf_counter()
 
 		file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
-		save_model(phi_fn, file_name)
+		save_model(phi_star_fn, file_name)
 
 		while True:
 
 			iteration_info_dict = {}
-			X_reg = self.reg_sampler.get_samples(phi_fn)
+			X_reg = self.reg_sampler.get_samples(phi_star_fn)
 			reg_value = reg_fn(X_reg)
 
-			x, debug_dict = self.critic.opt(saturation_risk, phi_fn, _iter, debug=True)
+			x, debug_dict = self.critic.opt(saturation_risk, phi_star_fn, _iter, debug=True)
 			X = debug_dict["X_final"]
 
 			optimizer.zero_grad()
@@ -216,8 +216,8 @@ class Learner():
 			##### Check reg gradient #####
 			avg_grad_norm = 0
 			n_param = 0
-			for n, p in phi_fn.named_parameters():
-				if n not in phi_fn.exclude_from_gradient_param_names:
+			for n, p in phi_star_fn.named_parameters():
+				if n not in phi_star_fn.exclude_from_gradient_param_names:
 					avg_grad_norm += torch.linalg.norm(p.grad).item()
 					n_param += 1
 			avg_grad = avg_grad_norm/n_param
@@ -230,8 +230,8 @@ class Learner():
 			##### Check total gradient #####
 			avg_grad_norm = 0
 			n_param = 0
-			for n, p in phi_fn.named_parameters():
-				if n not in phi_fn.exclude_from_gradient_param_names:
+			for n, p in phi_star_fn.named_parameters():
+				if n not in phi_star_fn.exclude_from_gradient_param_names:
 					avg_grad_norm += torch.linalg.norm(p.grad).item()
 					n_param += 1
 			avg_grad = avg_grad_norm/n_param
@@ -286,16 +286,16 @@ class Learner():
 
 			# Train attack saving
 			iteration_info_dict["train_attacks"] = x
-			iteration_info_dict["train_attack_X_phi_vals"] = phi_fn(X)
+			iteration_info_dict["train_attack_X_phi_vals"] = phi_star_fn(X)
 			debug_dict = {"train_attack_" + key: value for key, value in debug_dict.items()}
 
 			iteration_info_dict.update(debug_dict)
 
 			# Misc saving
-			iteration_info_dict["ci_list"] = phi_fn.ci
-			iteration_info_dict["h_list"] = phi_fn.h
-			print(phi_fn.h)
-			print(phi_fn.ci)
+			iteration_info_dict["ci_list"] = phi_star_fn.ci
+			iteration_info_dict["h_list"] = phi_star_fn.h
+			print(phi_star_fn.h)
+			print(phi_star_fn.ci)
 
 			# Merge into info_dict
 			# Note: detach before logging to avoid accumulating memory over iterations
@@ -311,7 +311,7 @@ class Learner():
 			#######################################################
 			if _iter % self.args.n_checkpoint_step == 0:
 				file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
-				save_model(phi_fn, file_name)
+				save_model(phi_star_fn, file_name)
 
 				print("Saving at: ", self.data_save_fpth)
 				with open(self.data_save_fpth, 'wb') as handle:
@@ -329,7 +329,7 @@ class Learner():
 
 				N_samples_inside = 0
 				for k in range(math.ceil(self.test_N_volume_samples/float(M))):
-					phi_vals_batch = phi_fn(samp_torch[k*M: min((k+1)*M, self.test_N_volume_samples)])
+					phi_vals_batch = phi_star_fn(samp_torch[k*M: min((k+1)*M, self.test_N_volume_samples)])
 					N_samples_inside += torch.sum(torch.max(phi_vals_batch, axis=1)[0] <= 0.0)
 				V_approx = N_samples_inside*100.0/float(self.test_N_volume_samples)
 				V_approx = V_approx.item()
@@ -337,7 +337,7 @@ class Learner():
 
 				# Sample on boundary
 				t0_test_boundary = time.perf_counter()
-				boundary_samples, debug_dict = self.test_critic._sample_points_on_boundary(phi_fn, self.test_N_boundary_samples)
+				boundary_samples, debug_dict = self.test_critic._sample_points_on_boundary(phi_star_fn, self.test_N_boundary_samples)
 				boundary_samples_obj_value = saturation_risk(boundary_samples)
 				boundary_samples_obj_value = boundary_samples_obj_value.detach().cpu().numpy()
 				data_dict["boundary_samples_obj_values"].append(boundary_samples_obj_value)

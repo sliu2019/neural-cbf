@@ -47,7 +47,7 @@ def sample_inside_safe_set(param_dict, cbf_obj, target_N_samp_inside):
 		samples = np.concatenate((samples, np.zeros((M, 6))), axis=1) # Add translational states as zeros
 
 		# Check if samples in invariant set
-		phi_vals = cbf_obj.phi_fn(samples)
+		phi_vals = cbf_obj.phi_star_fn(samples)
 		max_phi_vals = phi_vals.max(axis=1)
 
 		# Save good samples
@@ -400,8 +400,8 @@ def run_rollout_experiment(args):
 	log_fldr_base = "./rollout_results/flying/%s" % which_cbf
 
 	if which_cbf == "ours":
-		phi_fn, param_dict = load_phi_and_params(exp_name_to_load, checkpoint_number_to_load)
-		cbf_obj = OurCBF(phi_fn, param_dict) # numpy wrapper
+		phi_star_fn, param_dict = load_phi_and_params(exp_name_to_load, checkpoint_number_to_load)
+		cbf_obj = OurCBF(phi_star_fn, param_dict) # numpy wrapper
 		log_fldrpth = os.path.join(log_fldr_base, "exp_%s_ckpt_%i_nrollout_%i_dt_%s" % (exp_name_to_load, checkpoint_number_to_load, args.N_rollout, '%.2E' % Decimal(args.dt)))
 	if which_cbf == "low":
 		# from main import create_flying_param_dict
@@ -488,20 +488,20 @@ def run_rollout_experiment(args):
 	#####################################
 	# if which_cbf == "ours":
 	# 	x0s_no_translation = x0s[:, :10]
-	# 	plot_invariant_set_slices(phi_fn, param_dict, samples=x0s_no_translation, fnm="x0s", fldr_path=log_fldrpth) # which_params=None
+	# 	plot_invariant_set_slices(phi_star_fn, param_dict, samples=x0s_no_translation, fnm="x0s", fldr_path=log_fldrpth) # which_params=None
 	# else:
 	# 	raise NotImplementedError
-	# 	# TODO: Suggest slightly modify above function to be used with cbf_obj (numpy wrapper of phi_fn), instead of phi_fn
+	# 	# TODO: Suggest slightly modify above function to be used with cbf_obj (numpy wrapper of phi_star_fn), instead of phi_star_fn
 
 	#####################################
 	# Plot trajectories
 	#####################################
 	# if which_cbf == "ours":
 	# 	rollouts = info_dicts["x"]
-	# 	plot_invariant_set_slices(phi_fn, param_dict, rollouts=rollouts, fnm="traj", fldr_path=log_fldrpth, which_params=[["phi", "theta"]])
+	# 	plot_invariant_set_slices(phi_star_fn, param_dict, rollouts=rollouts, fnm="traj", fldr_path=log_fldrpth, which_params=[["phi", "theta"]])
 	# else:
 	# 	raise NotImplementedError
-		# TODO: Suggest slightly modify above function to be used with cbf_obj (numpy wrapper of phi_fn), instead of phi_fn
+		# TODO: Suggest slightly modify above function to be used with cbf_obj (numpy wrapper of phi_star_fn), instead of phi_star_fn
 
 	#####################################
 	# Plot EXITED trajectories ONLY (we choose the 5 with the largest violation)
@@ -519,10 +519,10 @@ def run_rollout_experiment(args):
 	# 		exit_rollout_inds = exit_rollout_inds[:min(5, np.sum(rollouts_any_exits))]
 	#
 	# 		exiting_rollouts = [rollouts for i in exit_rollout_inds]
-	# 		plot_invariant_set_slices(phi_fn, param_dict, rollouts=exiting_rollouts, fnm="exiting_traj", fldr_path=log_fldrpth, which_params=[["phi", "theta"]])
+	# 		plot_invariant_set_slices(phi_star_fn, param_dict, rollouts=exiting_rollouts, fnm="exiting_traj", fldr_path=log_fldrpth, which_params=[["phi", "theta"]])
 	# else:
 	# 	raise NotImplementedError
-	# 	# TODO: Suggest slightly modify above function to be used with cbf_obj (numpy wrapper of phi_fn), instead of phi_fn
+	# 	# TODO: Suggest slightly modify above function to be used with cbf_obj (numpy wrapper of phi_star_fn), instead of phi_star_fn
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Rollout experiment for flying')

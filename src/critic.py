@@ -112,7 +112,7 @@ class Critic():
 			del self_dict['pool']
 		return self_dict
 
-	def _project(self, phi_fn: Callable, X: torch.Tensor,
+	def _project(self, phi_star_fn: Callable, X: torch.Tensor,
 	             projection_n_grad_steps: Optional[int] = None) -> torch.Tensor:
 		"""Projects points onto CBF zero-level set φ(x)=0 using gradient descent.
 
@@ -120,7 +120,7 @@ class Critic():
 		Used after gradient ascent steps to maintain boundary constraint.
 
 		Args:
-			phi_fn: Neural CBF function
+			phi_star_fn: Neural CBF function
 			X: Points to project (list of tensors or single tensor)
 			projection_n_grad_steps: Optional step limit (otherwise uses time limit)
 
@@ -139,7 +139,7 @@ class Critic():
 		while True:
 			proj_opt.zero_grad()
 
-			loss = torch.sum(torch.abs(phi_fn(torch.cat(X_list), grad_x=True)[:, -1]))
+			loss = torch.sum(torch.abs(phi_star_fn(torch.cat(X_list), grad_x=True)[:, -1]))
 
 			loss.backward()
 			proj_opt.step()
@@ -166,7 +166,7 @@ class Critic():
 				print("Not on manifold, %f" % (torch.max(loss).item()))
 		return rv_X
 
-	def _step(self, saturation_risk: Callable, phi_fn: Callable,
+	def _step(self, saturation_risk: Callable, phi_star_fn: Callable,
 	          X: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, Any]]:
 		"""Single projected gradient ascent step on boundary manifold.
 
@@ -179,7 +179,7 @@ class Critic():
 
 		Args:
 			saturation_risk: Loss function to maximize
-			phi_fn: Neural CBF (defines manifold)
+			phi_star_fn: Neural CBF (defines manifold)
 			X: Current boundary points (n_samples, x_dim)
 
 		Returns:
@@ -194,7 +194,7 @@ class Critic():
 		obj_val = -saturation_risk(X_batch)  # maximizing
 		obj_grad = grad([torch.sum(obj_val)], X_batch)[0]
 
-		normal_to_manifold = grad([torch.sum(phi_fn(X_batch)[:, -1])], X_batch)[0]
+		normal_to_manifold = grad([torch.sum(phi_star_fn(X_batch)[:, -1])], X_batch)[0]
 
 		normal_to_manifold = normal_to_manifold/torch.norm(normal_to_manifold, dim=1)[:, None]  # normalize
 		X_batch.requires_grad = False
@@ -205,9 +205,9 @@ class Critic():
 		X_new = X - self.lr*proj_obj_grad
 		tf_grad_step = time.perf_counter()
 
-		dist_before_proj = torch.mean(torch.abs(phi_fn(X_new)[:,-1]))
-		X_new = self._project(phi_fn, X_new)
-		dist_after_proj = torch.mean(torch.abs(phi_fn(X_new)[:,-1]))
+		dist_before_proj = torch.mean(torch.abs(phi_star_fn(X_new)[:,-1]))
+		X_new = self._project(phi_star_fn, X_new)
+		dist_after_proj = torch.mean(torch.abs(phi_star_fn(X_new)[:,-1]))
 
 		tf_reproject = time.perf_counter()
 
@@ -241,7 +241,7 @@ class Critic():
 		sample[which_facet_pair] = self.x_lim[which_facet_pair, which_facet]
 		return sample
 
-	def _sample_in_safe_set(self, phi_fn: Callable,
+	def _sample_in_safe_set(self, phi_star_fn: Callable,
 	                        random_seed: Optional[int] = None) -> torch.Tensor:
 		"""Samples a single point uniformly inside the safe set φ(x) ≤ 0."""
 		if random_seed:
@@ -256,7 +256,7 @@ class Critic():
 			samples_torch = unif*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
 
 			# Check if samples in invariant set
-			phi_vals = phi_fn(samples_torch)
+			phi_vals = phi_star_fn(samples_torch)
 			max_phi_vals = torch.max(phi_vals, dim=1)[0]
 
 			# Save good samples
@@ -275,14 +275,14 @@ class Critic():
 		return sample_torch
 
 	def _intersect_segment_with_manifold(self, p1: torch.Tensor, p2: torch.Tensor,
-	                                     phi_fn: Callable) -> Optional[torch.Tensor]:
+	                                     phi_star_fn: Callable) -> Optional[torch.Tensor]:
 		"""Finds intersection of line segment [p1, p2] with CBF boundary φ(x)=0 via bisection."""
 		diff = p2-p1
 
 		left_weight = 0.0
 		right_weight = 1.0
-		left_val = phi_fn(p1.view(1, -1))[:, -1].item()
-		right_val = phi_fn(p2.view(1, -1))[:, -1].item()
+		left_val = phi_star_fn(p1.view(1, -1))[:, -1].item()
+		right_val = phi_star_fn(p2.view(1, -1))[:, -1].item()
 		left_sign = np.sign(left_val)
 		right_sign = np.sign(right_val)
 
@@ -294,7 +294,7 @@ class Critic():
 			mid_weight = (left_weight + right_weight)/2.0
 			mid_point = p1 + mid_weight*diff
 
-			mid_val = phi_fn(mid_point.view(1, -1))[:, -1].item()
+			mid_val = phi_star_fn(mid_point.view(1, -1))[:, -1].item()
 			mid_sign = np.sign(mid_val)
 			if mid_sign*left_sign < 0:
 				# go to the left side
@@ -317,7 +317,7 @@ class Critic():
 				return None
 		return intersection_point
 
-	def _sample_segment_intersect_boundary(self, phi_fn: Callable,
+	def _sample_segment_intersect_boundary(self, phi_star_fn: Callable,
 	                                       random_seed: Optional[int] = None) -> Optional[torch.Tensor]:
 		"""Samples point on boundary using Gaussian sampling strategy.
 
@@ -330,18 +330,18 @@ class Critic():
 		efficiency when safe set is small.
 
 		Args:
-			phi_fn: Neural CBF
+			phi_star_fn: Neural CBF
 			random_seed: Optional seed for reproducibility
 
 		Returns:
 			Point on boundary (x_dim,) where φ(x)≈0, or None if no intersection
 		"""
-		center = self._sample_in_safe_set(phi_fn, random_seed=random_seed)
+		center = self._sample_in_safe_set(phi_star_fn, random_seed=random_seed)
 		outer = self._sample_in_gaussian(center)
-		intersection = self._intersect_segment_with_manifold(center, outer, phi_fn)
+		intersection = self._intersect_segment_with_manifold(center, outer, phi_star_fn)
 		return intersection
 
-	def _sample_points_on_boundary_sequential(self, phi_fn: Callable,
+	def _sample_points_on_boundary_sequential(self, phi_star_fn: Callable,
 	                                          n_samples: int) -> Tuple[torch.Tensor, Dict[str, Any]]:
 		"""Generates n_samples points on CBF boundary via rejection sampling.
 
@@ -349,7 +349,7 @@ class Critic():
 		successful intersections found.
 
 		Args:
-			phi_fn: Neural CBF
+			phi_star_fn: Neural CBF
 			n_samples: Number of boundary points to generate
 
 		Returns:
@@ -364,7 +364,7 @@ class Critic():
 		while n_remaining_to_sample > 0:
 			if self.verbose:
 				print(".", end=" ")
-			intersection = self._sample_segment_intersect_boundary(phi_fn)
+			intersection = self._sample_segment_intersect_boundary(phi_star_fn)
 			if intersection is not None:
 				samples = torch.cat((samples, intersection.view(1, -1)), dim=0)
 				n_remaining_to_sample -= 1
@@ -378,13 +378,13 @@ class Critic():
 		debug_dict = {"t_sample_boundary": (tf- t0), "n_segments_sampled": n_segments_sampled}
 		return samples, debug_dict
 
-	def _sample_points_on_boundary(self, phi_fn: Callable,
+	def _sample_points_on_boundary(self, phi_star_fn: Callable,
 	                               n_samples: int) -> Tuple[torch.Tensor, Dict[str, Any]]:
 		"""Returns tensor of shape (n_samples, x_dim) on the CBF boundary."""
-		samples, debug_dict = self._sample_points_on_boundary_sequential(phi_fn, n_samples)
+		samples, debug_dict = self._sample_points_on_boundary_sequential(phi_star_fn, n_samples)
 		return samples, debug_dict
 
-	def opt(self, saturation_risk: Callable, phi_fn: Callable, iteration: int,
+	def opt(self, saturation_risk: Callable, phi_star_fn: Callable, iteration: int,
 	        debug: bool = False) -> Tuple[torch.Tensor, Dict[str, Any]]:
 		"""Main optimization loop to find worst-case counterexamples.
 
@@ -398,7 +398,7 @@ class Critic():
 
 		Args:
 			saturation_risk: Loss function L(x) to maximize
-			phi_fn: Neural CBF defining boundary
+			phi_star_fn: Neural CBF defining boundary
 			iteration: Current training iteration (for step schedule)
 			debug: If True, return detailed debug information
 
@@ -409,7 +409,7 @@ class Critic():
 		t0_opt = time.perf_counter()
 
 		if self.X_saved is None:
-			X_init, boundary_sample_debug_dict = self._sample_points_on_boundary(phi_fn, self.n_samples)
+			X_init, boundary_sample_debug_dict = self._sample_points_on_boundary(phi_star_fn, self.n_samples)
 
 			X_reuse_init = torch.zeros((0, self.x_dim))
 			X_random_init = X_init
@@ -433,8 +433,8 @@ class Critic():
 			n_reuse_samples = len(inds_distinct)
 			n_random_samples = self.n_samples - n_reuse_samples
 			X_reuse_init = self.X_saved[torch.tensor(inds_distinct)]
-			X_reuse_init = self._project(phi_fn, X_reuse_init)  # reproject, since phi changed
-			X_random_init, boundary_sample_debug_dict = self._sample_points_on_boundary(phi_fn, n_random_samples)
+			X_reuse_init = self._project(phi_star_fn, X_reuse_init)  # reproject, since phi changed
+			X_random_init, boundary_sample_debug_dict = self._sample_points_on_boundary(phi_star_fn, n_random_samples)
 			X_init = torch.cat([X_random_init, X_reuse_init], axis=0)
 
 		tf_init = time.perf_counter()
@@ -454,7 +454,7 @@ class Critic():
 		while True:
 			if self.verbose:
 				print("Counterex. max. step #%i" % i)
-			X, step_debug_dict = self._step(saturation_risk, phi_fn, X)
+			X, step_debug_dict = self._step(saturation_risk, phi_star_fn, X)
 
 			# Logging
 			t_grad_step.append(step_debug_dict["t_grad_step"])

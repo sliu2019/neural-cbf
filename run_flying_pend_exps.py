@@ -57,7 +57,7 @@ def approx_volume(param_dict, cbf_obj, N_samp, x_lim=None):
 		samples = np.concatenate((samples, np.zeros((M, 6))), axis=1) # Add translational states as zeros
 
 		# Check if samples in invariant set
-		phi_vals = cbf_obj.phi_fn(samples)
+		phi_vals = cbf_obj.phi_star_fn(samples)
 		max_phi_vals = phi_vals.max(axis=1)
 		n_inside += np.sum(max_phi_vals <= 0)
 
@@ -123,7 +123,7 @@ def bfs_approx_volume(param_dict, cbf_obj, axes_grid_size):
 		# print(list(queue.queue)) # Prints queue elements
 		current_node = queue.get()
 		np_current_node = np.reshape(np.array(current_node), (1, -1))
-		phi_vals = cbf_obj.phi_fn(np_current_node)
+		phi_vals = cbf_obj.phi_star_fn(np_current_node)
 		max_phi_vals = phi_vals.max(axis=1)
 
 		if max_phi_vals <= 0:
@@ -193,16 +193,16 @@ def run_exps(args):
 		# print("loading phi for ours")
 		# IPython.embed()
 
-		torch_phi_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
-		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+		torch_phi_star_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
+		numpy_phi_star_fn = PhiNumpy(torch_phi_star_fn)
 
 		save_fldrpth = "./log/%s" % args.exp_name_to_load
 	elif args.which_cbf == "low-CMAES":
 		# print("loading phi for low-CMAES")
 		# IPython.embed()
 		from cmaes.utils import load_philow_and_params
-		torch_phi_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
-		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+		torch_phi_star_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
+		numpy_phi_star_fn = PhiNumpy(torch_phi_star_fn)
 
 		data = pickle.load(open(os.path.join("cmaes", args.exp_name_to_load, "data.pkl"), "rb"))
 		mu = data["mu"][args.checkpoint_number_to_load]
@@ -213,19 +213,19 @@ def run_exps(args):
 		# IPython.embed()
 
 		state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])} # todo: this is not very generic
-		numpy_phi_fn.set_params(state_dict)
+		numpy_phi_star_fn.set_params(state_dict)
 
 		save_fldrpth = "./cmaes/%s" % args.exp_name_to_load
 	elif args.which_cbf == "low-heuristic":
 		from cmaes.utils import load_philow_and_params
-		torch_phi_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
-		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+		torch_phi_star_fn, param_dict = load_philow_and_params() # TODO: this assumes default param_dict for dynamics
+		numpy_phi_star_fn = PhiNumpy(torch_phi_star_fn)
 
 		# print("loading phi for low-heuristic")
 		# IPython.embed()
 		mu = args.low_cbf_params
 		state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])} # todo: this is not very generic
-		numpy_phi_fn.set_params(state_dict)
+		numpy_phi_star_fn.set_params(state_dict)
 
 		save_fldrpth = "./low_heuristic/k1_%.2f_k2_%.2f_k3_%.2f" % (mu[2], mu[0], mu[1]) # Note: named using Overleaf convention, but args are passed using another convention (swap 1st entry to end)
 		if not os.path.exists(save_fldrpth):
@@ -234,8 +234,8 @@ def run_exps(args):
 		# print("ln 156")
 		# IPython.embed()
 	elif args.which_cbf == "low-gradient":
-		torch_phi_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
-		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+		torch_phi_star_fn, param_dict = load_phi_and_params(exp_name=args.exp_name_to_load, checkpoint_number=args.checkpoint_number_to_load)
+		numpy_phi_star_fn = PhiNumpy(torch_phi_star_fn)
 
 		save_fldrpth = "./log/%s" % args.exp_name_to_load
 		# IPython.embed()
@@ -263,15 +263,15 @@ def run_exps(args):
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
-		torch_phi_fn = ICCBF(h_fn, xdot_fn, uvertices_fn, class_kappa_fns, param_dict["x_dim"], param_dict["u_dim"], device)
-		numpy_phi_fn = PhiNumpy(torch_phi_fn)
+		torch_phi_star_fn = ICCBF(h_fn, xdot_fn, uvertices_fn, class_kappa_fns, param_dict["x_dim"], param_dict["u_dim"], device)
+		numpy_phi_star_fn = PhiNumpy(torch_phi_star_fn)
 
 		save_fldrpth = "./iccbf_outputs/" + "_".join(["%.2f-%.2f" % (coeffs[i], exps[i]) for i in range(len(coeffs))])
 		if not os.path.exists(save_fldrpth):
 			os.makedirs(save_fldrpth)
 		# IPython.embed()
 	else:
-		numpy_phi_fn = None
+		numpy_phi_star_fn = None
 		save_fldrpth = None
 		param_dict = None
 		raise NotImplementedError
@@ -299,11 +299,11 @@ def run_exps(args):
 	xdot_fn = xdot_fn.to(device)
 	uvertices_fn = uvertices_fn.to(device)
 
-	torch_phi_fn = torch_phi_fn.to(device)
+	torch_phi_star_fn = torch_phi_star_fn.to(device)
 	logger = None # doesn't matter, isn't used
 	obj_args = None # currently not used, but sometimes used to set options
 
-	saturation_risk = SaturationRisk(torch_phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, obj_args)
+	saturation_risk = SaturationRisk(torch_phi_star_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, obj_args)
 	saturation_risk = saturation_risk.to(device)
 
 	# call separate functions for each test
@@ -314,7 +314,7 @@ def run_exps(args):
 		n_samples = args.boundary_n_samples
 		torch_x_lim = torch.tensor(param_dict["x_lim"]).to(device)
 		critic = Critic(torch_x_lim, device, None, gaussian_t=args.boundary_gaussian_t, verbose=True, projection_lr=args.boundary_projection_lr) # o.w. default args
-		boundary_samples, debug_dict = critic._sample_points_on_boundary(torch_phi_fn, n_samples)
+		boundary_samples, debug_dict = critic._sample_points_on_boundary(torch_phi_star_fn, n_samples)
 		# boundary_samples = torch.rand((10000, 10))*100
 		# debug_dict = {}
 
@@ -360,7 +360,7 @@ def run_exps(args):
 			critic.X_saved = boundary_samples
 			obj_vals = saturation_risk(boundary_samples.view(-1, 10)) # TODO: hard-coded dim
 			critic.obj_vals_saved = obj_vals
-		x_worst, debug_dict = critic.opt(saturation_risk, torch_phi_fn, iteration, debug=True)
+		x_worst, debug_dict = critic.opt(saturation_risk, torch_phi_star_fn, iteration, debug=True)
 
 		x_worst = torch.reshape(x_worst, (1, 10))
 		obj_values = saturation_risk(x_worst)
@@ -399,7 +399,7 @@ def run_exps(args):
 			env = FlyingInvertedPendulumEnv(model_param_dict=model_param_dict, dynamics_noise_spread=args.dynamics_noise_spread)
 
 		env.dt = args.rollout_dt
-		cbf_controller = CBFController(env, numpy_phi_fn, param_dict, args) # 2nd arg prev. "cbf_obj"
+		cbf_controller = CBFController(env, numpy_phi_star_fn, param_dict, args) # 2nd arg prev. "cbf_obj"
 
 		#####################################
 		# Run multiple rollout_results
@@ -438,12 +438,12 @@ def run_exps(args):
 		# For BFS alg
 		parser.add_argument('--bfs_axes_grid_size', type=float, nargs='+')  # 100K"""
 		if args.volume_alg == "sample":
-			vol_data = approx_volume(param_dict, numpy_phi_fn, args.N_samp_volume, args.volume_x_lim)
+			vol_data = approx_volume(param_dict, numpy_phi_star_fn, args.N_samp_volume, args.volume_x_lim)
 		elif args.volume_alg == "bfs_grid":
 			assert args.bfs_axes_grid_size is not None
 			# print("before calling bfs approx volume")
 			# IPython.embed()
-			vol_data = bfs_approx_volume(param_dict, numpy_phi_fn, args.bfs_axes_grid_size) # TODO
+			vol_data = bfs_approx_volume(param_dict, numpy_phi_star_fn, args.bfs_axes_grid_size) # TODO
 
 		# experiment_dict["percent_of_domain_volume"] = percent_of_domain_volume
 		# print("after calling bfs approx volume")
@@ -456,7 +456,7 @@ def run_exps(args):
 
 	# Maybe analysis is better done in a different folder
 	if "plot_slices" in args.which_analyses:
-		plot_interesting_slices(torch_phi_fn, param_dict, save_fldrpth, args.checkpoint_number_to_load)
+		plot_interesting_slices(torch_phi_star_fn, param_dict, save_fldrpth, args.checkpoint_number_to_load)
 
 """
 Instructions for running:

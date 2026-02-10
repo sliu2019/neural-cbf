@@ -18,7 +18,7 @@ class SaturationRisk(nn.Module):
 	the CBF forward invariance condition is violated at x.
 
 	Attributes:
-		phi_fn: Neural CBF returning (bs, r+1) with φ* in last column
+		phi_star_fn: Neural CBF returning (bs, r+1) with φ* in last column
 		xdot_fn: System dynamics f(x, u) returning (bs, x_dim)
 		uvertices_fn: Returns control polytope vertices (bs, n_vertices, u_dim)
 		x_dim: State space dimension
@@ -27,11 +27,11 @@ class SaturationRisk(nn.Module):
 		logger: Logger instance
 		args: Training arguments namespace
 	"""
-	def __init__(self, phi_fn: nn.Module, xdot_fn: nn.Module, uvertices_fn: nn.Module,
+	def __init__(self, phi_star_fn: nn.Module, xdot_fn: nn.Module, uvertices_fn: nn.Module,
 	             x_dim: int, u_dim: int, device: torch.device,
 	             logger: logging.Logger, args) -> None:
 		super().__init__()
-		self.phi_fn = phi_fn
+		self.phi_star_fn = phi_star_fn
 		self.xdot_fn = xdot_fn
 		self.uvertices_fn = uvertices_fn
 		self.x_dim = x_dim
@@ -69,7 +69,7 @@ class SaturationRisk(nn.Module):
 		# Compute gradient of CBF: ∇φ(x)
 		orig_req_grad_setting = x.requires_grad 
 		x.requires_grad = True # So gradient flows through this forward pass 
-		phi_value = self.phi_fn(x)  # (bs, r+1)
+		phi_value = self.phi_star_fn(x)  # (bs, r+1)
 		grad_phi = grad([torch.sum(phi_value[:, -1])], x, create_graph=True)[0]  # (bs, x_dim)
 		x.requires_grad = orig_req_grad_setting
 

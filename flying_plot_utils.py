@@ -79,46 +79,46 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	# x_lim = torch.tensor(x_lim).to(device)
 
 	# Create CBF, etc.
-	# phi_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
+	# phi_star_fn = Phi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
 	# IPython.embed()
 	# For some reason, args will always have phi_design (the DotMap loading procedure)
 	if args.phi_design == "neural":
-		phi_fn = NeuralPhi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
+		phi_star_fn = NeuralPhi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
 	elif args.phi_design == "low":
-		phi_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
+		phi_star_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
 	else:
-		phi_fn = NeuralPhi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
+		phi_star_fn = NeuralPhi(h_fn, xdot_fn, r, x_dim, u_dim, device, args, x_e=x_e, nn_input_modifier=nn_input_modifier)
 
-	# saturation_risk = SaturationRisk(phi_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
-	# reg_fn = Regularizer(phi_fn, device, reg_weight=args.reg_weight)
+	# saturation_risk = SaturationRisk(phi_star_fn, xdot_fn, uvertices_fn, x_dim, u_dim, device, logger, args)
+	# reg_fn = Regularizer(phi_star_fn, device, reg_weight=args.reg_weight)
 
 	# Send remaining modules to the correct device
-	phi_fn = phi_fn.to(device)
+	phi_star_fn = phi_star_fn.to(device)
 	# saturation_risk = saturation_risk.to(device)
 	# reg_fn = reg_fn.to(device)
 
 	print("Phi param before load:")
-	if isinstance(phi_fn, NeuralPhi):
-		print("h, ci: ", phi_fn.h, phi_fn.ci)
-	elif isinstance(phi_fn, LowPhi):
-		print("ki, ci: ", phi_fn.ki, phi_fn.ci)
+	if isinstance(phi_star_fn, NeuralPhi):
+		print("h, ci: ", phi_star_fn.h, phi_star_fn.ci)
+	elif isinstance(phi_star_fn, LowPhi):
+		print("ki, ci: ", phi_star_fn.ki, phi_star_fn.ci)
 
 	if exp_name:
 		assert checkpoint_number is not None
 		phi_load_fpth = "./checkpoint/%s/checkpoint_%i.pth" % (exp_name, checkpoint_number)
-		load_model(phi_fn, phi_load_fpth)
+		load_model(phi_star_fn, phi_load_fpth)
 	print("Phi param after load:")
-	if isinstance(phi_fn, NeuralPhi):
-		print("h, ci: ", phi_fn.h, phi_fn.ci)
-	elif isinstance(phi_fn, LowPhi):
-		print("ki, ci: ", phi_fn.ki, phi_fn.ci)
+	if isinstance(phi_star_fn, NeuralPhi):
+		print("h, ci: ", phi_star_fn.h, phi_star_fn.ci)
+	elif isinstance(phi_star_fn, LowPhi):
+		print("ki, ci: ", phi_star_fn.ki, phi_star_fn.ci)
 
-	# for name, param_info in phi_fn.named_parameters():
+	# for name, param_info in phi_star_fn.named_parameters():
 	# 	print(name)
 	# 	print(param_info)
 	# IPython.embed()
 
-	return phi_fn, param_dict
+	return phi_star_fn, param_dict
 
 def load_attacks(exp_name, checkpoint_number):
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
@@ -445,7 +445,7 @@ def graph_losses(exp_name, debug=True):
 	# plt.savefig("./log/%s/%s_test_train_diff.png" % (exp_name, exp_name))
 
 
-def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth = None):
+def plot_cbf_3d_slices(phi_star_fn, param_dict, which_params = None, fnm = None, fpth = None):
 	"""
 	Plots CBF value against 2 inputs, for a total of 3 dimensions (value, input1, input2)
 	"""
@@ -504,7 +504,7 @@ def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth
 				batch_input = batch_input.astype("float32")
 				batch_input_torch = torch.from_numpy(batch_input)
 
-				batch_phi_vals = phi_fn(batch_input_torch)
+				batch_phi_vals = phi_star_fn(batch_input_torch)
 				phi_vals.append(batch_phi_vals.detach().cpu().numpy())
 
 			## Process phi values
@@ -543,7 +543,7 @@ def plot_cbf_3d_slices(phi_fn, param_dict, which_params = None, fnm = None, fpth
 	plt.clf()
 	plt.close()
 
-def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, constants_for_other_params=None, fnm=None, fldr_path=None, checkpoint=None):
+def plot_invariant_set_slices(phi_star_fn, param_dict, samples=None, rollouts=None, which_params=None, constants_for_other_params=None, fnm=None, fldr_path=None, checkpoint=None):
 	"""
 	Plots invariant set and (if necessary) projected boundary samples in 2D
 	which_params: all or list of lists of length 2
@@ -648,7 +648,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 				batch_input = batch_input.astype("float32")
 				batch_input_torch = torch.from_numpy(batch_input)
 
-				batch_phi_vals = phi_fn(batch_input_torch)
+				batch_phi_vals = phi_star_fn(batch_input_torch)
 				phi_vals.append(batch_phi_vals.detach().cpu().numpy())
 
 			## Process phi values
@@ -714,11 +714,11 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 	# plt.tight_layout(pad=0.5)
 
 	# IPython.embed()
-	if hasattr(phi_fn, "h"):
+	if hasattr(phi_star_fn, "h"):
 		# cbf is type "ours"
-		ki_str = "h = %.4f, k1 = %.4f" % (phi_fn.h, phi_fn.ci[0])
-	elif hasattr(phi_fn, "ki"):
-		ki_str = "ci = %.4f, %.4f, ki = %.4f" % (phi_fn.ci[0, 0], phi_fn.ci[1, 0], phi_fn.ki[0, 0])
+		ki_str = "h = %.4f, k1 = %.4f" % (phi_star_fn.h, phi_star_fn.ci[0])
+	elif hasattr(phi_star_fn, "ki"):
+		ki_str = "ci = %.4f, %.4f, ki = %.4f" % (phi_star_fn.ci[0, 0], phi_star_fn.ci[1, 0], phi_star_fn.ki[0, 0])
 	else:
 		ki_str = ""
 	# fig.title(ki_str) # doesn't work, title goes on last subfigure
@@ -841,9 +841,9 @@ def find_critic_n_reuse(exp_name):
 		for i in range(len(train_attack_X_init_reuse)):
 			print(train_attack_X_init_reuse[i].shape[0])
 
-def plot_interesting_slices(phi_fn, param_dict, save_fldrpth, checkpoint_number):
+def plot_interesting_slices(phi_star_fn, param_dict, save_fldrpth, checkpoint_number):
 	"""
-	:param phi_fn:
+	:param phi_star_fn:
 	:param param_dict:
 	:param save_fldrpth:
 	:param save_fnm:
@@ -903,7 +903,7 @@ def plot_interesting_slices(phi_fn, param_dict, save_fldrpth, checkpoint_number)
 	# TODO: plotting multiple slices at a time
 	# fldr_path = os.path.join("./log", exp_name)
 	fnm = "slices_ckpt_%i" % checkpoint_number
-	plot_invariant_set_slices(phi_fn, param_dict, fldr_path=save_fldrpth, which_params=params_to_viz_list,
+	plot_invariant_set_slices(phi_star_fn, param_dict, fldr_path=save_fldrpth, which_params=params_to_viz_list,
 	                          constants_for_other_params=constants_for_other_params_list, fnm=fnm,
 	                          checkpoint=checkpoint_number)
 	plt.clf()
@@ -927,10 +927,10 @@ def fill_ci_ki_lists(exp_name):
 	ci_list = []
 	for checkpoint_number in np.arange(0, n_it_so_far, args.n_checkpoint_step):
 		# IPython.embed()
-		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+		phi_star_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 
-		ki_list.append(phi_fn.ki.detach().cpu().numpy())
-		ci_list.append(phi_fn.ci.detach().cpu().numpy())
+		ki_list.append(phi_star_fn.ki.detach().cpu().numpy())
+		ci_list.append(phi_star_fn.ci.detach().cpu().numpy())
 
 	data["ki_list"] = ki_list
 	data["ci_list"] = ci_list
@@ -1133,12 +1133,12 @@ if __name__ == "__main__":
 	# TODO: For CORL
 	"""exp_name = "quad_pend_ESG_reg_speedup_better_attacks_seed_0"
 	checkpoint_number = 250
-	phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+	phi_star_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 	params_to_viz_list = [["phi", "dphi"]]
 	constants_for_other_params_list = [np.zeros(10)]
 	fnm = "test"
 	fldr_path = os.path.join("./log", exp_name)
-	plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list,
+	plot_invariant_set_slices(phi_star_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list,
 	                          constants_for_other_params=constants_for_other_params_list, fnm=fnm,
 	                          checkpoint=checkpoint_number)"""
 
@@ -1178,10 +1178,10 @@ if __name__ == "__main__":
 	k1_list = []
 	n_it = 4000
 	for checkpoint_number in np.arange(0, n_it, 10):
-		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+		phi_star_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 		# IPython.embed()
-		h_list.append(phi_fn.h.detach().cpu().numpy().item())
-		k1_list.append(phi_fn.ci.detach().cpu().numpy().item())
+		h_list.append(phi_star_fn.h.detach().cpu().numpy().item())
+		k1_list.append(phi_star_fn.ci.detach().cpu().numpy().item())
 	plt.plot(np.arange(0, n_it, 10), h_list, label="h")
 	plt.plot(np.arange(0, n_it, 10), k1_list, label="k1")
 	plt.title("h, k1 over training iterations")
@@ -1192,12 +1192,12 @@ if __name__ == "__main__":
 
 	for exp_name, checkpoint_number in zip(exp_names, checkpoint_numbers):
 
-			phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+			phi_star_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 
 			##################################################################
 			# Slice visualization, with multiple subplots per plot
 			# fldr_path = os.path.join("./log", exp_name)
-			# plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
+			# plot_invariant_set_slices(phi_star_fn, param_dict, fldr_path=fldr_path, fnm="viz_invar_set_ckpt_%i" % checkpoint_number)
 			# plt.clf()
 			# plt.close()
 			##################################################################
@@ -1262,7 +1262,7 @@ if __name__ == "__main__":
 			# TODO
 			# for params_to_viz, constants_for_other_params, fnm in zip(params_to_viz_list, constants_for_other_params_list, fnms):
 			# 	fldr_path = os.path.join("./log", exp_name)
-			# 	plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=[params_to_viz], constants_for_other_params=[constants_for_other_params], fnm=fnm)
+			# 	plot_invariant_set_slices(phi_star_fn, param_dict, fldr_path=fldr_path, which_params=[params_to_viz], constants_for_other_params=[constants_for_other_params], fnm=fnm)
 			#
 			# 	plt.clf()
 			# 	plt.close()
@@ -1270,16 +1270,16 @@ if __name__ == "__main__":
 			# TODO: plotting multiple slices at a time
 			fldr_path = os.path.join("./log", exp_name)
 			fnm = "slices_ckpt_%i" % checkpoint_number
-			plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list, constants_for_other_params=constants_for_other_params_list, fnm=fnm, checkpoint=checkpoint_number)
+			plot_invariant_set_slices(phi_star_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list, constants_for_other_params=constants_for_other_params_list, fnm=fnm, checkpoint=checkpoint_number)
 			plt.clf()
 			plt.close()
 
 			# Other plotting: samples on 2D slices, 3D slices, etc.
 			# samples = load_attacks(exp_name, checkpoint_number)
 			#
-			# plot_invariant_set_slices(phi_fn, param_dict, samples=samples, fldr_path=fldr_path, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
+			# plot_invariant_set_slices(phi_star_fn, param_dict, samples=samples, fldr_path=fldr_path, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
 			#
-			# # plot_cbf_3d_slices(phi_fn, param_dict, which_params = [["phi", "theta"]], fnm = "3d_viz_ckpt_%i" % checkpoint_number, fpth = exp_name)
+			# # plot_cbf_3d_slices(phi_star_fn, param_dict, which_params = [["phi", "theta"]], fnm = "3d_viz_ckpt_%i" % checkpoint_number, fpth = exp_name)
 			#
 			# plt.clf()
 			# plt.close()"""

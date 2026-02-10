@@ -36,7 +36,7 @@ def sample_invariant_set(x_lim, cbf_obj, N_samp):
 	##### Plotting ######
 	sze = X.size
 	input = np.concatenate((np.zeros((sze, 1)), X.flatten()[:, None], np.zeros((sze, 1)), Y.flatten()[:, None]), axis=1)
-	phi_vals_on_grid = cbf_obj.phi_fn(input) # N_samp x r+1
+	phi_vals_on_grid = cbf_obj.phi_star_fn(input) # N_samp x r+1
 
 	max_phi_vals_on_grid = phi_vals_on_grid.max(axis=1) # Assuming S = all phi_i <= 0
 	max_phi_vals_on_grid = np.reshape(max_phi_vals_on_grid, X.shape)

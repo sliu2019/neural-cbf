@@ -5,7 +5,7 @@ from global_settings import *
 from phi_numpy_wrapper import PhiNumpy
 import torch
 
-def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, which_params=None, constants_for_other_params=None, fnm=None, fldr_path=None, pass_axs=None):
+def plot_invariant_set_slices(phi_star_fn, param_dict, samples=None, rollouts=None, which_params=None, constants_for_other_params=None, fnm=None, fldr_path=None, pass_axs=None):
 	"""
 	Plots invariant set and (if necessary) projected boundary samples in 2D
 	which_params: all or list of lists of length 2
@@ -108,7 +108,7 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 				batch_input = batch_input.astype("float32")
 				batch_input_torch = torch.from_numpy(batch_input)
 
-				batch_phi_vals = phi_fn(batch_input_torch)
+				batch_phi_vals = phi_star_fn(batch_input_torch)
 				phi_vals.append(batch_phi_vals.detach().cpu().numpy())
 
 			## Process phi values
@@ -218,11 +218,11 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 	# plt.tight_layout(pad=0.5)
 
 	# IPython.embed()
-	if hasattr(phi_fn, "h"):
+	if hasattr(phi_star_fn, "h"):
 		# cbf is type "ours"
-		ki_str = "h = %.4f, k1 = %.4f" % (phi_fn.h, phi_fn.ci[0])
-	elif hasattr(phi_fn, "ki"):
-		ki_str = "ci = %.4f, %.4f, ki = %.4f" % (phi_fn.ci[0, 0], phi_fn.ci[1, 0], phi_fn.ki[0, 0])
+		ki_str = "h = %.4f, k1 = %.4f" % (phi_star_fn.h, phi_star_fn.ci[0])
+	elif hasattr(phi_star_fn, "ki"):
+		ki_str = "ci = %.4f, %.4f, ki = %.4f" % (phi_star_fn.ci[0, 0], phi_star_fn.ci[1, 0], phi_star_fn.ki[0, 0])
 	else:
 		ki_str = ""
 	# fig.title(ki_str) # doesn't work, title goes on last subfigure
@@ -282,10 +282,10 @@ def load_philow_and_params(exp_name=None, checkpoint_number=None):
 	xdot_fn = xdot_fn.to(device)
 
 	# Create CBF, etc.
-	phi_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
+	phi_star_fn = LowPhi(h_fn, xdot_fn, x_dim, u_dim, device, param_dict)
 
 	# Send remaining modules to the correct device
-	phi_fn = phi_fn.to(device)
+	phi_star_fn = phi_star_fn.to(device)
 
 	if exp_name:
 		print("inside loadphilow_and_params, reloading model part")
@@ -294,13 +294,13 @@ def load_philow_and_params(exp_name=None, checkpoint_number=None):
 		mus = data["mu"]
 		mu = mus[checkpoint_number]
 		state_dict = {"ki": torch.tensor([[mu[2]]]), "ci": torch.tensor([[mu[0]], [mu[1]]])}
-		phi_fn.load_state_dict(state_dict, strict=False)
+		phi_star_fn.load_state_dict(state_dict, strict=False)
 
 	# TODO: not loading a checkpoint
 	# if phi_load_fpth:
-	# 	load_model(phi_fn, phi_load_fpth)
+	# 	load_model(phi_star_fn, phi_load_fpth)
 
-	return phi_fn, param_dict
+	return phi_star_fn, param_dict
 
 def plot_training_losses():
 	# Hardcoding
@@ -411,21 +411,21 @@ if __name__ == "__main__":
 	constants_for_other_params_list = [np.zeros(10)]
 	###############################
 	# Now, the baseline
-	baseline_phi_fn, baseline_param_dict = load_philow_and_params()  # TODO: this assumes default param_dict for dynamics
+	baseline_phi_star_fn, baseline_param_dict = load_philow_and_params()  # TODO: this assumes default param_dict for dynamics
 	baseline_param_dict["x_lim"] = x_lim
 
 	mu = [3.75977875, 0., 0.01]
 	state_dict = {"ki": torch.tensor([[mu[2]]]),
 	              "ci": torch.tensor([[mu[0]], [mu[1]]])}  # todo: this is not very generic
-	baseline_phi_fn.load_state_dict(state_dict, strict=False)
+	baseline_phi_star_fn.load_state_dict(state_dict, strict=False)
 
-	axs = plot_invariant_set_slices(baseline_phi_fn, baseline_param_dict, fldr_path=fldr_path,
+	axs = plot_invariant_set_slices(baseline_phi_star_fn, baseline_param_dict, fldr_path=fldr_path,
 	                                which_params=params_to_viz_list,
 	                                constants_for_other_params=constants_for_other_params_list, fnm=fnm)
 	# ###############################
-	phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
+	phi_star_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 	param_dict["x_lim"] = x_lim
-	axs = plot_invariant_set_slices(phi_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list,
+	axs = plot_invariant_set_slices(phi_star_fn, param_dict, fldr_path=fldr_path, which_params=params_to_viz_list,
 	                          constants_for_other_params=constants_for_other_params_list, fnm=fnm, pass_axs=axs)
 	# print("ln 235")
 	# IPython.embed()"""
