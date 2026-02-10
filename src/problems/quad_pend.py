@@ -1,18 +1,3 @@
-"""Quadcopter-pendulum system dynamics and safety specifications.
-
-The system has 10 state variables and 4 control inputs:
-
-State: x = [γ, β, α, γ̇, β̇, α̇, φ, θ, φ̇, θ̇] ∈ R^10
-  - γ, β, α: quadcopter roll, pitch, yaw
-  - φ, θ: Pendulum angles from vertical
-  - Velocities: Time derivatives of angles
-
-Control: u = [F, τ_x, τ_y, τ_z] ∈ R^4
-  - F: Total thrust (hover thrust subtracted)
-  - τ_x, τ_y, τ_z: Torques about body axes
-
-The safety objective is to keep the pendulum upright and prevent the quadcopter from rolling.
-"""
 import torch
 import numpy as np
 from torch import nn
@@ -29,6 +14,7 @@ class RhoSum(nn.Module):
 	- δ_limit: limit on all angles
 
 	The safe set is defined as {x : ρ(x) ≤ 0}.
+	This means the safety objective is to keep the pendulum upright and prevent the quadcopter from rolling.
 	"""
 	def __init__(self, param_dict):
 		super().__init__()
@@ -67,53 +53,7 @@ class RhoSum(nn.Module):
 		return rv
 
 class XDot(nn.Module):
-	"""System dynamics ẋ = f(x, u) for quadcopter-pendulum.
-
-	Computes the time derivatives of all state variables using:
-	1. quadcopter rigid body dynamics (rotation matrix formulation)
-	2. Pendulum dynamics (coupled to quadcopter through thrust vector)
-
-	The dynamics are derived from Euler-Lagrange equations with the following
-	key couplings:
-	- quadcopter thrust affects pendulum acceleration via thrust direction
-	- Pendulum motion does NOT feedback to quadcopter (underactuated assumption)
-
-	State Derivatives:
-	    ẋ = [γ̇, β̇, α̇, γ̈, β̈, α̈, φ̇, θ̇, φ̈, θ̈]ᵀ
-
-	where:
-	- quadcopter angular accelerations: Computed from torques via rotation matrix R
-	- Pendulum angular accelerations: Depend on thrust direction and Coriolis terms
-
-	Rotation Matrix R (ZYX Euler angles):
-	The rotation matrix R transforms from body frame to global frame using
-	intrinsic rotations: R = R_z(α) R_y(β) R_x(γ)
-
-	The thrust direction vector in global frame is k = R·[0, 0, 1]ᵀ, with
-	components k_x, k_y, k_z used in pendulum dynamics.
-
-	Pendulum Dynamics:
-	The pendulum accelerations follow from Lagrangian mechanics:
-	    φ̈ = (3/2ML_p) · (k_y cos(φ) + k_z sin(φ))/cos(θ) · F + Coriolis terms
-	    θ̈ = (3/2ML_p) · (-k_x cos(θ) - k_y sin(φ)sin(θ) + k_z cos(φ)sin(θ)) · F + Coriolis terms
-
-	Args (in param_dict):
-		M: Total mass (quadcopter + pendulum) [kg]
-		L_p: Pendulum length [m]
-		J_x, J_y, J_z: Moments of inertia [kg·m²]
-		state_index_dict: Mapping from state names to indices
-
-	Input:
-		x: Batch of states (bs, 10)
-		u: Batch of controls (bs, 4) = [F, τ_x, τ_y, τ_z]
-
-	Returns:
-		ẋ: State derivatives (bs, 10)
-
-	Note:
-		Translational motion (x, y, z positions) is excluded as it's decoupled
-		from the safety-critical pendulum angles.
-	"""
+	"""System dynamics ẋ = f(x, u) for quadcopter-pendulum."""
 	def __init__(self, param_dict, device):
 		super().__init__()
 		self.__dict__.update(param_dict)  # Unpack all physical parameters
@@ -143,7 +83,7 @@ class XDot(nn.Module):
 		dtheta = x[:, self.i["dtheta"]] # Pendulum angular velocity 2
 
 		###############################################################################
-		# Compute rotation matrix R: body frame → global frame (ZYX Euler angles)
+		# Compute rotation matrix R: body frame to global frame (ZYX Euler angles)
 		###############################################################################
 		# R = R_z(α) · R_y(β) · R_x(γ)
 		R = torch.zeros((x.shape[0], 3, 3), device=self.device)
@@ -216,47 +156,7 @@ class XDot(nn.Module):
 		return rv
 
 class ULimitSetVertices(nn.Module):
-	"""Computes vertices of control input constraint polytope U.
-
-	For the quadcopter-pendulum, the control limits come from physical
-	rotor constraints: each of the 4 rotors has bounded RPM ω_i ∈ [0, ω_max].
-
-	The control space is a 4D polytope with 2^4 = 16 vertices corresponding
-	to all combinations of rotors at minimum (0) or maximum (ω_max) RPM.
-
-	Mixer Matrix Transformation:
-	The mixer matrix M maps rotor impulses [ω₁², ω₂², ω₃², ω₄²]ᵀ to forces/torques:
-
-	    [F  ]       [k1   k1    k1   k1  ] [ω₁²]
-	    [τ_x] = M · [0   -l·k1  0    l·k1] [ω₂²]
-	    [τ_y]       [l·k1  0   -l·k1  0  ] [ω₃²]
-	    [τ_z]       [-k2  k2   -k2   k2 ] [ω₄²]
-
-	where:
-	- k1: Thrust coefficient (thrust per unit rotor speed squared)
-	- k2: Drag coefficient (torque per unit rotor speed squared)
-	- l: Arm length from center to rotor
-
-	The hover thrust M·g is subtracted so control input F represents
-	deviation from hover.
-
-	Args (in param_dict):
-		k1: Thrust coefficient
-		k2: Drag coefficient
-		l: quadcopter arm length [m]
-		M: Total mass (quad + pendulum) [kg]
-
-	Input:
-		x: Batch of states (bs, 10) - not used, only for batch size
-
-	Returns:
-		Tensor (bs, 16, 4): Control polytope vertices for each state in batch
-		                    Each vertex is [F, τ_x, τ_y, τ_z]
-
-	Note:
-		Vertices are precomputed in __init__ for efficiency and simply
-		replicated across the batch dimension in forward().
-	"""
+	"""Computes vertices of control input constraint polytope U."""
 	def __init__(self, param_dict, device):
 		super().__init__()
 		self.__dict__.update(param_dict)  # Unpack all physical parameters
@@ -269,7 +169,7 @@ class ULimitSetVertices(nn.Module):
 		k2 = self.k2
 		l = self.l
 
-		# Mixer matrix: rotor impulses → [F, τ_x, τ_y, τ_z]
+		# Mixer matrix
 		M = np.array([
 			[k1,   k1,    k1,   k1],    # Total thrust
 			[0,   -l*k1,  0,    l*k1],  # Roll torque
@@ -278,7 +178,6 @@ class ULimitSetVertices(nn.Module):
 		])
 
 		# Generate all 16 vertices of the unit hypercube [0,1]^4
-		# Each rotor can be at 0 (off) or ω_max (full thrust)
 		r1 = np.concatenate((np.zeros(8), np.ones(8)))
 		r2 = np.concatenate((np.zeros(4), np.ones(4), np.zeros(4), np.ones(4)))
 		r3 = np.concatenate((np.zeros(2), np.ones(2), np.zeros(2), np.ones(2),
