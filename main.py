@@ -364,7 +364,7 @@ def main(args):
 		x_lim = param_dict["x_lim"]
 
 		# Create phi
-		from problems.quad_pend import RhoSum, XDot, ULimitSetVertices
+		from src.problems.quad_pend import RhoSum, XDot, ULimitSetVertices
 		# if args.rho == "sum":
 		rho_fn = RhoSum(param_dict)
 		# elif args.rho == "max":

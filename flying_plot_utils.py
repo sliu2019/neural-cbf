@@ -99,7 +99,7 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 
 	print("Phi param before load:")
 	if isinstance(phi_fn, NeuralPhi):
-		print("k0, ci: ", phi_fn.k0, phi_fn.ci)
+		print("h, ci: ", phi_fn.h, phi_fn.ci)
 	elif isinstance(phi_fn, LowPhi):
 		print("ki, ci: ", phi_fn.ki, phi_fn.ci)
 
@@ -109,7 +109,7 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 		load_model(phi_fn, phi_load_fpth)
 	print("Phi param after load:")
 	if isinstance(phi_fn, NeuralPhi):
-		print("k0, ci: ", phi_fn.k0, phi_fn.ci)
+		print("h, ci: ", phi_fn.h, phi_fn.ci)
 	elif isinstance(phi_fn, LowPhi):
 		print("ki, ci: ", phi_fn.ki, phi_fn.ci)
 
@@ -266,10 +266,10 @@ def graph_losses(exp_name, debug=True):
 		#############################################
 		# TODO: uncomment
 		# if args.phi_design == "neural":
-		# 	axs[3].set_title("k0, ci over iterations")
-		# 	k0_list = [x.item() for x in data['k0_list']]
+		# 	axs[3].set_title("h, ci over iterations")
+		# 	h_list = [x.item() for x in data['h_list']]
 		# 	ci_list = [x.item() for x in data["ci_list"]]
-		# 	axs[3].plot(k0_list, linewidth=0.5, label="k0")
+		# 	axs[3].plot(h_list, linewidth=0.5, label="h")
 		# 	axs[3].plot(ci_list, linewidth=0.5, label="k1")
 		# 	axs[3].legend(loc=(1.04,0))
 		# elif args.phi_design == "low":
@@ -714,9 +714,9 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 	# plt.tight_layout(pad=0.5)
 
 	# IPython.embed()
-	if hasattr(phi_fn, "k0"):
+	if hasattr(phi_fn, "h"):
 		# cbf is type "ours"
-		ki_str = "k0 = %.4f, k1 = %.4f" % (phi_fn.k0, phi_fn.ci[0])
+		ki_str = "h = %.4f, k1 = %.4f" % (phi_fn.h, phi_fn.ci[0])
 	elif hasattr(phi_fn, "ki"):
 		ki_str = "ci = %.4f, %.4f, ki = %.4f" % (phi_fn.ci[0, 0], phi_fn.ci[1, 0], phi_fn.ki[0, 0])
 	else:
@@ -1174,19 +1174,19 @@ if __name__ == "__main__":
 
 	# TODO; plot ci values
 	"""exp_name = "quad_pend_phi_format_1_seed_1"
-	k0_list = []
+	h_list = []
 	k1_list = []
 	n_it = 4000
 	for checkpoint_number in np.arange(0, n_it, 10):
 		phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 		# IPython.embed()
-		k0_list.append(phi_fn.k0.detach().cpu().numpy().item())
+		h_list.append(phi_fn.h.detach().cpu().numpy().item())
 		k1_list.append(phi_fn.ci.detach().cpu().numpy().item())
-	plt.plot(np.arange(0, n_it, 10), k0_list, label="k0")
+	plt.plot(np.arange(0, n_it, 10), h_list, label="h")
 	plt.plot(np.arange(0, n_it, 10), k1_list, label="k1")
-	plt.title("k0, k1 over training iterations")
+	plt.title("h, k1 over training iterations")
 	plt.legend(loc="upper left")
-	plt.savefig("./log/%s/k0_k1_plot" % exp_name)"""
+	plt.savefig("./log/%s/h_k1_plot" % exp_name)"""
 
 	# TODO: plot pages of slices over many iterations
 

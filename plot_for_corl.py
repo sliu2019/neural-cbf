@@ -218,9 +218,9 @@ def plot_invariant_set_slices(phi_fn, param_dict, samples=None, rollouts=None, w
 	# plt.tight_layout(pad=0.5)
 
 	# IPython.embed()
-	if hasattr(phi_fn, "k0"):
+	if hasattr(phi_fn, "h"):
 		# cbf is type "ours"
-		ki_str = "k0 = %.4f, k1 = %.4f" % (phi_fn.k0, phi_fn.ci[0])
+		ki_str = "h = %.4f, k1 = %.4f" % (phi_fn.h, phi_fn.ci[0])
 	elif hasattr(phi_fn, "ki"):
 		ki_str = "ci = %.4f, %.4f, ki = %.4f" % (phi_fn.ci[0, 0], phi_fn.ci[1, 0], phi_fn.ki[0, 0])
 	else:

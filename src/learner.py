@@ -15,28 +15,26 @@ updates the neural CBF to eliminate violations while maximizing safe set volume.
 
 Key Features:
 - Weighted average objective over batch (softmax weighting for stability)
-- Positive parameter projection (c_i, k0 must stay positive)
+- Positive parameter projection (c_i, h must stay positive)
 - Periodic testing (volume estimation, boundary violation checks)
 - Checkpointing and data logging
 
 References:
     liu23e.pdf Section 3.3 (Training), Algorithm 1
 """
-import torch
-from torch import nn
-import torch.optim as optim
-
-from src.utils import save_model
 import os
 import time
-import IPython
-from torch.autograd import grad
-from src.utils import *
 import datetime
 import pickle
 import math
+from collections.abc import Callable
 
-from src.neural_phi import NeuralPhi
+import numpy as np
+import torch
+import torch.optim as optim
+
+from src.utils import save_model, EarlyStopping, EarlyStoppingBatch
+
 
 class Learner():
 	"""Orchestrates neural CBF training via learner-critic optimization.
@@ -63,7 +61,8 @@ class Learner():
 		x_dim: State dimension
 		x_lim_interval_sizes: Width of each state dimension
 	"""
-	def __init__(self, args, logger, critic, test_critic, reg_sampler, param_dict, device):
+	def __init__(self, args, logger, critic, test_critic, reg_sampler, param_dict,
+	             device: torch.device) -> None:
 		"""Initializes learner with training configuration.
 
 		Args:
@@ -93,7 +92,8 @@ class Learner():
 		self.x_dim = x_lim.shape[0]
 		self.x_lim_interval_sizes = np.reshape(x_lim[:, 1] - x_lim[:, 0], (1, self.x_dim))
 
-	def train(self, saturation_risk, reg_fn, phi_fn, xdot_fn):
+	def train(self, saturation_risk: Callable, reg_fn: Callable,
+	          phi_fn: torch.nn.Module, xdot_fn: Callable) -> None:
 		"""Main training loop implementing Algorithm 1 from liu23e.pdf.
 
 		Alternates between:
@@ -130,12 +130,8 @@ class Learner():
 			"test_t_boundary": []
 		}
 
-		# if isinstance(phi_fn, NeuralPhi):
 		data_dict["ci_list"] = []
-		data_dict["k0_list"] = []
-		# elif isinstance(phi_fn, LowPhi):
-		# 	data_dict["ci_list"] = []
-		# 	data_dict["ki_list"] = []
+		data_dict["h_list"] = []
 
 		train_attack_dict = {"train_attacks": [],
 			"train_attack_X_init": [],
@@ -169,16 +165,6 @@ class Learner():
 
 		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.learner_lr)
 
-		# if self.args.learner_lr_scheduler:
-		# 	print("creating lr scheduler")
-		# 	IPython.embed()
-		# 	if self.args.learner_lr_scheduler == "exponential_reduction":
-		# 		lr_scheduler = ExponentialLR(optimizer, gamma=self.args.learner_lr_scheduler_exponential_reduction_gamma)
-		# 	elif self.args.learner_lr_scheduler == "reduce_on_plateau":
-		# 		lr_scheduler = ReduceLROnPlateau(optimizer, factor=0.9, )
-		# 		# torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08, verbose=False)
-		# 		# TODO: SIMIN YOU HAVEN'T FINISHED HERE!!!
-
 		early_stopping = EarlyStopping(patience=self.args.learner_early_stopping_patience, min_delta=1e-2)
 
 		_iter = 0
@@ -187,40 +173,16 @@ class Learner():
 		file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 		save_model(phi_fn, file_name)
 
-		# print("Before training")
-		# IPython.embed()
 		while True:
 
 			iteration_info_dict = {}
 			X_reg = self.reg_sampler.get_samples(phi_fn)
 			reg_value = reg_fn(X_reg)
 
-			# Note: this won't work for the regular critic
 			x, debug_dict = self.critic.opt(saturation_risk, phi_fn, _iter, debug=True)
 			X = debug_dict["X_final"]
 
 			optimizer.zero_grad()
-
-			# if self.args.objective_option == "regular":
-			# 	x_batch = x.view(1, -1)
-			# 	attack_value = saturation_risk(x_batch)[0, 0]
-			# elif self.args.objective_option == "softplus":
-			# 	x_batch = x.view(1, -1)
-			# 	attack_value = nn.functional.softplus(saturation_risk(x_batch)[0, 0])
-			# elif self.args.objective_option == "weighted_average":
-
-			# obj = saturation_risk(X)
-			# mask_neg = obj >= 0 # zeros out entries where obj < 0: actually, just use softplus on the objective
-			# with torch.no_grad():
-			# 	if torch.any(mask_neg):
-			# 		w = torch.exp(c*obj)
-			# 		w = w*mask_neg
-			# 		w = w/torch.sum(w)
-			# 	else:
-			# 		w = torch.zeros_like(obj)
-			# attack_value = torch.dot(w.flatten(), obj.flatten())
-			# TODO: above implementation will fail when obj contains large values (>1000).
-			# torch.exp overflows easily; torch.nn.functional.softmax is way better
 
 			# Compute weighted average objective using softmax weighting
 			# Only positive violations (φ̇ ≥ 0) contribute to loss
@@ -235,15 +197,6 @@ class Learner():
 			with torch.no_grad():
 				w = torch.nn.functional.softmax(c*pos_obj, dim=0)
 			attack_value = torch.dot(w.flatten(), pos_obj.flatten())
-			
-			# elif self.args.objective_option == "weighted_average_include_neg_phidot":
-			# 	# Eliminates the "relu" effect on above
-			# 	c = 0.1
-			# 	obj = saturation_risk(X)
-			# 	obj = obj.flatten()
-			# 	with torch.no_grad():
-			# 		w = torch.nn.functional.softmax(c*obj, dim=0)
-			# 	attack_value = torch.dot(w.flatten(), obj.flatten())
 
 			# For logging
 			x_batch = x.view(1, -1)
@@ -261,7 +214,6 @@ class Learner():
 			n_param = 0
 			for n, p in phi_fn.named_parameters():
 				if n not in phi_fn.exclude_from_gradient_param_names:
-				# if n not in ["ci", "k0"]:
 					avg_grad_norm += torch.linalg.norm(p.grad).item()
 					n_param += 1
 			avg_grad = avg_grad_norm/n_param
@@ -275,7 +227,6 @@ class Learner():
 			avg_grad_norm = 0
 			n_param = 0
 			for n, p in phi_fn.named_parameters():
-				# if n not in ["ci", "k0"]:
 				if n not in phi_fn.exclude_from_gradient_param_names:
 					avg_grad_norm += torch.linalg.norm(p.grad).item()
 					n_param += 1
@@ -296,7 +247,6 @@ class Learner():
 			#######################################################
 			############## Logging and appending data #############
 			#######################################################
-			# TODO: Make sure you detach before logging, otherwise you will accumulate memory over iterations and get an OOM
 			self.logger.info('\n' + '=' * 20 + f' evaluation at iteration: {_iter} ' \
 			                 + '=' * 20)
 
@@ -326,7 +276,7 @@ class Learner():
 			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(self.args.gpu), torch.cuda.memory_reserved(self.args.gpu)))
 
 			# Losses saving
-			iteration_info_dict["train_attack_losses"] = max_value # TODO
+			iteration_info_dict["train_attack_losses"] = max_value
 			iteration_info_dict["train_reg_losses"] = reg_value
 			iteration_info_dict["train_losses"] = objective_value
 
@@ -338,19 +288,13 @@ class Learner():
 			iteration_info_dict.update(debug_dict)
 
 			# Misc saving
-			# if isinstance(phi_fn, NeuralPhi):
 			iteration_info_dict["ci_list"] = phi_fn.ci
-			iteration_info_dict["k0_list"] = phi_fn.k0
-			print(phi_fn.k0)
+			iteration_info_dict["h_list"] = phi_fn.h
+			print(phi_fn.h)
 			print(phi_fn.ci)
 
-			# if isinstance(phi_fn, LowPhi):
-			# 	iteration_info_dict["ci_list"] = phi_fn.ci
-			# 	iteration_info_dict["ki_list"] = phi_fn.ki
-			# 	self.logger.info(phi_fn.ki)
-			# 	self.logger.info(phi_fn.ci)
-
 			# Merge into info_dict
+			# Note: detach before logging to avoid accumulating memory over iterations
 			for key, value in iteration_info_dict.items():
 				if torch.is_tensor(value):
 					value = value.detach().cpu().numpy()
@@ -365,19 +309,13 @@ class Learner():
 				file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
 				save_model(phi_fn, file_name)
 
-				##############################
-				######### Save data ##########
-				##############################
 				print("Saving at: ", self.data_save_fpth)
 				with open(self.data_save_fpth, 'wb') as handle:
 					pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-			# print("After first training iteration")
-			# IPython.embed()
 			#######################################################
 			##############   Compute test stats   #################
 			#######################################################
-			# TODO: the fact that this is not = self.args.n_checkpoint_step necessarily means that you might have to refactor stuff in flying_rollout_experiment
 			if _iter % self.args.n_test_loss_step == 0:
 				t0_test = time.perf_counter()
 
@@ -395,7 +333,7 @@ class Learner():
 
 				# Sample on boundary
 				t0_test_boundary = time.perf_counter()
-				boundary_samples, debug_dict = self.test_critic._sample_points_on_boundary(phi_fn, self.args.test_N_boundary_samples) # test_critic now using "faster" version
+				boundary_samples, debug_dict = self.test_critic._sample_points_on_boundary(phi_fn, self.args.test_N_boundary_samples)
 				boundary_samples_obj_value = saturation_risk(boundary_samples)
 				boundary_samples_obj_value = boundary_samples_obj_value.detach().cpu().numpy()
 				data_dict["boundary_samples_obj_values"].append(boundary_samples_obj_value)
@@ -418,10 +356,6 @@ class Learner():
 				data_dict["test_t_boundary"].append(tf_test-t0_test_boundary)
 
 			if self.args.learner_stopping_condition == "early_stopping":
-				# early_stopping(test_loss) # TODO: should technically use test_loss, but we're not computing it
-				# TODO: early stopper almost does the opposite of what we want.
-				# We'd like to end training after loss does not increase (spike) in a while
-				# Instead of ending training after loss does not improve for a while
 				early_stopping(objective_value)
 				if early_stopping.early_stop:
 					break
@@ -429,8 +363,4 @@ class Learner():
 				if _iter > self.args.learner_n_steps:
 					break
 
-			# IPython.embed()
-			# print(self.args.learner_stopping_condition)
-			# print(_iter)
 			_iter += 1
-

@@ -12,17 +12,16 @@ The utilities support the training framework described in liu23e.pdf.
 import os
 import json
 import logging
+from typing import Optional
 
 import numpy as np
 import torch
 from torch import nn
-import IPython
-from dotmap import DotMap
-import torch
-import pickle
+
 from src.create_arg_parser import create_arg_parser, print_args
 
-def create_logger(save_path='', file_type='', level='debug'):
+
+def create_logger(save_path: str = '', file_type: str = '', level: str = 'debug') -> logging.Logger:
 	"""Creates logger with both console and file output.
 
 	Args:
@@ -56,7 +55,7 @@ def create_logger(save_path='', file_type='', level='debug'):
 	return logger
 
 
-def save_model(model, file_name):
+def save_model(model: nn.Module, file_name: str) -> None:
 	"""Saves PyTorch model state dict to file.
 
 	Args:
@@ -65,7 +64,8 @@ def save_model(model, file_name):
 	"""
 	torch.save(model.state_dict(), file_name)
 
-def load_model(model, file_name):
+
+def load_model(model: nn.Module, file_name: str) -> None:
 	"""Loads PyTorch model state dict from file.
 
 	Args:
@@ -78,7 +78,8 @@ def load_model(model, file_name):
 	model.load_state_dict(
 		torch.load(file_name, map_location=lambda storage, loc: storage))
 
-def makedirs(path):
+
+def makedirs(path: str) -> None:
 	"""Creates directory if it doesn't exist (equivalent to mkdir -p).
 
 	Args:
@@ -87,7 +88,8 @@ def makedirs(path):
 	if not os.path.exists(path):
 		os.makedirs(path)
 
-def save_args(args, file_name):
+
+def save_args(args, file_name: str) -> None:
 	"""Saves command-line arguments to JSON file for reproducibility.
 
 	Args:
@@ -97,7 +99,8 @@ def save_args(args, file_name):
 	with open(file_name, 'w') as f:
 		json.dump(args.__dict__, f, indent=2)
 
-def load_args(file_name):
+
+def load_args(file_name: str):
 	"""Loads previously saved arguments from JSON file.
 
 	Args:
@@ -109,7 +112,6 @@ def load_args(file_name):
 	"""
 	parser = create_arg_parser()
 	args = parser.parse_known_args()[0]
-	# args = parser() # TODO
 	with open(file_name, 'r') as f:
 		args.__dict__ = json.load(f)
 	return args
@@ -128,7 +130,7 @@ class EarlyStopping():
 		best_loss: Best loss value seen so far
 		early_stop: Flag indicating whether to stop training
 	"""
-	def __init__(self, patience=3, min_delta=0):
+	def __init__(self, patience: int = 3, min_delta: float = 0) -> None:
 		"""Initializes early stopping monitor.
 
 		Args:
@@ -143,7 +145,7 @@ class EarlyStopping():
 		self.best_loss = None
 		self.early_stop = False
 
-	def __call__(self, test_loss):
+	def __call__(self, test_loss: float) -> None:
 		"""Updates early stopping state with new loss value.
 
 		Args:
@@ -158,7 +160,6 @@ class EarlyStopping():
 			self.best_loss = test_loss
 		elif self.best_loss - test_loss < self.min_delta:
 			self.counter += 1
-			# print(f"INFO: Early stopping counter {self.counter} of {self.patience}")
 			if self.counter >= self.patience:
 				print('INFO: Early stopping')
 				self.early_stop = True
@@ -182,7 +183,7 @@ class EarlyStoppingBatch():
 		early_stop_vec: Per-element stopping flags (bs,)
 		early_stop: Global flag (True when all elements stopped)
 	"""
-	def __init__(self, bs, patience=3, min_delta=1e-1):
+	def __init__(self, bs: int, patience: int = 3, min_delta: float = 1e-1) -> None:
 		"""Initializes batch early stopping monitor.
 
 		Args:
@@ -194,11 +195,11 @@ class EarlyStoppingBatch():
 		self.min_delta = min_delta
 
 		self.counter = torch.zeros(bs)
-		self.best_loss = None #torch.ones(bs)*float("inf")
+		self.best_loss = None
 		self.early_stop_vec = torch.zeros(bs, dtype=torch.bool)
 		self.early_stop = False
 
-	def __call__(self, test_loss):
+	def __call__(self, test_loss: torch.Tensor) -> None:
 		"""Updates early stopping state for each batch element.
 
 		Args:
@@ -211,10 +212,6 @@ class EarlyStoppingBatch():
 		if self.best_loss == None:
 			self.best_loss = test_loss
 
-		# print("Inside EarlyStoppingBatch")
-		# IPython.embed()
-
-		# print(self.best_loss, test_loss)
 		improve_ind = torch.nonzero(test_loss - self.best_loss >= self.min_delta)
 		nonimprove_ind = torch.nonzero(test_loss - self.best_loss < self.min_delta)
 		self.best_loss[improve_ind] = test_loss[improve_ind]
@@ -224,10 +221,10 @@ class EarlyStoppingBatch():
 		early_stop_ind = torch.nonzero(self.counter >= self.patience)
 		self.early_stop_vec[early_stop_ind] = True
 
-		# print(self.counter)
 		if torch.all(self.early_stop_vec).item():
 			print('INFO: Early stopping')
 			self.early_stop = True
+
 
 class IndexNNInput(nn.Module):
 	"""Selects subset of input dimensions for neural network.
@@ -240,7 +237,7 @@ class IndexNNInput(nn.Module):
 		which_ind: Indices of dimensions to keep
 		output_dim: Number of output dimensions
 	"""
-	def __init__(self, which_ind):
+	def __init__(self, which_ind) -> None:
 		"""Initializes dimension selector.
 
 		Args:
@@ -249,7 +246,7 @@ class IndexNNInput(nn.Module):
 		self.which_ind = which_ind
 		self.output_dim = len(which_ind)
 
-	def forward(self, x):
+	def forward(self, x: torch.Tensor) -> torch.Tensor:
 		"""Selects specified dimensions from input.
 
 		Args:
@@ -276,7 +273,7 @@ class TransformEucNNInput(nn.Module):
 		state_index_dict: Mapping from state names to indices
 		output_dim: Output dimension (12: 6 quad + 6 pendulum)
 	"""
-	def __init__(self, state_index_dict):
+	def __init__(self, state_index_dict: dict) -> None:
 		"""Initializes coordinate transform.
 
 		Args:
@@ -287,7 +284,7 @@ class TransformEucNNInput(nn.Module):
 		self.state_index_dict = state_index_dict
 		self.output_dim = 12
 
-	def forward(self, x):
+	def forward(self, x: torch.Tensor) -> torch.Tensor:
 		"""Converts spherical state to Euclidean representation.
 
 		Args:
