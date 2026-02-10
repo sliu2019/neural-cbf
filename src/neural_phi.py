@@ -7,9 +7,9 @@ The CBF uses a higher-order modified structure to handle systems with input cons
 
 where:
 - ρ(x) is the base safety specification (e.g., angles from vertical)
-- β(x) is a neural network that reshapes the safe set
+- ρ*(x) is a neural network that reshapes the safe set
 - c_i are learnable positive coefficients
-- r is the relative degree (typically 2 for control-affine systems)
+- r is the relative degree of the dynamic system 
 
 The modified CBF structure ensures that the zero-sublevel set {x : φ*(x) ≤ 0}
 is forward invariant even under input saturation constraints.
@@ -17,7 +17,7 @@ is forward invariant even under input saturation constraints.
 Key Implementation Details:
 - Lie derivatives L_f^k(ρ) are computed recursively using automatic differentiation
 - Coefficients c_i are converted to k_i via binomial expansion for stability
-- Network β reshapes ρ to enlarge the safe set while maintaining safety
+- Network ρ*(x) reshapes ρ to enlarge the safe set while maintaining safety
 
 References:
     liu23e.pdf Section 3.1 (Neural CBF Design), Appendix A (Mathematical Details)
@@ -32,10 +32,10 @@ class NeuralPhi(nn.Module):
 	Implements the neural CBF design from liu23e.pdf Section 3.1. The CBF uses
 	a modified higher-order structure to handle input saturation:
 
-	    φ*(x) = Π_{i=0}^{r-1} (1 + c_i ∂^i/∂t^i) [ρ(x) - ρ* + β(x)]
+	    φ*(x) = [Π_{i=0}^{r-1} (1 + c_i ∂^i/∂t^i) ρ(x)] + ρ(x) - ρ* 
 
 	The network learns:
-	- β(x): Neural network (MLP) that reshapes the base safety specification
+	- ρ*(x): Neural network (MLP) that reshapes the base safety specification
 	- c_i: Positive coefficients that define the modified CBF structure
 	- k0: Scaling coefficient for ρ(x)
 
@@ -51,10 +51,10 @@ class NeuralPhi(nn.Module):
 		device: PyTorch device for computation
 		args: Training arguments (currently unused)
 		nn_input_modifier: Optional input transform (e.g., spherical to Euclidean)
-		x_e: Optional equilibrium point for centering β network
+		x_e: Optional equilibrium point for centering ρ* network
 		ci: Learnable coefficients (r-1,) - must be positive
 		k0: Learnable scaling (1,) - must be positive
-		net_reshape_rho: MLP for β(x)
+		rho_star: MLP for ρ*(x)
 		pos_param_names: List of parameters constrained to be positive
 		exclude_from_gradient_param_names: Parameters excluded from gradient updates
 
@@ -73,10 +73,10 @@ class NeuralPhi(nn.Module):
 			u_dim: Control input dimension
 			device: PyTorch device (cuda or cpu)
 			args: Training arguments namespace (for future extensions)
-			nn_input_modifier: Optional transform applied before β network
+			nn_input_modifier: Optional transform applied before ρ* network
 			                   (e.g., TransformEucNNInput for coordinate conversion)
 			x_e: Optional equilibrium point. If provided, uses squared difference
-			     β(x) - β(x_e) for better centering around equilibrium
+			     ρ*(x) - ρ*(x_e) for better centering around equilibrium
 		"""
 		super().__init__()
 		self.rho_fn = rho_fn
@@ -108,8 +108,8 @@ class NeuralPhi(nn.Module):
 
 		print("At initialization: k0 is %f" % self.k0.item())
 
-		# Create neural network β(x) for reshaping ρ(x)
-		self.net_reshape_rho = self._create_net()
+		# Create neural network ρ*(x) for reshaping ρ(x)
+		self.rho_star = self._create_net()
 
 		# Specify which parameters must remain positive (enforced in learner)
 		self.pos_param_names = ["ci", "k0"]
@@ -117,21 +117,20 @@ class NeuralPhi(nn.Module):
 		self.exclude_from_gradient_param_names = ["ci", "k0"]
 
 	def _create_net(self):
-		"""Creates MLP for β(x) that reshapes the base safety specification.
+		"""Creates MLP for ρ*(x) that reshapes the base safety specification.
 
 		Architecture: 2-layer MLP with tanh activations, softplus output
 		- Hidden layers: 64-64
 		- Activations: tanh-tanh-softplus
 		- Input: Either raw state or transformed state (via nn_input_modifier)
-		- Output: Scalar β(x) ≥ 0 (softplus ensures positivity)
+		- Output: Scalar ρ*(x) ≥ 0 (softplus ensures positivity)
 
-		The softplus output ensures β(x) ≥ 0, which helps with optimization
-		stability and interpretation (β enlarges the safe set).
+		The softplus output ensures ρ*(x) ≥ 0, which helps with optimization
+		stability and interpretation (ρ* enlarges the safe set).
 
 		Returns:
-			nn.Sequential: MLP network for β(x)
+			nn.Sequential: MLP network for ρ*(x)
 		"""
-		# Network architecture (hardcoded from best configuration)
 		hidden_dims = [64, 64, 1]
 		phi_nnls = ["tanh", "tanh", "softplus"]
 
@@ -146,12 +145,10 @@ class NeuralPhi(nn.Module):
 		for hidden_dim, phi_nnl in zip(hidden_dims, phi_nnls):
 			net_layers.append(nn.Linear(prev_dim, hidden_dim))
 			# Add activation function
-			if phi_nnl == "relu":
-				net_layers.append(nn.ReLU())
-			elif phi_nnl == "tanh":
+			if phi_nnl == "tanh":
 				net_layers.append(nn.Tanh())
 			elif phi_nnl == "softplus":
-				net_layers.append(nn.Softplus())  # Output layer: ensures β(x) ≥ 0
+				net_layers.append(nn.Softplus())  # Output layer: ensures ρ*(x) ≥ 0
 			prev_dim = hidden_dim
 
 		net = nn.Sequential(*net_layers)
@@ -161,8 +158,8 @@ class NeuralPhi(nn.Module):
 		"""Computes modified CBF φ*(x) and all intermediate φ_i(x) values.
 
 		This implements the forward pass of the neural CBF, computing:
-		1. β(x): Neural network output
-		2. ρ'(x) = k0·ρ(x) + β(x): Reshaped safety specification
+		1. ρ*(x): Neural network output
+		2. ρ'(x) = - k0·ρ(x) + ρ*(x): Reshaped safety specification
 		3. L_f^i(ρ): Lie derivatives for i=0..r-1
 		4. φ_i(x): Modified CBF terms for i=0..r
 
@@ -191,8 +188,6 @@ class NeuralPhi(nn.Module):
 		ci = self.ci + self.ci_min  # Ensures all c_i ≥ ci_min > 0
 
 		# Convert c_i coefficients to k_i via binomial expansion
-		# This implements the recursive formula from Appendix A.1:
-		#   k_{i+1} = (1, c_i) * k_i  (convolution with [1, c_i])
 		# Starting with k_0 = [1], we build k_1, k_2, ..., k_{r-1}
 		ki = torch.tensor([[1.0]])
 		ki_all = torch.zeros(self.r, self.r).to(self.device)  # Row i stores coefficients for φ_i
@@ -214,7 +209,7 @@ class NeuralPhi(nn.Module):
 			ki_all[i+1, 0:ki.numel()] = ki.view(1, -1)
 
 		###############################################################################
-		# Compute reshaped safety specification ρ'(x) = k0·ρ(x) + β(x)
+		# Compute reshaped safety specification ρ'(x) = k0·ρ(x) + ρ*(x)
 		###############################################################################
 		bs = x.size()[0]
 
@@ -223,25 +218,25 @@ class NeuralPhi(nn.Module):
 			orig_req_grad_setting = x.requires_grad
 			x.requires_grad = True
 
-		# Compute β(x) using neural network
+		# Compute ρ*(x) using neural network
 		if self.x_e is None:
-			# Standard case: β(x) directly
+			# Standard case: ρ*(x) directly
 			if self.nn_input_modifier is None:
-				beta_net_value = self.net_reshape_rho(x)
+				rho_star_value = self.rho_star(x)
 			else:
-				beta_net_value = self.net_reshape_rho(self.nn_input_modifier(x))
-			# Apply softplus for numerical stability (β ≥ 0)
-			new_rho = nn.functional.softplus(beta_net_value) + k0*self.rho_fn(x)
+				rho_star_value = self.rho_star(self.nn_input_modifier(x))
+			# Apply softplus for numerical stability (ρ* ≥ 0)
+			new_rho = nn.functional.softplus(rho_star_value) + k0*self.rho_fn(x)
 		else:
-			# Equilibrium-centered case: (β(x) - β(x_e))^2
+			# Equilibrium-centered case: (ρ*(x) - ρ*(x_e))^2
 			# This centers the modification around equilibrium x_e
 			if self.nn_input_modifier is None:
-				beta_net_value = self.net_reshape_rho(x)
-				beta_net_xe_value = self.net_reshape_rho(self.x_e)
+				rho_star_value = self.rho_star(x)
+				rho_star_xe_value = self.rho_star(self.x_e)
 			else:
-				beta_net_value = self.net_reshape_rho(self.nn_input_modifier(x))
-				beta_net_xe_value = self.net_reshape_rho(self.nn_input_modifier(self.x_e))
-			new_rho = torch.square(beta_net_value - beta_net_xe_value) + k0*self.rho_fn(x)
+				rho_star_value = self.rho_star(self.nn_input_modifier(x))
+				rho_star_xe_value = self.rho_star(self.nn_input_modifier(self.x_e))
+			new_rho = torch.square(rho_star_value - rho_star_xe_value) + k0*self.rho_fn(x)
 
 		###############################################################################
 		# Compute Lie derivatives L_f^i(ρ) for i=0..r-1

@@ -9595,3 +9595,580 @@ train attack loss increase over inner max: 0.442
 OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
 ============================ end of evaluation ============================
 
+Reg grad norm: 4.406
+total grad norm: 12.430
+
+==================== evaluation at iteration: 431 ====================
+train total loss: 78.687%
+train max loss: 1.263%, reg loss: 78.219%
+time spent training so far: 2:57:06.962959
+train attack total time: 67.168s
+train attack init time: 58.865s
+train attack avg grad step time: 0.090s
+train attack avg reproj time: 0.284s
+
+
+train attack loss increase over inner max: 0.858
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.233
+total grad norm: 20.777
+
+==================== evaluation at iteration: 432 ====================
+train total loss: 79.279%
+train max loss: 1.312%, reg loss: 78.178%
+time spent training so far: 2:58:02.319435
+train attack total time: 54.852s
+train attack init time: 46.656s
+train attack avg grad step time: 0.098s
+train attack avg reproj time: 0.272s
+
+
+train attack loss increase over inner max: 1.241
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 3.914
+total grad norm: 34.503
+
+==================== evaluation at iteration: 433 ====================
+train total loss: 78.746%
+train max loss: 1.370%, reg loss: 78.094%
+time spent training so far: 2:58:56.214859
+train attack total time: 53.386s
+train attack init time: 42.717s
+train attack avg grad step time: 0.091s
+train attack avg reproj time: 0.391s
+
+
+train attack loss increase over inner max: -0.366
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.693
+total grad norm: 58.541
+
+==================== evaluation at iteration: 434 ====================
+train total loss: 81.436%
+train max loss: 7.199%, reg loss: 78.334%
+time spent training so far: 2:59:29.427942
+train attack total time: 32.704s
+train attack init time: 24.518s
+train attack avg grad step time: 0.093s
+train attack avg reproj time: 0.276s
+
+
+train attack loss increase over inner max: 6.260
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 3.873
+total grad norm: 38.619
+
+==================== evaluation at iteration: 435 ====================
+train total loss: 84.204%
+train max loss: 10.247%, reg loss: 77.989%
+time spent training so far: 3:00:09.551412
+train attack total time: 39.660s
+train attack init time: 31.977s
+train attack avg grad step time: 0.091s
+train attack avg reproj time: 0.255s
+
+
+train attack loss increase over inner max: 4.874
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.356
+total grad norm: 28.514
+
+==================== evaluation at iteration: 436 ====================
+train total loss: 85.237%
+train max loss: 13.417%, reg loss: 78.250%
+time spent training so far: 3:00:51.271159
+train attack total time: 41.165s
+train attack init time: 33.336s
+train attack avg grad step time: 0.092s
+train attack avg reproj time: 0.260s
+
+
+train attack loss increase over inner max: 4.237
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.051
+total grad norm: 67.394
+
+==================== evaluation at iteration: 437 ====================
+train total loss: 88.289%
+train max loss: 12.727%, reg loss: 78.076%
+time spent training so far: 3:01:41.349468
+train attack total time: 49.531s
+train attack init time: 42.004s
+train attack avg grad step time: 0.094s
+train attack avg reproj time: 0.244s
+
+
+train attack loss increase over inner max: 1.182
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.402
+total grad norm: 85.125
+
+==================== evaluation at iteration: 438 ====================
+train total loss: 83.183%
+train max loss: 7.204%, reg loss: 78.267%
+time spent training so far: 3:02:26.572880
+train attack total time: 44.703s
+train attack init time: 35.293s
+train attack avg grad step time: 0.090s
+train attack avg reproj time: 0.334s
+
+
+train attack loss increase over inner max: -0.925
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.011
+total grad norm: 51.474
+
+==================== evaluation at iteration: 439 ====================
+train total loss: 78.554%
+train max loss: 0.382%, reg loss: 78.172%
+time spent training so far: 3:03:29.610532
+train attack total time: 62.520s
+train attack init time: 51.749s
+train attack avg grad step time: 0.093s
+train attack avg reproj time: 0.394s
+
+
+train attack loss increase over inner max: 0.265
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.138
+total grad norm: 49.983
+
+==================== evaluation at iteration: 440 ====================
+train total loss: 78.398%
+train max loss: 0.298%, reg loss: 78.100%
+time spent training so far: 3:04:20.435018
+train attack total time: 50.346s
+train attack init time: 41.601s
+train attack avg grad step time: 0.091s
+train attack avg reproj time: 0.303s
+
+
+train attack loss increase over inner max: 0.569
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.442
+total grad norm: 32.053
+
+==================== evaluation at iteration: 441 ====================
+train total loss: 78.895%
+train max loss: 0.469%, reg loss: 78.426%
+time spent training so far: 3:05:06.852252
+train attack total time: 45.865s
+train attack init time: 36.533s
+train attack avg grad step time: 0.090s
+train attack avg reproj time: 0.330s
+
+
+train attack loss increase over inner max: 0.080
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.451
+total grad norm: 26.675
+
+==================== evaluation at iteration: 442 ====================
+train total loss: 78.745%
+train max loss: 1.161%, reg loss: 78.280%
+time spent training so far: 3:06:10.048511
+train attack total time: 62.681s
+train attack init time: 52.794s
+train attack avg grad step time: 0.092s
+train attack avg reproj time: 0.354s
+
+
+train attack loss increase over inner max: 1.346
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.457
+total grad norm: 17.327
+
+==================== evaluation at iteration: 443 ====================
+train total loss: 78.599%
+train max loss: 0.497%, reg loss: 78.302%
+time spent training so far: 3:07:00.971223
+train attack total time: 50.459s
+train attack init time: 41.941s
+train attack avg grad step time: 0.098s
+train attack avg reproj time: 0.287s
+
+
+train attack loss increase over inner max: -0.314
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.301
+total grad norm: 9.569
+
+==================== evaluation at iteration: 444 ====================
+train total loss: 78.746%
+train max loss: 0.562%, reg loss: 78.299%
+time spent training so far: 3:07:56.648863
+train attack total time: 55.172s
+train attack init time: 46.266s
+train attack avg grad step time: 0.090s
+train attack avg reproj time: 0.312s
+
+
+train attack loss increase over inner max: 0.363
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.411
+total grad norm: 27.272
+
+==================== evaluation at iteration: 445 ====================
+train total loss: 78.974%
+train max loss: 0.696%, reg loss: 78.327%
+time spent training so far: 3:08:55.675980
+train attack total time: 58.546s
+train attack init time: 49.917s
+train attack avg grad step time: 0.089s
+train attack avg reproj time: 0.300s
+
+
+train attack loss increase over inner max: 0.480
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 3.962
+total grad norm: 13.893
+
+==================== evaluation at iteration: 446 ====================
+train total loss: 78.884%
+train max loss: 1.311%, reg loss: 78.253%
+time spent training so far: 3:09:48.648107
+train attack total time: 52.425s
+train attack init time: 44.086s
+train attack avg grad step time: 0.092s
+train attack avg reproj time: 0.284s
+
+
+train attack loss increase over inner max: 0.903
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 3.776
+total grad norm: 5.275
+
+==================== evaluation at iteration: 447 ====================
+train total loss: 78.688%
+train max loss: 0.663%, reg loss: 78.025%
+time spent training so far: 3:10:36.067846
+train attack total time: 46.881s
+train attack init time: 38.190s
+train attack avg grad step time: 0.093s
+train attack avg reproj time: 0.298s
+
+
+train attack loss increase over inner max: -0.798
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1555]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1557]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1558]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1558]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1557]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1556]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1553]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1551]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1548]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1544]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1540]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1536]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1532]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1528]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1524]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1521]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1517]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1513]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1509]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1505]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1501]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1496]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1493]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1490]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1488]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1486]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1483]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1481]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1478]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1475]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1471]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1467]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1465]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1466]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1470]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1477]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1488]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1497]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1505]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1511]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1517]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1522]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1526]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1528]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Saving at:  log/flying_inv_pend_repro_after_round1_edits/data.pkl
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1530]], device='cuda:0', requires_grad=True)
+Parameter containing:
+tensor([[0.]], device='cuda:0', requires_grad=True)
+Max_n_steps: 20
+Parameter containing:
+tensor([[0.1531]], device='cuda:0', requires_grad=True)============================ end of evaluation ============================
+
+Reg grad norm: 4.339
+total grad norm: 18.777
+
+==================== evaluation at iteration: 448 ====================
+train total loss: 78.869%
+train max loss: 1.523%, reg loss: 78.233%
+time spent training so far: 3:11:41.994960
+train attack total time: 65.478s
+train attack init time: 54.052s
+train attack avg grad step time: 0.091s
+train attack avg reproj time: 0.425s
+
+
+train attack loss increase over inner max: 0.362
+OOM debug. Mem allocated and reserved: 1093632.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.147
+total grad norm: 8.556
+
+==================== evaluation at iteration: 449 ====================
+train total loss: 79.225%
+train max loss: 1.460%, reg loss: 78.190%
+time spent training so far: 3:12:36.163882
+train attack total time: 53.655s
+train attack init time: 42.030s
+train attack avg grad step time: 0.094s
+train attack avg reproj time: 0.431s
+
+
+train attack loss increase over inner max: 0.421
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
+Reg grad norm: 4.045
+total grad norm: 11.639
+
+==================== evaluation at iteration: 450 ====================
+train total loss: 78.946%
+train max loss: 0.992%, reg loss: 78.097%
+time spent training so far: 3:13:24.938054
+train attack total time: 48.294s
+train attack init time: 40.364s
+train attack avg grad step time: 0.094s
+train attack avg reproj time: 0.264s
+
+
+train attack loss increase over inner max: -0.104
+OOM debug. Mem allocated and reserved: 1093120.000000, 33554432.000000
+============================ end of evaluation ============================
+
