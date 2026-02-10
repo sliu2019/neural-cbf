@@ -27,7 +27,7 @@ class SaturationRisk(nn.Module):
 		logger: Logger instance
 		args: Training arguments namespace
 	"""
-	def __init__(self, phi_fn: nn.Module, xdot_fn: Callable, uvertices_fn: Callable,
+	def __init__(self, phi_fn: nn.Module, xdot_fn: nn.Module, uvertices_fn: nn.Module,
 	             x_dim: int, u_dim: int, device: torch.device,
 	             logger: logging.Logger, args) -> None:
 		super().__init__()
