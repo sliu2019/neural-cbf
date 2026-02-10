@@ -8,7 +8,7 @@ from cvxopt import matrix, solvers
 
 solvers.options['show_progress'] = False
 
-from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
+from rollout_envs.quad_pend_env import FlyingInvertedPendulumEnv
 # from rollout_envs.cart_pole_env import CartPoleEnv
 
 

@@ -22,7 +22,7 @@ from critic import Critic
 from main import SaturationRisk
 
 # For rollouts
-# from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
+# from rollout_envs.quad_pend_env import FlyingInvertedPendulumEnv
 # from flying_cbf_controller import CBFController
 from flying_rollout_experiment import *
 
@@ -35,11 +35,11 @@ class FlyingInvertedPendulumEnv():
 			# Form a default param dict
 			sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 			from create_arg_parser import create_arg_parser
-			from main import create_flying_param_dict
+			from main import create_quad_pend_param_dict
 
 			parser = create_arg_parser()  # default
 			args = parser.parse_known_args()[0]
-			self.param_dict = create_flying_param_dict(args)  # default
+			self.param_dict = create_quad_pend_param_dict(args)  # default
 		else:
 			self.param_dict = param_dict
 
@@ -416,7 +416,7 @@ if __name__ == "__main__":
 	# run_flying_pend_exps.py - -save_fnm
 	# debug_LQR - -which_cbf
 	# ours - -exp_name_to_load
-	# flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 - -checkpoint_number_to_load
+	# quad_pend_ESG_reg_speedup_better_attacks_seed_0 - -checkpoint_number_to_load
 	# 250 - -which_experiments
 	# rollout - -rollout_u_ref
 	# LQR - -rollout_T_max
@@ -425,7 +425,7 @@ if __name__ == "__main__":
 	# 0.5 - -rollout_N_rollout
 	# 1
 
-	exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"
+	exp_name = "quad_pend_ESG_reg_speedup_better_attacks_seed_0"
 	rollout_N_rollout = 1
 	rollout_T_max = 2.5
 	rollout_dt = 0.01

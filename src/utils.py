@@ -266,7 +266,7 @@ class TransformEucNNInput(nn.Module):
 
 	Flying inverted pendulum uses spherical coordinates (angles), but neural
 	networks work better with Euclidean representations. This transform converts:
-	- Quadrotor angles (α, β, γ) → direction vector (kx, ky, kz) + velocity
+	- quadcopter angles (α, β, γ) → direction vector (kx, ky, kz) + velocity
 	- Pendulum angles (φ, θ) → Euclidean position + velocity
 
 	This makes the representation more smooth and easier to learn.
@@ -313,13 +313,13 @@ class TransformEucNNInput(nn.Module):
 		dphi = x[:, self.state_index_dict["dphi"]]
 		dtheta = x[:, self.state_index_dict["dtheta"]]
 
-		# Convert quadrotor orientation (α, β, γ) to Euclidean direction vectors
-		# These represent the quadrotor's attitude as a rotation matrix columns
+		# Convert quadcopter orientation (α, β, γ) to Euclidean direction vectors
+		# These represent the quadcopter's attitude as a rotation matrix columns
 		x_quad = torch.cos(alpha)*torch.sin(beta)*torch.cos(gamma) + torch.sin(alpha)*torch.sin(gamma)
 		y_quad = torch.sin(alpha)*torch.sin(beta)*torch.cos(gamma) - torch.cos(alpha)*torch.sin(gamma)
 		z_quad = torch.cos(beta)*torch.cos(gamma)
 
-		# Compute velocity of quadrotor direction vectors using chain rule
+		# Compute velocity of quadcopter direction vectors using chain rule
 		# v = ∂pos/∂angles · angular_velocities
 		d_x_quad_d_alpha = torch.sin(alpha)*torch.sin(beta)*torch.cos(gamma) - torch.cos(alpha)*torch.sin(gamma)
 		d_x_quad_d_beta = -torch.cos(alpha)*torch.cos(beta)*torch.cos(gamma)
@@ -334,7 +334,7 @@ class TransformEucNNInput(nn.Module):
 		v_z_quad = dbeta*torch.sin(beta)*torch.cos(gamma) + dgamma*torch.cos(beta)*torch.sin(gamma)
 
 		# Convert pendulum angles (φ, θ) to Euclidean position
-		# Pendulum hangs below quadrotor, (φ, θ) define spherical coordinates
+		# Pendulum hangs below quadcopter, (φ, θ) define spherical coordinates
 		x_pend = torch.sin(theta)*torch.cos(phi)
 		y_pend = -torch.sin(phi)
 		z_pend = torch.cos(theta)*torch.cos(phi)

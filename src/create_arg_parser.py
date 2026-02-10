@@ -5,7 +5,7 @@ This module defines all hyperparameters for the neural Control Barrier Function
 control barrier functions" (liu23e, CoRL 2022).
 
 The parameters control:
-- Problem specification (currently: flying_inv_pend only)
+- Problem specification (currently: quad_pend only)
 - Regularization strategy (volume maximization weight and sampling)
 - Critic configuration (counterexample search via projected gradient ascent)
 - Learner settings (learning rate, stopping conditions, checkpointing)
@@ -27,7 +27,7 @@ def create_arg_parser():
 		                         Call parser.parse_known_args()[0] to get args Namespace.
 
 	Parameter Groups:
-		Problem: System specification (flying_inv_pend)
+		Problem: System specification (quad_pend)
 		Regularization: Volume maximization parameters (weight, sampling strategy)
 		Critic: Counterexample search configuration (samples, gradient steps)
 		Learner: Training loop settings (LR, stopping conditions)
@@ -40,7 +40,7 @@ def create_arg_parser():
 	"""
 	# Problem specification
 	parser = argparse.ArgumentParser(description='CBF synthesis')
-	parser.add_argument('--problem', default='flying_inv_pend', help='problem specifies dynamics, rho definition, U_limits, etc.', choices=["flying_inv_pend"])
+	parser.add_argument('--problem', default='quad_pend', help='problem specifies dynamics, rho definition, U_limits, etc.', choices=["quad_pend"])
 
 	# parser.add_argument('--rho', type=str, default='sum', choices=['max', 'sum', 'reg'], help='Chose the form of rho(x). For flying inv pend, chose between max and sum. For quadcopter, chose between sum and regular') # TODO: hardcode 
 

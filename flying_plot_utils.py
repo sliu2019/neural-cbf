@@ -37,8 +37,8 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 		parser = create_arg_parser() # default
 		args = parser.parse_known_args()[0]
 
-		from main import create_flying_param_dict
-		param_dict = create_flying_param_dict(args) # default
+		from main import create_quad_pend_param_dict
+		param_dict = create_quad_pend_param_dict(args) # default
 
 	r = param_dict["r"]
 	x_dim = param_dict["x_dim"]
@@ -46,7 +46,7 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	x_lim = param_dict["x_lim"]
 
 	# Create phi
-	from src.problems.flying_inv_pend import RhoMax, RhoSum, XDot, ULimitSetVertices
+	from problems.quad_pend import RhoMax, RhoSum, XDot, ULimitSetVertices
 	# if args.rho == "sum":
 	h_fn = RhoSum(param_dict)
 	# elif args.rho == "max":
@@ -946,92 +946,92 @@ if __name__ == "__main__":
 	### ****************************************************
 
 	# spherical, server 4
-	# base_exp_names = ["flying_inv_pend_sphere_seed_0", "flying_inv_pend_sphere_seed_1", "flying_inv_pend_sphere_seed_2", "flying_inv_pend_sphere_softplus_seed_0", "flying_inv_pend_sphere_softplus_seed_1", "flying_inv_pend_sphere_softplus_seed_2"]
+	# base_exp_names = ["quad_pend_sphere_seed_0", "quad_pend_sphere_seed_1", "quad_pend_sphere_seed_2", "quad_pend_sphere_softplus_seed_0", "quad_pend_sphere_softplus_seed_1", "quad_pend_sphere_softplus_seed_2"]
 
 	# euclidean, server 5
-	# base_exp_names = ["flying_inv_pend_euc_seed_0", "flying_inv_pend_euc_seed_1", "flying_inv_pend_euc_seed_2", "flying_inv_pend_euc_softplus_seed_0", "flying_inv_pend_euc_softplus_seed_1", "flying_inv_pend_euc_softplus_seed_2", "flying_inv_pend_euc_softplus_weighted_avg_seed_0", "flying_inv_pend_euc_softplus_weighted_avg_seed_1"]
+	# base_exp_names = ["quad_pend_euc_seed_0", "quad_pend_euc_seed_1", "quad_pend_euc_seed_2", "quad_pend_euc_softplus_seed_0", "quad_pend_euc_softplus_seed_1", "quad_pend_euc_softplus_seed_2", "quad_pend_euc_softplus_weighted_avg_seed_0", "quad_pend_euc_softplus_weighted_avg_seed_1"]
 
-	# base_exp_names = ["flying_inv_pend_euc_seed_0"]
+	# base_exp_names = ["quad_pend_euc_seed_0"]
 
-	# base_exp_names = ["flying_inv_pend_euc_softplus_seed_1"]
+	# base_exp_names = ["quad_pend_euc_softplus_seed_1"]
 
 	# server 4
-	# base_exp_names = ["flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_150", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_200", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_150", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_200", "flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_150"]
+	# base_exp_names = ["quad_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50", "quad_pend_ESG_reg_sigmoid_random_inside_sampler_weight_150", "quad_pend_ESG_reg_sigmoid_random_inside_sampler_weight_200", "quad_pend_ESG_reg_softplus_random_sampler_weight_50", "quad_pend_ESG_reg_softplus_random_sampler_weight_150", "quad_pend_ESG_reg_softplus_random_sampler_weight_200", "quad_pend_ESG_reg_softplus_random_inside_sampler_weight_50", "quad_pend_ESG_reg_softplus_random_inside_sampler_weight_150"]
 
-	# base_exp_names = ["flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_150", "flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_200"]hio
-	# find_critic_n_reuse("flying_inv_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50")
+	# base_exp_names = ["quad_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50", "quad_pend_ESG_reg_sigmoid_random_inside_sampler_weight_150", "quad_pend_ESG_reg_sigmoid_random_inside_sampler_weight_200"]hio
+	# find_critic_n_reuse("quad_pend_ESG_reg_sigmoid_random_inside_sampler_weight_50")
 
-	# base_exp_names = ["flying_inv_pend_ESG_reg_softplus_random_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_150", "flying_inv_pend_ESG_reg_softplus_random_sampler_weight_200"]
+	# base_exp_names = ["quad_pend_ESG_reg_softplus_random_sampler_weight_50", "quad_pend_ESG_reg_softplus_random_sampler_weight_150", "quad_pend_ESG_reg_softplus_random_sampler_weight_200"]
 
-	# base_exp_names = ["flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_50", "flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_150"]
-
-	# Server 4
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_2", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_0", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_1", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_2", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_3"]
-
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_1"]
+	# base_exp_names = ["quad_pend_ESG_reg_softplus_random_inside_sampler_weight_50", "quad_pend_ESG_reg_softplus_random_inside_sampler_weight_150"]
 
 	# Server 4
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_125_seed_0", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_1", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_2", "flying_inv_pend_ESG_reg_speedup_weight_125_seed_3"]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_weight_150_seed_0", "quad_pend_ESG_reg_speedup_weight_150_seed_1", "quad_pend_ESG_reg_speedup_weight_150_seed_2", "quad_pend_ESG_reg_speedup_weight_150_seed_3", "quad_pend_ESG_reg_speedup_weight_125_seed_0", "quad_pend_ESG_reg_speedup_weight_125_seed_1", "quad_pend_ESG_reg_speedup_weight_125_seed_2", "quad_pend_ESG_reg_speedup_weight_125_seed_3"]
+
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_weight_150_seed_1"]
+
+	# Server 4
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_weight_125_seed_0", "quad_pend_ESG_reg_speedup_weight_125_seed_1", "quad_pend_ESG_reg_speedup_weight_125_seed_2", "quad_pend_ESG_reg_speedup_weight_125_seed_3"]
 
 	# Server 5
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_175_seed_0", "flying_inv_pend_ESG_reg_speedup_weight_175_seed_1", "flying_inv_pend_ESG_reg_speedup_weight_175_seed_2", "flying_inv_pend_ESG_reg_speedup_weight_175_seed_3"]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_weight_175_seed_0", "quad_pend_ESG_reg_speedup_weight_175_seed_1", "quad_pend_ESG_reg_speedup_weight_175_seed_2", "quad_pend_ESG_reg_speedup_weight_175_seed_3"]
 
 	# server 5
-	# base_exp_names = ["flying_inv_pend_ESG_reg_softplus_random_inside_sampler_weight_200"]
+	# base_exp_names = ["quad_pend_ESG_reg_softplus_random_inside_sampler_weight_200"]
 
 	##########################################################################################################
 	# From Wednesday, April 13
 	# Server 4
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_weight_150_seed_0_again", "quad_pend_ESG_reg_speedup_weight_150_seed_1_again", "quad_pend_ESG_reg_speedup_weight_150_seed_2_again", "quad_pend_ESG_reg_speedup_weight_150_seed_3_again", "quad_pend_ESG_reg_speedup_weight_150_seed_4_again"]
 
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_1_again"]
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_2_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_3_again", "flying_inv_pend_ESG_reg_speedup_weight_150_seed_4_again"]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_weight_150_seed_0_again", "quad_pend_ESG_reg_speedup_weight_150_seed_1_again"]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_weight_150_seed_2_again", "quad_pend_ESG_reg_speedup_weight_150_seed_3_again", "quad_pend_ESG_reg_speedup_weight_150_seed_4_again"]
 
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_weight_150_seed_0_again"]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_weight_150_seed_0_again"]
 
 	# Server 5
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4"]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_0", "quad_pend_ESG_reg_speedup_better_attacks_seed_1", "quad_pend_ESG_reg_speedup_better_attacks_seed_2", "quad_pend_ESG_reg_speedup_better_attacks_seed_3", "quad_pend_ESG_reg_speedup_better_attacks_seed_4"]
 
 	"""checkpoint_numbers = list(np.arange(0, 825, 50)) + [825]
-	exp_names = ["flying_inv_pend_euc_softplus_seed_1"]*len(checkpoint_numbers)
+	exp_names = ["quad_pend_euc_softplus_seed_1"]*len(checkpoint_numbers)
 
 	checkpoint_numbers = list(np.arange(0, 140, 25)) + [140]
-	exp_names = ["flying_inv_pend_euc_softplus_weighted_avg_seed_1"]*len(checkpoint_numbers)"""
+	exp_names = ["quad_pend_euc_softplus_weighted_avg_seed_1"]*len(checkpoint_numbers)"""
 
 	# May 11th
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
 
 	# May 13
-	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1"]
-	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1_seed_3", "flying_inv_pend_low_cbf_reg_weight_1_seed_4"]
+	# base_exp_names = ["quad_pend_low_cbf_reg_weight_1"]
+	# base_exp_names = ["quad_pend_low_cbf_reg_weight_1_seed_3", "quad_pend_low_cbf_reg_weight_1_seed_4"]
 
-	# base_exp_names = [("flying_inv_pend_low_cbf_reg_weight_1_seed_%i" % x) for x in np.arange(1, 8)]
-	# base_exp_names = ["flying_inv_pend_low_cbf_reg_weight_1", "flying_inv_pend_low_cbf_reg_weight_10", "flying_inv_pend_low_cbf_reg_weight_100"]
-	# base_exp_names = ['flying_inv_pend_“repro_test_04_14”', 'flying_inv_pend_repro_test']
-	# base_exp_names = ['flying_inv_pend_repro_test'] #, 'flying_inv_pend_"repro_test"']
-	# base_exp_names = ['flying_inv_pend_h_reg_copter_reg_50']
+	# base_exp_names = [("quad_pend_low_cbf_reg_weight_1_seed_%i" % x) for x in np.arange(1, 8)]
+	# base_exp_names = ["quad_pend_low_cbf_reg_weight_1", "quad_pend_low_cbf_reg_weight_10", "quad_pend_low_cbf_reg_weight_100"]
+	# base_exp_names = ['quad_pend_“repro_test_04_14”', 'quad_pend_repro_test']
+	# base_exp_names = ['quad_pend_repro_test'] #, 'quad_pend_"repro_test"']
+	# base_exp_names = ['quad_pend_h_reg_copter_reg_50']
 	# exp_names = ['quadcopter_h_reg_copter_reg_50']
 	# checkpoint_numbers = [0]
-	# base_exp_names = ['flying_inv_pend_best_p_reuse_100']
+	# base_exp_names = ['quad_pend_best_p_reuse_100']
 	# Server 4
-	# base_exp_names = ['flying_inv_pend_best_reg_weight_10', 'flying_inv_pend_best_reg_weight_50', 'flying_inv_pend_best_reg_weight_200'] \
-	                 #+ ['flying_inv_pend_best_p_reuse_0', 'flying_inv_pend_best_p_reuse_25', 'flying_inv_pend_best_p_reuse_50', 'flying_inv_pend_best_p_reuse_75', 'flying_inv_pend_best_p_reuse_100']
+	# base_exp_names = ['quad_pend_best_reg_weight_10', 'quad_pend_best_reg_weight_50', 'quad_pend_best_reg_weight_200'] \
+	                 #+ ['quad_pend_best_p_reuse_0', 'quad_pend_best_p_reuse_25', 'quad_pend_best_p_reuse_50', 'quad_pend_best_p_reuse_75', 'quad_pend_best_p_reuse_100']
 	# Server 5
-	# base_exp_names = ['flying_inv_pend_' + x for x in ['best_critic_bs_10', 'best_critic_bs_50', 'best_critic_bs_100']] # 'repro_test',
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"]
-	# base_exp_names = ["flying_inv_pend_best_reg_weight_0", "flying_inv_pend_best_reg_weight_10", "flying_inv_pend_best_reg_weight_50", "flying_inv_pend_best_reg_weight_200"]
-	# exp_names = ["flying_inv_pend_best_reg_weight_50"]*3
+	# base_exp_names = ['quad_pend_' + x for x in ['best_critic_bs_10', 'best_critic_bs_50', 'best_critic_bs_100']] # 'repro_test',
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_0"]
+	# base_exp_names = ["quad_pend_best_reg_weight_0", "quad_pend_best_reg_weight_10", "quad_pend_best_reg_weight_50", "quad_pend_best_reg_weight_200"]
+	# exp_names = ["quad_pend_best_reg_weight_50"]*3
 	# exp_names = base_exp_names
 	# # # checkpoint_numbers = [490, 500]
 	# checkpoint_numbers = [160, 215, 290, 490]
 
-	# exp_names = ["flying_inv_pend_best_reg_weight_200"]
+	# exp_names = ["quad_pend_best_reg_weight_200"]
 	# checkpoint_numbers = [180, 405, 290]
 
-	# base_exp_names = ['flying_inv_pend_best_p_reuse_0', 'flying_inv_pend_best_p_reuse_25', 'flying_inv_pend_best_p_reuse_50', 'flying_inv_pend_best_p_reuse_75', 'flying_inv_pend_best_p_reuse_100']
-	# base_exp_names = [x + "_bs_10" for x in ['flying_inv_pend_best_p_reuse_0', 'flying_inv_pend_best_p_reuse_25', 'flying_inv_pend_best_p_reuse_50', 'flying_inv_pend_best_p_reuse_75', 'flying_inv_pend_best_p_reuse_100']]
+	# base_exp_names = ['quad_pend_best_p_reuse_0', 'quad_pend_best_p_reuse_25', 'quad_pend_best_p_reuse_50', 'quad_pend_best_p_reuse_75', 'quad_pend_best_p_reuse_100']
+	# base_exp_names = [x + "_bs_10" for x in ['quad_pend_best_p_reuse_0', 'quad_pend_best_p_reuse_25', 'quad_pend_best_p_reuse_50', 'quad_pend_best_p_reuse_75', 'quad_pend_best_p_reuse_100']]
 	# exp_names = []
-	# base_exp_names = ['flying_inv_pend_' + x for x in ['best_critic_bs_10', 'best_critic_bs_50', 'best_critic_bs_100', 'repro_test']] # 'repro_test',
+	# base_exp_names = ['quad_pend_' + x for x in ['best_critic_bs_10', 'best_critic_bs_50', 'best_critic_bs_100', 'repro_test']] # 'repro_test',
 	# checkpoint_numbers = [np.arange(750, 800, 5), np.arange(350, 400, 5), np.arange(175, 225, 5), np.arange(250, 300, 5)]
 	# exp_names = []
 	# for i, arr in enumerate(checkpoint_numbers):
@@ -1040,7 +1040,7 @@ if __name__ == "__main__":
 	# checkpoint_numbers = np.concatenate(checkpoint_numbers)
 	# IPython.embed()
 
-	exp_names = ["flying_inv_pend_" + x for x in ["design_2", "design_2_reg_weight_200", "design_2_reg_random", "design_2_reg_samples_250"]]
+	exp_names = ["quad_pend_" + x for x in ["design_2", "design_2_reg_weight_200", "design_2_reg_random", "design_2_reg_samples_250"]]
 	checkpoint_numbers = [0]*4
 
 	# To visualize slices for a new experiment
@@ -1108,7 +1108,7 @@ if __name__ == "__main__":
 	# exp_names = [exp_names[0]]
 
 	"""
-	base_exp_names = ["flying_inv_pend_phi_format_0_seed_0", "flying_inv_pend_phi_format_0_seed_1"]
+	base_exp_names = ["quad_pend_phi_format_0_seed_0", "quad_pend_phi_format_0_seed_1"]
 
 	exp_names = []
 	checkpoint_numbers = []
@@ -1131,7 +1131,7 @@ if __name__ == "__main__":
 	########################################################
 
 	# TODO: For CORL
-	"""exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"
+	"""exp_name = "quad_pend_ESG_reg_speedup_better_attacks_seed_0"
 	checkpoint_number = 250
 	phi_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 	params_to_viz_list = [["phi", "dphi"]]
@@ -1143,9 +1143,9 @@ if __name__ == "__main__":
 	                          checkpoint=checkpoint_number)"""
 
 	# TODO: more for CORL
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0_reg_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3_reg_0", "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3"]
-	# base_exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
-	# base_exp_names = ['flying_inv_pend_“repro_test_04_14”', 'flying_inv_pend_repro_test']
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_0_reg_0", "quad_pend_ESG_reg_speedup_better_attacks_seed_0", "quad_pend_ESG_reg_speedup_better_attacks_seed_3_reg_0", "quad_pend_ESG_reg_speedup_better_attacks_seed_3"]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
+	# base_exp_names = ['quad_pend_“repro_test_04_14”', 'quad_pend_repro_test']
 	# for exp_name in exp_names:
 	# 	debug(exp_name)
 
@@ -1156,7 +1156,7 @@ if __name__ == "__main__":
 	# 	# checkpoint_numbers.append(min_attack_loss_ind)
 
 	# TODO: manually check attacks
-	# with open("./log/%s/data.pkl" % "flying_inv_pend_phi_format_1_seed_0", 'rb') as handle:
+	# with open("./log/%s/data.pkl" % "quad_pend_phi_format_1_seed_0", 'rb') as handle:
 	# 	data = pickle.load(handle)
 	# 	train_attacks = data["train_attacks"]
 	# 	# IPython.embed()
@@ -1173,7 +1173,7 @@ if __name__ == "__main__":
 	# 	IPython.embed()
 
 	# TODO; plot ci values
-	"""exp_name = "flying_inv_pend_phi_format_1_seed_1"
+	"""exp_name = "quad_pend_phi_format_1_seed_1"
 	k0_list = []
 	k1_list = []
 	n_it = 4000

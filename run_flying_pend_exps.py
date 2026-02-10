@@ -18,7 +18,7 @@ from src.critic import Critic
 from main import SaturationRisk
 
 # For rollouts
-# from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
+# from rollout_envs.quad_pend_env import FlyingInvertedPendulumEnv
 # from flying_cbf_controller import CBFController
 from flying_rollout_experiment import *
 
@@ -251,13 +251,13 @@ def run_exps(args):
 			class_kappa_fns.append(kappa_i)
 
 		# Everything else
-		from src.problems.flying_inv_pend import HSum, XDot, ULimitSetVertices
+		from problems.quad_pend import HSum, XDot, ULimitSetVertices
 		# NOTE: USING DEFAULT PARAM DICT
 		from create_arg_parser import create_arg_parser
 		parser = create_arg_parser() # default
 		parser_args = parser.parse_known_args()[0]
-		from main import create_flying_param_dict
-		param_dict = create_flying_param_dict(parser_args) # default
+		from main import create_quad_pend_param_dict
+		param_dict = create_quad_pend_param_dict(parser_args) # default
 
 		h_fn = HSum(param_dict)
 		xdot_fn = XDot(param_dict, device)
@@ -292,7 +292,7 @@ def run_exps(args):
 	# x_lim = param_dict["x_lim"]
 
 	# Create phi
-	from src.problems.flying_inv_pend import XDot, ULimitSetVertices
+	from problems.quad_pend import XDot, ULimitSetVertices
 	xdot_fn = XDot(param_dict, device)
 	uvertices_fn = ULimitSetVertices(param_dict, device)
 
@@ -475,7 +475,7 @@ if __name__ == "__main__":
 	parser.add_argument('--save_fnm', type=str, default="debug", help="conscisely describes the hyperparameters of this run")
 	parser.add_argument('--which_cbf', type=str, choices=["ours", "low-CMAES", "low-heuristic", "low-gradient", "iccbf"], required=True)
 
-	parser.add_argument('--exp_name_to_load', type=str) # flying_inv_pend_first_run
+	parser.add_argument('--exp_name_to_load', type=str) # quad_pend_first_run
 	parser.add_argument('--checkpoint_number_to_load', type=int, help="for our CBF", default=0)
 	parser.add_argument('--low_cbf_params', type=float, nargs='+', help="for which_cbf == low-heuristic")
 	parser.add_argument('--iccbf_coefficients', type=float, nargs='+')
@@ -527,16 +527,16 @@ if __name__ == "__main__":
 	run_exps(args)
 
 """
-python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 1020 --boundary_n_samples 100 --worst_boundary_n_samples 100 --rollout_N_rollout 100 
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 1020 --boundary_n_samples 100 --worst_boundary_n_samples 100 --rollout_N_rollout 100 
 
 Debug 
 
 # Ours 
-python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 400 --rollout_N_rollout 2 
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 400 --rollout_N_rollout 2 
 
 (ckpt 200 or 400) 
 
-python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 400 --rollout_N_rollout 2 --which_experiments volume 
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 400 --rollout_N_rollout 2 --which_experiments volume 
 
 
 # Low-CMAES
@@ -548,35 +548,35 @@ python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name
 python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name_to_load flying_pend_n_feasible_reg_weight_1e_1 --checkpoint_number_to_load 6 --rollout_N_rollout 2 --which_experiments rollout
 
 # Best candidates for ours 
-python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 1020
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 1020
 """
 
 """
-For experiment flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0, at iteration 1551/3000
+For experiment quad_pend_ESG_reg_speedup_better_attacks_seed_0, at iteration 1551/3000
 Average approx volume: 0.247
 -0.08455947
 1020 0.26794875
 V avg: 0.031
 First: 0.120, best: 0.320
-For experiment flying_inv_pend_ESG_reg_speedup_better_attacks_seed_1, at iteration 1606/3000
+For experiment quad_pend_ESG_reg_speedup_better_attacks_seed_1, at iteration 1606/3000
 Average approx volume: 0.234
 0.49223045
 1605 0.6197671
 V avg: 0.028
 First: 0.160, best: 0.360
-For experiment flying_inv_pend_ESG_reg_speedup_better_attacks_seed_2, at iteration 2021/3000
+For experiment quad_pend_ESG_reg_speedup_better_attacks_seed_2, at iteration 2021/3000
 Average approx volume: 0.200
 0.38371262
 1975 0.38371262
 V avg: 0.028
 First: 0.640, best: 0.640
-For experiment flying_inv_pend_ESG_reg_speedup_better_attacks_seed_3, at iteration 1951/3000
+For experiment quad_pend_ESG_reg_speedup_better_attacks_seed_3, at iteration 1951/3000
 Average approx volume: 0.185
 0.25222638
 930 0.54474854
 V avg: 0.024
 First: 0.000, best: 0.200
-For experiment flying_inv_pend_ESG_reg_speedup_better_attacks_seed_4, at iteration 1186/3000
+For experiment quad_pend_ESG_reg_speedup_better_attacks_seed_4, at iteration 1186/3000
 Average approx volume: 0.163
 0.49849012
 220 0.49849012

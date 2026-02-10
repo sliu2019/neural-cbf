@@ -6,7 +6,7 @@ import control
 import matplotlib.pyplot as plt
 import IPython
 import math
-from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
+from rollout_envs.quad_pend_env import FlyingInvertedPendulumEnv
 from tqdm import tqdm
 
 # Physical parameters
@@ -50,7 +50,7 @@ state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi
                      "dtheta", "x", "y", "z", "dx", "dy", "dz"]
 state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
 
-def simulate_quadrotor(xdot_fn, u_fn, timesteps=1000):
+def simulate_quadcopter(xdot_fn, u_fn, timesteps=1000):
 	k1 = param_dict["k1"]
 	k2 = param_dict["k2"]
 	l = param_dict["l"]
@@ -446,7 +446,7 @@ if __name__ == "__main__":
 
 	# IPython.embed()
 	"""
-	x_all, u_impulses_all, u_forces_all, distances = simulate_quadrotor(xdot_fn, u_fn, timesteps=1000) # TODO: 2000
+	x_all, u_impulses_all, u_forces_all, distances = simulate_quadcopter(xdot_fn, u_fn, timesteps=1000) # TODO: 2000
 
 	# Plotting
 

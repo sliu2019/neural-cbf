@@ -259,8 +259,8 @@ def load_philow_and_params(exp_name=None, checkpoint_number=None):
 	parser = create_arg_parser() # default
 	args = parser.parse_known_args()[0]
 
-	from main import create_flying_param_dict
-	param_dict = create_flying_param_dict(args) # default
+	from main import create_quad_pend_param_dict
+	param_dict = create_quad_pend_param_dict(args) # default
 
 	r = param_dict["r"]
 	x_dim = param_dict["x_dim"]
@@ -269,7 +269,7 @@ def load_philow_and_params(exp_name=None, checkpoint_number=None):
 
 
 	# Create phi
-	from src.problems.flying_inv_pend import RhoMax, RhoSum, XDot
+	from problems.quad_pend import RhoMax, RhoSum, XDot
 	# if args.rho == "sum":
 	h_fn = RhoSum(param_dict)
 	# elif args.rho == "max":
@@ -306,7 +306,7 @@ def plot_training_losses():
 	# Hardcoding
 	plt.figure(dpi=1200)
 
-	# exp_names = ["flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" for i in range(5)]
+	# exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_%i" for i in range(5)]
 	# last_checkpoint_number = [250, 650, 625, 250, 175]
 	# last_checkpoint_number = [600]*5
 	last_checkpoint_number = [250, 400, 550, 300, 175]
@@ -324,7 +324,7 @@ def plot_training_losses():
 	all_times = []
 	x_ub = np.max(last_checkpoint_number) + 50
 	for seed_num in range(5):
-		exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % seed_num
+		exp_name = "quad_pend_ESG_reg_speedup_better_attacks_seed_%i" % seed_num
 		with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 			data = pickle.load(handle)
 		args = load_args("./log/%s/args.txt" % exp_name)
@@ -381,7 +381,7 @@ def plot_training_losses():
 	"""
 
 if __name__ == "__main__":
-	"""exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_0"
+	"""exp_name = "quad_pend_ESG_reg_speedup_better_attacks_seed_0"
 	checkpoint_number = 250
 
 	# checkpoint_number = 250
@@ -433,7 +433,7 @@ if __name__ == "__main__":
 	# plot_training_losses()
 
 	# for seed_num in range(5):
-	# 	exp_name = "flying_inv_pend_ESG_reg_speedup_better_attacks_seed_%i" % seed_num
+	# 	exp_name = "quad_pend_ESG_reg_speedup_better_attacks_seed_%i" % seed_num
 	# 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 	# 		data = pickle.load(handle)
 	#

@@ -10,7 +10,7 @@ ensures safety even when control inputs saturate. The method uses:
 - Learner: Minimizes saturation risk + volume regularization
 - Critic: Finds worst-case counterexamples via gradient ascent on boundary
 
-System: Flying inverted pendulum (10D state, 4D control)
+System: quadcopter-pendulum (10D state, 4D control)
 Output: Trained neural CBF checkpoints and training statistics
 
 References:
@@ -182,19 +182,19 @@ class RegularizationLoss(nn.Module):
 
 
 @dataclass
-class FlyingPendulumConfig:
-	"""Configuration for flying inverted pendulum system parameters.
+class QuadPendConfig:
+	"""Configuration for quadcopter-pendulum system parameters.
 
-	This dataclass provides type-safe configuration for the quadrotor with
+	This dataclass provides type-safe configuration for the quadcopter with
 	attached inverted pendulum system, replacing the untyped param_dict.
 
 	Physical Parameters:
-		m: Quadrotor mass [kg]
+		m: quadcopter mass [kg]
 		m_p: Pendulum mass [kg]
 		M: Total mass (computed as m + m_p) [kg]
 		L_p: Pendulum length [m]
 		J_x, J_y, J_z: Moments of inertia [kg·m²]
-		l: Quadrotor arm length [m]
+		l: quadcopter arm length [m]
 		k1: Thrust coefficient [N·s²]
 		k2: Drag coefficient [N·m·s²]
 
@@ -214,7 +214,7 @@ class FlyingPendulumConfig:
 	Reference:
 		liu23e.pdf Section 4 for parameter values and system description
 	"""
-	# Physical parameters (quadrotor)
+	# Physical parameters (quadcopter)
 	m: float = 0.8
 	J_x: float = 0.005
 	J_y: float = 0.005
@@ -224,7 +224,7 @@ class FlyingPendulumConfig:
 	k2: float = 0.05
 
 	# Physical parameters (pendulum)
-	m_p: float = 0.04  # 5% of quadrotor weight
+	m_p: float = 0.04  # 5% of quadcopter weight
 	L_p: float = 3.0
 
 	# Safety parameters
@@ -248,8 +248,8 @@ class FlyingPendulumConfig:
 
 		# State indexing
 		state_index_names = [
-			"gamma", "beta", "alpha",      # Quadrotor angles
-			"dgamma", "dbeta", "dalpha",   # Quadrotor angular velocities
+			"gamma", "beta", "alpha",      # quadcopter angles
+			"dgamma", "dbeta", "dalpha",   # quadcopter angular velocities
 			"phi", "theta",                # Pendulum angles
 			"dphi", "dtheta"               # Pendulum angular velocities
 		]
@@ -258,8 +258,8 @@ class FlyingPendulumConfig:
 		# State space bounds
 		ub = self.box_ang_vel_limit
 		thresh = np.array([
-			math.pi / 3, math.pi / 3, math.pi,  # Quadrotor angle limits
-			ub, ub, ub,                         # Quadrotor velocity limits
+			math.pi / 3, math.pi / 3, math.pi,  # quadcopter angle limits
+			ub, ub, ub,                         # quadcopter velocity limits
 			math.pi / 3, math.pi / 3,           # Pendulum angle limits
 			ub, ub                              # Pendulum velocity limits
 		], dtype=np.float32)
@@ -293,10 +293,10 @@ class FlyingPendulumConfig:
 		}
 
 
-def create_flying_param_dict(args=None):
+def create_quad_pend_param_dict(args=None):
 	"""Creates parameter dictionary for flying inverted pendulum system.
 
-	Instantiates FlyingPendulumConfig with default parameters and converts
+	Instantiates QuadPendConfig with default parameters and converts
 	to dictionary for backward compatibility with existing code.
 
 	Args:
@@ -315,11 +315,11 @@ def create_flying_param_dict(args=None):
 		liu23e.pdf Section 4 for system description and parameters
 
 	Note:
-		This function now uses FlyingPendulumConfig dataclass internally
+		This function now uses QuadPendConfig dataclass internally
 		for type safety, but returns a dict for backward compatibility.
 	"""
 	# Create typed config with default parameters
-	config = FlyingPendulumConfig()
+	config = QuadPendConfig()
 
 	# Convert to dict for backward compatibility with existing code
 	param_dict = config.to_dict()
@@ -355,8 +355,8 @@ def main(args):
 	device = torch.device(dev)
 
 	# Selecting problem
-	if args.problem == "flying_inv_pend":
-		param_dict = create_flying_param_dict(args)
+	if args.problem == "quad_pend":
+		param_dict = create_quad_pend_param_dict(args)
 
 		r = param_dict["r"]
 		x_dim = param_dict["x_dim"]
@@ -364,7 +364,7 @@ def main(args):
 		x_lim = param_dict["x_lim"]
 
 		# Create phi
-		from src.problems.flying_inv_pend import RhoSum, XDot, ULimitSetVertices
+		from problems.quad_pend import RhoSum, XDot, ULimitSetVertices
 		# if args.rho == "sum":
 		rho_fn = RhoSum(param_dict)
 		# elif args.rho == "max":

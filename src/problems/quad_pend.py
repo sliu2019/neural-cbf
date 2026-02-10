@@ -1,9 +1,9 @@
-"""Flying inverted pendulum system dynamics and safety specifications.
+"""Quadcopter-pendulum system dynamics and safety specifications.
 
 The system has 10 state variables and 4 control inputs:
 
 State: x = [γ, β, α, γ̇, β̇, α̇, φ, θ, φ̇, θ̇] ∈ R^10
-  - γ, β, α: Quadrotor roll, pitch, yaw
+  - γ, β, α: quadcopter roll, pitch, yaw
   - φ, θ: Pendulum angles from vertical
   - Velocities: Time derivatives of angles
 
@@ -11,7 +11,7 @@ Control: u = [F, τ_x, τ_y, τ_z] ∈ R^4
   - F: Total thrust (hover thrust subtracted)
   - τ_x, τ_y, τ_z: Torques about body axes
 
-The safety objective is to keep the pendulum upright and prevent the quadrotor from rolling.
+The safety objective is to keep the pendulum upright and prevent the quadcopter from rolling.
 """
 import torch
 import numpy as np
@@ -25,7 +25,7 @@ class RhoSum(nn.Module):
 
 	where:
 	- δ: angle between pendulum axis and vertical (computed from φ, θ)
-	- γ, β: quadrotor roll and pitch angles
+	- γ, β: quadcopter roll and pitch angles
 	- δ_limit: limit on all angles
 
 	The safe set is defined as {x : ρ(x) ≤ 0}.
@@ -47,8 +47,8 @@ class RhoSum(nn.Module):
 		# Extract angles
 		theta = x[:, [self.i["theta"]]]  # Pendulum angle axis 1
 		phi = x[:, [self.i["phi"]]]      # Pendulum angle axis 2
-		gamma = x[:, [self.i["gamma"]]]  # Quadrotor roll
-		beta = x[:, [self.i["beta"]]]    # Quadrotor pitch
+		gamma = x[:, [self.i["gamma"]]]  # quadcopter roll
+		beta = x[:, [self.i["beta"]]]    # quadcopter pitch
 
 		# Compute pendulum deviation angle δ from vertical
 		# Uses: cos(δ) = cos(φ)·cos(θ)
@@ -67,22 +67,22 @@ class RhoSum(nn.Module):
 		return rv
 
 class XDot(nn.Module):
-	"""System dynamics ẋ = f(x, u) for flying inverted pendulum.
+	"""System dynamics ẋ = f(x, u) for quadcopter-pendulum.
 
 	Computes the time derivatives of all state variables using:
-	1. Quadrotor rigid body dynamics (rotation matrix formulation)
-	2. Pendulum dynamics (coupled to quadrotor through thrust vector)
+	1. quadcopter rigid body dynamics (rotation matrix formulation)
+	2. Pendulum dynamics (coupled to quadcopter through thrust vector)
 
 	The dynamics are derived from Euler-Lagrange equations with the following
 	key couplings:
-	- Quadrotor thrust affects pendulum acceleration via thrust direction
-	- Pendulum motion does NOT feedback to quadrotor (underactuated assumption)
+	- quadcopter thrust affects pendulum acceleration via thrust direction
+	- Pendulum motion does NOT feedback to quadcopter (underactuated assumption)
 
 	State Derivatives:
 	    ẋ = [γ̇, β̇, α̇, γ̈, β̈, α̈, φ̇, θ̇, φ̈, θ̈]ᵀ
 
 	where:
-	- Quadrotor angular accelerations: Computed from torques via rotation matrix R
+	- quadcopter angular accelerations: Computed from torques via rotation matrix R
 	- Pendulum angular accelerations: Depend on thrust direction and Coriolis terms
 
 	Rotation Matrix R (ZYX Euler angles):
@@ -98,7 +98,7 @@ class XDot(nn.Module):
 	    θ̈ = (3/2ML_p) · (-k_x cos(θ) - k_y sin(φ)sin(θ) + k_z cos(φ)sin(θ)) · F + Coriolis terms
 
 	Args (in param_dict):
-		M: Total mass (quadrotor + pendulum) [kg]
+		M: Total mass (quadcopter + pendulum) [kg]
 		L_p: Pendulum length [m]
 		J_x, J_y, J_z: Moments of inertia [kg·m²]
 		state_index_dict: Mapping from state names to indices
@@ -133,9 +133,9 @@ class XDot(nn.Module):
 		###############################################################################
 		# Extract state variables
 		###############################################################################
-		gamma = x[:, self.i["gamma"]]   # Quadrotor roll
-		beta = x[:, self.i["beta"]]     # Quadrotor pitch
-		alpha = x[:, self.i["alpha"]]   # Quadrotor yaw
+		gamma = x[:, self.i["gamma"]]   # quadcopter roll
+		beta = x[:, self.i["beta"]]     # quadcopter pitch
+		alpha = x[:, self.i["alpha"]]   # quadcopter yaw
 
 		phi = x[:, self.i["phi"]]       # Pendulum angle 1
 		theta = x[:, self.i["theta"]]   # Pendulum angle 2
@@ -173,7 +173,7 @@ class XDot(nn.Module):
 		F = (u[:, 0] + self.M*g)
 
 		###############################################################################
-		# Compute quadrotor angular accelerations from torques
+		# Compute quadcopter angular accelerations from torques
 		###############################################################################
 		J = torch.tensor([self.J_x, self.J_y, self.J_z]).to(self.device)
 
@@ -189,7 +189,7 @@ class XDot(nn.Module):
 		ddalpha = ddquad_angles[:, 2]  # Yaw acceleration
 
 		###############################################################################
-		# Compute pendulum angular accelerations (coupled to quadrotor via thrust)
+		# Compute pendulum angular accelerations (coupled to quadcopter via thrust)
 		###############################################################################
 		# Derived from Euler-Lagrange equations with thrust coupling
 		ddphi = (3.0)*(k_y*torch.cos(phi) + k_z*torch.sin(phi))/(2*self.M*self.L_p*torch.cos(theta))*F + 2*dtheta*dphi*torch.tan(theta)
@@ -218,7 +218,7 @@ class XDot(nn.Module):
 class ULimitSetVertices(nn.Module):
 	"""Computes vertices of control input constraint polytope U.
 
-	For the flying inverted pendulum, the control limits come from physical
+	For the quadcopter-pendulum, the control limits come from physical
 	rotor constraints: each of the 4 rotors has bounded RPM ω_i ∈ [0, ω_max].
 
 	The control space is a 4D polytope with 2^4 = 16 vertices corresponding
@@ -243,7 +243,7 @@ class ULimitSetVertices(nn.Module):
 	Args (in param_dict):
 		k1: Thrust coefficient
 		k2: Drag coefficient
-		l: Quadrotor arm length [m]
+		l: quadcopter arm length [m]
 		M: Total mass (quad + pendulum) [kg]
 
 	Input:

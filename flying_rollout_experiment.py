@@ -7,7 +7,7 @@ import argparse
 import pickle
 import IPython
 
-from rollout_envs.flying_inv_pend_env import FlyingInvertedPendulumEnv
+from rollout_envs.quad_pend_env import FlyingInvertedPendulumEnv
 from flying_cbf_controller import CBFController
 from flying_plot_utils import load_phi_and_params
 from rollout_cbf_classes.deprecated.flying_our_cbf_class import OurCBF
@@ -411,8 +411,8 @@ def run_rollout_experiment(args):
 		parser = create_arg_parser()
 		cbf_train_args, _ = parser.parse_known_args() # allows us to ignore unknown args
 
-		from main import create_flying_param_dict
-		param_dict = create_flying_param_dict(cbf_train_args) # default
+		from main import create_quad_pend_param_dict
+		param_dict = create_quad_pend_param_dict(cbf_train_args) # default
 
 		from rollout_cbf_classes.deprecated.flying_ssa import SSA
 		cbf_obj = SSA(param_dict)
@@ -528,7 +528,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Rollout experiment for flying')
 	parser.add_argument('--which_cbf', type=str, default="ours", choices=["ours", "low"])
 
-	parser.add_argument('--exp_name_to_load', type=str, default="flying_inv_pend_reg_weight_10", help="for our CBF") # flying_inv_pend_first_run
+	parser.add_argument('--exp_name_to_load', type=str, default="quad_pend_reg_weight_10", help="for our CBF") # quad_pend_first_run
 	parser.add_argument('--checkpoint_number_to_load', type=int, default=510, help="for our CBF")
 
 	# parser.add_argument('--low_c1', type=float, default=1.0) # TODO: permanently set to 1.0
@@ -547,7 +547,7 @@ if __name__ == "__main__":
 	run_rollout_experiment(args)
 	""" 
 	Example command:
-	python flying_rollout_experiment.py --which_cbf ours --exp_name_to_load flying_inv_pend_reg_weight_1 --checkpoint_number_to_load 1380 --N_rollout 2
+	python flying_rollout_experiment.py --which_cbf ours --exp_name_to_load quad_pend_reg_weight_1 --checkpoint_number_to_load 1380 --N_rollout 2
 	
 	python flying_rollout_experiment.py --which_cbf low --N_rollout 2
 
@@ -562,8 +562,8 @@ if __name__ == "__main__":
 	python flying_rollout_experiment.py --which_cbf low --low_c2 0.1 --N_rollout 250
 	
 	
-	python flying_rollout_experiment.py --which_cbf ours --exp_name_to_load flying_inv_pend_phi_format_1_seed_0 --checkpoint_number_to_load 60 --N_rollout 2 --N_samp_volume 10
-	python flying_rollout_experiment.py --which_cbf ours --exp_name_to_load flying_inv_pend_phi_format_0_seed_0 --checkpoint_number_to_load 3370 --N_rollout 1000 --N_samp_volume 10
+	python flying_rollout_experiment.py --which_cbf ours --exp_name_to_load quad_pend_phi_format_1_seed_0 --checkpoint_number_to_load 60 --N_rollout 2 --N_samp_volume 10
+	python flying_rollout_experiment.py --which_cbf ours --exp_name_to_load quad_pend_phi_format_0_seed_0 --checkpoint_number_to_load 3370 --N_rollout 1000 --N_samp_volume 10
 	"""
 
 
