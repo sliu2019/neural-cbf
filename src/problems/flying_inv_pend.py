@@ -1,14 +1,6 @@
 """Flying inverted pendulum system dynamics and safety specifications.
 
-This module implements the flying inverted pendulum system studied in
-"Safe control under input limits with neural control barrier functions"
-(liu23e, CoRL 2022). The system consists of:
-
-1. **Quadrotor**: A 3D quadrotor with orientation angles (γ, β, α) representing
-   roll, pitch, and yaw. The quadrotor provides thrust and torques.
-
-2. **Inverted Pendulum**: A pendulum attached below the quadrotor with angles
-   (φ, θ) representing swing angles from vertical in two axes.
+The system has 10 state variables and 4 control inputs:
 
 State: x = [γ, β, α, γ̇, β̇, α̇, φ, θ, φ̇, θ̇] ∈ R^10
   - γ, β, α: Quadrotor roll, pitch, yaw
@@ -19,83 +11,24 @@ Control: u = [F, τ_x, τ_y, τ_z] ∈ R^4
   - F: Total thrust (hover thrust subtracted)
   - τ_x, τ_y, τ_z: Torques about body axes
 
-The safety objective is to keep the pendulum upright: |φ|, |θ| small.
-
-Physical Model:
-- Quadrotor mass: m ≈ 0.8 kg
-- Pendulum mass: m_p ≈ 0.04 kg (5% of quadrotor)
-- Pendulum length: L_p ≈ 3.0 m
-- Moments of inertia: J_x, J_y, J_z
-- Mixer matrix parameters: k1 (thrust-to-rotor), k2 (drag-to-rotor), l (arm length)
-
-References:
-    liu23e.pdf Section 5 (Flying Inverted Pendulum Experiment)
+The safety objective is to keep the pendulum upright and prevent the quadrotor from rolling.
 """
 import torch
 import numpy as np
-
 from torch import nn
-import os, sys
-import IPython
-import math
-
 g = 9.81  # Gravitational acceleration [m/s^2]
-# class RhoMax(nn.Module):
-# 	def __init__(self, param_dict):
-# 		super().__init__()
-# 		self.__dict__.update(param_dict)  # __dict__ holds and object's attributes
-# 		self.i = self.state_index_dict
-
-# 	def forward(self, x):
-# 		# The way these are implemented should be batch compliant
-# 		# Return value is size (bs, 1)
-
-# 		# print("Inside HMax forward")
-# 		# IPython.embed()
-# 		theta = x[:, [self.i["theta"]]]
-# 		phi = x[:, [self.i["phi"]]]
-# 		gamma = x[:, [self.i["gamma"]]]
-# 		beta = x[:, [self.i["beta"]]]
-
-# 		cos_cos = torch.cos(theta)*torch.cos(phi)
-# 		eps = 1e-4 # prevents nan when cos_cos = +/- 1 (at x = 0)
-# 		with torch.no_grad():
-# 			signed_eps = -torch.sign(cos_cos)*eps
-# 		delta = torch.acos(cos_cos + signed_eps)
-# 		rv = torch.maximum(torch.maximum(delta**2, gamma**2), beta**2) - self.delta_safety_limit**2
-# 		return rv
 
 class RhoSum(nn.Module):
-	"""Base safety specification ρ(x) for flying inverted pendulum.
-
-	Computes the sum-of-squares safety specification:
+	"""
+	Computes safety specification:
 	    ρ(x) = δ² + γ² + β² - δ_limit²
 
 	where:
-	- δ: Angle between pendulum axis and vertical (computed from φ, θ)
-	- γ, β: Quadrotor roll and pitch angles
-	- δ_limit: Maximum allowed deviation from vertical (e.g., π/4)
+	- δ: angle between pendulum axis and vertical (computed from φ, θ)
+	- γ, β: quadrotor roll and pitch angles
+	- δ_limit: limit on all angles
 
-	The safe set is defined as {x : ρ(x) ≤ 0}, meaning all angles
-	remain within their safety limits. This sum-of-squares form ensures
-	a convex safe region.
-
-	Angle Computation:
-	The pendulum deviation angle δ satisfies:
-	    cos(δ) = cos(φ) · cos(θ)
-
-	A small epsilon is added for numerical stability when cos(δ) ≈ ±1.
-
-	Args (in param_dict):
-		delta_safety_limit: Maximum allowed angle from vertical [radians]
-		state_index_dict: Mapping from state names to indices in x
-
-	Input:
-		x: Batch of states (bs, 10)
-
-	Returns:
-		ρ(x): Safety specification values (bs, 1)
-		      Negative values indicate safe states
+	The safe set is defined as {x : ρ(x) ≤ 0}.
 	"""
 	def __init__(self, param_dict):
 		super().__init__()
@@ -374,110 +307,3 @@ class ULimitSetVertices(nn.Module):
 		rv = rv.unsqueeze(dim=0)  # (1, 16, 4)
 		rv = rv.expand(x.shape[0], -1, -1)  # (bs, 16, 4)
 		return rv
-
-if __name__ == "__main__":
-	# param_dict = {
-	# 	"m": 0.8,
-	# 	"J_x": 0.005,
-	# 	"J_y": 0.005,
-	# 	"J_z": 0.009,
-	# 	"l": 1.5,
-	# 	"k1": 4.0,
-	# 	"k2": 0.05,
-	# 	"m_p": 0.04, # TODO?
-	# 	"L_p": 0.03, # TODO?
-	# 	'delta_safety_limit': math.pi/5 # in radians; should be <= math.pi/4
-	# }
-	# param_dict["M"] = param_dict["m"] + param_dict["m_p"]
-	#
-	# state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi", "dtheta"] # excluded x, y, z
-	# state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
-	# param_dict["state_index_dict"] = state_index_dict
-	# ##############################################
-	#
-	# if torch.cuda.is_available():
-	# 	os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-	# 	dev = "cuda:%i" % (0)
-	# 	print("Using GPU device: %s" % dev)
-	# else:
-	# 	dev = "cpu"
-	# device = torch.device(dev)
-	#
-	# # h_fn = H(param_dict)
-	# xdot_fn = XDot(param_dict, device)
-	# uvertices_fn = ULimitSetVertices(param_dict, device)
-	#
-	# N = 10
-	# x = torch.rand(N, 10).to(device)
-	# u = torch.rand(N, 4).to(device)
-	#
-	# uvert = uvertices_fn(x)
-
-	# IPython.embed()
-	# h_fn = HMax(param_dict)
-	# h_fn = HSum(param_dict)
-	# rv1 = h_fn(x)
-	# print(rv1.shape)
-
-	# x = torch.zeros(1, 10).to(device)
-	# u = torch.zeros(1, 4).to(device)
-	# rv2 = xdot_fn(x, u)
-	# IPython.embed()
-	# rv3 = uvertices_fn(x)
-
-	# print(rv2.shape)
-	# print(rv3.shape)
-	# print(rv1.shape)
-	# IPython.embed()
-
-	"""param_dict = {
-		"m": 0.8,
-		"J_x": 0.005,
-		"J_y": 0.005,
-		"J_z": 0.009,
-		"l": 1.5,
-		"k1": 4.0,
-		"k2": 0.05,
-		"m_p": 0.04, # 5% of quad weight
-		"L_p": 3.0, # Prev: 0.03
-		'delta_safety_limit': math.pi / 4  # should be <= math.pi/4
-	}
-	param_dict["M"] = param_dict["m"] + param_dict["m_p"]
-	state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
-	                     "dtheta"]  # excluded x, y, z
-	state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
-	param_dict["state_index_dict"] = state_index_dict
-
-	if torch.cuda.is_available():
-		os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-		dev = "cuda:%i" % (0)
-		print("Using GPU device: %s" % dev)
-	else:
-		dev = "cpu"
-	device = torch.device(dev)
-
-	xdot_fn = XDot(param_dict, device)
-
-	np.random.seed(3)
-	x = np.random.rand(16)
-	u = np.random.rand(4)
-
-	x = x[:10]
-	x = torch.from_numpy(x.astype("float32")).to(device)
-	u = torch.from_numpy(u.astype("float32")).to(device)
-
-	x = x.view(1, -1)
-	u = u.view(1, -1)
-
-	# N = 10
-	# x = torch.rand(N, 10).to(device)
-	# u = torch.rand(N, 4).to(device)
-
-	xdot = xdot_fn(x, u)
-
-	print(x, u)
-	print(xdot)"""
-	pass
-
-	# comparing results to batched numpy
-
