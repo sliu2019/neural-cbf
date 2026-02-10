@@ -1,16 +1,5 @@
 """Saturation risk loss for neural CBF training.
-
-Implements the saturation avoidance objective from liu23e.pdf Eq. 4.
-For a state x on the CBF boundary, the saturation risk is:
-
-    L(x) = min_{u ∈ vertices(U)} φ̇(x, u) = ∇φ(x) · f(x, u)
-
-A positive value indicates the CBF derivative is positive for all saturated
-controls (safe); a negative value indicates a violation. The critic maximizes
-this to find worst-case states; the learner minimizes it to fix violations.
-
-References:
-    liu23e.pdf Eq. 4, Section 3.1
+The critic maximizes this to find worst-case states; the learner minimizes it to fix violations.
 """
 import logging
 from collections.abc import Callable
@@ -18,7 +7,6 @@ from collections.abc import Callable
 import torch
 from torch import nn
 from torch.autograd import grad
-
 
 class SaturationRisk(nn.Module):
 	"""Computes worst-case CBF derivative over control limit set vertices.
@@ -55,7 +43,7 @@ class SaturationRisk(nn.Module):
 	def forward(self, x: torch.Tensor) -> torch.Tensor:
 		"""Computes minimum CBF derivative over control limit vertices.
 
-		Algorithm:
+		Approach:
 		1. Get all vertices of the control limit polytope U
 		2. Compute φ̇(x, u) = ∇φ(x) · f(x, u) for each vertex u
 		3. Return minimum over all vertices
@@ -79,8 +67,8 @@ class SaturationRisk(nn.Module):
 		xdot = self.xdot_fn(X, U)  # (bs*n_vertices, x_dim)
 
 		# Compute gradient of CBF: ∇φ(x)
-		orig_req_grad_setting = x.requires_grad
-		x.requires_grad = True
+		orig_req_grad_setting = x.requires_grad 
+		x.requires_grad = True # So gradient flows through this forward pass 
 		phi_value = self.phi_fn(x)  # (bs, r+1)
 		grad_phi = grad([torch.sum(phi_value[:, -1])], x, create_graph=True)[0]  # (bs, x_dim)
 		x.requires_grad = orig_req_grad_setting
