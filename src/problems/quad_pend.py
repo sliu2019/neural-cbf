@@ -215,10 +215,7 @@ class ULimitSetVertices(nn.Module):
 
 @dataclass
 class QuadPendConfig:
-	"""Configuration for quadcopter-pendulum system parameters.
-
-	This dataclass provides type-safe configuration for the quadcopter with
-	attached inverted pendulum system, replacing the untyped param_dict.
+	"""Parameters for quadcopter-pendulum system.
 
 	Physical Parameters:
 		m: quadcopter mass [kg]
@@ -242,9 +239,6 @@ class QuadPendConfig:
 	State Space:
 		state_index_dict: Mapping from state names to indices
 		x_lim: State space bounds (x_dim, 2) with [min, max] per dimension
-
-	Reference:
-		liu23e.pdf Section 4 for parameter values and system description
 	"""
 	# Physical parameters (quadcopter)
 	m: float = 0.8
@@ -263,7 +257,7 @@ class QuadPendConfig:
 	delta_safety_limit: float = math.pi / 4  # Should be <= π/4
 	box_ang_vel_limit: float = 20.0
 
-	# System dimensions (computed in __post_init__)
+	# System dimensions 
 	r: int = 2
 	x_dim: int = 10
 	u_dim: int = 4
@@ -330,25 +324,6 @@ def create_quad_pend_param_dict(args=None):
 
 	Instantiates QuadPendConfig with default parameters and converts
 	to dictionary for backward compatibility with existing code.
-
-	Args:
-		args: Optional argparse.Namespace to override default parameters
-			  (currently unused, parameters are hardcoded)
-
-	Returns:
-		dict: Parameter dictionary with keys:
-			Physical: m, J_x, J_y, J_z, l, k1, k2, m_p, L_p, M
-			Safety: delta_safety_limit, box_ang_vel_limit
-			Dimensions: x_dim, u_dim, r
-			Bounds: x_lim (state space bounds)
-			Mappings: state_index_dict
-
-	Reference:
-		liu23e.pdf Section 4 for system description and parameters
-
-	Note:
-		This function now uses QuadPendConfig dataclass internally
-		for type safety, but returns a dict for backward compatibility.
 	"""
 	# Create typed config with default parameters
 	config = QuadPendConfig()
