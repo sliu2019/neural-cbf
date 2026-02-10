@@ -411,7 +411,7 @@ def run_rollout_experiment(args):
 		parser = create_arg_parser()
 		cbf_train_args, _ = parser.parse_known_args() # allows us to ignore unknown args
 
-		from main import create_quad_pend_param_dict
+		from problems.quad_pend import create_quad_pend_param_dict
 		param_dict = create_quad_pend_param_dict(cbf_train_args) # default
 
 		from rollout_cbf_classes.deprecated.flying_ssa import SSA

@@ -259,7 +259,7 @@ def load_philow_and_params(exp_name=None, checkpoint_number=None):
 	parser = create_arg_parser() # default
 	args = parser.parse_known_args()[0]
 
-	from main import create_quad_pend_param_dict
+	from problems.quad_pend import create_quad_pend_param_dict
 	param_dict = create_quad_pend_param_dict(args) # default
 
 	r = param_dict["r"]
@@ -269,9 +269,9 @@ def load_philow_and_params(exp_name=None, checkpoint_number=None):
 
 
 	# Create phi
-	from problems.quad_pend import RhoMax, RhoSum, XDot
+	from problems.quad_pend import RhoMax, Rho, XDot
 	# if args.rho == "sum":
-	h_fn = RhoSum(param_dict)
+	h_fn = Rho(param_dict)
 	# elif args.rho == "max":
 		# h_fn = RhoMax(param_dict)
 

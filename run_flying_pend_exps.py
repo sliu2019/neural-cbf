@@ -256,7 +256,7 @@ def run_exps(args):
 		from create_arg_parser import create_arg_parser
 		parser = create_arg_parser() # default
 		parser_args = parser.parse_known_args()[0]
-		from main import create_quad_pend_param_dict
+		from problems.quad_pend import create_quad_pend_param_dict
 		param_dict = create_quad_pend_param_dict(parser_args) # default
 
 		h_fn = HSum(param_dict)

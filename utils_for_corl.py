@@ -35,7 +35,7 @@ class FlyingInvertedPendulumEnv():
 			# Form a default param dict
 			sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 			from create_arg_parser import create_arg_parser
-			from main import create_quad_pend_param_dict
+			from problems.quad_pend import create_quad_pend_param_dict
 
 			parser = create_arg_parser()  # default
 			args = parser.parse_known_args()[0]

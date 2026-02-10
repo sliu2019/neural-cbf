@@ -23,7 +23,7 @@ from create_arg_parser import create_arg_parser
 
 parser = create_arg_parser()  # default
 default_args = parser.parse_known_args()[0]
-from main import create_quad_pend_param_dict
+from problems.quad_pend import create_quad_pend_param_dict
 
 param_dict = create_quad_pend_param_dict(default_args)  # default
 state_index_dict = param_dict["state_index_dict"]

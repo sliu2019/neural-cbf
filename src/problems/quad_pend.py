@@ -1,9 +1,14 @@
+import math
+from dataclasses import dataclass, field
+from typing import Dict
 import torch
 import numpy as np
 from torch import nn
+
+from utils import np
 g = 9.81  # Gravitational acceleration [m/s^2]
 
-class RhoSum(nn.Module):
+class Rho(nn.Module):
 	"""
 	Computes safety specification:
 	    ρ(x) = δ² + γ² + β² - δ_limit²
@@ -206,3 +211,149 @@ class ULimitSetVertices(nn.Module):
 		rv = rv.unsqueeze(dim=0)  # (1, 16, 4)
 		rv = rv.expand(x.shape[0], -1, -1)  # (bs, 16, 4)
 		return rv
+
+
+@dataclass
+class QuadPendConfig:
+	"""Configuration for quadcopter-pendulum system parameters.
+
+	This dataclass provides type-safe configuration for the quadcopter with
+	attached inverted pendulum system, replacing the untyped param_dict.
+
+	Physical Parameters:
+		m: quadcopter mass [kg]
+		m_p: Pendulum mass [kg]
+		M: Total mass (computed as m + m_p) [kg]
+		L_p: Pendulum length [m]
+		J_x, J_y, J_z: Moments of inertia [kg·m²]
+		l: quadcopter arm length [m]
+		k1: Thrust coefficient [N·s²]
+		k2: Drag coefficient [N·m·s²]
+
+	Safety Parameters:
+		delta_safety_limit: Maximum allowed angle from vertical [rad]
+		box_ang_vel_limit: Angular velocity bounds [rad/s]
+
+	System Dimensions:
+		x_dim: State space dimension (10)
+		u_dim: Control input dimension (4)
+		r: Relative degree of CBF (2)
+
+	State Space:
+		state_index_dict: Mapping from state names to indices
+		x_lim: State space bounds (x_dim, 2) with [min, max] per dimension
+
+	Reference:
+		liu23e.pdf Section 4 for parameter values and system description
+	"""
+	# Physical parameters (quadcopter)
+	m: float = 0.8
+	J_x: float = 0.005
+	J_y: float = 0.005
+	J_z: float = 0.009
+	l: float = 1.5
+	k1: float = 4.0
+	k2: float = 0.05
+
+	# Physical parameters (pendulum)
+	m_p: float = 0.04  # 5% of quadcopter weight
+	L_p: float = 3.0
+
+	# Safety parameters
+	delta_safety_limit: float = math.pi / 4  # Should be <= π/4
+	box_ang_vel_limit: float = 20.0
+
+	# System dimensions (computed in __post_init__)
+	r: int = 2
+	x_dim: int = 10
+	u_dim: int = 4
+
+	# Derived parameters (computed in __post_init__)
+	M: float = field(init=False)  # Total mass
+	state_index_dict: Dict[str, int] = field(init=False)
+	x_lim: np.ndarray = field(init=False)
+
+	def __post_init__(self):
+		"""Computes derived parameters from base parameters."""
+		# Total mass
+		self.M = self.m + self.m_p
+
+		# State indexing
+		state_index_names = [
+			"gamma", "beta", "alpha",      # quadcopter angles
+			"dgamma", "dbeta", "dalpha",   # quadcopter angular velocities
+			"phi", "theta",                # Pendulum angles
+			"dphi", "dtheta"               # Pendulum angular velocities
+		]
+		self.state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
+
+		# State space bounds
+		ub = self.box_ang_vel_limit
+		thresh = np.array([
+			math.pi / 3, math.pi / 3, math.pi,  # quadcopter angle limits
+			ub, ub, ub,                         # quadcopter velocity limits
+			math.pi / 3, math.pi / 3,           # Pendulum angle limits
+			ub, ub                              # Pendulum velocity limits
+		], dtype=np.float32)
+
+		self.x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)
+
+	def to_dict(self) -> Dict:
+		"""Converts config to dictionary for backward compatibility.
+
+		Returns:
+			dict: Parameter dictionary with all attributes
+		"""
+		return {
+			"m": self.m,
+			"J_x": self.J_x,
+			"J_y": self.J_y,
+			"J_z": self.J_z,
+			"l": self.l,
+			"k1": self.k1,
+			"k2": self.k2,
+			"m_p": self.m_p,
+			"L_p": self.L_p,
+			"M": self.M,
+			"delta_safety_limit": self.delta_safety_limit,
+			"box_ang_vel_limit": self.box_ang_vel_limit,
+			"r": self.r,
+			"x_dim": self.x_dim,
+			"u_dim": self.u_dim,
+			"state_index_dict": self.state_index_dict,
+			"x_lim": self.x_lim,
+		}
+
+
+def create_quad_pend_param_dict(args=None):
+	"""Creates parameter dictionary for flying inverted pendulum system.
+
+	Instantiates QuadPendConfig with default parameters and converts
+	to dictionary for backward compatibility with existing code.
+
+	Args:
+		args: Optional argparse.Namespace to override default parameters
+			  (currently unused, parameters are hardcoded)
+
+	Returns:
+		dict: Parameter dictionary with keys:
+			Physical: m, J_x, J_y, J_z, l, k1, k2, m_p, L_p, M
+			Safety: delta_safety_limit, box_ang_vel_limit
+			Dimensions: x_dim, u_dim, r
+			Bounds: x_lim (state space bounds)
+			Mappings: state_index_dict
+
+	Reference:
+		liu23e.pdf Section 4 for system description and parameters
+
+	Note:
+		This function now uses QuadPendConfig dataclass internally
+		for type safety, but returns a dict for backward compatibility.
+	"""
+	# Create typed config with default parameters
+	config = QuadPendConfig()
+
+	# Convert to dict for backward compatibility with existing code
+	param_dict = config.to_dict()
+
+	return param_dict
