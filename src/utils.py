@@ -117,113 +117,113 @@ def load_args(file_name: str):
 	return args
 
 
-class EarlyStopping():
-	"""Early stopping to terminate training when loss stops improving.
+# class EarlyStopping():
+# 	"""Early stopping to terminate training when loss stops improving.
 
-	Tracks best loss seen so far and counts consecutive epochs without
-	sufficient improvement. Stops training after patience is exceeded.
+# 	Tracks best loss seen so far and counts consecutive epochs without
+# 	sufficient improvement. Stops training after patience is exceeded.
 
-	Attributes:
-		patience: Number of epochs to wait before stopping
-		min_delta: Minimum loss improvement to reset patience counter
-		counter: Current count of non-improving epochs
-		best_loss: Best loss value seen so far
-		early_stop: Flag indicating whether to stop training
-	"""
-	def __init__(self, patience: int = 3, min_delta: float = 0) -> None:
-		"""Initializes early stopping monitor.
+# 	Attributes:
+# 		patience: Number of epochs to wait before stopping
+# 		min_delta: Minimum loss improvement to reset patience counter
+# 		counter: Current count of non-improving epochs
+# 		best_loss: Best loss value seen so far
+# 		early_stop: Flag indicating whether to stop training
+# 	"""
+# 	def __init__(self, patience: int = 3, min_delta: float = 0) -> None:
+# 		"""Initializes early stopping monitor.
 
-		Args:
-			patience: How many epochs to wait before stopping when loss
-			         is not improving (default: 3)
-			min_delta: Minimum loss decrease to count as improvement
-			          (default: 0, any decrease counts)
-		"""
-		self.patience = patience
-		self.min_delta = min_delta
-		self.counter = 0
-		self.best_loss = None
-		self.early_stop = False
+# 		Args:
+# 			patience: How many epochs to wait before stopping when loss
+# 			         is not improving (default: 3)
+# 			min_delta: Minimum loss decrease to count as improvement
+# 			          (default: 0, any decrease counts)
+# 		"""
+# 		self.patience = patience
+# 		self.min_delta = min_delta
+# 		self.counter = 0
+# 		self.best_loss = None
+# 		self.early_stop = False
 
-	def __call__(self, test_loss: float) -> None:
-		"""Updates early stopping state with new loss value.
+# 	def __call__(self, test_loss: float) -> None:
+# 		"""Updates early stopping state with new loss value.
 
-		Args:
-			test_loss: Current loss value (scalar or tensor)
+# 		Args:
+# 			test_loss: Current loss value (scalar or tensor)
 
-		Side Effects:
-			Updates self.best_loss, self.counter, and self.early_stop
-		"""
-		if self.best_loss == None:
-			self.best_loss = test_loss
-		elif self.best_loss - test_loss > self.min_delta:
-			self.best_loss = test_loss
-		elif self.best_loss - test_loss < self.min_delta:
-			self.counter += 1
-			if self.counter >= self.patience:
-				print('INFO: Early stopping')
-				self.early_stop = True
+# 		Side Effects:
+# 			Updates self.best_loss, self.counter, and self.early_stop
+# 		"""
+# 		if self.best_loss == None:
+# 			self.best_loss = test_loss
+# 		elif self.best_loss - test_loss > self.min_delta:
+# 			self.best_loss = test_loss
+# 		elif self.best_loss - test_loss < self.min_delta:
+# 			self.counter += 1
+# 			if self.counter >= self.patience:
+# 				print('INFO: Early stopping')
+# 				self.early_stop = True
 
 
-class EarlyStoppingBatch():
-	"""Batch-wise early stopping for adversarial optimization (maximization).
+# class EarlyStoppingBatch():
+# 	"""Batch-wise early stopping for adversarial optimization (maximization).
 
-	Unlike regular EarlyStopping, this tracks improvement for each element in
-	a batch independently. Training stops only when ALL batch elements have
-	stopped improving. Used for critic's counterexample search where we
-	maximize saturation risk across multiple candidate states.
+# 	Unlike regular EarlyStopping, this tracks improvement for each element in
+# 	a batch independently. Training stops only when ALL batch elements have
+# 	stopped improving. Used for critic's counterexample search where we
+# 	maximize saturation risk across multiple candidate states.
 
-	Note: This monitors MAXIMIZATION (increasing loss), not minimization.
+# 	Note: This monitors MAXIMIZATION (increasing loss), not minimization.
 
-	Attributes:
-		patience: Number of steps to wait per batch element
-		min_delta: Minimum loss increase to count as improvement
-		counter: Per-element counter of non-improving steps (bs,)
-		best_loss: Best loss per element (bs,)
-		early_stop_vec: Per-element stopping flags (bs,)
-		early_stop: Global flag (True when all elements stopped)
-	"""
-	def __init__(self, bs: int, patience: int = 3, min_delta: float = 1e-1) -> None:
-		"""Initializes batch early stopping monitor.
+# 	Attributes:
+# 		patience: Number of steps to wait per batch element
+# 		min_delta: Minimum loss increase to count as improvement
+# 		counter: Per-element counter of non-improving steps (bs,)
+# 		best_loss: Best loss per element (bs,)
+# 		early_stop_vec: Per-element stopping flags (bs,)
+# 		early_stop: Global flag (True when all elements stopped)
+# 	"""
+# 	def __init__(self, bs: int, patience: int = 3, min_delta: float = 1e-1) -> None:
+# 		"""Initializes batch early stopping monitor.
 
-		Args:
-			bs: Batch size (number of independent optimization problems)
-			patience: Steps to wait per element before marking as converged
-			min_delta: Minimum loss increase to count as improvement (default: 0.1)
-		"""
-		self.patience = patience
-		self.min_delta = min_delta
+# 		Args:
+# 			bs: Batch size (number of independent optimization problems)
+# 			patience: Steps to wait per element before marking as converged
+# 			min_delta: Minimum loss increase to count as improvement (default: 0.1)
+# 		"""
+# 		self.patience = patience
+# 		self.min_delta = min_delta
 
-		self.counter = torch.zeros(bs)
-		self.best_loss = None
-		self.early_stop_vec = torch.zeros(bs, dtype=torch.bool)
-		self.early_stop = False
+# 		self.counter = torch.zeros(bs)
+# 		self.best_loss = None
+# 		self.early_stop_vec = torch.zeros(bs, dtype=torch.bool)
+# 		self.early_stop = False
 
-	def __call__(self, test_loss: torch.Tensor) -> None:
-		"""Updates early stopping state for each batch element.
+# 	def __call__(self, test_loss: torch.Tensor) -> None:
+# 		"""Updates early stopping state for each batch element.
 
-		Args:
-			test_loss: Current loss values for batch (bs, 1) tensor
+# 		Args:
+# 			test_loss: Current loss values for batch (bs, 1) tensor
 
-		Side Effects:
-			Updates best_loss, counter, early_stop_vec, and early_stop.
-			Prints message when all elements have converged.
-		"""
-		if self.best_loss == None:
-			self.best_loss = test_loss
+# 		Side Effects:
+# 			Updates best_loss, counter, early_stop_vec, and early_stop.
+# 			Prints message when all elements have converged.
+# 		"""
+# 		if self.best_loss == None:
+# 			self.best_loss = test_loss
 
-		improve_ind = torch.nonzero(test_loss - self.best_loss >= self.min_delta)
-		nonimprove_ind = torch.nonzero(test_loss - self.best_loss < self.min_delta)
-		self.best_loss[improve_ind] = test_loss[improve_ind]
+# 		improve_ind = torch.nonzero(test_loss - self.best_loss >= self.min_delta)
+# 		nonimprove_ind = torch.nonzero(test_loss - self.best_loss < self.min_delta)
+# 		self.best_loss[improve_ind] = test_loss[improve_ind]
 
-		self.counter[nonimprove_ind] = self.counter[nonimprove_ind] + 1
+# 		self.counter[nonimprove_ind] = self.counter[nonimprove_ind] + 1
 
-		early_stop_ind = torch.nonzero(self.counter >= self.patience)
-		self.early_stop_vec[early_stop_ind] = True
+# 		early_stop_ind = torch.nonzero(self.counter >= self.patience)
+# 		self.early_stop_vec[early_stop_ind] = True
 
-		if torch.all(self.early_stop_vec).item():
-			print('INFO: Early stopping')
-			self.early_stop = True
+# 		if torch.all(self.early_stop_vec).item():
+# 			print('INFO: Early stopping')
+# 			self.early_stop = True
 
 
 class IndexNNInput(nn.Module):

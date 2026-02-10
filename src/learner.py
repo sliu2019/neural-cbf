@@ -33,7 +33,8 @@ import numpy as np
 import torch
 import torch.optim as optim
 
-from src.utils import save_model, EarlyStopping, EarlyStoppingBatch
+from src.utils import save_model
+#, EarlyStopping, EarlyStoppingBatch
 
 
 class Learner():
@@ -91,6 +92,9 @@ class Learner():
 		self.x_lim = x_lim
 		self.x_dim = x_lim.shape[0]
 		self.x_lim_interval_sizes = np.reshape(x_lim[:, 1] - x_lim[:, 0], (1, self.x_dim))
+
+		self.test_N_volume_samples = 2500
+		self.test_N_boundary_samples = 2500
 
 	def train(self, saturation_risk: Callable, reg_fn: Callable,
 	          phi_fn: torch.nn.Module, xdot_fn: Callable) -> None:
@@ -165,7 +169,7 @@ class Learner():
 
 		optimizer = optim.Adam(phi_fn.parameters(), lr=self.args.learner_lr)
 
-		early_stopping = EarlyStopping(patience=self.args.learner_early_stopping_patience, min_delta=1e-2)
+		# early_stopping = EarlyStopping(patience=self.args.learner_early_stopping_patience, min_delta=1e-2)
 
 		_iter = 0
 		t0 = time.perf_counter()
@@ -319,21 +323,21 @@ class Learner():
 			if _iter % self.args.n_test_loss_step == 0:
 				t0_test = time.perf_counter()
 
-				samp_numpy = np.random.uniform(size=(self.args.test_N_volume_samples, self.x_dim)) * self.x_lim_interval_sizes + self.x_lim[:, [0]].T
+				samp_numpy = np.random.uniform(size=(self.test_N_volume_samples, self.x_dim)) * self.x_lim_interval_sizes + self.x_lim[:, [0]].T
 				samp_torch = torch.from_numpy(samp_numpy.astype("float32")).to(self.device)
 				M = 100
 
 				N_samples_inside = 0
-				for k in range(math.ceil(self.args.test_N_volume_samples/float(M))):
-					phi_vals_batch = phi_fn(samp_torch[k*M: min((k+1)*M, self.args.test_N_volume_samples)])
+				for k in range(math.ceil(self.test_N_volume_samples/float(M))):
+					phi_vals_batch = phi_fn(samp_torch[k*M: min((k+1)*M, self.test_N_volume_samples)])
 					N_samples_inside += torch.sum(torch.max(phi_vals_batch, axis=1)[0] <= 0.0)
-				V_approx = N_samples_inside*100.0/float(self.args.test_N_volume_samples)
+				V_approx = N_samples_inside*100.0/float(self.test_N_volume_samples)
 				V_approx = V_approx.item()
 				data_dict["V_approx_list"].append(V_approx)
 
 				# Sample on boundary
 				t0_test_boundary = time.perf_counter()
-				boundary_samples, debug_dict = self.test_critic._sample_points_on_boundary(phi_fn, self.args.test_N_boundary_samples)
+				boundary_samples, debug_dict = self.test_critic._sample_points_on_boundary(phi_fn, self.test_N_boundary_samples)
 				boundary_samples_obj_value = saturation_risk(boundary_samples)
 				boundary_samples_obj_value = boundary_samples_obj_value.detach().cpu().numpy()
 				data_dict["boundary_samples_obj_values"].append(boundary_samples_obj_value)
@@ -355,12 +359,12 @@ class Learner():
 				data_dict["test_t_total"].append(tf_test-t0_test)
 				data_dict["test_t_boundary"].append(tf_test-t0_test_boundary)
 
-			if self.args.learner_stopping_condition == "early_stopping":
-				early_stopping(objective_value)
-				if early_stopping.early_stop:
-					break
-			elif self.args.learner_stopping_condition == "n_steps":
-				if _iter > self.args.learner_n_steps:
-					break
+			# if self.args.learner_stopping_condition == "early_stopping":
+			# 	early_stopping(objective_value)
+			# 	if early_stopping.early_stop:
+			# 		break
+			# elif self.args.learner_stopping_condition == "n_steps":
+			if _iter > self.args.learner_n_steps:
+				break
 
 			_iter += 1
