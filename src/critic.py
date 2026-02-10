@@ -1,20 +1,13 @@
 """Critic for finding worst-case counterexamples via boundary optimization.
 
-Implements the critic component of the learner-critic architecture from liu23e.pdf
-Algorithm 1. The critic searches for states on the CBF boundary (φ=0) where the
-saturation risk is highest, providing counterexamples for the learner to address.
-
-Key Algorithm: Projected Gradient Ascent on Boundary
-1. Sample points on CBF zero-level set (Gaussian sampling around safe set)
+Algorithm: Projected Gradient Ascent on Boundary
+1. Sample points on CBF zero-level set (Appendix Algorithm 2)
 2. Perform projected gradient ascent to maximize saturation risk
 3. Project back to boundary after each step to maintain φ(x)=0
 4. Return worst-case counterexamples for learner
 
 The critic uses geometric sampling strategies and manifold projection to efficiently
 explore the boundary even when the safe set is small.
-
-References:
-	liu23e.pdf Section 3.2 (Critic Design), Appendix B (Sampling Methods)
 """
 import logging
 import time

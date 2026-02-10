@@ -1,79 +1,73 @@
+"""Quadcopter-pendulum system: dynamics, safety specification, and control constraints."""
 import math
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Optional
+
 import torch
 import numpy as np
 from torch import nn
 
-from utils import np
 g = 9.81  # Gravitational acceleration [m/s^2]
 
+
 class Rho(nn.Module):
-	"""
-	Computes safety specification:
-	    ρ(x) = δ² + γ² + β² - δ_limit²
+	"""Base safety specification ρ(x) = δ² + γ² + β² - δ_limit².
 
-	where:
-	- δ: angle between pendulum axis and vertical (computed from φ, θ)
-	- γ, β: quadcopter roll and pitch angles
-	- δ_limit: limit on all angles
+	The safe set is {x : ρ(x) ≤ 0}, enforcing that the pendulum deviation
+	angle δ and quadcopter tilt angles γ, β stay within δ_limit.
 
-	The safe set is defined as {x : ρ(x) ≤ 0}.
-	This means the safety objective is to keep the pendulum upright and prevent the quadcopter from rolling.
+	δ is computed from pendulum angles (φ, θ) via cos(δ) = cos(φ)·cos(θ).
 	"""
-	def __init__(self, param_dict):
+	def __init__(self, param_dict: dict) -> None:
 		super().__init__()
-		self.__dict__.update(param_dict)  # Unpack all physical parameters
+		self.__dict__.update(param_dict)
 		self.i = self.state_index_dict
 
-	def forward(self, x):
-		"""Computes ρ(x) = δ² + γ² + β² - δ_limit² for batch of states.
+	def forward(self, x: torch.Tensor) -> torch.Tensor:
+		"""Computes ρ(x) = δ² + γ² + β² - δ_limit² for a batch of states.
 
 		Args:
 			x: Batch of states (bs, 10)
 
 		Returns:
-			Tensor (bs, 1): Safety specification values
+			Tensor (bs, 1): Safety specification values; ρ(x) ≤ 0 is safe
 		"""
-		# Extract angles
 		theta = x[:, [self.i["theta"]]]  # Pendulum angle axis 1
 		phi = x[:, [self.i["phi"]]]      # Pendulum angle axis 2
 		gamma = x[:, [self.i["gamma"]]]  # quadcopter roll
 		beta = x[:, [self.i["beta"]]]    # quadcopter pitch
 
-		# Compute pendulum deviation angle δ from vertical
-		# Uses: cos(δ) = cos(φ)·cos(θ)
+		# Compute pendulum deviation angle δ via cos(δ) = cos(φ)·cos(θ)
 		cos_cos = torch.cos(theta)*torch.cos(phi)
 
-		# Add small epsilon for numerical stability (prevents NaN at vertical)
+		# Small epsilon for numerical stability (prevents NaN at vertical)
 		eps = 1e-4
 		with torch.no_grad():
 			signed_eps = -torch.sign(cos_cos)*eps
 
 		delta = torch.acos(cos_cos + signed_eps)
 
-		# Sum-of-squares safety specification
 		rv = delta**2 + gamma**2 + beta**2 - self.delta_safety_limit**2
-
 		return rv
+
 
 class XDot(nn.Module):
 	"""System dynamics ẋ = f(x, u) for quadcopter-pendulum."""
-	def __init__(self, param_dict, device):
+	def __init__(self, param_dict: dict, device: torch.device) -> None:
 		super().__init__()
-		self.__dict__.update(param_dict)  # Unpack all physical parameters
+		self.__dict__.update(param_dict)
 		self.device = device
 		self.i = self.state_index_dict
 
-	def forward(self, x, u):
-		"""Computes ẋ = f(x, u) for batch of states and controls.
+	def forward(self, x: torch.Tensor, u: torch.Tensor) -> torch.Tensor:
+		"""Computes ẋ = f(x, u) for a batch of states and controls.
 
 		Args:
 			x: Batch of states (bs, 10)
-			u: Batch of controls (bs, 4)
+			u: Batch of controls (bs, 4) as [F, τ_x, τ_y, τ_z]
 
 		Returns:
-			Tensor (bs, 10): State derivatives ẋ
+			Tensor (bs, 10): State derivatives ẋ = [γ̇, β̇, α̇, γ̈, β̈, α̈, φ̇, θ̇, φ̈, θ̈]
 		"""
 		###############################################################################
 		# Extract state variables
@@ -88,63 +82,53 @@ class XDot(nn.Module):
 		dtheta = x[:, self.i["dtheta"]] # Pendulum angular velocity 2
 
 		###############################################################################
-		# Compute rotation matrix R: body frame to global frame (ZYX Euler angles)
+		# Rotation matrix R: body frame → global frame (ZYX Euler angles)
 		###############################################################################
 		# R = R_z(α) · R_y(β) · R_x(γ)
 		R = torch.zeros((x.shape[0], 3, 3), device=self.device)
 
-		# First row
 		R[:, 0, 0] = torch.cos(alpha)*torch.cos(beta)
 		R[:, 0, 1] = torch.cos(alpha)*torch.sin(beta)*torch.sin(gamma) - torch.sin(alpha)*torch.cos(gamma)
 		R[:, 0, 2] = torch.cos(alpha)*torch.sin(beta)*torch.cos(gamma) + torch.sin(alpha)*torch.sin(gamma)
 
-		# Second row
 		R[:, 1, 0] = torch.sin(alpha)*torch.cos(beta)
 		R[:, 1, 1] = torch.sin(alpha)*torch.sin(beta)*torch.sin(gamma) + torch.cos(alpha)*torch.cos(gamma)
 		R[:, 1, 2] = torch.sin(alpha)*torch.sin(beta)*torch.cos(gamma) - torch.cos(alpha)*torch.sin(gamma)
 
-		# Third row
 		R[:, 2, 0] = -torch.sin(beta)
 		R[:, 2, 1] = torch.cos(beta)*torch.sin(gamma)
 		R[:, 2, 2] = torch.cos(beta)*torch.cos(gamma)
 
-		# Extract thrust direction components in global frame
-		# k = R·[0, 0, 1]ᵀ is the third column of R
+		# Thrust direction k = R·[0, 0, 1]ᵀ (third column of R)
 		k_x = R[:, 0, 2]
 		k_y = R[:, 1, 2]
 		k_z = R[:, 2, 2]
 
-		# Total thrust (control input F is deviation from hover)
+		# Total thrust (u[:,0] is deviation from hover)
 		F = (u[:, 0] + self.M*g)
 
 		###############################################################################
-		# Compute quadcopter angular accelerations from torques
+		# Quadcopter angular accelerations from torques
 		###############################################################################
 		J = torch.tensor([self.J_x, self.J_y, self.J_z]).to(self.device)
 
-		# Normalize torques by moments of inertia
 		norm_torques = u[:, 1:]*(1.0/J)  # (bs, 3)
-
-		# Transform torques to global frame and extract angular accelerations
-		ddquad_angles = torch.bmm(R, norm_torques[:, :, None])  # (bs, 3, 1)
-		ddquad_angles = ddquad_angles[:, :, 0]  # (bs, 3)
+		ddquad_angles = torch.bmm(R, norm_torques[:, :, None])[:, :, 0]  # (bs, 3)
 
 		ddgamma = ddquad_angles[:, 0]  # Roll acceleration
 		ddbeta = ddquad_angles[:, 1]   # Pitch acceleration
 		ddalpha = ddquad_angles[:, 2]  # Yaw acceleration
 
 		###############################################################################
-		# Compute pendulum angular accelerations (coupled to quadcopter via thrust)
+		# Pendulum angular accelerations (Euler-Lagrange, coupled via thrust)
 		###############################################################################
-		# Derived from Euler-Lagrange equations with thrust coupling
 		ddphi = (3.0)*(k_y*torch.cos(phi) + k_z*torch.sin(phi))/(2*self.M*self.L_p*torch.cos(theta))*F + 2*dtheta*dphi*torch.tan(theta)
 
 		ddtheta = (3.0*(-k_x*torch.cos(theta)-k_y*torch.sin(phi)*torch.sin(theta) + k_z*torch.cos(phi)*torch.sin(theta))/(2.0*self.M*self.L_p))*F - torch.square(dphi)*torch.sin(theta)*torch.cos(theta)
 
 		###############################################################################
-		# Assemble state derivative vector
+		# Assemble ẋ = [γ̇, β̇, α̇, γ̈, β̈, α̈, φ̇, θ̇, φ̈, θ̈]
 		###############################################################################
-		# ẋ = [γ̇, β̇, α̇, γ̈, β̈, α̈, φ̇, θ̇, φ̈, θ̈]
 		rv = torch.cat([
 			x[:, [self.i["dgamma"]]],  # γ̇
 			x[:, [self.i["dbeta"]]],   # β̇
@@ -160,11 +144,12 @@ class XDot(nn.Module):
 
 		return rv
 
+
 class ULimitSetVertices(nn.Module):
-	"""Computes vertices of control input constraint polytope U."""
-	def __init__(self, param_dict, device):
+	"""Precomputes and returns vertices of the control input constraint polytope U."""
+	def __init__(self, param_dict: dict, device: torch.device) -> None:
 		super().__init__()
-		self.__dict__.update(param_dict)  # Unpack all physical parameters
+		self.__dict__.update(param_dict)
 		self.device = device
 
 		###############################################################################
@@ -174,7 +159,7 @@ class ULimitSetVertices(nn.Module):
 		k2 = self.k2
 		l = self.l
 
-		# Mixer matrix
+		# Mixer matrix: maps rotor impulses [0,1]^4 → (F, τ_x, τ_y, τ_z)
 		M = np.array([
 			[k1,   k1,    k1,   k1],    # Total thrust
 			[0,   -l*k1,  0,    l*k1],  # Roll torque
@@ -182,7 +167,7 @@ class ULimitSetVertices(nn.Module):
 			[-k2,  k2,   -k2,   k2]     # Yaw torque
 		])
 
-		# Generate all 16 vertices of the unit hypercube [0,1]^4
+		# All 16 vertices of the unit hypercube [0,1]^4
 		r1 = np.concatenate((np.zeros(8), np.ones(8)))
 		r2 = np.concatenate((np.zeros(4), np.ones(4), np.zeros(4), np.ones(4)))
 		r3 = np.concatenate((np.zeros(2), np.ones(2), np.zeros(2), np.ones(2),
@@ -192,35 +177,32 @@ class ULimitSetVertices(nn.Module):
 
 		impulse_vert = np.concatenate((r1[None], r2[None], r3[None], r4[None]), axis=0)  # (4, 16)
 
-		# Transform rotor impulses to force/torque space and subtract hover thrust
+		# Transform to force/torque space and subtract hover thrust
 		force_vert = M @ impulse_vert - np.array([[self.M*g], [0.0], [0.0], [0.0]])
 		force_vert = force_vert.T.astype("float32")  # (16, 4)
 
 		self.vert = torch.from_numpy(force_vert).to(self.device)
 
-	def forward(self, x):
+	def forward(self, x: torch.Tensor) -> torch.Tensor:
 		"""Returns control polytope vertices replicated for batch.
 
 		Args:
-			x: Batch of states (bs, 10) - only used for batch size
+			x: Batch of states (bs, 10) — used only for batch size
 
 		Returns:
-			Tensor (bs, 16, 4): Polytope vertices for each state
+			Tensor (bs, 16, 4): Control polytope vertices for each state
 		"""
-		rv = self.vert  # (16, 4)
-		rv = rv.unsqueeze(dim=0)  # (1, 16, 4)
-		rv = rv.expand(x.shape[0], -1, -1)  # (bs, 16, 4)
-		return rv
+		return self.vert.unsqueeze(0).expand(x.shape[0], -1, -1)  # (bs, 16, 4)
 
 
 @dataclass
 class QuadPendConfig:
-	"""Parameters for quadcopter-pendulum system.
+	"""Parameters for the quadcopter-pendulum system.
 
 	Physical Parameters:
 		m: quadcopter mass [kg]
 		m_p: Pendulum mass [kg]
-		M: Total mass (computed as m + m_p) [kg]
+		M: Total mass (m + m_p) [kg]
 		L_p: Pendulum length [m]
 		J_x, J_y, J_z: Moments of inertia [kg·m²]
 		l: quadcopter arm length [m]
@@ -235,10 +217,6 @@ class QuadPendConfig:
 		x_dim: State space dimension (10)
 		u_dim: Control input dimension (4)
 		r: Relative degree of CBF (2)
-
-	State Space:
-		state_index_dict: Mapping from state names to indices
-		x_lim: State space bounds (x_dim, 2) with [min, max] per dimension
 	"""
 	# Physical parameters (quadcopter)
 	m: float = 0.8
@@ -257,22 +235,20 @@ class QuadPendConfig:
 	delta_safety_limit: float = math.pi / 4  # Should be <= π/4
 	box_ang_vel_limit: float = 20.0
 
-	# System dimensions 
+	# System dimensions
 	r: int = 2
 	x_dim: int = 10
 	u_dim: int = 4
 
 	# Derived parameters (computed in __post_init__)
-	M: float = field(init=False)  # Total mass
+	M: float = field(init=False)
 	state_index_dict: Dict[str, int] = field(init=False)
 	x_lim: np.ndarray = field(init=False)
 
-	def __post_init__(self):
+	def __post_init__(self) -> None:
 		"""Computes derived parameters from base parameters."""
-		# Total mass
 		self.M = self.m + self.m_p
 
-		# State indexing
 		state_index_names = [
 			"gamma", "beta", "alpha",      # quadcopter angles
 			"dgamma", "dbeta", "dalpha",   # quadcopter angular velocities
@@ -281,54 +257,37 @@ class QuadPendConfig:
 		]
 		self.state_index_dict = dict(zip(state_index_names, np.arange(len(state_index_names))))
 
-		# State space bounds
 		ub = self.box_ang_vel_limit
 		thresh = np.array([
 			math.pi / 3, math.pi / 3, math.pi,  # quadcopter angle limits
-			ub, ub, ub,                         # quadcopter velocity limits
-			math.pi / 3, math.pi / 3,           # Pendulum angle limits
-			ub, ub                              # Pendulum velocity limits
+			ub, ub, ub,                          # quadcopter velocity limits
+			math.pi / 3, math.pi / 3,            # Pendulum angle limits
+			ub, ub                               # Pendulum velocity limits
 		], dtype=np.float32)
 
 		self.x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)
 
 	def to_dict(self) -> Dict:
-		"""Converts config to dictionary for backward compatibility.
-
-		Returns:
-			dict: Parameter dictionary with all attributes
-		"""
+		"""Converts config to dictionary for backward compatibility."""
 		return {
-			"m": self.m,
-			"J_x": self.J_x,
-			"J_y": self.J_y,
-			"J_z": self.J_z,
-			"l": self.l,
-			"k1": self.k1,
-			"k2": self.k2,
-			"m_p": self.m_p,
-			"L_p": self.L_p,
-			"M": self.M,
+			"m": self.m, "J_x": self.J_x, "J_y": self.J_y, "J_z": self.J_z,
+			"l": self.l, "k1": self.k1, "k2": self.k2,
+			"m_p": self.m_p, "L_p": self.L_p, "M": self.M,
 			"delta_safety_limit": self.delta_safety_limit,
 			"box_ang_vel_limit": self.box_ang_vel_limit,
-			"r": self.r,
-			"x_dim": self.x_dim,
-			"u_dim": self.u_dim,
+			"r": self.r, "x_dim": self.x_dim, "u_dim": self.u_dim,
 			"state_index_dict": self.state_index_dict,
 			"x_lim": self.x_lim,
 		}
 
 
-def create_quad_pend_param_dict(args=None):
-	"""Creates parameter dictionary for flying inverted pendulum system.
+def create_quad_pend_param_dict(args: Optional[object] = None) -> Dict:
+	"""Creates parameter dictionary for the quadcopter-pendulum system.
 
-	Instantiates QuadPendConfig with default parameters and converts
-	to dictionary for backward compatibility with existing code.
+	Args:
+		args: Optional argparse.Namespace (currently unused; parameters are hardcoded)
+
+	Returns:
+		dict: System parameters — see QuadPendConfig for keys
 	"""
-	# Create typed config with default parameters
-	config = QuadPendConfig()
-
-	# Convert to dict for backward compatibility with existing code
-	param_dict = config.to_dict()
-
-	return param_dict
+	return QuadPendConfig().to_dict()
