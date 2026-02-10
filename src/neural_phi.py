@@ -1,26 +1,16 @@
 """Neural Control Barrier Function (CBF) implementation using modified CBF construction.
 
-This module implements the neural CBF design described in liu23e.pdf Section 3.1.
-The CBF uses a higher-order modified structure to handle systems with input constraints:
+This module implements a variation of the neural CBF design described in Sections 2 and 3:
 
     φ*(x) = [Π_{i=0}^{r-1} (1 + c_i ∂^i/∂t^i) ρ(x)] + ρ(x) - ρ* 
+	ρ* = (nn(x) - nn(x_e))^2 + k_0 * ρ(x)
 
 where:
 - ρ(x) is the base safety specification (e.g., angles from vertical)
-- ρ*(x) is a neural network that reshapes the safe set
-- c_i are learnable positive coefficients
+- ρ*(x) is CBF reshaping function, where nn(x) is a neural network
+- k_0, c_i are learnable positive coefficients
 - r is the relative degree of the dynamic system 
-
-The modified CBF structure ensures that the zero-sublevel set {x : φ*(x) ≤ 0}
-is forward invariant even under input saturation constraints.
-
-Key Implementation Details:
-- Lie derivatives L_f^k(ρ) are computed recursively using automatic differentiation
-- Coefficients c_i are converted to k_i via binomial expansion for stability
-- Network ρ*(x) reshapes ρ to enlarge the safe set while maintaining safety
-
-References:
-    liu23e.pdf Section 3.1 (Neural CBF Design), Appendix A (Mathematical Details)
+- x_e is an equilibrium state
 """
 import torch
 from torch import nn
@@ -54,7 +44,7 @@ class NeuralPhi(nn.Module):
 		x_e: Optional equilibrium point for centering ρ* network
 		ci: Learnable coefficients (r-1,) - must be positive
 		k0: Learnable scaling (1,) - must be positive
-		rho_star: MLP for ρ*(x)
+		rho_star_net: MLP for ρ*(x)
 		pos_param_names: List of parameters constrained to be positive
 		exclude_from_gradient_param_names: Parameters excluded from gradient updates
 
@@ -109,7 +99,7 @@ class NeuralPhi(nn.Module):
 		print("At initialization: k0 is %f" % self.k0.item())
 
 		# Create neural network ρ*(x) for reshaping ρ(x)
-		self.rho_star = self._create_net()
+		self.rho_star_net = self._create_net()
 
 		# Specify which parameters must remain positive (enforced in learner)
 		self.pos_param_names = ["ci", "k0"]
@@ -188,7 +178,7 @@ class NeuralPhi(nn.Module):
 		ci = self.ci + self.ci_min  # Ensures all c_i ≥ ci_min > 0
 
 		# Convert c_i coefficients to k_i via binomial expansion
-		# Starting with k_0 = [1], we build k_1, k_2, ..., k_{r-1}
+		# Starting with k_0 = [1], we build k_1, k_2, ..., k_{r-1} # TODO: is k_0 = 1?
 		ki = torch.tensor([[1.0]])
 		ki_all = torch.zeros(self.r, self.r).to(self.device)  # Row i stores coefficients for φ_i
 		ki_all[0, 0:ki.numel()] = ki
@@ -222,20 +212,20 @@ class NeuralPhi(nn.Module):
 		if self.x_e is None:
 			# Standard case: ρ*(x) directly
 			if self.nn_input_modifier is None:
-				rho_star_value = self.rho_star(x)
+				rho_star_value = self.rho_star_net(x)
 			else:
-				rho_star_value = self.rho_star(self.nn_input_modifier(x))
+				rho_star_value = self.rho_star_net(self.nn_input_modifier(x))
 			# Apply softplus for numerical stability (ρ* ≥ 0)
 			new_rho = nn.functional.softplus(rho_star_value) + k0*self.rho_fn(x)
 		else:
 			# Equilibrium-centered case: (ρ*(x) - ρ*(x_e))^2
 			# This centers the modification around equilibrium x_e
 			if self.nn_input_modifier is None:
-				rho_star_value = self.rho_star(x)
-				rho_star_xe_value = self.rho_star(self.x_e)
+				rho_star_value = self.rho_star_net(x)
+				rho_star_xe_value = self.rho_star_net(self.x_e)
 			else:
-				rho_star_value = self.rho_star(self.nn_input_modifier(x))
-				rho_star_xe_value = self.rho_star(self.nn_input_modifier(self.x_e))
+				rho_star_value = self.rho_star_net(self.nn_input_modifier(x))
+				rho_star_xe_value = self.rho_star_net(self.nn_input_modifier(self.x_e))
 			new_rho = torch.square(rho_star_value - rho_star_xe_value) + k0*self.rho_fn(x)
 
 		###############################################################################
