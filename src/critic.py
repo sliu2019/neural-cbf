@@ -9,12 +9,13 @@ Approach: Projected Gradient Ascent on Boundary
 import logging
 import time
 from typing import Any, Dict, Optional, Tuple
-from collections.abc import Callable
+# from collections.abc import Callable
 
 import numpy as np
 import torch
 from torch.autograd import grad
 import torch.optim as optim
+from torch import nn
 
 
 class Critic():
@@ -93,7 +94,7 @@ class Critic():
 
 		self.n_gpu = torch.cuda.device_count()
 
-	def _project(self, phi_star_fn: Callable, X: torch.Tensor,
+	def _project(self, phi_star_fn: nn.Module, X: torch.Tensor,
 	             projection_n_grad_steps: Optional[int] = None) -> torch.Tensor:
 		"""Projects points onto CBF zero-level set φ(x)=0 using gradient descent.
 
@@ -147,20 +148,20 @@ class Critic():
 				print("Not on manifold, %f" % (torch.max(loss).item()))
 		return rv_X
 
-	def _step(self, saturation_risk: Callable, phi_star_fn: Callable,
+	def _step(self, saturation_risk: nn.Module, phi_star_fn: nn.Module,
 	          X: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, Any]]:
 		"""Single projected gradient ascent step on boundary manifold.
 
 		Performs:
-		1. Compute gradient of saturation risk: ∇_x L(x)
-		2. Compute normal to manifold: n = ∇φ(x) / ||∇φ(x)||
-		3. Project gradient: g_proj = g - (g·n)n (tangent to manifold)
+		1. Compute gradient of saturation risk: g = ∇_x L(x)
+		2. Compute normal to boundary manifold: n = ∇φ(x) / ||∇φ(x)||
+		3. Project gradient: g_proj = g - (g·n)n (tangent to boundary manifold)
 		4. Take step: x_new = x - lr·g_proj
 		5. Project x_new back onto boundary
 
 		Args:
-			saturation_risk: Loss function to maximize
-			phi_star_fn: Neural CBF (defines manifold)
+			saturation_risk: loss function to maximize
+			phi_star_fn: neural CBF (defines boundary manifold)
 			X: Current boundary points (n_samples, x_dim)
 
 		Returns:
@@ -169,37 +170,41 @@ class Critic():
 		"""
 		t0_step = time.perf_counter()
 
+		# Compute gradient of saturation risk: g = ∇_x L(x)
 		X_batch = X.view(-1, self.x_dim)
 		X_batch.requires_grad = True
 
 		obj_val = -saturation_risk(X_batch)  # maximizing
 		obj_grad = grad([torch.sum(obj_val)], X_batch)[0]
 
+		# Compute normal to boundary manifold: n = ∇φ(x) / ||∇φ(x)||
 		normal_to_manifold = grad([torch.sum(phi_star_fn(X_batch)[:, -1])], X_batch)[0]
-
 		normal_to_manifold = normal_to_manifold/torch.norm(normal_to_manifold, dim=1)[:, None]  # normalize
 		X_batch.requires_grad = False
+
+		# Project gradient to manifold tangent: g_proj = g - (g·n)n (tangent to boundary manifold)
 		weights = obj_grad.unsqueeze(1).bmm(normal_to_manifold.unsqueeze(2))[:, 0]
 		proj_obj_grad = obj_grad - weights*normal_to_manifold
 
-		# Take a step
+		# Take step: x_new = x - lr·g_proj
 		X_new = X - self.lr*proj_obj_grad
 		tf_grad_step = time.perf_counter()
 
+		# Project x_new back onto boundary
 		dist_before_proj = torch.mean(torch.abs(phi_star_fn(X_new)[:,-1]))
 		X_new = self._project(phi_star_fn, X_new)
 		dist_after_proj = torch.mean(torch.abs(phi_star_fn(X_new)[:,-1]))
 
 		tf_reproject = time.perf_counter()
 
-		# Wrap-around in state domain
+		# Clip to state domain
 		X_new = torch.minimum(torch.maximum(X_new, self.x_lim[:, 0]), self.x_lim[:, 1])
 		dist_diff_after_proj = (dist_after_proj-dist_before_proj).detach().cpu().numpy()
 		debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step), "dist_diff_after_proj": dist_diff_after_proj}
 
 		return X_new, debug_dict
 
-	def _sample_in_safe_set(self, phi_star_fn: Callable,
+	def _sample_in_safe_set(self, phi_star_fn: nn.Module,
 	                        random_seed: Optional[int] = None) -> torch.Tensor:
 		"""Samples a single point uniformly inside the safe set φ(x) ≤ 0."""
 		if random_seed:
@@ -233,7 +238,7 @@ class Critic():
 		return sample_torch
 
 	def _intersect_segment_with_manifold(self, p1: torch.Tensor, p2: torch.Tensor,
-	                                     phi_star_fn: Callable) -> Optional[torch.Tensor]:
+	                                     phi_star_fn: nn.Module) -> Optional[torch.Tensor]:
 		"""Finds intersection of line segment [p1, p2] with CBF boundary φ(x)=0 via bisection."""
 		diff = p2-p1
 
@@ -275,7 +280,7 @@ class Critic():
 				return None
 		return intersection_point
 
-	def _sample_segment_intersect_boundary(self, phi_star_fn: Callable,
+	def _sample_segment_intersect_boundary(self, phi_star_fn: nn.Module,
 	                                       random_seed: Optional[int] = None) -> Optional[torch.Tensor]:
 		"""Samples point on boundary using Gaussian sampling strategy.
 
@@ -299,7 +304,7 @@ class Critic():
 		intersection = self._intersect_segment_with_manifold(center, outer, phi_star_fn)
 		return intersection
 
-	def _sample_points_on_boundary_sequential(self, phi_star_fn: Callable,
+	def _sample_points_on_boundary_sequential(self, phi_star_fn: nn.Module,
 	                                          n_samples: int) -> Tuple[torch.Tensor, Dict[str, Any]]:
 		"""Generates n_samples points on CBF boundary via rejection sampling.
 
@@ -336,7 +341,7 @@ class Critic():
 		debug_dict = {"t_sample_boundary": (tf- t0), "n_segments_sampled": n_segments_sampled}
 		return samples, debug_dict
 
-	def opt(self, saturation_risk: Callable, phi_star_fn: Callable, iteration: int,
+	def opt(self, saturation_risk: nn.Module, phi_star_fn: nn.Module, iteration: int,
 	        debug: bool = False) -> Tuple[torch.Tensor, Dict[str, Any]]:
 		"""Main optimization loop to find worst-case counterexamples.
 
