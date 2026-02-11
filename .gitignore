@@ -1,4 +1,6 @@
 log/
 __pycache__/
 checkpoint/
+rollout_results/
 *.out
+*.pdf
