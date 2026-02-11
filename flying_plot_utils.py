@@ -220,9 +220,9 @@ def graph_losses(exp_name, debug=True):
 		axs[1].set_title("Attack timing metrics")
 		axs[1].plot(data["train_attack_t_total_opt"], label="Total time for counterex", linewidth=0.5)
 		axs[1].plot(data["train_attack_t_init"], label="Time to init", linewidth=0.5)
-		train_attack_t_grad_steps = data["train_attack_t_grad_steps"]
-		avg_t_grad_steps = [np.mean(x) for x in train_attack_t_grad_steps]
-		axs[1].plot(avg_t_grad_steps, label="Avg time for grad steps", linewidth=0.5)
+		train_attack_t_grad_step = data["train_attack_t_grad_step"]
+		avg_t_grad_step = [np.mean(x) for x in train_attack_t_grad_step]
+		axs[1].plot(avg_t_grad_step, label="Avg time for grad steps", linewidth=0.5)
 		train_attack_t_reproject = data["train_attack_t_reproject"]
 		avg_t_reproject = [np.mean(x) for x in train_attack_t_reproject]
 		axs[1].plot(avg_t_reproject, label="Avg time to reproject", linewidth=0.5)

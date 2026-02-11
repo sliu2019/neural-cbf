@@ -147,7 +147,7 @@ class Learner():
 			"train_attack_init_best_attack_value": [],
 			"train_attack_final_best_attack_value": [],
 			"train_attack_t_init": [],
-			"train_attack_t_grad_steps": [],
+			"train_attack_t_grad_step": [],
 			"train_attack_t_reproject": [],
 			"train_attack_t_total_opt": [],
 			"train_attack_t_sample_boundary": [],
@@ -261,14 +261,14 @@ class Learner():
 
 			# Timing logging + saving
 			t_init = debug_dict["t_init"]
-			t_grad_steps = debug_dict["t_grad_steps"]
+			t_grad_step = debug_dict["t_grad_step"]
 			t_reproject = debug_dict["t_reproject"]
 			t_total_opt = debug_dict["t_total_opt"]
 
 			self.logger.info('time spent training so far: %s' % t_so_far_str)
 			self.logger.info(f'train attack total time: {t_total_opt:.3f}s')
 			self.logger.info(f'train attack init time: {t_init:.3f}s')
-			self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_steps):.3f}s')
+			self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_step):.3f}s')
 			self.logger.info(f'train attack avg reproj time: {np.mean(t_reproject):.3f}s')
 
 			iteration_info_dict["train_loop_times"] = t_so_far

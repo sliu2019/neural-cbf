@@ -1,10 +1,4 @@
 """Critic for finding worst-case counterexamples via boundary optimization.
-
-Approach: Projected Gradient Ascent on Boundary
-1. Sample points on CBF zero-level set (Appendix Algorithm 2)
-2. Perform projected gradient ascent to maximize saturation risk
-3. Project back to boundary after each step to maintain φ(x)=0
-4. Return worst-case counterexamples for learner
 """
 import logging
 import time
@@ -18,35 +12,8 @@ from torch import nn
 
 
 class Critic():
-	"""Finds worst-case counterexamples on CBF boundary via projected gradient ascent.
-
-	The critic searches for states x where φ(x)=0 (on boundary) and saturation
-	risk is maximized. Uses:
-	- Gaussian sampling around safe set for initialization
-	- Projected gradient ascent constrained to boundary manifold
-	- Warmstart with previous counterexamples for efficiency
-
-	Key Methods:
-		opt(): Main optimization loop
-		_sample_points_on_boundary_sequential(): Generate initial boundary samples
-		_step(): Single projected gradient ascent step
-		_project(): Project points onto φ=0 manifold
-
-	Attributes:
-		x_lim: State space bounds (x_dim, 2)
-		device: PyTorch device
-		logger: Logger instance
-		n_samples: Batch size for counterexample search (default: 60)
-		max_n_steps: Maximum gradient ascent iterations (default: 50)
-		verbose: Enable debug logging
-		gaussian_t: Temperature for Gaussian sampling (default: 1.0)
-		lr: Learning rate for gradient ascent (default: 1e-3)
-		projection_tolerance: Convergence threshold for projection (default: 1e-1)
-		projection_lr: LR for projection optimizer (default: 1e-2)
-		projection_time_limit: Max time for single projection (default: 3.0s)
-	"""
 	def __init__(self, x_lim: torch.Tensor, device: torch.device, logger: logging.Logger,
-	             n_samples: int = 60, max_n_steps: int = 50, verbose: bool = False) -> None:
+	             n_samples: int = 60, max_n_steps: int = 50) -> None:
 		"""Initializes critic for counterexample search.
 
 		Args:
@@ -55,18 +22,15 @@ class Critic():
 			logger: Logger for debugging
 			n_samples: Number of candidate counterexamples to optimize
 			max_n_steps: Maximum gradient ascent steps per iteration
-			verbose: Enable debug logging
 		"""
 		self.x_lim = x_lim
 		self.device = device
 		self.logger = logger
 		self.n_samples = n_samples
 		self.max_n_steps = max_n_steps
-		self.verbose = verbose
 
 		# Hardcoded hyperparameters (from best configuration)
 		self.gaussian_t = 1.0  # Gaussian sampling temperature
-		self.p_reuse = 0.0  # Warmstart reuse probability (disabled)
 		self.projection_tolerance = 1e-1  # Projection convergence threshold
 		self.projection_lr = 1e-2  # Projection optimizer LR
 		self.projection_time_limit = 3.0  # Max projection time (seconds)
@@ -86,121 +50,12 @@ class Critic():
 		self.hypercube_vol = torch.prod(x_lim_interval_sizes)
 
 		# Warmstart: save counterexamples from previous iteration
-		self.X_saved = None
-		self.obj_vals_saved = None
-
-	def _project(self, phi_star_fn: nn.Module, X: torch.Tensor,
-	             projection_n_grad_steps: Optional[int] = None) -> torch.Tensor:
-		"""Projects points onto CBF zero-level set φ*(x)=0 using gradient descent.
-
-		Minimizes |φ*(x)| via Adam optimizer until convergence or timeout.
-		Used after gradient ascent steps to maintain boundary constraint.
-
-		Args:
-			phi_star_fn: Neural CBF function
-			X: Points to project (list of tensors or single tensor)
-			projection_n_grad_steps: Optional step limit (otherwise uses time limit)
-
-		Returns:
-			Projected points on boundary where φ(x) ≈ 0
-		"""
-		i = 0
-		t1 = time.perf_counter()
-
-		X_list = list(X)
-		X_list = [X_mem.view(-1, self.x_dim) for X_mem in X_list]
-		for X_mem in X_list:
-			X_mem.requires_grad = True
-		proj_opt = optim.Adam(X_list, lr=self.projection_lr)
-
-		while True:
-			proj_opt.zero_grad()
-
-			loss = torch.sum(torch.abs(phi_star_fn(torch.cat(X_list), grad_x=True)[:, -1]))
-
-			loss.backward()
-			proj_opt.step()
-
-			i += 1
-			t_now = time.perf_counter()
-			if torch.max(loss) < self.projection_tolerance:
-				break
-
-			if projection_n_grad_steps is not None:  # use step number limit
-				if i == projection_n_grad_steps:
-					break
-			else:  # use time limit
-				if (t_now - t1) > self.projection_time_limit:
-					self.logger.warning("Reprojection exited on timeout, max dist from boundary: %.4f", torch.max(loss).item())
-					break
-
-		for X_mem in X_list:
-			X_mem.requires_grad = False
-		rv_X = torch.cat(X_list)
-
-		if self.verbose and torch.max(loss) > self.projection_tolerance:
-			self.logger.debug("Not on manifold, %.6f", torch.max(loss).item())
-		return rv_X
-
-	def _step(self, saturation_risk: nn.Module, phi_star_fn: nn.Module,
-	          X: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, Any]]:
-		"""Single projected gradient ascent step on boundary manifold.
-
-		Performs:
-		1. Compute gradient of saturation risk: g = ∇_x L(x)
-		2. Compute normal to boundary manifold: n = ∇φ(x) / ||∇φ(x)||
-		3. Project gradient: g_proj = g - (g·n)n (tangent to boundary manifold)
-		4. Take step: x_new = x - lr·g_proj
-		5. Project x_new back onto boundary
-
-		Args:
-			saturation_risk: loss function to maximize
-			phi_star_fn: neural CBF (defines boundary manifold)
-			X: Current boundary points (n_samples, x_dim)
-
-		Returns:
-			X_new: Updated points after projected gradient step
-			debug_dict: Timing and convergence info
-		"""
-		t0_step = time.perf_counter()
-
-		# Compute gradient of saturation risk: g = ∇_x L(x)
-		X_batch = X.view(-1, self.x_dim)
-		X_batch.requires_grad = True
-
-		obj_val = -saturation_risk(X_batch)  # maximizing
-		obj_grad = grad([torch.sum(obj_val)], X_batch)[0]
-
-		# Compute normal to boundary manifold: n = ∇φ(x) / ||∇φ(x)||
-		normal_to_manifold = grad([torch.sum(phi_star_fn(X_batch)[:, -1])], X_batch)[0]
-		normal_to_manifold = normal_to_manifold/torch.norm(normal_to_manifold, dim=1)[:, None]  # normalize
-		X_batch.requires_grad = False
-
-		# Project gradient to manifold tangent: g_proj = g - (g·n)n (tangent to boundary manifold)
-		weights = obj_grad.unsqueeze(1).bmm(normal_to_manifold.unsqueeze(2))[:, 0]
-		proj_obj_grad = obj_grad - weights*normal_to_manifold
-
-		# Take step: x_new = x - lr·g_proj
-		X_new = X - self.lr*proj_obj_grad
-		tf_grad_step = time.perf_counter()
-
-		# Project x_new back onto boundary
-		dist_before_proj = torch.mean(torch.abs(phi_star_fn(X_new)[:,-1]))
-		X_new = self._project(phi_star_fn, X_new)
-		dist_after_proj = torch.mean(torch.abs(phi_star_fn(X_new)[:,-1]))
-
-		tf_reproject = time.perf_counter()
-
-		# Clip to state domain
-		X_new = torch.minimum(torch.maximum(X_new, self.x_lim[:, 0]), self.x_lim[:, 1])
-		dist_diff_after_proj = (dist_after_proj-dist_before_proj).detach().cpu().numpy()
-		debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step), "dist_diff_after_proj": dist_diff_after_proj}
-
-		return X_new, debug_dict
+		# self.X_saved = None
+		# self.obj_vals_saved = None
 
 	def _sample_in_safe_set(self, phi_star_fn: nn.Module,
 	                        random_seed: Optional[int] = None) -> torch.Tensor:
-		"""Samples a single point uniformly inside the safe set φ(x) ≤ 0."""
+		"""Samples a single point uniformly inside the safe set φ*(x) ≤ 0."""
 		if random_seed:
 			torch.manual_seed(random_seed)
 			np.random.seed(random_seed)
@@ -233,7 +88,7 @@ class Critic():
 
 	def _intersect_segment_with_manifold(self, p1: torch.Tensor, p2: torch.Tensor,
 	                                     phi_star_fn: nn.Module) -> Optional[torch.Tensor]:
-		"""Finds intersection of line segment [p1, p2] with CBF boundary φ(x)=0 via bisection."""
+		"""Finds intersection of line segment [p1, p2] with CBF boundary φ*(x)=0 via bisection."""
 		diff = p2-p1
 
 		left_weight = 0.0
@@ -279,9 +134,9 @@ class Critic():
 		"""Samples point on boundary using Gaussian sampling strategy.
 
 		Appendix Algorithm 2:
-		1. Sample x_safe inside safe set (φ < 0)
+		1. Sample x_safe inside safe set (φ* < 0)
 		2. Sample x_outer from Gaussian centered at x_safe
-		3. Find intersection of segment [x_safe, x_outer] with boundary
+		3. Find intersection of segment [x_safe, x_outer] with boundary, if it exists
 
 		This biases sampling toward regions near safe set, improving
 		efficiency when safe set is small.
@@ -291,7 +146,7 @@ class Critic():
 			random_seed: Optional seed for reproducibility
 
 		Returns:
-			Point on boundary (x_dim,) where φ(x)≈0, or None if no intersection
+			Point on boundary (x_dim,) where φ*(x)≈0, or None if no intersection
 		"""
 		center = self._sample_in_safe_set(phi_star_fn, random_seed=random_seed)
 		outer = self._sample_in_gaussian(center)
@@ -319,8 +174,7 @@ class Critic():
 
 		n_segments_sampled = 0
 		while n_remaining_to_sample > 0:
-			if self.verbose:
-				self.logger.debug("Sampling boundary: %d remaining", n_remaining_to_sample)
+
 			intersection = self._sample_segment_intersect_boundary(phi_star_fn)
 			if intersection is not None:
 				samples = torch.cat((samples, intersection.view(1, -1)), dim=0)
@@ -332,12 +186,113 @@ class Critic():
 		debug_dict = {"t_sample_boundary": (tf- t0), "n_segments_sampled": n_segments_sampled}
 		return samples, debug_dict
 
+	def _project(self, phi_star_fn: nn.Module, X: torch.Tensor) -> torch.Tensor:
+		"""Projects points onto CBF zero-level set φ**(x)=0 using gradient descent.
+
+		Minimizes |φ**(x)| via Adam optimizer until convergence or timeout.
+		Used after gradient ascent steps to maintain boundary constraint.
+
+		Args:
+			phi_star_fn: Neural CBF function
+			X: Points to project (list of tensors or single tensor)
+
+		Returns:
+			Projected points on boundary where φ*(x) ≈ 0
+		"""
+		i = 0
+		t1 = time.perf_counter()
+
+		X_list = list(X)
+		X_list = [X_mem.view(-1, self.x_dim) for X_mem in X_list]
+		for X_mem in X_list:
+			X_mem.requires_grad = True
+		proj_opt = optim.Adam(X_list, lr=self.projection_lr)
+
+		while True:
+			proj_opt.zero_grad()
+
+			loss = torch.sum(torch.abs(phi_star_fn(torch.cat(X_list), grad_x=True)[:, -1]))
+
+			loss.backward()
+			proj_opt.step()
+
+			i += 1
+			t_now = time.perf_counter()
+			if torch.max(loss) < self.projection_tolerance:
+				break
+
+			if (t_now - t1) > self.projection_time_limit:
+				self.logger.warning("Reprojection exited on timeout, max dist from boundary: %.4f", torch.max(loss).item())
+				break
+
+		for X_mem in X_list:
+			X_mem.requires_grad = False
+		rv_X = torch.cat(X_list)
+
+		return rv_X
+
+	def _step(self, saturation_risk: nn.Module, phi_star_fn: nn.Module,
+	          X: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, Any]]:
+		"""Single projected gradient ascent step on boundary manifold.
+
+		Performs:
+		1. Compute gradient of saturation risk: g = ∇_x L(x)
+		2. Compute normal to boundary manifold: n = ∇φ*(x) / ||∇φ*(x)||
+		3. Project gradient: g_proj = g - (g·n)n (tangent to boundary manifold)
+		4. Take step: x_new = x - lr·g_proj
+		5. Project x_new back onto boundary
+
+		Args:
+			saturation_risk: loss function to maximize
+			phi_star_fn: neural CBF (defines boundary manifold)
+			X: Current boundary points (n_samples, x_dim)
+
+		Returns:
+			X_new: Updated points after projected gradient step
+			debug_dict: Timing and convergence info
+		"""
+		t0_step = time.perf_counter()
+
+		# Compute gradient of saturation risk: g = ∇_x L(x)
+		X_batch = X.view(-1, self.x_dim)
+		X_batch.requires_grad = True
+
+		obj_val = -saturation_risk(X_batch)  # maximizing
+		obj_grad = grad([torch.sum(obj_val)], X_batch)[0]
+
+		# Compute normal to boundary manifold: n = ∇φ*(x) / ||∇φ*(x)||
+		normal_to_manifold = grad([torch.sum(phi_star_fn(X_batch)[:, -1])], X_batch)[0]
+		normal_to_manifold = normal_to_manifold/torch.norm(normal_to_manifold, dim=1)[:, None]  # normalize
+		X_batch.requires_grad = False
+
+		# Project gradient to manifold tangent: g_proj = g - (g·n)n (tangent to boundary manifold)
+		weights = obj_grad.unsqueeze(1).bmm(normal_to_manifold.unsqueeze(2))[:, 0]
+		proj_obj_grad = obj_grad - weights*normal_to_manifold
+
+		# Take step: x_new = x - lr·g_proj
+		X_new = X - self.lr*proj_obj_grad
+		tf_grad_step = time.perf_counter()
+
+		# Project x_new back onto boundary
+		dist_before_proj = torch.mean(torch.abs(phi_star_fn(X_new)[:,-1]))
+		X_new = self._project(phi_star_fn, X_new)
+		dist_after_proj = torch.mean(torch.abs(phi_star_fn(X_new)[:,-1]))
+
+		tf_reproject = time.perf_counter()
+
+		# Clip to state domain
+		X_new = torch.minimum(torch.maximum(X_new, self.x_lim[:, 0]), self.x_lim[:, 1])
+		dist_diff_after_proj = (dist_after_proj-dist_before_proj).detach().cpu().numpy()
+		debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step), "dist_diff_after_proj": dist_diff_after_proj}
+
+		return X_new, debug_dict
+	
 	def opt(self, saturation_risk: nn.Module, phi_star_fn: nn.Module,
 	        iteration: int) -> Tuple[torch.Tensor, Dict[str, Any]]:
 		"""Main optimization loop to find worst-case counterexamples.
 
 		Algorithm:
-		1. Initialize: Sample n_samples points on boundary (with optional warmstart)
+		1. Initialize: Sample n_samples points on boundary 
 		2. Iterate: Perform projected gradient ascent to maximize saturation_risk
 		3. Return: Worst counterexample (state with highest saturation risk)
 
@@ -354,39 +309,9 @@ class Critic():
 			debug_dict: Timing, convergence, and sample info
 		"""
 		t0_opt = time.perf_counter()
-
-		if self.X_saved is None:
-			X_init, boundary_sample_debug_dict = self._sample_points_on_boundary_sequential(phi_star_fn, self.n_samples)
-
-			X_reuse_init = torch.zeros((0, self.x_dim))
-			X_random_init = X_init
-		else:
-			n_target_reuse_samples = int(self.n_samples*self.p_reuse)
-
-			inds = torch.argsort(self.obj_vals_saved, axis=0, descending=True).flatten()
-
-			# Select distinct attacks (exclude near-duplicate points)
-			inds_distinct = [inds[0]]
-			for ind in inds[1:]:
-				diff = self.X_saved[torch.tensor(inds_distinct)] - self.X_saved[ind]
-				distances = torch.norm(diff.view(-1, self.x_dim), dim=1)
-				if torch.any(distances <= 1e-1).item():
-					continue
-				inds_distinct.append(ind)
-				if len(inds_distinct) >= n_target_reuse_samples:
-					break
-
-			n_reuse_samples = len(inds_distinct)
-			n_random_samples = self.n_samples - n_reuse_samples
-			X_reuse_init = self.X_saved[torch.tensor(inds_distinct)]
-			X_reuse_init = self._project(phi_star_fn, X_reuse_init)  # reproject, since phi changed
-			X_random_init, boundary_sample_debug_dict = self._sample_points_on_boundary_sequential(phi_star_fn, n_random_samples)
-			X_init = torch.cat([X_random_init, X_reuse_init], axis=0)
-
+		X_init, boundary_sample_debug_dict = self._sample_points_on_boundary_sequential(phi_star_fn, self.n_samples)
 		tf_init = time.perf_counter()
 
-		X = X_init.clone()
-		i = 0
 		# Per-step timing accumulators
 		t_grad_step = []
 		t_reproject = []
@@ -394,13 +319,17 @@ class Critic():
 		obj_vals = saturation_risk(X.view(-1, self.x_dim))
 		init_best_attack_value = torch.max(obj_vals).item()
 
+		# Init other loop variables 
+		X = X_init.clone()
+		i = 0
 		max_n_steps = (0.5*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
 		self.logger.info("Max_n_steps: %i", max_n_steps)
+		
 		while True:
-			if self.verbose:
-				self.logger.debug("Counterex. max. step #%i", i)
+			# A step of projected gradient ascent 
 			X, step_debug_dict = self._step(saturation_risk, phi_star_fn, X)
 
+			# Logging 
 			t_grad_step.append(step_debug_dict["t_grad_step"])
 			t_reproject.append(step_debug_dict["t_reproject"])
 			dist_diff_after_proj.append(step_debug_dict["dist_diff_after_proj"])
@@ -411,10 +340,7 @@ class Critic():
 
 		tf_opt = time.perf_counter()
 
-		# Save for warmstart
-		self.X_saved = X
 		obj_vals = saturation_risk(X.view(-1, self.x_dim))
-		self.obj_vals_saved = obj_vals
 
 		# Return single worst-case attack
 		max_ind = torch.argmax(obj_vals)
@@ -424,7 +350,16 @@ class Critic():
 		t_init = tf_init - t0_opt
 		t_total_opt = tf_opt - t0_opt
 
-		debug_dict = {"X_init": X_init, "X_init_reuse": X_reuse_init, "X_init_random": X_random_init, "X_final": X, "X_obj_vals": obj_vals, "init_best_attack_value": init_best_attack_value, "final_best_attack_value": final_best_attack_value, "t_init": t_init, "t_grad_steps": t_grad_step, "t_reproject": t_reproject, "t_total_opt": t_total_opt, "dist_diff_after_proj": dist_diff_after_proj, "n_opt_steps": max_n_steps}
+		debug_dict = {"X_init": X_init, \
+				"X_final": X, \
+				"init_best_attack_value": init_best_attack_value, \
+				"final_best_attack_value": final_best_attack_value, \
+				"t_init": t_init, \
+				"t_grad_step": t_grad_step, \
+				"t_reproject": t_reproject, \
+				"t_total_opt": t_total_opt, \
+				"dist_diff_after_proj": dist_diff_after_proj, \
+				"n_opt_steps": max_n_steps}
 		debug_dict.update(boundary_sample_debug_dict)
 
 		return x, debug_dict
