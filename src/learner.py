@@ -8,7 +8,7 @@ import time
 import datetime
 import pickle
 import math
-from collections.abc import Callable
+# from collections.abc import Callable
 
 import numpy as np
 import torch
@@ -18,7 +18,7 @@ from src.utils import save_model
 
 
 class Learner():
-	"""Orchestrates neural CBF training via learner-critic optimization.
+	"""Performs neural CBF training via learner-critic optimization.
 
 	The learner minimizes saturation risk + regularization using gradient descent,
 	while the critic provides worst-case counterexamples. Training loop alternates:
@@ -26,23 +26,8 @@ class Learner():
 	2. Learner updates CBF to reduce risk at those states
 	3. Regularization encourages large safe set
 	4. Periodic testing measures safe set volume and boundary violations
-
-	Attributes:
-		args: Training arguments (learning rate, stopping conditions, etc.)
-		logger: Logger for training progress
-		critic: Finds counterexamples during training
-		test_critic: Evaluates boundary violations (testing only)
-		reg_sampler: Samples points for regularization
-		param_dict: System parameters and bounds
-		device: PyTorch device
-		save_folder: Directory name for outputs
-		log_folder: Full path to log directory
-		data_save_fpth: Path to training data pickle file
-		x_lim: State space bounds
-		x_dim: State dimension
-		x_lim_interval_sizes: Width of each state dimension
 	"""
-	def __init__(self, args, logger, critic, test_critic, reg_sampler, param_dict,
+	def __init__(self, args, logger, critic, test_critic, reg_sampler, param_dict: dict,
 	             device: torch.device) -> None:
 		"""Initializes learner with training configuration.
 
@@ -94,7 +79,6 @@ class Learner():
 			"h_list": [],
 			"train_attacks": [],
 			"train_attack_X_init": [],
-			"train_attack_X_final": [],
 			"train_attack_X_phi_vals": [],
 			"train_attack_init_best_attack_value": [],
 			"train_attack_final_best_attack_value": [],
@@ -151,12 +135,12 @@ class Learner():
 		reg_value.backward()
 		reg_grad_norm = self._avg_grad_norm(phi_star_fn)
 
-		attack_value.backward()
+		attack_value.backward() # collecting gradients on phi_star parameters
 		total_grad_norm = self._avg_grad_norm(phi_star_fn)
 
 		optimizer.step()
 
-		with torch.no_grad():
+		with torch.no_grad(): # enforce positivity on ci and h oaraneters
 			for param in pos_params:
 				param.copy_(torch.maximum(param, torch.zeros_like(param)))
 
@@ -221,32 +205,36 @@ class Learner():
 			Dict with keys: V_approx_list, boundary_samples_obj_values,
 			                test_t_total, test_t_boundary
 		"""
+		self.logger.info('\n' + '+' * 20 + ' computing test stats ' + '+' * 20)
 		t0_test = time.perf_counter()
 
+		# Sample states uniformly in state space, evaluate φ, and compute fraction with max_i φ_i(x) ≤ 0 (safe set volume approximation)
 		samp_numpy = (np.random.uniform(size=(self.test_N_volume_samples, self.x_dim))
 		              * self.x_lim_interval_sizes + self.x_lim[:, [0]].T)
 		samp_torch = torch.from_numpy(samp_numpy.astype("float32")).to(self.device)
-		M = 100
+		M = 100 # Batch size for evaluating φ on test samples to avoid OOM; no grad needed here
 		N_samples_inside = 0
 		for k in range(math.ceil(self.test_N_volume_samples / float(M))):
 			phi_vals_batch = phi_star_fn(samp_torch[k*M: min((k+1)*M, self.test_N_volume_samples)])
 			N_samples_inside += torch.sum(torch.max(phi_vals_batch, axis=1)[0] <= 0.0)
 		V_approx = (N_samples_inside * 100.0 / float(self.test_N_volume_samples)).item()
 
+		self.logger.info(f'v approx: {V_approx:.3f}% of volume')
+
+		# Sample states on boundary, evaluate percent infeasible and mean/std/max amount infeasible
 		t0_test_boundary = time.perf_counter()
-		boundary_samples, _ = self.test_critic._sample_points_on_boundary_sequential(
+		boundary_samples, _ = self.test_critic._sample_points_on_boundary(
 			phi_star_fn, self.test_N_boundary_samples)
 		boundary_obj = saturation_risk(boundary_samples).detach().cpu().numpy()
-		tf_test = time.perf_counter()
 
-		self.logger.info('\n' + '+' * 20 + ' computing test stats ' + '+' * 20)
-		self.logger.info(f'v approx: {V_approx:.3f}% of volume')
 		percent_infeas = np.sum(boundary_obj > 0) * 100 / boundary_obj.size
 		self.logger.info(f'percentage infeasible at boundary: {percent_infeas:.2f}%')
 		infeas_values = (boundary_obj > 0) * boundary_obj
 		self.logger.info(f'mean, std amount infeasible at boundary: {np.mean(infeas_values):.2f} +/- {np.std(infeas_values):.2f}')
 		self.logger.info(f'max amount infeasible at boundary: {np.max(infeas_values):.2f}')
 		self.logger.info('\n' + '+' * 80)
+
+		tf_test = time.perf_counter()
 
 		return {
 			"V_approx_list": V_approx,
@@ -255,26 +243,23 @@ class Learner():
 			"test_t_boundary": tf_test - t0_test_boundary,
 		}
 
-	def train(self, saturation_risk: Callable, reg_fn: Callable,
+	def train(self, saturation_risk: torch.nn.Module, reg_fn: torch.nn.Module,
 	          phi_star_fn: torch.nn.Module) -> None:
-		"""Main training loop implementing Algorithm 1 from liu23e.pdf.
+		"""Main training loop implementing Algorithm 1 from paper.
 
-		Alternates between:
+		Algorithm alternates between:
 		- Critic: Find worst counterexamples (maximize saturation_risk)
 		- Learner: Update CBF (minimize saturation_risk + regularization)
 
-		Uses weighted average objective with softmax weights for stability.
-		Periodically tests safe set volume and boundary violations.
+		Also, for saving, logging, and debugging:
+		- Saves checkpoints to model_folder every n_checkpoint_step iterations
+		- Logs training data to data.pkl
+		- Prints progress and statistics to logger
 
 		Args:
 			saturation_risk: SaturationRisk loss function
 			reg_fn: RegularizationLoss function
 			phi_star_fn: Neural CBF (NeuralPhi instance)
-
-		Side Effects:
-			- Saves checkpoints to model_folder every n_checkpoint_step iterations
-			- Logs training data to data.pkl
-			- Prints progress and statistics to logger
 		"""
 		data_dict = self._init_data_dict()
 
@@ -286,16 +271,18 @@ class Learner():
 		save_model(phi_star_fn, os.path.join(self.args.model_folder, 'checkpoint_0.pth'))
 
 		for _iter in range(self.args.learner_n_steps + 1):
-			# Critic: find worst-case counterexamples on boundary
+			# Evaluate regularization on sampled states (from ρ(x) ≤ 0 region)			
 			X_reg = self.reg_sampler.get_samples(phi_star_fn)
 			reg_value = reg_fn(X_reg)
-			x, critic_debug = self.critic.opt(saturation_risk, phi_star_fn, _iter)
-			X = critic_debug["X_final"]
+
+			# Critic: find worst-case counterexamples on boundary
+			x, X, critic_debug = self.critic.opt(saturation_risk, phi_star_fn, _iter)
 
 			# Learner: update CBF to reduce saturation risk
 			optimizer.zero_grad()
 			attack_value, max_value = self._compute_attack_loss(X, saturation_risk)
 			objective_value = attack_value + reg_value
+
 			reg_grad_norm, total_grad_norm = self._learner_step(
 				attack_value, reg_value, optimizer, pos_params, phi_star_fn)
 

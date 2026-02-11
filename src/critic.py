@@ -1,4 +1,10 @@
 """Critic for finding worst-case counterexamples via boundary optimization.
+
+Approach: Projected Gradient Ascent on Boundary
+1. Sample points on CBF zero-level set (Appendix Algorithm 2)
+2. Perform projected gradient ascent to maximize saturation risk
+3. Project back to boundary after each step to maintain φ*(x)=0
+4. Return worst-case counterexamples for learner
 """
 import logging
 import time
@@ -48,10 +54,6 @@ class Critic():
 		vols = vols/torch.sum(vols)
 		self.vols = vols.detach().cpu().numpy()  # For facet sampling probability
 		self.hypercube_vol = torch.prod(x_lim_interval_sizes)
-
-		# Warmstart: save counterexamples from previous iteration
-		# self.X_saved = None
-		# self.obj_vals_saved = None
 
 	def _sample_in_safe_set(self, phi_star_fn: nn.Module,
 	                        random_seed: Optional[int] = None) -> torch.Tensor:
@@ -153,7 +155,7 @@ class Critic():
 		intersection = self._intersect_segment_with_manifold(center, outer, phi_star_fn)
 		return intersection
 
-	def _sample_points_on_boundary_sequential(self, phi_star_fn: nn.Module,
+	def _sample_points_on_boundary(self, phi_star_fn: nn.Module,
 	                                          n_samples: int) -> Tuple[torch.Tensor, Dict[str, Any]]:
 		"""Generates n_samples points on CBF boundary via rejection sampling.
 
@@ -288,11 +290,11 @@ class Critic():
 		return X_new, debug_dict
 	
 	def opt(self, saturation_risk: nn.Module, phi_star_fn: nn.Module,
-	        iteration: int) -> Tuple[torch.Tensor, Dict[str, Any]]:
+	        iteration: int) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, Any]]:
 		"""Main optimization loop to find worst-case counterexamples.
 
 		Algorithm:
-		1. Initialize: Sample n_samples points on boundary 
+		1. Initialize: Sample n_samples points on boundary
 		2. Iterate: Perform projected gradient ascent to maximize saturation_risk
 		3. Return: Worst counterexample (state with highest saturation risk)
 
@@ -305,25 +307,26 @@ class Critic():
 			iteration: Current training iteration (for step schedule)
 
 		Returns:
-			x: Worst counterexample (x_dim,) with highest saturation risk
+			x_worst: Worst counterexample (x_dim,) with highest saturation risk
+			X: Final boundary sample set (n_samples, x_dim) after gradient ascent
 			debug_dict: Timing, convergence, and sample info
 		"""
 		t0_opt = time.perf_counter()
-		X_init, boundary_sample_debug_dict = self._sample_points_on_boundary_sequential(phi_star_fn, self.n_samples)
+		X_init, boundary_sample_debug_dict = self._sample_points_on_boundary(phi_star_fn, self.n_samples)
 		tf_init = time.perf_counter()
 
-		# Per-step timing accumulators
+		# Init loop variables 
+		X = X_init.clone()
+		i = 0
+		max_n_steps = (0.5*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
+		self.logger.info("Max_n_steps: %i", max_n_steps)
+
+		# Init per-step timing accumulators
 		t_grad_step = []
 		t_reproject = []
 		dist_diff_after_proj = []
 		obj_vals = saturation_risk(X.view(-1, self.x_dim))
 		init_best_attack_value = torch.max(obj_vals).item()
-
-		# Init other loop variables 
-		X = X_init.clone()
-		i = 0
-		max_n_steps = (0.5*self.max_n_steps)*np.exp(-iteration/75) + self.max_n_steps
-		self.logger.info("Max_n_steps: %i", max_n_steps)
 		
 		while True:
 			# A step of projected gradient ascent 
@@ -344,22 +347,21 @@ class Critic():
 
 		# Return single worst-case attack
 		max_ind = torch.argmax(obj_vals)
-		x = X[max_ind]
+		x_worst = X[max_ind]
 		final_best_attack_value = torch.max(obj_vals).item()
 
 		t_init = tf_init - t0_opt
 		t_total_opt = tf_opt - t0_opt
 
-		debug_dict = {"X_init": X_init, \
-				"X_final": X, \
-				"init_best_attack_value": init_best_attack_value, \
-				"final_best_attack_value": final_best_attack_value, \
-				"t_init": t_init, \
-				"t_grad_step": t_grad_step, \
-				"t_reproject": t_reproject, \
-				"t_total_opt": t_total_opt, \
-				"dist_diff_after_proj": dist_diff_after_proj, \
+		debug_dict = {"X_init": X_init,
+				"init_best_attack_value": init_best_attack_value,
+				"final_best_attack_value": final_best_attack_value,
+				"t_init": t_init,
+				"t_grad_step": t_grad_step,
+				"t_reproject": t_reproject,
+				"t_total_opt": t_total_opt,
+				"dist_diff_after_proj": dist_diff_after_proj,
 				"n_opt_steps": max_n_steps}
 		debug_dict.update(boundary_sample_debug_dict)
 
-		return x, debug_dict
+		return x_worst, X, debug_dict
