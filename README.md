@@ -1,62 +1,54 @@
-# Neural CBF Synthesis with Input Saturation
+# Safe Control under Input Limits with Neural Control Barrier Functions
 
-Code for **"Safe control under input limits with neural control barrier functions"**
-(Liu et al., CoRL 2022).
+**Simin Liu, Sicun Gao, Koushil Sreenath, Calin Belta** | CoRL 2022
 
-## Overview
+[Paper](https://proceedings.mlr.press/v205/liu23e.html)
 
-This repository synthesizes neural Control Barrier Functions (CBFs) for a
-quadcopter-pendulum system subject to control input saturation. The core idea
-is a modified CBF construction φ*(x) that certifies safety even when actuators
-saturate, trained via a learner-critic loop.
+<p align="center">
+  <img src="assets/teaser.png" width="80%">
+</p>
 
-**Key contribution:** Standard CBF synthesis ignores input limits. This work reformulates
-the forward invariance condition to explicitly account for saturation, then parameterizes
-φ*(x) using a neural network trained to eliminate worst-case violations.
+---
 
-## Method
+## Quickstart
 
-Training alternates between two phases (Algorithm 1):
-
-- **Critic:** Finds states x on the CBF boundary (φ=0) where input saturation causes
-  safety violations, using projected gradient ascent constrained to the boundary manifold
-- **Learner:** Updates the neural CBF to minimize saturation risk at those states while
-  maximizing safe set volume via regularization (Eq. 4)
-
-The CBF has the form:
-
-```
-φ*(x) = [Π_{i=0}^{r-1} (1 + c_i d^i/dt^i)] ρ(x) + (nn(x) - nn(x_e))² + h·ρ(x)
-```
-
-where ρ(x) is the base safety specification and nn(x) is a learned 64-64 tanh MLP.
-
-## Requirements
-
-```
-torch
-numpy
-```
-
-## Usage
-
+**Clone the repository**
 ```bash
-python main.py --problem quad_pend
+git clone https://github.com/liusimin/cbf_synthesis_small.git
+cd cbf_synthesis_small
 ```
 
-Key hyperparameters:
+**Create and activate the Conda environment**
+```bash
+conda create -n cbf python=3.9
+conda activate cbf
+```
+
+**Install dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+**Run training**
+```bash
+python main.py --affix example
+```
+
+Logs are written to `log/quad_pend_example/` and checkpoints to `checkpoint/quad_pend_example/`.
+
+Key training arguments:
 
 | Argument | Default | Description |
 |---|---|---|
+| `--affix` | `default` | Suffix for experiment folder names |
 | `--learner_n_steps` | 3000 | Training iterations |
-| `--reg_weight` | 150.0 | Safe set volume regularization weight |
-| `--critic_n_samples` | 50 | Counterexample batch size |
+| `--reg_weight` | 150.0 | Safe-set volume regularization weight |
+| `--critic_n_samples` | 50 | Counterexample batch size per critic step |
 | `--critic_max_n_steps` | 20 | Gradient ascent steps per critic call |
 | `--learner_lr` | 1e-3 | Adam learning rate |
 | `--gpu` | 0 | CUDA device index |
 
-Training logs are written to `log/<problem>_<affix>/` and model checkpoints to
-`checkpoint/<problem>_<affix>/`.
+---
 
 ## Repository Structure
 
@@ -71,10 +63,14 @@ src/
 └── problems/
     └── quad_pend.py     # Quadcopter-pendulum dynamics, ρ(x), and control polytope
 main.py                  # Entry point: sets up all modules and calls learner.train()
+quad_pend_analysis/      # Post-hoc evaluation: CBF slices, rollouts, volume estimates
 ```
+
+---
 
 ## Citation
 
+If you found this useful, please cite:
 ```bibtex
 @inproceedings{liu2022safe,
   title={Safe control under input limits with neural control barrier functions},
