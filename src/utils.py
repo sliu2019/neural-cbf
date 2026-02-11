@@ -2,9 +2,7 @@
 import os
 import json
 import logging
-from typing import Optional
 
-import numpy as np
 import torch
 from torch import nn
 
@@ -108,18 +106,8 @@ def load_args(file_name: str):
 
 class TransformEucNNInput(nn.Module):
 	"""Transforms spherical coordinates to Euclidean for neural network input.
-
-	Flying inverted pendulum uses spherical coordinates (angles), but neural
-	networks work better with Euclidean representations. This transform converts:
-	- quadcopter angles (α, β, γ) → direction vector (kx, ky, kz) + velocity
-	- Pendulum angles (φ, θ) → Euclidean position + velocity
-
-	This makes the representation more smooth and easier to learn.
-	See paper Section 4 for coordinate system details.
-q
-	Attributes:
-		state_index_dict: Mapping from state names to indices
-		output_dim: Output dimension (12: 6 quad + 6 pendulum)
+	
+	We find empirically that the nCBF does not train well unless perform a change of variables from spherical to Euclident space. 
 	"""
 	def __init__(self, state_index_dict: dict) -> None:
 		"""Initializes coordinate transform.
@@ -158,14 +146,12 @@ q
 		dphi = x[:, self.state_index_dict["dphi"]]
 		dtheta = x[:, self.state_index_dict["dtheta"]]
 
-		# Convert quadcopter orientation (α, β, γ) to Euclidean direction vectors
-		# These represent the quadcopter's attitude as a rotation matrix columns
+		# Compute unit direction of quadcopter vertical body axis 
 		x_quad = torch.cos(alpha)*torch.sin(beta)*torch.cos(gamma) + torch.sin(alpha)*torch.sin(gamma)
 		y_quad = torch.sin(alpha)*torch.sin(beta)*torch.cos(gamma) - torch.cos(alpha)*torch.sin(gamma)
 		z_quad = torch.cos(beta)*torch.cos(gamma)
 
-		# Compute velocity of quadcopter direction vectors using chain rule
-		# v = ∂pos/∂angles · angular_velocities
+		# Compute linear velocity of quadcopter vertical body axis 
 		d_x_quad_d_alpha = torch.sin(alpha)*torch.sin(beta)*torch.cos(gamma) - torch.cos(alpha)*torch.sin(gamma)
 		d_x_quad_d_beta = -torch.cos(alpha)*torch.cos(beta)*torch.cos(gamma)
 		d_x_quad_d_gamma = torch.cos(alpha)*torch.sin(beta)*torch.sin(gamma) - torch.sin(alpha)*torch.cos(gamma)
@@ -178,12 +164,12 @@ q
 
 		v_z_quad = dbeta*torch.sin(beta)*torch.cos(gamma) + dgamma*torch.cos(beta)*torch.sin(gamma)
 
-		# Convert pendulum angles (φ, θ) to Euclidean position
-		# Pendulum hangs below quadcopter, (φ, θ) define spherical coordinates
+		# Compute unit direction of pendulum 
 		x_pend = torch.sin(theta)*torch.cos(phi)
 		y_pend = -torch.sin(phi)
 		z_pend = torch.cos(theta)*torch.cos(phi)
 
+		# Compute linear velocity of pendulum
 		v_x_pend = -dtheta*torch.cos(theta)*torch.cos(phi) + dphi*torch.sin(theta)*torch.sin(phi)
 		v_y_pend = dphi*torch.cos(phi)
 		v_z_pend = dtheta*torch.sin(theta)*torch.cos(phi) + dphi*torch.cos(theta)*torch.sin(phi)
