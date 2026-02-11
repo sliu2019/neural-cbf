@@ -1,13 +1,10 @@
 """Critic for finding worst-case counterexamples via boundary optimization.
 
-Algorithm: Projected Gradient Ascent on Boundary
+Approach: Projected Gradient Ascent on Boundary
 1. Sample points on CBF zero-level set (Appendix Algorithm 2)
 2. Perform projected gradient ascent to maximize saturation risk
 3. Project back to boundary after each step to maintain φ(x)=0
 4. Return worst-case counterexamples for learner
-
-The critic uses geometric sampling strategies and manifold projection to efficiently
-explore the boundary even when the safe set is small.
 """
 import logging
 import time
@@ -18,8 +15,6 @@ import numpy as np
 import torch
 from torch.autograd import grad
 import torch.optim as optim
-
-from src.utils import EarlyStoppingBatch
 
 
 class Critic():
@@ -97,13 +92,6 @@ class Critic():
 		self.obj_vals_saved = None
 
 		self.n_gpu = torch.cuda.device_count()
-
-	def __getstate__(self) -> dict:
-		"""Pickle support: removes non-serializable pool attribute if present."""
-		self_dict = self.__dict__.copy()
-		if 'pool' in self_dict:
-			del self_dict['pool']
-		return self_dict
 
 	def _project(self, phi_star_fn: Callable, X: torch.Tensor,
 	             projection_n_grad_steps: Optional[int] = None) -> torch.Tensor:
@@ -210,29 +198,6 @@ class Critic():
 		debug_dict = {"t_grad_step": (tf_grad_step-t0_step), "t_reproject": (tf_reproject-tf_grad_step), "dist_diff_after_proj": dist_diff_after_proj}
 
 		return X_new, debug_dict
-
-	def _sample_in_cube(self, random_seed: Optional[int] = None) -> torch.Tensor:
-		"""Samples uniformly in state space hypercube. Returns 1 sample."""
-		if random_seed:
-			torch.manual_seed(random_seed)
-			np.random.seed(random_seed)
-		unif = torch.rand(self.x_dim).to(self.device)
-		sample = unif*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
-		return sample
-
-	def _sample_on_cube(self, random_seed: Optional[int] = None) -> torch.Tensor:
-		"""Samples uniformly on state space hypercube surface. Returns 1 sample."""
-		if random_seed:
-			torch.manual_seed(random_seed)
-			np.random.seed(random_seed)
-		# https://math.stackexchange.com/questions/2687807/uniquely-identify-hypercube-faces
-		which_facet_pair = np.random.choice(np.arange(self.x_dim), p=self.vols)
-		which_facet = np.random.choice([0, 1])
-
-		unif = torch.rand(self.x_dim).to(self.device)
-		sample = unif*(self.x_lim[:, 1] - self.x_lim[:, 0]) + self.x_lim[:, 0]
-		sample[which_facet_pair] = self.x_lim[which_facet_pair, which_facet]
-		return sample
 
 	def _sample_in_safe_set(self, phi_star_fn: Callable,
 	                        random_seed: Optional[int] = None) -> torch.Tensor:
@@ -371,12 +336,6 @@ class Critic():
 		debug_dict = {"t_sample_boundary": (tf- t0), "n_segments_sampled": n_segments_sampled}
 		return samples, debug_dict
 
-	def _sample_points_on_boundary(self, phi_star_fn: Callable,
-	                               n_samples: int) -> Tuple[torch.Tensor, Dict[str, Any]]:
-		"""Returns tensor of shape (n_samples, x_dim) on the CBF boundary."""
-		samples, debug_dict = self._sample_points_on_boundary_sequential(phi_star_fn, n_samples)
-		return samples, debug_dict
-
 	def opt(self, saturation_risk: Callable, phi_star_fn: Callable, iteration: int,
 	        debug: bool = False) -> Tuple[torch.Tensor, Dict[str, Any]]:
 		"""Main optimization loop to find worst-case counterexamples.
@@ -402,7 +361,7 @@ class Critic():
 		t0_opt = time.perf_counter()
 
 		if self.X_saved is None:
-			X_init, boundary_sample_debug_dict = self._sample_points_on_boundary(phi_star_fn, self.n_samples)
+			X_init, boundary_sample_debug_dict = self._sample_points_on_boundary_sequential(phi_star_fn, self.n_samples)
 
 			X_reuse_init = torch.zeros((0, self.x_dim))
 			X_random_init = X_init
@@ -417,7 +376,6 @@ class Critic():
 				diff = self.X_saved[torch.tensor(inds_distinct)] - self.X_saved[ind]
 				distances = torch.norm(diff.view(-1, self.x_dim), dim=1)
 				if torch.any(distances <= 1e-1).item():
-					print("passed")
 					continue
 				inds_distinct.append(ind)
 				if len(inds_distinct) >= n_target_reuse_samples:
@@ -427,14 +385,13 @@ class Critic():
 			n_random_samples = self.n_samples - n_reuse_samples
 			X_reuse_init = self.X_saved[torch.tensor(inds_distinct)]
 			X_reuse_init = self._project(phi_star_fn, X_reuse_init)  # reproject, since phi changed
-			X_random_init, boundary_sample_debug_dict = self._sample_points_on_boundary(phi_star_fn, n_random_samples)
+			X_random_init, boundary_sample_debug_dict = self._sample_points_on_boundary_sequential(phi_star_fn, n_random_samples)
 			X_init = torch.cat([X_random_init, X_reuse_init], axis=0)
 
 		tf_init = time.perf_counter()
 
 		X = X_init.clone()
 		i = 0
-		early_stopping = EarlyStoppingBatch(self.n_samples, patience=self.early_stopping_patience, min_delta=self.early_stopping_min_delta)
 		# logging
 		t_grad_step = []
 		t_reproject = []

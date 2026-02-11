@@ -337,7 +337,7 @@ class Learner():
 
 				# Sample on boundary
 				t0_test_boundary = time.perf_counter()
-				boundary_samples, debug_dict = self.test_critic._sample_points_on_boundary(phi_star_fn, self.test_N_boundary_samples)
+				boundary_samples, debug_dict = self.test_critic._sample_points_on_boundary_sequential(phi_star_fn, self.test_N_boundary_samples)
 				boundary_samples_obj_value = saturation_risk(boundary_samples)
 				boundary_samples_obj_value = boundary_samples_obj_value.detach().cpu().numpy()
 				data_dict["boundary_samples_obj_values"].append(boundary_samples_obj_value)
