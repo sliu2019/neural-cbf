@@ -267,7 +267,7 @@ class TransformEucNNInput(nn.Module):
 	- Pendulum angles (φ, θ) → Euclidean position + velocity
 
 	This makes the representation more smooth and easier to learn.
-	See liu23e.pdf Section 4 for coordinate system details.
+	See paper Section 4 for coordinate system details.
 
 	Attributes:
 		state_index_dict: Mapping from state names to indices

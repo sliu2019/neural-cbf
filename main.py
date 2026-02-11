@@ -58,7 +58,7 @@ def main(args):
 		xdot_fn = XDot(param_dict, device)
 		uvertices_fn = ULimitSetVertices(param_dict, device)
 
-		reg_sampler = RegSampler(x_lim, device, logger, n_samples=args.reg_n_samples)
+		reg_sampler = RegSampler(x_lim, device, n_samples=args.reg_n_samples)
 
 		x_e = torch.zeros(1, x_dim)
 
