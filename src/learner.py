@@ -183,7 +183,7 @@ class Learner():
 			X_reg = self.reg_sampler.get_samples(phi_star_fn)
 			reg_value = reg_fn(X_reg)
 
-			x, debug_dict = self.critic.opt(saturation_risk, phi_star_fn, _iter, debug=True)
+			x, debug_dict = self.critic.opt(saturation_risk, phi_star_fn, _iter)
 			X = debug_dict["X_final"]
 
 			optimizer.zero_grad()
