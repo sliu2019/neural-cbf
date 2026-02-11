@@ -19,7 +19,8 @@ from torch import nn
 
 class Critic():
 	def __init__(self, x_lim: torch.Tensor, device: torch.device, logger: logging.Logger,
-	             n_samples: int = 60, max_n_steps: int = 50) -> None:
+	             n_samples: int = 60, max_n_steps: int = 50,
+	             gaussian_t: float = 1.0, projection_lr: float = 1e-2) -> None:
 		"""Initializes critic for counterexample search.
 
 		Args:
@@ -28,6 +29,9 @@ class Critic():
 			logger: Logger for debugging
 			n_samples: Number of candidate counterexamples to optimize
 			max_n_steps: Maximum gradient ascent steps per iteration
+			gaussian_t: Temperature for Gaussian boundary sampling; lower values
+			            sample closer to the safe-set interior point
+			projection_lr: Learning rate for the boundary reprojection optimizer
 		"""
 		self.x_lim = x_lim
 		self.device = device
@@ -35,10 +39,9 @@ class Critic():
 		self.n_samples = n_samples
 		self.max_n_steps = max_n_steps
 
-		# Hardcoded hyperparameters (from best configuration)
-		self.gaussian_t = 1.0  # Gaussian sampling temperature
+		self.gaussian_t = gaussian_t
 		self.projection_tolerance = 1e-1  # Projection convergence threshold
-		self.projection_lr = 1e-2  # Projection optimizer LR
+		self.projection_lr = projection_lr
 		self.projection_time_limit = 3.0  # Max projection time (seconds)
 		self.lr = 1e-3  # Gradient ascent LR
 

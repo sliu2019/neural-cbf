@@ -7,7 +7,7 @@ import pickle
 import torch
 import numpy as np
 
-from problems.quad_pend import create_quad_pend_param_dict
+from src.problems.quad_pend import create_quad_pend_param_dict
 from src.create_arg_parser import create_arg_parser, print_args
 from src.neural_phi import NeuralPhi
 from src.critic import Critic
