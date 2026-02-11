@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as Axes3D
 
 
-class FlyingInvertedPendulumEnv():
+class QuadPendEnv():
     def __init__(self, model_param_dict=None, real_param_dict=None, dynamics_noise_spread=0.0):
         if model_param_dict is None:
             # Form a default param dict

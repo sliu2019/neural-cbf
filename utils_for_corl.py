@@ -29,7 +29,7 @@ from flying_rollout_experiment import *
 # For plotting slices
 from flying_plot_utils import plot_interesting_slices
 
-class FlyingInvertedPendulumEnv():
+class QuadPendEnv():
 	def __init__(self, param_dict=None):
 		if param_dict is None:
 			# Form a default param dict
@@ -449,7 +449,7 @@ if __name__ == "__main__":
 	print("Number of timesteps: %f" % N_steps_max)
 
 	# Create core classes: environment, controller
-	env = FlyingInvertedPendulumEnv(param_dict)
+	env = QuadPendEnv(param_dict)
 	env.dt = rollout_dt
 	controller_args = {"rollout_u_ref": "LQR", "rollout_LQR_q":1.0, "rollout_LQR_r":1.0}
 	controller_args = dotdict(controller_args)

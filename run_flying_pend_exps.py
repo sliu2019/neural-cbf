@@ -394,9 +394,9 @@ def run_exps(args):
 			for i, param in enumerate(args.mismatched_model_parameter):
 				real_param_dict[param] = args.mismatched_model_parameter_true_value[i]
 			print(real_param_dict)
-			env = FlyingInvertedPendulumEnv(model_param_dict=model_param_dict, real_param_dict=real_param_dict, dynamics_noise_spread=args.dynamics_noise_spread)
+			env = QuadPendEnv(model_param_dict=model_param_dict, real_param_dict=real_param_dict, dynamics_noise_spread=args.dynamics_noise_spread)
 		else:
-			env = FlyingInvertedPendulumEnv(model_param_dict=model_param_dict, dynamics_noise_spread=args.dynamics_noise_spread)
+			env = QuadPendEnv(model_param_dict=model_param_dict, dynamics_noise_spread=args.dynamics_noise_spread)
 
 		env.dt = args.rollout_dt
 		cbf_controller = CBFController(env, numpy_phi_star_fn, param_dict, args) # 2nd arg prev. "cbf_obj"

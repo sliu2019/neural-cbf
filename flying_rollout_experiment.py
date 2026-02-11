@@ -7,7 +7,7 @@ import argparse
 import pickle
 import IPython
 
-from rollout_envs.quad_pend_env import FlyingInvertedPendulumEnv
+from quad_pend_analysis.quad_pend_env import QuadPendEnv
 from flying_cbf_controller import CBFController
 from flying_plot_utils import load_phi_and_params
 from rollout_cbf_classes.deprecated.flying_our_cbf_class import OurCBF
@@ -441,7 +441,7 @@ def run_rollout_experiment(args):
 	# print("Number of timesteps: %f" % N_steps_max)
 
 	# Create core classes: environment, controller
-	env = FlyingInvertedPendulumEnv(param_dict)
+	env = QuadPendEnv(param_dict)
 	env.dt = args.dt
 	cbf_controller = CBFController(env, cbf_obj, param_dict)
 

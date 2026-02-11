@@ -6,7 +6,7 @@ import control
 import matplotlib.pyplot as plt
 import IPython
 import math
-from rollout_envs.quad_pend_env import FlyingInvertedPendulumEnv
+from rollout_envs.quad_pend_env import QuadPendEnv
 from tqdm import tqdm
 
 # Physical parameters
@@ -44,7 +44,7 @@ thresh = np.array([math.pi / 3, math.pi / 3, math.pi, ub, ub, ub, math.pi / 3, m
                   dtype=np.float32)  # angular velocities bounds probably much higher in reality (~10-20 for drone, which can do 3 flips in 1 sec).
 x_lim = np.concatenate((-thresh[:, None], thresh[:, None]), axis=1)  # (13, 2)
 
-env = FlyingInvertedPendulumEnv(param_dict)
+env = QuadPendEnv(param_dict)
 
 state_index_names = ["gamma", "beta", "alpha", "dgamma", "dbeta", "dalpha", "phi", "theta", "dphi",
                      "dtheta", "x", "y", "z", "dx", "dy", "dz"]

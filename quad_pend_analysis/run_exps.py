@@ -22,8 +22,6 @@ Common gotchas
 * param_dicts must match across compared CBFs.
 * Use --run_length to set sample counts; override individual counts via the
   dedicated flags for finer control.
-* --worst_boundary reuses boundary samples from --average_boundary when both
-  are enabled in the same run (saves time).
 """
 import argparse
 import os
@@ -33,13 +31,13 @@ import numpy as np
 import torch
 
 from quad_pend_analysis.load_cbf import load_phi_and_params
-from quad_pend_analysis.volume import approx_volume, bfs_approx_volume
+from quad_pend_analysis.volume import approx_volume
 from quad_pend_analysis.plot_slices import plot_interesting_slices
 
 from phi_numpy_wrapper import PhiNumpy
-from flying_rollout_experiment import run_rollouts, run_rollouts_multiproc, extract_statistics
-from rollout_envs.quad_pend_env import FlyingInvertedPendulumEnv
-from flying_cbf_controller import CBFController
+from quad_pend_analysis.rollout import run_rollouts, run_rollouts_multiproc, extract_statistics
+from quad_pend_analysis.quad_pend_env import QuadPendEnv
+from quad_pend_analysis.cbf_controller import CBFController
 
 from src.critic import Critic
 from src.saturation_risk import SaturationRisk
@@ -205,26 +203,7 @@ def run_exps(args: argparse.Namespace) -> None:
         N_steps_max = int(args.rollout_T_max / args.rollout_dt)
         print("Rollout timesteps per trajectory: %i" % N_steps_max)
 
-        model_param_dict = param_dict
-
-        # Optional model-mismatch / noise settings
-        if args.mismatched_model_parameter is not None:
-            real_param_dict = param_dict.copy()
-            for param, val in zip(
-                args.mismatched_model_parameter,
-                args.mismatched_model_parameter_true_value,
-            ):
-                real_param_dict[param] = val
-            env = FlyingInvertedPendulumEnv(
-                model_param_dict=model_param_dict,
-                real_param_dict=real_param_dict,
-                dynamics_noise_spread=args.dynamics_noise_spread,
-            )
-        else:
-            env = FlyingInvertedPendulumEnv(
-                model_param_dict=model_param_dict,
-                dynamics_noise_spread=args.dynamics_noise_spread,
-            )
+        env = QuadPendEnv(model_param_dict=param_dict)
         env.dt = args.rollout_dt
 
         cbf_controller = CBFController(env, numpy_phi_star_fn, param_dict, args)
@@ -251,14 +230,7 @@ def run_exps(args: argparse.Namespace) -> None:
     # Experiment: volume
     # ------------------------------------------------------------------
     if "volume" in args.which_experiments:
-        if args.volume_alg == "sample":
-            vol_data = approx_volume(param_dict, numpy_phi_star_fn, args.N_samp_volume)
-        elif args.volume_alg == "bfs_grid":
-            assert args.bfs_axes_grid_size is not None, "--bfs_axes_grid_size required for bfs_grid"
-            vol_data = bfs_approx_volume(param_dict, numpy_phi_star_fn, args.bfs_axes_grid_size)
-        else:
-            raise ValueError("Unknown volume_alg: %s" % args.volume_alg)
-
+        vol_data = approx_volume(param_dict, numpy_phi_star_fn, args.N_samp_volume)
         experiment_dict.update(vol_data)
         _save()
         print("percent_of_domain_volume: %.4f" % vol_data["percent_of_domain_volume"])
@@ -336,21 +308,9 @@ if __name__ == "__main__":
     parser.add_argument("--rollout_LQR_q", type=float, default=0.1)
     parser.add_argument("--rollout_LQR_r", type=float, default=1.0)
 
-    # Model-mismatch / noise robustness
-    parser.add_argument("--dynamics_noise_spread", type=float, default=0.0,
-                        help="Std dev of zero-mean Gaussian dynamics noise.")
-    parser.add_argument("--mismatched_model_parameter", type=str, nargs="+",
-                        help="Parameter name(s) to change in the real environment.")
-    parser.add_argument("--mismatched_model_parameter_true_value", type=float, nargs="+",
-                        help="True value(s) for mismatched parameters.")
-
     # Volume estimation
-    parser.add_argument("--volume_alg", type=str,
-                        choices=["sample", "bfs_grid"], default="sample")
     parser.add_argument("--N_samp_volume", type=int, default=100_000,
                         help="Number of Monte Carlo samples for volume estimation.")
-    parser.add_argument("--bfs_axes_grid_size", type=float, nargs="+",
-                        help="Per-dimension grid step sizes for bfs_grid volume algorithm.")
 
     # Parallelism
     parser.add_argument("--n_proc", type=int, default=36,
