@@ -8,7 +8,6 @@ import time
 import datetime
 import pickle
 import math
-# from collections.abc import Callable
 
 import numpy as np
 import torch

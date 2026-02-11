@@ -13,8 +13,6 @@ where:
 - x_e is an equilibrium state
 """
 from typing import Optional
-from collections.abc import Callable
-
 import torch
 from torch import nn
 from torch.autograd import grad
@@ -22,7 +20,7 @@ from torch.autograd import grad
 
 class NeuralPhi(nn.Module):
 	"""Neural Control Barrier Function (CBF)"""
-	def __init__(self, rho_fn: Callable, xdot_fn: Callable, r: int, x_dim: int,
+	def __init__(self, rho_fn: torch.nn.Module, xdot_fn: torch.nn.Module, r: int, x_dim: int,
 	             u_dim: int, device: torch.device, args,
 	             nn_input_modifier: Optional[nn.Module] = None,
 	             x_e: Optional[torch.Tensor] = None) -> None:

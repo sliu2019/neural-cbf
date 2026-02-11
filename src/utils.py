@@ -1,14 +1,4 @@
-"""Utility functions and classes for neural CBF training.
-
-This module provides supporting functionality for the neural Control Barrier Function
-synthesis pipeline:
-- Logging setup (console + file output)
-- Model checkpointing (save/load PyTorch models)
-- Early stopping for training convergence
-- Input transformations for neural networks (coordinate system conversions)
-
-The utilities support the training framework described in liu23e.pdf.
-"""
+"""Utility functions and classes."""
 import os
 import json
 import logging
@@ -116,148 +106,6 @@ def load_args(file_name: str):
 		args.__dict__ = json.load(f)
 	return args
 
-
-# class EarlyStopping():
-# 	"""Early stopping to terminate training when loss stops improving.
-
-# 	Tracks best loss seen so far and counts consecutive epochs without
-# 	sufficient improvement. Stops training after patience is exceeded.
-
-# 	Attributes:
-# 		patience: Number of epochs to wait before stopping
-# 		min_delta: Minimum loss improvement to reset patience counter
-# 		counter: Current count of non-improving epochs
-# 		best_loss: Best loss value seen so far
-# 		early_stop: Flag indicating whether to stop training
-# 	"""
-# 	def __init__(self, patience: int = 3, min_delta: float = 0) -> None:
-# 		"""Initializes early stopping monitor.
-
-# 		Args:
-# 			patience: How many epochs to wait before stopping when loss
-# 			         is not improving (default: 3)
-# 			min_delta: Minimum loss decrease to count as improvement
-# 			          (default: 0, any decrease counts)
-# 		"""
-# 		self.patience = patience
-# 		self.min_delta = min_delta
-# 		self.counter = 0
-# 		self.best_loss = None
-# 		self.early_stop = False
-
-# 	def __call__(self, test_loss: float) -> None:
-# 		"""Updates early stopping state with new loss value.
-
-# 		Args:
-# 			test_loss: Current loss value (scalar or tensor)
-
-# 		Side Effects:
-# 			Updates self.best_loss, self.counter, and self.early_stop
-# 		"""
-# 		if self.best_loss == None:
-# 			self.best_loss = test_loss
-# 		elif self.best_loss - test_loss > self.min_delta:
-# 			self.best_loss = test_loss
-# 		elif self.best_loss - test_loss < self.min_delta:
-# 			self.counter += 1
-# 			if self.counter >= self.patience:
-# 				print('INFO: Early stopping')
-# 				self.early_stop = True
-
-
-# class EarlyStoppingBatch():
-# 	"""Batch-wise early stopping for adversarial optimization (maximization).
-
-# 	Unlike regular EarlyStopping, this tracks improvement for each element in
-# 	a batch independently. Training stops only when ALL batch elements have
-# 	stopped improving. Used for critic's counterexample search where we
-# 	maximize saturation risk across multiple candidate states.
-
-# 	Note: This monitors MAXIMIZATION (increasing loss), not minimization.
-
-# 	Attributes:
-# 		patience: Number of steps to wait per batch element
-# 		min_delta: Minimum loss increase to count as improvement
-# 		counter: Per-element counter of non-improving steps (bs,)
-# 		best_loss: Best loss per element (bs,)
-# 		early_stop_vec: Per-element stopping flags (bs,)
-# 		early_stop: Global flag (True when all elements stopped)
-# 	"""
-# 	def __init__(self, bs: int, patience: int = 3, min_delta: float = 1e-1) -> None:
-# 		"""Initializes batch early stopping monitor.
-
-# 		Args:
-# 			bs: Batch size (number of independent optimization problems)
-# 			patience: Steps to wait per element before marking as converged
-# 			min_delta: Minimum loss increase to count as improvement (default: 0.1)
-# 		"""
-# 		self.patience = patience
-# 		self.min_delta = min_delta
-
-# 		self.counter = torch.zeros(bs)
-# 		self.best_loss = None
-# 		self.early_stop_vec = torch.zeros(bs, dtype=torch.bool)
-# 		self.early_stop = False
-
-# 	def __call__(self, test_loss: torch.Tensor) -> None:
-# 		"""Updates early stopping state for each batch element.
-
-# 		Args:
-# 			test_loss: Current loss values for batch (bs, 1) tensor
-
-# 		Side Effects:
-# 			Updates best_loss, counter, early_stop_vec, and early_stop.
-# 			Prints message when all elements have converged.
-# 		"""
-# 		if self.best_loss == None:
-# 			self.best_loss = test_loss
-
-# 		improve_ind = torch.nonzero(test_loss - self.best_loss >= self.min_delta)
-# 		nonimprove_ind = torch.nonzero(test_loss - self.best_loss < self.min_delta)
-# 		self.best_loss[improve_ind] = test_loss[improve_ind]
-
-# 		self.counter[nonimprove_ind] = self.counter[nonimprove_ind] + 1
-
-# 		early_stop_ind = torch.nonzero(self.counter >= self.patience)
-# 		self.early_stop_vec[early_stop_ind] = True
-
-# 		if torch.all(self.early_stop_vec).item():
-# 			print('INFO: Early stopping')
-# 			self.early_stop = True
-
-
-class IndexNNInput(nn.Module):
-	"""Selects subset of input dimensions for neural network.
-
-	Simple input preprocessor that selects specific state dimensions
-	before passing to neural network. Used to train on partial state
-	observations.
-
-	Attributes:
-		which_ind: Indices of dimensions to keep
-		output_dim: Number of output dimensions
-	"""
-	def __init__(self, which_ind) -> None:
-		"""Initializes dimension selector.
-
-		Args:
-			which_ind: Array or list of indices to select from input
-		"""
-		self.which_ind = which_ind
-		self.output_dim = len(which_ind)
-
-	def forward(self, x: torch.Tensor) -> torch.Tensor:
-		"""Selects specified dimensions from input.
-
-		Args:
-			x: Input tensor (bs, input_dim)
-
-		Returns:
-			Tensor (bs, output_dim) with selected dimensions
-		"""
-		return x[:, self.which_ind]
-
-
 class TransformEucNNInput(nn.Module):
 	"""Transforms spherical coordinates to Euclidean for neural network input.
 
@@ -268,7 +116,7 @@ class TransformEucNNInput(nn.Module):
 
 	This makes the representation more smooth and easier to learn.
 	See paper Section 4 for coordinate system details.
-
+q
 	Attributes:
 		state_index_dict: Mapping from state names to indices
 		output_dim: Output dimension (12: 6 quad + 6 pendulum)

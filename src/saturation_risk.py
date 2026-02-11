@@ -2,8 +2,6 @@
 The critic maximizes this to find worst-case states; the learner minimizes it to fix violations.
 """
 import logging
-from collections.abc import Callable
-
 import torch
 from torch import nn
 from torch.autograd import grad

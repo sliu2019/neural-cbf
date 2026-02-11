@@ -63,7 +63,7 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 	# 	x_e = None
 
 	# Passing in subset of state to NN
-	from src.utils import IndexNNInput, TransformEucNNInput
+	from src.utils import IndexNNInput, TransformEucNNInput # TODO: IndexNNInput not used, delete
 	state_index_dict = param_dict["state_index_dict"]
 	if args.phi_nn_inputs == "spherical":
 		nn_input_modifier = None
