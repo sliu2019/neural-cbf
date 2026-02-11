@@ -326,7 +326,7 @@ class Critic():
 		t_reproject = []
 		dist_diff_after_proj = []
 		obj_vals = saturation_risk(X.view(-1, self.x_dim))
-		init_best_attack_value = torch.max(obj_vals).item()
+		init_best_counterex_value = torch.max(obj_vals).item()
 		
 		while True:
 			# A step of projected gradient ascent 
@@ -345,17 +345,17 @@ class Critic():
 
 		obj_vals = saturation_risk(X.view(-1, self.x_dim))
 
-		# Return single worst-case attack
+		# Return single worst-case counterex
 		max_ind = torch.argmax(obj_vals)
 		x_worst = X[max_ind]
-		final_best_attack_value = torch.max(obj_vals).item()
+		final_best_counterex_value = torch.max(obj_vals).item()
 
 		t_init = tf_init - t0_opt
 		t_total_opt = tf_opt - t0_opt
 
 		debug_dict = {"X_init": X_init,
-				"init_best_attack_value": init_best_attack_value,
-				"final_best_attack_value": final_best_attack_value,
+				"init_best_counterex_value": init_best_counterex_value,
+				"final_best_counterex_value": final_best_counterex_value,
 				"t_init": t_init,
 				"t_grad_step": t_grad_step,
 				"t_reproject": t_reproject,

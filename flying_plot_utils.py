@@ -17,7 +17,7 @@ from src.utils import *
 # from src.phi_designs.low_phi import LowPhi
 from neural_phi import NeuralPhi
 
-# Make numpy and torch deterministic (for rand phi and attack/reg sampling)
+# Make numpy and torch deterministic (for rand phi and counterex/reg sampling)
 seed = 3
 torch.manual_seed(seed)
 np.random.seed(seed)
@@ -120,15 +120,15 @@ def load_phi_and_params(exp_name=None, checkpoint_number=None):
 
 	return phi_star_fn, param_dict
 
-def load_attacks(exp_name, checkpoint_number):
+def load_counterexs(exp_name, checkpoint_number):
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
 
-		# attacks_init = data["train_attack_X_init"][checkpoint_number+1]
-		attacks = data["train_attack_X_final"][checkpoint_number+1]
-		# best_attack = data["train_attacks"][checkpoint_number+1]
+		# counterexs_init = data["train_counterex_X_init"][checkpoint_number+1]
+		counterexs = data["train_counterex_X_final"][checkpoint_number+1]
+		# best_counterex = data["train_counterexs"][checkpoint_number+1]
 
-	return attacks
+	return counterexs
 
 def graph_losses(exp_name, debug=True):
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
@@ -145,7 +145,7 @@ def graph_losses(exp_name, debug=True):
 	#############################################
 	axs[0].set_title("Train metrics")
 	axs[0].plot(data["train_losses"], label="objective value", linewidth=0.5)
-	axs[0].plot(data["train_attack_losses"], label="worst attack value", linewidth=0.5)
+	axs[0].plot(data["train_counterex_losses"], label="worst counterex value", linewidth=0.5)
 	axs[0].plot(data["train_reg_losses"], label="reg value", linewidth=0.5)
 	axs[0].plot([0, n_it_so_far], [0, 0], color="k", linewidth=0.5)
 
@@ -217,21 +217,21 @@ def graph_losses(exp_name, debug=True):
 		axs[0].legend(loc=(1.04,0))
 
 		#############################################
-		axs[1].set_title("Attack timing metrics")
-		axs[1].plot(data["train_attack_t_total_opt"], label="Total time for counterex", linewidth=0.5)
-		axs[1].plot(data["train_attack_t_init"], label="Time to init", linewidth=0.5)
-		train_attack_t_grad_step = data["train_attack_t_grad_step"]
-		avg_t_grad_step = [np.mean(x) for x in train_attack_t_grad_step]
+		axs[1].set_title("Counterex timing metrics")
+		axs[1].plot(data["train_counterex_t_total_opt"], label="Total time for counterex", linewidth=0.5)
+		axs[1].plot(data["train_counterex_t_init"], label="Time to init", linewidth=0.5)
+		train_counterex_t_grad_step = data["train_counterex_t_grad_step"]
+		avg_t_grad_step = [np.mean(x) for x in train_counterex_t_grad_step]
 		axs[1].plot(avg_t_grad_step, label="Avg time for grad steps", linewidth=0.5)
-		train_attack_t_reproject = data["train_attack_t_reproject"]
-		avg_t_reproject = [np.mean(x) for x in train_attack_t_reproject]
+		train_counterex_t_reproject = data["train_counterex_t_reproject"]
+		avg_t_reproject = [np.mean(x) for x in train_counterex_t_reproject]
 		axs[1].plot(avg_t_reproject, label="Avg time to reproject", linewidth=0.5)
 
 		axs[1].legend(loc=(1.04,0))
 		#############################################
-		axs[2].set_title("Attack other metrics")
-		axs[2].plot(data["train_attack_n_segments_sampled"], label="N seg sampled", linewidth=0.5)
-		axs[2].plot(data["train_attack_n_opt_steps"], label="N opt steps", linewidth=0.5)
+		axs[2].set_title("Counterex other metrics")
+		axs[2].plot(data["train_counterex_n_segments_sampled"], label="N seg sampled", linewidth=0.5)
+		axs[2].plot(data["train_counterex_n_opt_steps"], label="N opt steps", linewidth=0.5)
 		axs[2].legend(loc=(1.04,0))
 
 		fig.tight_layout()
@@ -247,14 +247,14 @@ def graph_losses(exp_name, debug=True):
 		fig.suptitle('Debug for %s at iteration %i/%i' % (exp_name, n_it_so_far, args.learner_n_steps), fontsize=suptitle_size)
 
 		#############################################
-		axs[0].set_title("Attack improvement after opt.")
-		diff = np.array(data["train_attack_final_best_attack_value"]) - np.array(data["train_attack_init_best_attack_value"])
+		axs[0].set_title("Counterex improvement after opt.")
+		diff = np.array(data["train_counterex_final_best_counterex_value"]) - np.array(data["train_counterex_init_best_counterex_value"])
 		axs[0].plot(diff, linewidth=0.5)
 		axs[0].plot([0, n_it_so_far], [0, 0], c="red", linewidth=0.5)
 
 		#############################################
-		axs[1].set_title("Attack constraint improv. after reproj.")
-		dist_after_reproj = [np.mean(x) for x in data["train_attack_dist_diff_after_proj"]]
+		axs[1].set_title("Counterex constraint improv. after reproj.")
+		dist_after_reproj = [np.mean(x) for x in data["train_counterex_dist_diff_after_proj"]]
 		axs[1].plot(dist_after_reproj, linewidth=0.5)
 
 		#############################################
@@ -307,21 +307,21 @@ def graph_losses(exp_name, debug=True):
 		plt.cla()
 
 	#############################################
-	train_attack_losses = np.array(data["train_attack_losses"])
+	train_counterex_losses = np.array(data["train_counterex_losses"])
 	approx_v = np.array(data["V_approx_list"])
-	# N_it = len(train_attack_losses)
+	# N_it = len(train_counterex_losses)
 	n_test_loss_step = args.n_test_loss_step
 	n_checkpoint_step = args.n_checkpoint_step
 
 	# print("For experiment %s, at iteration %i/%i" % (exp_name, n_it_so_far, args.learner_n_steps))
-	# min_attack_ind = np.argmin(train_attack_losses)
+	# min_counterex_ind = np.argmin(train_counterex_losses)
 
 	# print("Total iterations (so far): %i" % N_it)
 	print("Average approx volume: %.3f" % (np.mean(approx_v)))
 
-	# print(np.min(train_attack_losses))
+	# print(np.min(train_counterex_losses))
 	#
-	# print(np.argmin(train_attack_losses[::5])*5, np.min(train_attack_losses[::5])) # TODO
+	# print(np.argmin(train_counterex_losses[::5])*5, np.min(train_counterex_losses[::5])) # TODO
 
 	# Trying different tactics to select a training iteration
 
@@ -335,8 +335,8 @@ def graph_losses(exp_name, debug=True):
 	rank_volume[ind_sort_volume] = np.arange(m)
 	rank_volume = rank_volume.astype(int)
 
-	train_attack_losses_at_checkpoints = train_attack_losses[::n_test_loss_step][:m]
-	ind_sort_train_loss = np.argsort(train_attack_losses_at_checkpoints)
+	train_counterex_losses_at_checkpoints = train_counterex_losses[::n_test_loss_step][:m]
+	ind_sort_train_loss = np.argsort(train_counterex_losses_at_checkpoints)
 	rank_train_loss = np.zeros(m)
 	rank_train_loss[ind_sort_train_loss] = np.arange(m)
 	rank_train_loss = rank_train_loss.astype(int)
@@ -348,7 +348,7 @@ def graph_losses(exp_name, debug=True):
 
 	checkpoint_ind = int(checkpoint_ind)
 	print(exp_name)
-	print("At selected checkpoint %i: %.3f loss, %.3f volume" % (checkpoint_ind, train_attack_losses[checkpoint_ind], approx_v[best_balanced_ind]))
+	print("At selected checkpoint %i: %.3f loss, %.3f volume" % (checkpoint_ind, train_counterex_losses[checkpoint_ind], approx_v[best_balanced_ind]))
 
 	print("volume rank: %i, loss rank %i" % (rank_volume[best_balanced_ind], rank_train_loss[best_balanced_ind]))
 	# print("\n")
@@ -359,17 +359,17 @@ def graph_losses(exp_name, debug=True):
 	for k in range(n_top):
 		best_balanced_ind = best_balanced_inds[k]
 		checkpoint_ind = best_balanced_ind * n_test_loss_step
-		print("At selected checkpoint %i: %.3f loss, %.5f volume" % (checkpoint_ind, train_attack_losses[checkpoint_ind], approx_v[best_balanced_ind]))
+		print("At selected checkpoint %i: %.3f loss, %.5f volume" % (checkpoint_ind, train_counterex_losses[checkpoint_ind], approx_v[best_balanced_ind]))
 	print("\n")
 	# IPython.embed()"""
 
 	# Method 2 for choosing iteration
 	# don't use rank, since approx_v has a lot of duplicate values. They won't receive the same rank, which is problematic...
 	"""m = len(approx_v)
-	train_attack_losses_at_checkpoints = train_attack_losses[::n_test_loss_step][:m]
-	# total_loss = -3*approx_v + train_attack_losses_at_checkpoints + 0.1*np.arange(m)
-	total_loss = train_attack_losses_at_checkpoints + 0.1*np.arange(m)
-	# total_loss = train_attack_losses_at_checkpoints
+	train_counterex_losses_at_checkpoints = train_counterex_losses[::n_test_loss_step][:m]
+	# total_loss = -3*approx_v + train_counterex_losses_at_checkpoints + 0.1*np.arange(m)
+	total_loss = train_counterex_losses_at_checkpoints + 0.1*np.arange(m)
+	# total_loss = train_counterex_losses_at_checkpoints
 	best_inds = np.argsort(total_loss)
 
 	n_top = 15
@@ -380,12 +380,12 @@ def graph_losses(exp_name, debug=True):
 		t_so_far_seconds = train_loop_times[checkpoint_ind]
 		t_hours = t_so_far_seconds // (60 * 60)
 		t_minutes = (t_so_far_seconds - t_hours*60*60)//60
-		print("At selected checkpoint %i: %.3f loss, %.5f volume, %i:%i rho:m" % (checkpoint_ind, train_attack_losses_at_checkpoints[best_balanced_ind], approx_v[best_balanced_ind], t_hours, t_minutes))
+		print("At selected checkpoint %i: %.3f loss, %.5f volume, %i:%i rho:m" % (checkpoint_ind, train_counterex_losses_at_checkpoints[best_balanced_ind], approx_v[best_balanced_ind], t_hours, t_minutes))
 	# IPython.embed()"""
 
 	# Method 3
-	# train_attack_losses_at_checkpoints = train_attack_losses[::n_checkpoint_step]
-	# best_inds = np.argsort(train_attack_losses_at_checkpoints)
+	# train_counterex_losses_at_checkpoints = train_counterex_losses[::n_checkpoint_step]
+	# best_inds = np.argsort(train_counterex_losses_at_checkpoints)
 	#
 	# print("Here are a few other choices of checkpoint")
 	# n_top = 30
@@ -393,7 +393,7 @@ def graph_losses(exp_name, debug=True):
 	# for k in range(n_top):
 	# 	best_ind = best_inds[k]
 	# 	# IPython.embed()
-	# 	print("At selected checkpoint %i: %.3f loss." % (best_ind*n_checkpoint_step, train_attack_losses[best_ind*n_checkpoint_step]) + "Took " + str(datetime.timedelta(seconds=data["train_loop_times"][best_ind*n_checkpoint_step])))
+	# 	print("At selected checkpoint %i: %.3f loss." % (best_ind*n_checkpoint_step, train_counterex_losses[best_ind*n_checkpoint_step]) + "Took " + str(datetime.timedelta(seconds=data["train_loop_times"][best_ind*n_checkpoint_step])))
 	# print("\n")
 	# return checkpoint_ind
 
@@ -406,7 +406,7 @@ def graph_losses(exp_name, debug=True):
 	# 	best_ind = best_test_inds[k]
 	# 	# IPython.embed()
 	# 	real_ind = best_ind*n_test_loss_step
-	# 	print("At selected checkpoint %i: %.3f percent infeas., %.3f avg infeas, %.3f train attack loss" % (real_ind, percent_infeas_at_boundary[best_ind], average_infeas_amount[best_ind], train_attack_losses[real_ind]) + "Took " + str(datetime.timedelta(seconds=data["train_loop_times"][real_ind])))
+	# 	print("At selected checkpoint %i: %.3f percent infeas., %.3f avg infeas, %.3f train counterex loss" % (real_ind, percent_infeas_at_boundary[best_ind], average_infeas_amount[best_ind], train_counterex_losses[real_ind]) + "Took " + str(datetime.timedelta(seconds=data["train_loop_times"][real_ind])))
 	# print("\n")
 
 	# Method 5: first time test loss < thresh
@@ -425,18 +425,18 @@ def graph_losses(exp_name, debug=True):
 		# IPython.embed()
 		real_ind = best_ind*n_test_loss_step
 		# real_ind = best_ind
-		print("At selected checkpoint %i: %.3f percent infeas., %.3f avg infeas, %.3f train attack loss" % (real_ind, percent_infeas_at_boundary[best_ind], average_infeas_amount[best_ind], train_attack_losses[real_ind]) + "Took " + str(datetime.timedelta(seconds=data["train_loop_times"][real_ind])))
-		# print("At selected checkpoint %i: %.3f train attack loss" % (real_ind, train_attack_losses[real_ind]) + "Took " + str(
+		print("At selected checkpoint %i: %.3f percent infeas., %.3f avg infeas, %.3f train counterex loss" % (real_ind, percent_infeas_at_boundary[best_ind], average_infeas_amount[best_ind], train_counterex_losses[real_ind]) + "Took " + str(datetime.timedelta(seconds=data["train_loop_times"][real_ind])))
+		# print("At selected checkpoint %i: %.3f train counterex loss" % (real_ind, train_counterex_losses[real_ind]) + "Took " + str(
 		# 	datetime.timedelta(seconds=data["train_loop_times"][real_ind])))
 	print("\n")
 
 	# checking difference between train and test
 	# boundary_samples_obj_values = data["boundary_samples_obj_values"]
-	# test_attack_losses = np.array([np.max(boundary_samples_obj_value) for boundary_samples_obj_value in boundary_samples_obj_values])
-	# train_attack_losses = np.array(data["train_attack_losses"][::n_test_loss_step])[:len(test_attack_losses)]
+	# test_counterex_losses = np.array([np.max(boundary_samples_obj_value) for boundary_samples_obj_value in boundary_samples_obj_values])
+	# train_counterex_losses = np.array(data["train_counterex_losses"][::n_test_loss_step])[:len(test_counterex_losses)]
 	#
 	# # IPython.embed()
-	# diff = test_attack_losses - train_attack_losses
+	# diff = test_counterex_losses - train_counterex_losses
 	# relu_diff = np.maximum(diff, np.zeros_like(diff))
 	#
 	# print(np.mean(relu_diff), np.std(relu_diff))
@@ -746,24 +746,24 @@ def debug(exp_name):
 		data = pickle.load(handle)
 
 		# IPython.embed()
-		train_attack_losses = np.array(data["train_attack_losses"])
-		train_attack_X_obj_vals = data["train_attack_X_obj_vals"]
-		train_attack_X_phi_vals = data["train_attack_X_phi_vals"]
-		# train_attack_X_phi_vals = [np.reshape(x, (x.shape[0], 1)) for x in train_attack_X_phi_vals] # TODO
-		train_attack_X_init_random = data["train_attack_X_init_random"]
-		train_attack_X_init_reuse = data["train_attack_X_init_reuse"]
+		train_counterex_losses = np.array(data["train_counterex_losses"])
+		train_counterex_X_obj_vals = data["train_counterex_X_obj_vals"]
+		train_counterex_X_phi_vals = data["train_counterex_X_phi_vals"]
+		# train_counterex_X_phi_vals = [np.reshape(x, (x.shape[0], 1)) for x in train_counterex_X_phi_vals] # TODO
+		train_counterex_X_init_random = data["train_counterex_X_init_random"]
+		train_counterex_X_init_reuse = data["train_counterex_X_init_reuse"]
 
 		# Debug train loss spikes
-		std = np.std(train_attack_losses)
-		diff = train_attack_losses[1:] - train_attack_losses[:-1]
+		std = np.std(train_counterex_losses)
+		diff = train_counterex_losses[1:] - train_counterex_losses[:-1]
 		spike_inds = np.argwhere(diff > 2*std).flatten() + 1 # TODO: using 2 std dev to define spikes here; 68=95=99 std dev confidence interval rule
 		spike_bools = diff > 2*std # 1 index before the spike happens
 
 		n_random_best = 0
-		n_random = train_attack_X_init_random[1].shape[0]
+		n_random = train_counterex_X_init_random[1].shape[0]
 		# print(n_random)
 		for spike_ind in spike_inds:
-			obj_vals = train_attack_X_obj_vals[spike_ind]
+			obj_vals = train_counterex_X_obj_vals[spike_ind]
 			# print(obj_vals.shape)
 			max_ind = np.argmax(obj_vals)
 			# print(max_ind)
@@ -780,14 +780,14 @@ def debug(exp_name):
 		# Debug counterexamples: are they consistently close to the boundary? Are they on dS, as well as phi(x) = 0?
 
 		# Find ind of best
-		ind_best_X_over_rollout = [np.argmax(x) for x in train_attack_X_obj_vals]
+		ind_best_X_over_rollout = [np.argmax(x) for x in train_counterex_X_obj_vals]
 
 		# TODO: replace
-		max_dist_from_boundary_over_rollout = [np.max(np.abs(x[:, -1])) for x in train_attack_X_phi_vals] # THIS IS THE PHI=0 boundary that we're talking about here
-		# max_dist_from_boundary_over_rollout = [np.max(np.abs(x)) for x in train_attack_X_phi_vals] # THIS IS THE PHI=0 boundary that we're talking about here
+		max_dist_from_boundary_over_rollout = [np.max(np.abs(x[:, -1])) for x in train_counterex_X_phi_vals] # THIS IS THE PHI=0 boundary that we're talking about here
+		# max_dist_from_boundary_over_rollout = [np.max(np.abs(x)) for x in train_counterex_X_phi_vals] # THIS IS THE PHI=0 boundary that we're talking about here
 		dist_from_boundary_over_rollout_for_X_best = []
 		for i, ind in enumerate(ind_best_X_over_rollout):
-			dist = np.abs(train_attack_X_phi_vals[i][ind, -1])
+			dist = np.abs(train_counterex_X_phi_vals[i][ind, -1])
 			dist_from_boundary_over_rollout_for_X_best.append(dist)
 
 		# Graphing
@@ -798,10 +798,10 @@ def debug(exp_name):
 		plt.savefig("./log/%s/dist_of_counterexamples_from_boundary.png" % (exp_name))
 		plt.clf()
 
-		max_dist_from_dS_over_rollout = [np.max(np.abs(np.max(x, axis=1))) for x in train_attack_X_phi_vals]
+		max_dist_from_dS_over_rollout = [np.max(np.abs(np.max(x, axis=1))) for x in train_counterex_X_phi_vals]
 		dist_from_dS_over_rollout_for_X_best = []
 		for i, ind in enumerate(ind_best_X_over_rollout):
-			dist = np.abs(np.max(train_attack_X_phi_vals[i][ind]))
+			dist = np.abs(np.max(train_counterex_X_phi_vals[i][ind]))
 			dist_from_dS_over_rollout_for_X_best.append(dist)
 
 		# IPython.embed()
@@ -816,7 +816,7 @@ def debug(exp_name):
 		plt.savefig("./log/%s/dist_of_counterexamples_from_dS.png" % (exp_name))
 		plt.clf()
 
-		# Find if spikes in dist_from_dS_over_rollout_for_X_best coincide with spikes in train_attack_loss
+		# Find if spikes in dist_from_dS_over_rollout_for_X_best coincide with spikes in train_counterex_loss
 		dist_from_dS_over_rollout_for_X_best = np.array(dist_from_dS_over_rollout_for_X_best)
 		std = np.std(dist_from_dS_over_rollout_for_X_best)
 		diff = dist_from_dS_over_rollout_for_X_best[1:] - dist_from_dS_over_rollout_for_X_best[:-1]
@@ -833,13 +833,13 @@ def find_critic_n_reuse(exp_name):
 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 		data = pickle.load(handle)
 
-		train_attack_X_init_reuse = data["train_attack_X_init_reuse"]
-		train_attack_X_init_random = data["train_attack_X_init_random"]
+		train_counterex_X_init_reuse = data["train_counterex_X_init_reuse"]
+		train_counterex_X_init_random = data["train_counterex_X_init_random"]
 
 		# IPython.embed()
 
-		for i in range(len(train_attack_X_init_reuse)):
-			print(train_attack_X_init_reuse[i].shape[0])
+		for i in range(len(train_counterex_X_init_reuse)):
+			print(train_counterex_X_init_reuse[i].shape[0])
 
 def plot_interesting_slices(phi_star_fn, param_dict, save_fldrpth, checkpoint_number):
 	"""
@@ -990,7 +990,7 @@ if __name__ == "__main__":
 	# base_exp_names = ["quad_pend_ESG_reg_speedup_weight_150_seed_0_again"]
 
 	# Server 5
-	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_0", "quad_pend_ESG_reg_speedup_better_attacks_seed_1", "quad_pend_ESG_reg_speedup_better_attacks_seed_2", "quad_pend_ESG_reg_speedup_better_attacks_seed_3", "quad_pend_ESG_reg_speedup_better_attacks_seed_4"]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_counterexs_seed_0", "quad_pend_ESG_reg_speedup_better_counterexs_seed_1", "quad_pend_ESG_reg_speedup_better_counterexs_seed_2", "quad_pend_ESG_reg_speedup_better_counterexs_seed_3", "quad_pend_ESG_reg_speedup_better_counterexs_seed_4"]
 
 	"""checkpoint_numbers = list(np.arange(0, 825, 50)) + [825]
 	exp_names = ["quad_pend_euc_softplus_seed_1"]*len(checkpoint_numbers)
@@ -999,7 +999,7 @@ if __name__ == "__main__":
 	exp_names = ["quad_pend_euc_softplus_weighted_avg_seed_1"]*len(checkpoint_numbers)"""
 
 	# May 11th
-	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_counterexs_seed_%i" % i for i in range(5)]
 
 	# May 13
 	# base_exp_names = ["quad_pend_low_cbf_reg_weight_1"]
@@ -1018,7 +1018,7 @@ if __name__ == "__main__":
 	                 #+ ['quad_pend_best_p_reuse_0', 'quad_pend_best_p_reuse_25', 'quad_pend_best_p_reuse_50', 'quad_pend_best_p_reuse_75', 'quad_pend_best_p_reuse_100']
 	# Server 5
 	# base_exp_names = ['quad_pend_' + x for x in ['best_critic_bs_10', 'best_critic_bs_50', 'best_critic_bs_100']] # 'repro_test',
-	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_0"]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_counterexs_seed_0"]
 	# base_exp_names = ["quad_pend_best_reg_weight_0", "quad_pend_best_reg_weight_10", "quad_pend_best_reg_weight_50", "quad_pend_best_reg_weight_200"]
 	# exp_names = ["quad_pend_best_reg_weight_50"]*3
 	# exp_names = base_exp_names
@@ -1115,8 +1115,8 @@ if __name__ == "__main__":
 	for exp_name in base_exp_names:
 		with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 			data = pickle.load(handle)
-			train_attacks = data["train_attacks"]
-			n_it = len(train_attacks)
+			train_counterexs = data["train_counterexs"]
+			n_it = len(train_counterexs)
 			n_it_rounded = (n_it//10)*10
 			# print(n_it, n_it_rounded)
 
@@ -1131,7 +1131,7 @@ if __name__ == "__main__":
 	########################################################
 
 	# TODO: For CORL
-	"""exp_name = "quad_pend_ESG_reg_speedup_better_attacks_seed_0"
+	"""exp_name = "quad_pend_ESG_reg_speedup_better_counterexs_seed_0"
 	checkpoint_number = 250
 	phi_star_fn, param_dict = load_phi_and_params(exp_name, checkpoint_number)
 	params_to_viz_list = [["phi", "dphi"]]
@@ -1143,8 +1143,8 @@ if __name__ == "__main__":
 	                          checkpoint=checkpoint_number)"""
 
 	# TODO: more for CORL
-	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_0_reg_0", "quad_pend_ESG_reg_speedup_better_attacks_seed_0", "quad_pend_ESG_reg_speedup_better_attacks_seed_3_reg_0", "quad_pend_ESG_reg_speedup_better_attacks_seed_3"]
-	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_%i" % i for i in range(5)]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_counterexs_seed_0_reg_0", "quad_pend_ESG_reg_speedup_better_counterexs_seed_0", "quad_pend_ESG_reg_speedup_better_counterexs_seed_3_reg_0", "quad_pend_ESG_reg_speedup_better_counterexs_seed_3"]
+	# base_exp_names = ["quad_pend_ESG_reg_speedup_better_counterexs_seed_%i" % i for i in range(5)]
 	# base_exp_names = ['quad_pend_“repro_test_04_14”', 'quad_pend_repro_test']
 	# for exp_name in exp_names:
 	# 	debug(exp_name)
@@ -1152,22 +1152,22 @@ if __name__ == "__main__":
 	# TODO: check training progress
 	# for exp_name in base_exp_names:
 	# 	# fill_ci_ki_lists(exp_name)
-	# 	min_attack_loss_ind = graph_losses(exp_name)
-	# 	# checkpoint_numbers.append(min_attack_loss_ind)
+	# 	min_counterex_loss_ind = graph_losses(exp_name)
+	# 	# checkpoint_numbers.append(min_counterex_loss_ind)
 
-	# TODO: manually check attacks
+	# TODO: manually check counterexs
 	# with open("./log/%s/data.pkl" % "quad_pend_phi_format_1_seed_0", 'rb') as handle:
 	# 	data = pickle.load(handle)
-	# 	train_attacks = data["train_attacks"]
+	# 	train_counterexs = data["train_counterexs"]
 	# 	# IPython.embed()
-	# 	n_it = len(train_attacks)
+	# 	n_it = len(train_counterexs)
 	# 	for i in np.arange(0, n_it, 50):
 	# 		print("It %i" % i)
-	# 		attack = train_attacks[i]
-	# 		# print(train_attacks[i])
-	# 		print("gamma: %.2f, %.2f \t\t phi: %.2f, %.2f" % (attack[0], attack[3], attack[6], attack[8]))
-	# 		print("beta: %.2f, %.2f \t\t theta: %.2f, %.2f" % (attack[1], attack[4], attack[7], attack[9]))
-	# 		print("alpha: %.2f, %.2f" % (attack[2], attack[5]))
+	# 		counterex = train_counterexs[i]
+	# 		# print(train_counterexs[i])
+	# 		print("gamma: %.2f, %.2f \t\t phi: %.2f, %.2f" % (counterex[0], counterex[3], counterex[6], counterex[8]))
+	# 		print("beta: %.2f, %.2f \t\t theta: %.2f, %.2f" % (counterex[1], counterex[4], counterex[7], counterex[9]))
+	# 		print("alpha: %.2f, %.2f" % (counterex[2], counterex[5]))
 	# 		print("\n")
 	#
 	# 	IPython.embed()
@@ -1275,9 +1275,9 @@ if __name__ == "__main__":
 			plt.close()
 
 			# Other plotting: samples on 2D slices, 3D slices, etc.
-			# samples = load_attacks(exp_name, checkpoint_number)
+			# samples = load_counterexs(exp_name, checkpoint_number)
 			#
-			# plot_invariant_set_slices(phi_star_fn, param_dict, samples=samples, fldr_path=fldr_path, fnm="viz_attacks_ckpt_%i" % checkpoint_number)
+			# plot_invariant_set_slices(phi_star_fn, param_dict, samples=samples, fldr_path=fldr_path, fnm="viz_counterexs_ckpt_%i" % checkpoint_number)
 			#
 			# # plot_cbf_3d_slices(phi_star_fn, param_dict, which_params = [["phi", "theta"]], fnm = "3d_viz_ckpt_%i" % checkpoint_number, fpth = exp_name)
 			#

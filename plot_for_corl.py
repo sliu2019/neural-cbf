@@ -306,7 +306,7 @@ def plot_training_losses():
 	# Hardcoding
 	plt.figure(dpi=1200)
 
-	# exp_names = ["quad_pend_ESG_reg_speedup_better_attacks_seed_%i" for i in range(5)]
+	# exp_names = ["quad_pend_ESG_reg_speedup_better_counterexs_seed_%i" for i in range(5)]
 	# last_checkpoint_number = [250, 650, 625, 250, 175]
 	# last_checkpoint_number = [600]*5
 	last_checkpoint_number = [250, 400, 550, 300, 175]
@@ -324,7 +324,7 @@ def plot_training_losses():
 	all_times = []
 	x_ub = np.max(last_checkpoint_number) + 50
 	for seed_num in range(5):
-		exp_name = "quad_pend_ESG_reg_speedup_better_attacks_seed_%i" % seed_num
+		exp_name = "quad_pend_ESG_reg_speedup_better_counterexs_seed_%i" % seed_num
 		with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 			data = pickle.load(handle)
 		args = load_args("./log/%s/args.txt" % exp_name)
@@ -334,7 +334,7 @@ def plot_training_losses():
 		axs[seed_num].set_xlim([0, x_ub])
 
 		# Plot training
-		sat_risk = data["train_attack_losses"][:last_checkpoint_number[seed_num]]
+		sat_risk = data["train_counterex_losses"][:last_checkpoint_number[seed_num]]
 		axs[seed_num].plot(sat_risk, linewidth=1.0, color=c, linestyle='--')
 
 		# Plot test metric
@@ -381,7 +381,7 @@ def plot_training_losses():
 	"""
 
 if __name__ == "__main__":
-	"""exp_name = "quad_pend_ESG_reg_speedup_better_attacks_seed_0"
+	"""exp_name = "quad_pend_ESG_reg_speedup_better_counterexs_seed_0"
 	checkpoint_number = 250
 
 	# checkpoint_number = 250
@@ -433,10 +433,10 @@ if __name__ == "__main__":
 	# plot_training_losses()
 
 	# for seed_num in range(5):
-	# 	exp_name = "quad_pend_ESG_reg_speedup_better_attacks_seed_%i" % seed_num
+	# 	exp_name = "quad_pend_ESG_reg_speedup_better_counterexs_seed_%i" % seed_num
 	# 	with open("./log/%s/data.pkl" % exp_name, 'rb') as handle:
 	# 		data = pickle.load(handle)
 	#
-	# 	t = np.array(data["train_attack_losses"])
+	# 	t = np.array(data["train_counterex_losses"])
 	# 	print(np.argwhere(t < 2.0))
 	# 	IPython.embed()

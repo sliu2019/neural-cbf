@@ -67,7 +67,7 @@ class Learner():
 		return {
 			"train_loop_times": [],
 			"train_losses": [],
-			"train_attack_losses": [],
+			"train_counterex_losses": [],
 			"train_reg_losses": [],
 			"grad_norms": [],
 			"reg_grad_norms": [],
@@ -77,19 +77,19 @@ class Learner():
 			"test_t_boundary": [],
 			"ci_list": [],
 			"h_list": [],
-			"train_attacks": [],
-			"train_attack_X_init": [],
-			"train_attack_X_phi_vals": [],
-			"train_attack_init_best_attack_value": [],
-			"train_attack_final_best_attack_value": [],
-			"train_attack_t_init": [],
-			"train_attack_t_grad_step": [],
-			"train_attack_t_reproject": [],
-			"train_attack_t_total_opt": [],
-			"train_attack_t_sample_boundary": [],
-			"train_attack_n_segments_sampled": [],
-			"train_attack_dist_diff_after_proj": [],
-			"train_attack_n_opt_steps": [],
+			"train_counterexs": [],
+			"train_counterex_X_init": [],
+			"train_counterex_X_phi_vals": [],
+			"train_counterex_init_best_counterex_value": [],
+			"train_counterex_final_best_counterex_value": [],
+			"train_counterex_t_init": [],
+			"train_counterex_t_grad_step": [],
+			"train_counterex_t_reproject": [],
+			"train_counterex_t_total_opt": [],
+			"train_counterex_t_sample_boundary": [],
+			"train_counterex_n_segments_sampled": [],
+			"train_counterex_dist_diff_after_proj": [],
+			"train_counterex_n_opt_steps": [],
 		}
 
 	def _avg_grad_norm(self, phi_star_fn: torch.nn.Module) -> float:
@@ -101,15 +101,15 @@ class Learner():
 				count += 1
 		return total / count
 
-	def _compute_attack_loss(self, X: torch.Tensor,
+	def _compute_batch_risk(self, X: torch.Tensor,
 	                          saturation_risk: torch.nn.Module) -> tuple:
-		"""Computes softmax-weighted attack loss over boundary samples.
+		"""Computes softmax-weighted counterex loss over boundary samples.
 
 		Only positive violations (φ̇ ≥ 0) contribute. Softmax concentrates
 		on worst violations while maintaining gradients from all.
 
 		Returns:
-			attack_value: Weighted loss for backprop
+			counterex_value: Weighted loss for backprop
 			max_value: Worst single violation (for logging)
 		"""
 		c = 0.1  # Temperature: higher c = more focus on worst case
@@ -119,23 +119,23 @@ class Learner():
 
 		with torch.no_grad():
 			w = torch.nn.functional.softmax(c * pos_obj, dim=0)
-		attack_value = torch.dot(w.flatten(), pos_obj.flatten())
+		counterex_value = torch.dot(w.flatten(), pos_obj.flatten())
 		max_value = torch.max(obj)
-		return attack_value, max_value
+		return counterex_value, max_value
 
-	def _learner_step(self, attack_value: torch.Tensor, reg_value: torch.Tensor,
+	def _learner_step(self, counterex_value: torch.Tensor, reg_value: torch.Tensor,
 	                  optimizer: torch.optim.Optimizer, pos_params: list,
 	                  phi_star_fn: torch.nn.Module) -> tuple:
 		"""Backward pass, optimizer step, and positive-parameter projection.
 
 		Returns:
-			reg_grad_norm: Gradient norm after reg backward (before attack backward)
-			total_grad_norm: Gradient norm after attack backward
+			reg_grad_norm: Gradient norm after reg backward (before counterex backward)
+			total_grad_norm: Gradient norm after counterex backward
 		"""
 		reg_value.backward()
 		reg_grad_norm = self._avg_grad_norm(phi_star_fn)
 
-		attack_value.backward() # collecting gradients on phi_star parameters
+		counterex_value.backward() # collecting gradients on phi_star parameters
 		total_grad_norm = self._avg_grad_norm(phi_star_fn)
 
 		optimizer.step()
@@ -169,13 +169,13 @@ class Learner():
 		self.logger.info(f'train total loss: {objective_value:.3f}%')
 		self.logger.info(f'train max loss: {max_value:.3f}%, reg loss: {reg_value:.3f}%')
 		self.logger.info('time spent training so far: %s', t_so_far_str)
-		self.logger.info(f'train attack total time: {t_total_opt:.3f}s')
-		self.logger.info(f'train attack init time: {t_init:.3f}s')
-		self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_step):.3f}s')
-		self.logger.info(f'train attack avg reproj time: {np.mean(t_reproject):.3f}s')
+		self.logger.info(f'train counterex total time: {t_total_opt:.3f}s')
+		self.logger.info(f'train counterex init time: {t_init:.3f}s')
+		self.logger.info(f'train counterex avg grad step time: {np.mean(t_grad_step):.3f}s')
+		self.logger.info(f'train counterex avg reproj time: {np.mean(t_reproject):.3f}s')
 		self.logger.info(f'Reg grad norm: {reg_grad_norm:.3f}')
 		self.logger.info(f'total grad norm: {total_grad_norm:.3f}')
-		self.logger.info(f'train attack loss increase over inner max: {(critic_debug["final_best_attack_value"] - critic_debug["init_best_attack_value"]):.3f}')
+		self.logger.info(f'train counterex loss increase over inner max: {(critic_debug["final_best_counterex_value"] - critic_debug["init_best_counterex_value"]):.3f}')
 		self.logger.info('OOM debug. Mem allocated and reserved: %f, %f',
 		                 torch.cuda.memory_allocated(self.args.gpu),
 		                 torch.cuda.memory_reserved(self.args.gpu))
@@ -186,18 +186,18 @@ class Learner():
 		return {
 			"train_loop_times": t_so_far,
 			"train_losses": objective_value,
-			"train_attack_losses": max_value,
+			"train_counterex_losses": max_value,
 			"train_reg_losses": reg_value,
 			"grad_norms": total_grad_norm,
 			"reg_grad_norms": reg_grad_norm,
-			"train_attacks": x,
-			"train_attack_X_phi_vals": phi_star_fn(X),
+			"train_counterexs": x,
+			"train_counterex_X_phi_vals": phi_star_fn(X),
 			"ci_list": phi_star_fn.ci,
 			"h_list": phi_star_fn.h,
-			**{"train_attack_" + k: v for k, v in critic_debug.items()},
+			**{"train_counterex_" + k: v for k, v in critic_debug.items()},
 		}
 
-	def _run_test_stats(self, saturation_risk: torch.nn.Module,
+	def _compute_test_stats(self, saturation_risk: torch.nn.Module,
 	                     phi_star_fn: torch.nn.Module) -> dict:
 		"""Computes test stats: safe set volume fraction and boundary violations.
 
@@ -208,7 +208,7 @@ class Learner():
 		self.logger.info('\n' + '+' * 20 + ' computing test stats ' + '+' * 20)
 		t0_test = time.perf_counter()
 
-		# Sample states uniformly in state space, evaluate φ, and compute fraction with max_i φ_i(x) ≤ 0 (safe set volume approximation)
+		# Monte Carlo safe set volume approximation
 		samp_numpy = (np.random.uniform(size=(self.test_N_volume_samples, self.x_dim))
 		              * self.x_lim_interval_sizes + self.x_lim[:, [0]].T)
 		samp_torch = torch.from_numpy(samp_numpy.astype("float32")).to(self.device)
@@ -280,11 +280,11 @@ class Learner():
 
 			# Learner: update CBF to reduce saturation risk
 			optimizer.zero_grad()
-			attack_value, max_value = self._compute_attack_loss(X, saturation_risk)
-			objective_value = attack_value + reg_value
+			counterex_value, max_value = self._compute_batch_risk(X, saturation_risk)
+			objective_value = counterex_value + reg_value
 
 			reg_grad_norm, total_grad_norm = self._learner_step(
-				attack_value, reg_value, optimizer, pos_params, phi_star_fn)
+				counterex_value, reg_value, optimizer, pos_params, phi_star_fn)
 
 			# Log and record iteration stats
 			iteration_info = self._log_iteration(
@@ -304,6 +304,6 @@ class Learner():
 
 			# Periodic test stats
 			if _iter % self.args.n_test_loss_step == 0:
-				test_stats = self._run_test_stats(saturation_risk, phi_star_fn)
+				test_stats = self._compute_test_stats(saturation_risk, phi_star_fn)
 				for key, value in test_stats.items():
 					data_dict[key].append(value)

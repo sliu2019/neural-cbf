@@ -416,7 +416,7 @@ if __name__ == "__main__":
 	# run_flying_pend_exps.py - -save_fnm
 	# debug_LQR - -which_cbf
 	# ours - -exp_name_to_load
-	# quad_pend_ESG_reg_speedup_better_attacks_seed_0 - -checkpoint_number_to_load
+	# quad_pend_ESG_reg_speedup_better_counterexs_seed_0 - -checkpoint_number_to_load
 	# 250 - -which_experiments
 	# rollout - -rollout_u_ref
 	# LQR - -rollout_T_max
@@ -425,7 +425,7 @@ if __name__ == "__main__":
 	# 0.5 - -rollout_N_rollout
 	# 1
 
-	exp_name = "quad_pend_ESG_reg_speedup_better_attacks_seed_0"
+	exp_name = "quad_pend_ESG_reg_speedup_better_counterexs_seed_0"
 	rollout_N_rollout = 1
 	rollout_T_max = 2.5
 	rollout_dt = 0.01

@@ -360,7 +360,7 @@ def run_exps(args):
 			critic.X_saved = boundary_samples
 			obj_vals = saturation_risk(boundary_samples.view(-1, 10)) # TODO: hard-coded dim
 			critic.obj_vals_saved = obj_vals
-		x_worst, debug_dict = critic.opt(saturation_risk, torch_phi_star_fn, iteration, debug=True)
+		x_worst, debug_dict = critic.opt(saturation_risk, torch_phi_star_fn, iteration, debug=True) # TODO: change interface 
 
 		x_worst = torch.reshape(x_worst, (1, 10))
 		obj_values = saturation_risk(x_worst)
@@ -527,16 +527,16 @@ if __name__ == "__main__":
 	run_exps(args)
 
 """
-python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 1020 --boundary_n_samples 100 --worst_boundary_n_samples 100 --rollout_N_rollout 100 
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_counterexs_seed_0 --checkpoint_number_to_load 1020 --boundary_n_samples 100 --worst_boundary_n_samples 100 --rollout_N_rollout 100 
 
 Debug 
 
 # Ours 
-python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 400 --rollout_N_rollout 2 
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_counterexs_seed_0 --checkpoint_number_to_load 400 --rollout_N_rollout 2 
 
 (ckpt 200 or 400) 
 
-python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 400 --rollout_N_rollout 2 --which_experiments volume 
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_counterexs_seed_0 --checkpoint_number_to_load 400 --rollout_N_rollout 2 --which_experiments volume 
 
 
 # Low-CMAES
@@ -548,35 +548,35 @@ python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name
 python run_flying_pend_exps.py --save_fnm debug --which_cbf low-CMAES --exp_name_to_load flying_pend_n_feasible_reg_weight_1e_1 --checkpoint_number_to_load 6 --rollout_N_rollout 2 --which_experiments rollout
 
 # Best candidates for ours 
-python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_attacks_seed_0 --checkpoint_number_to_load 1020
+python run_flying_pend_exps.py --save_fnm debug --which_cbf ours --exp_name_to_load quad_pend_ESG_reg_speedup_better_counterexs_seed_0 --checkpoint_number_to_load 1020
 """
 
 """
-For experiment quad_pend_ESG_reg_speedup_better_attacks_seed_0, at iteration 1551/3000
+For experiment quad_pend_ESG_reg_speedup_better_counterexs_seed_0, at iteration 1551/3000
 Average approx volume: 0.247
 -0.08455947
 1020 0.26794875
 V avg: 0.031
 First: 0.120, best: 0.320
-For experiment quad_pend_ESG_reg_speedup_better_attacks_seed_1, at iteration 1606/3000
+For experiment quad_pend_ESG_reg_speedup_better_counterexs_seed_1, at iteration 1606/3000
 Average approx volume: 0.234
 0.49223045
 1605 0.6197671
 V avg: 0.028
 First: 0.160, best: 0.360
-For experiment quad_pend_ESG_reg_speedup_better_attacks_seed_2, at iteration 2021/3000
+For experiment quad_pend_ESG_reg_speedup_better_counterexs_seed_2, at iteration 2021/3000
 Average approx volume: 0.200
 0.38371262
 1975 0.38371262
 V avg: 0.028
 First: 0.640, best: 0.640
-For experiment quad_pend_ESG_reg_speedup_better_attacks_seed_3, at iteration 1951/3000
+For experiment quad_pend_ESG_reg_speedup_better_counterexs_seed_3, at iteration 1951/3000
 Average approx volume: 0.185
 0.25222638
 930 0.54474854
 V avg: 0.024
 First: 0.000, best: 0.200
-For experiment quad_pend_ESG_reg_speedup_better_attacks_seed_4, at iteration 1186/3000
+For experiment quad_pend_ESG_reg_speedup_better_counterexs_seed_4, at iteration 1186/3000
 Average approx volume: 0.163
 0.49849012
 220 0.49849012
