@@ -1,11 +1,5 @@
-"""Training-curve and loss visualizations for quadcopter-pendulum CBF experiments.
-
-Functions
----------
-graph_losses          -- full multi-panel diagnostic plot for one experiment run
-plot_training_losses  -- compact multi-seed training-curve figure (for paper)
-"""
 import datetime
+import json
 import os
 import pickle
 import types
@@ -14,15 +8,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def _load_data_and_args(exp_name: str):
-    """Loads the pickled data dict and reconstructs an args namespace."""
+    """Loads the pickled training data dict and reconstructs an args namespace."""
     data_path = "./log/%s/data.pkl" % exp_name
     args_path = "./log/%s/args.txt" % exp_name
-    import json
     with open(data_path, "rb") as f:
         data = pickle.load(f)
     with open(args_path, "r") as f:
@@ -30,11 +19,7 @@ def _load_data_and_args(exp_name: str):
     return data, args
 
 
-# ---------------------------------------------------------------------------
-# Public functions
-# ---------------------------------------------------------------------------
-
-def graph_losses(exp_name: str, debug: bool = True) -> None:
+def plot_training_test_losses(exp_name: str, debug: bool = True) -> None:
     """Plots training and test metrics for a single experiment run.
 
     Saves three PNG files under ./log/<exp_name>/:
@@ -228,80 +213,3 @@ def graph_losses(exp_name: str, debug: bool = True) -> None:
     plt.savefig(os.path.join(save_dir, "%s_grad_norms.png" % exp_name))
     plt.clf()
     plt.cla()
-
-
-def plot_training_losses(
-    exp_names=None,
-    last_checkpoint_numbers=None,
-    save_path="./log/corl/sat_risk_for_all_seeds_subfigs.svg",
-) -> None:
-    """Plots training curves for multiple seeds on aligned subplots.
-
-    Each subplot shows:
-      - Dashed: training saturation risk (worst counterex value)
-      - Solid:  test metric (% infeasible states on boundary)
-
-    Args:
-        exp_names: List of experiment names. Defaults to the 5-seed CoRL runs.
-        last_checkpoint_numbers: Per-seed iteration to truncate at.
-        save_path: Where to save the figure.
-    """
-    if exp_names is None:
-        exp_names = [
-            "quad_pend_ESG_reg_speedup_better_counterexs_seed_%i" % i for i in range(5)
-        ]
-    if last_checkpoint_numbers is None:
-        last_checkpoint_numbers = [250, 400, 550, 300, 175]
-
-    n_seeds = len(exp_names)
-    plt.figure(dpi=1200)
-    fig, axs = plt.subplots(n_seeds, sharex=True)
-    fig.suptitle("Losses throughout training for %i random seeds" % n_seeds)
-    fig.text(0.5, 0.04, "Training iteration", ha="center", va="center")
-    fig.text(0.06, 0.5, "Train, test losses", ha="center", va="center", rotation="vertical")
-
-    colors = plt.rcParams["axes.prop_cycle"]()
-    x_ub = max(last_checkpoint_numbers) + 50
-    all_times = []
-
-    for i, (exp_name, last_ckpt) in enumerate(zip(exp_names, last_checkpoint_numbers)):
-        data, args = _load_data_and_args(exp_name)
-        c = next(colors)["color"]
-
-        axs[i].set_xlim([0, x_ub])
-
-        # Training loss (dashed)
-        axs[i].plot(
-            data["train_attack_losses"][:last_ckpt],
-            linewidth=1.0, color=c, linestyle="--",
-        )
-
-        # Test metric (solid): % infeasible at boundary
-        per_n = args.n_test_loss_step
-        test_iters = np.arange(0, last_ckpt + per_n, per_n)
-        boundary_obj_vals = data["boundary_samples_obj_values"]
-        pct_infeas = [
-            np.sum(v > 0) * 100.0 / v.size for v in boundary_obj_vals
-        ][: len(test_iters)]
-        axs[i].plot(test_iters, pct_infeas, linewidth=1.0, color=c, linestyle="-")
-
-        # Zero reference line
-        axs[i].axhline(0, color="k", linestyle="--", linewidth=0.8)
-
-        # Timing
-        t_sec = data["train_loop_times"][last_ckpt]
-        all_times.append(t_sec)
-        h, m = int(t_sec // 3600), int((t_sec % 3600) // 60)
-        print("Training took %i:%02i h:m" % (h, m))
-
-    avg_h = np.mean(all_times) / 3600.0
-    std_h = np.std(all_times) / 3600.0
-    print("Average training time: %.3f +/- %.3f h" % (avg_h, std_h))
-
-    legend_str = "Dashed: train loss (sat. risk)\nSolid: test loss (% non-sat. states)"
-    props = dict(boxstyle="round", facecolor="whitesmoke")
-    fig.text(0.6, 0.855, legend_str, va="center", ha="left", bbox=props, size="small")
-
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    plt.savefig(save_path, dpi=1200)
-    print("Saved: %s" % save_path)

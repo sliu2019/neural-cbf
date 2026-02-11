@@ -203,7 +203,7 @@ def run_exps(args: argparse.Namespace) -> None:
         N_steps_max = int(args.rollout_T_max / args.rollout_dt)
         print("Rollout timesteps per trajectory: %i" % N_steps_max)
 
-        env = QuadPendEnv(model_param_dict=param_dict)
+        env = QuadPendEnv(param_dict)
         env.dt = args.rollout_dt
 
         cbf_controller = CBFController(env, numpy_phi_star_fn, param_dict, args)
