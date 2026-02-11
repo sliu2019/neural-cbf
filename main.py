@@ -96,7 +96,7 @@ def main(args):
 
 	# Launch training
 	learner = Learner(args, logger, critic, test_critic, reg_sampler, param_dict, device)
-	learner.train(saturation_risk, reg_fn, phi_star_fn, xdot_fn)
+	learner.train(saturation_risk, reg_fn, phi_star_fn)
 
 
 if __name__ == "__main__":

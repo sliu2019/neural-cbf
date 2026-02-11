@@ -117,6 +117,7 @@ class NeuralPhi(nn.Module):
 			- Column i contains φ_i(x) for i=0..r-1
 			- Column r contains φ*(x)
 			The last column φ*(x) is the final CBF used for safety certification.
+			The other columns are needed to determine what the safe set is.
 
 		Note:
 			Batch-compliant implementation. All operations support arbitrary batch sizes.

@@ -1,26 +1,7 @@
 """Learner module for neural CBF training loop.
 
-Implements the learner component of the learner-critic framework from liu23e.pdf
-Algorithm 1. The learner minimizes the combined objective:
-
-    Loss = max_x∈∂S (saturation_risk(x)) + λ·regularization(x)
-
-where:
-- saturation_risk measures worst-case CBF derivative under input saturation
-- regularization encourages large safe set volume
-- ∂S is the CBF boundary (φ=0)
-
-The critic provides counterexamples (max saturation_risk), and the learner
-updates the neural CBF to eliminate violations while maximizing safe set volume.
-
-Key Features:
-- Weighted average objective over batch (softmax weighting for stability)
-- Positive parameter projection (c_i, h must stay positive)
-- Periodic testing (volume estimation, boundary violation checks)
-- Checkpointing and data logging
-
-References:
-    liu23e.pdf Section 3.3 (Training), Algorithm 1
+The learner minimizes the combined objective:
+    Loss = max_x∈∂S (saturation_risk(x)) + regularization(x)
 """
 import os
 import time
@@ -34,7 +15,6 @@ import torch
 import torch.optim as optim
 
 from src.utils import save_model
-#, EarlyStopping, EarlyStoppingBatch
 
 
 class Learner():
@@ -96,8 +76,187 @@ class Learner():
 		self.test_N_volume_samples = 2500
 		self.test_N_boundary_samples = 2500
 
+	@staticmethod
+	def _init_data_dict() -> dict:
+		"""Initializes empty lists for all logged quantities."""
+		return {
+			"train_loop_times": [],
+			"train_losses": [],
+			"train_attack_losses": [],
+			"train_reg_losses": [],
+			"grad_norms": [],
+			"reg_grad_norms": [],
+			"V_approx_list": [],
+			"boundary_samples_obj_values": [],
+			"test_t_total": [],
+			"test_t_boundary": [],
+			"ci_list": [],
+			"h_list": [],
+			"train_attacks": [],
+			"train_attack_X_init": [],
+			"train_attack_X_final": [],
+			"train_attack_X_phi_vals": [],
+			"train_attack_init_best_attack_value": [],
+			"train_attack_final_best_attack_value": [],
+			"train_attack_t_init": [],
+			"train_attack_t_grad_step": [],
+			"train_attack_t_reproject": [],
+			"train_attack_t_total_opt": [],
+			"train_attack_t_sample_boundary": [],
+			"train_attack_n_segments_sampled": [],
+			"train_attack_dist_diff_after_proj": [],
+			"train_attack_n_opt_steps": [],
+		}
+
+	def _avg_grad_norm(self, phi_star_fn: torch.nn.Module) -> float:
+		"""Computes average gradient norm over non-excluded parameters."""
+		total, count = 0.0, 0
+		for name, param in phi_star_fn.named_parameters():
+			if name not in phi_star_fn.exclude_from_gradient_param_names:
+				total += torch.linalg.norm(param.grad).item()
+				count += 1
+		return total / count
+
+	def _compute_attack_loss(self, X: torch.Tensor,
+	                          saturation_risk: torch.nn.Module) -> tuple:
+		"""Computes softmax-weighted attack loss over boundary samples.
+
+		Only positive violations (φ̇ ≥ 0) contribute. Softmax concentrates
+		on worst violations while maintaining gradients from all.
+
+		Returns:
+			attack_value: Weighted loss for backprop
+			max_value: Worst single violation (for logging)
+		"""
+		c = 0.1  # Temperature: higher c = more focus on worst case
+		obj = saturation_risk(X)
+		pos_inds = torch.where(obj >= 0)
+		pos_obj = obj[pos_inds[0], pos_inds[1]].flatten()
+
+		with torch.no_grad():
+			w = torch.nn.functional.softmax(c * pos_obj, dim=0)
+		attack_value = torch.dot(w.flatten(), pos_obj.flatten())
+		max_value = torch.max(obj)
+		return attack_value, max_value
+
+	def _learner_step(self, attack_value: torch.Tensor, reg_value: torch.Tensor,
+	                  optimizer: torch.optim.Optimizer, pos_params: list,
+	                  phi_star_fn: torch.nn.Module) -> tuple:
+		"""Backward pass, optimizer step, and positive-parameter projection.
+
+		Returns:
+			reg_grad_norm: Gradient norm after reg backward (before attack backward)
+			total_grad_norm: Gradient norm after attack backward
+		"""
+		reg_value.backward()
+		reg_grad_norm = self._avg_grad_norm(phi_star_fn)
+
+		attack_value.backward()
+		total_grad_norm = self._avg_grad_norm(phi_star_fn)
+
+		optimizer.step()
+
+		with torch.no_grad():
+			for param in pos_params:
+				param.copy_(torch.maximum(param, torch.zeros_like(param)))
+
+		return reg_grad_norm, total_grad_norm
+
+	def _log_iteration(self, _iter: int, objective_value: torch.Tensor,
+	                    max_value: torch.Tensor, reg_value: torch.Tensor,
+	                    reg_grad_norm: float, total_grad_norm: float,
+	                    x: torch.Tensor, X: torch.Tensor,
+	                    critic_debug: dict, phi_star_fn: torch.nn.Module,
+	                    t0: float) -> dict:
+		"""Logs iteration stats to logger and assembles the per-iteration record.
+
+		Returns:
+			iteration_info: Dict of values to append to data_dict
+		"""
+		t_so_far = time.perf_counter() - t0
+		t_so_far_str = str(datetime.timedelta(seconds=t_so_far))
+
+		t_init = critic_debug["t_init"]
+		t_grad_step = critic_debug["t_grad_step"]
+		t_reproject = critic_debug["t_reproject"]
+		t_total_opt = critic_debug["t_total_opt"]
+
+		self.logger.info('\n' + '=' * 20 + f' evaluation at iteration: {_iter} ' + '=' * 20)
+		self.logger.info(f'train total loss: {objective_value:.3f}%')
+		self.logger.info(f'train max loss: {max_value:.3f}%, reg loss: {reg_value:.3f}%')
+		self.logger.info('time spent training so far: %s', t_so_far_str)
+		self.logger.info(f'train attack total time: {t_total_opt:.3f}s')
+		self.logger.info(f'train attack init time: {t_init:.3f}s')
+		self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_step):.3f}s')
+		self.logger.info(f'train attack avg reproj time: {np.mean(t_reproject):.3f}s')
+		self.logger.info(f'Reg grad norm: {reg_grad_norm:.3f}')
+		self.logger.info(f'total grad norm: {total_grad_norm:.3f}')
+		self.logger.info(f'train attack loss increase over inner max: {(critic_debug["final_best_attack_value"] - critic_debug["init_best_attack_value"]):.3f}')
+		self.logger.info('OOM debug. Mem allocated and reserved: %f, %f',
+		                 torch.cuda.memory_allocated(self.args.gpu),
+		                 torch.cuda.memory_reserved(self.args.gpu))
+		self.logger.debug('h: %s', phi_star_fn.h)
+		self.logger.debug('ci: %s', phi_star_fn.ci)
+		self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')
+
+		return {
+			"train_loop_times": t_so_far,
+			"train_losses": objective_value,
+			"train_attack_losses": max_value,
+			"train_reg_losses": reg_value,
+			"grad_norms": total_grad_norm,
+			"reg_grad_norms": reg_grad_norm,
+			"train_attacks": x,
+			"train_attack_X_phi_vals": phi_star_fn(X),
+			"ci_list": phi_star_fn.ci,
+			"h_list": phi_star_fn.h,
+			**{"train_attack_" + k: v for k, v in critic_debug.items()},
+		}
+
+	def _run_test_stats(self, saturation_risk: torch.nn.Module,
+	                     phi_star_fn: torch.nn.Module) -> dict:
+		"""Computes test stats: safe set volume fraction and boundary violations.
+
+		Returns:
+			Dict with keys: V_approx_list, boundary_samples_obj_values,
+			                test_t_total, test_t_boundary
+		"""
+		t0_test = time.perf_counter()
+
+		samp_numpy = (np.random.uniform(size=(self.test_N_volume_samples, self.x_dim))
+		              * self.x_lim_interval_sizes + self.x_lim[:, [0]].T)
+		samp_torch = torch.from_numpy(samp_numpy.astype("float32")).to(self.device)
+		M = 100
+		N_samples_inside = 0
+		for k in range(math.ceil(self.test_N_volume_samples / float(M))):
+			phi_vals_batch = phi_star_fn(samp_torch[k*M: min((k+1)*M, self.test_N_volume_samples)])
+			N_samples_inside += torch.sum(torch.max(phi_vals_batch, axis=1)[0] <= 0.0)
+		V_approx = (N_samples_inside * 100.0 / float(self.test_N_volume_samples)).item()
+
+		t0_test_boundary = time.perf_counter()
+		boundary_samples, _ = self.test_critic._sample_points_on_boundary_sequential(
+			phi_star_fn, self.test_N_boundary_samples)
+		boundary_obj = saturation_risk(boundary_samples).detach().cpu().numpy()
+		tf_test = time.perf_counter()
+
+		self.logger.info('\n' + '+' * 20 + ' computing test stats ' + '+' * 20)
+		self.logger.info(f'v approx: {V_approx:.3f}% of volume')
+		percent_infeas = np.sum(boundary_obj > 0) * 100 / boundary_obj.size
+		self.logger.info(f'percentage infeasible at boundary: {percent_infeas:.2f}%')
+		infeas_values = (boundary_obj > 0) * boundary_obj
+		self.logger.info(f'mean, std amount infeasible at boundary: {np.mean(infeas_values):.2f} +/- {np.std(infeas_values):.2f}')
+		self.logger.info(f'max amount infeasible at boundary: {np.max(infeas_values):.2f}')
+		self.logger.info('\n' + '+' * 80)
+
+		return {
+			"V_approx_list": V_approx,
+			"boundary_samples_obj_values": boundary_obj,
+			"test_t_total": tf_test - t0_test,
+			"test_t_boundary": tf_test - t0_test_boundary,
+		}
+
 	def train(self, saturation_risk: Callable, reg_fn: Callable,
-	          phi_star_fn: torch.nn.Module, xdot_fn: Callable) -> None:
+	          phi_star_fn: torch.nn.Module) -> None:
 		"""Main training loop implementing Algorithm 1 from liu23e.pdf.
 
 		Alternates between:
@@ -111,260 +270,53 @@ class Learner():
 			saturation_risk: SaturationRisk loss function
 			reg_fn: RegularizationLoss function
 			phi_star_fn: Neural CBF (NeuralPhi instance)
-			xdot_fn: System dynamics
 
 		Side Effects:
 			- Saves checkpoints to model_folder every n_checkpoint_step iterations
 			- Logs training data to data.pkl
 			- Prints progress and statistics to logger
 		"""
-		##################################
-		######### Set up saving ##########
-		##################################
+		data_dict = self._init_data_dict()
 
-		data_dict = {
-			"train_loop_times": [],
-			"train_losses": [],
-			"train_attack_losses": [],
-			"train_reg_losses": [],
-			"grad_norms": [],
-			"V_approx_list": [],
-			"boundary_samples_obj_values": [],
-			"test_t_total": [],
-			"test_t_boundary": []
-		}
-
-		data_dict["ci_list"] = []
-		data_dict["h_list"] = []
-
-		train_attack_dict = {"train_attacks": [],
-			"train_attack_X_init": [],
-			"train_attack_X_init_reuse": [],
-			"train_attack_X_init_random": [],
-			"train_attack_X_final": [],
-			"train_attack_X_obj_vals": [],
-			"train_attack_X_phi_vals": [],
-			"train_attack_init_best_attack_value": [],
-			"train_attack_final_best_attack_value": [],
-			"train_attack_t_init": [],
-			"train_attack_t_grad_step": [],
-			"train_attack_t_reproject": [],
-			"train_attack_t_total_opt": [],
-			"train_attack_t_sample_boundary": [],
-		    "train_attack_n_segments_sampled": [],
-		    "train_attack_dist_diff_after_proj": [],
-		    "train_attack_n_opt_steps": []
-		    }
-
-		data_dict.update(train_attack_dict)
-
-		reg_debug_dict = {"reg_grad_norms": []}
-
-		data_dict.update(reg_debug_dict)
-
-		###########  Done  ###########
-		##############################
-		p_dict = {p[0]:p[1] for p in phi_star_fn.named_parameters()}
+		p_dict = {p[0]: p[1] for p in phi_star_fn.named_parameters()}
 		pos_params = [p_dict[name] for name in phi_star_fn.pos_param_names]
-
 		optimizer = optim.Adam(phi_star_fn.parameters(), lr=self.args.learner_lr)
 
-		# early_stopping = EarlyStopping(patience=self.args.learner_early_stopping_patience, min_delta=1e-2)
-
-		_iter = 0
 		t0 = time.perf_counter()
+		save_model(phi_star_fn, os.path.join(self.args.model_folder, 'checkpoint_0.pth'))
 
-		file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
-		save_model(phi_star_fn, file_name)
-
-		while True:
-
-			iteration_info_dict = {}
+		for _iter in range(self.args.learner_n_steps + 1):
+			# Critic: find worst-case counterexamples on boundary
 			X_reg = self.reg_sampler.get_samples(phi_star_fn)
 			reg_value = reg_fn(X_reg)
+			x, critic_debug = self.critic.opt(saturation_risk, phi_star_fn, _iter)
+			X = critic_debug["X_final"]
 
-			x, debug_dict = self.critic.opt(saturation_risk, phi_star_fn, _iter)
-			X = debug_dict["X_final"]
-
+			# Learner: update CBF to reduce saturation risk
 			optimizer.zero_grad()
-
-			# Compute weighted average objective using softmax weighting
-			# Only positive violations (φ̇ ≥ 0) contribute to loss
-			# Softmax concentrates on worst violations while maintaining gradients from all
-			c = 0.1  # Temperature: higher c = more focus on worst case
-			obj = saturation_risk(X)
-			pos_inds = torch.where(obj >= 0)  # Only violations (φ̇ ≥ 0)
-			pos_obj = obj[pos_inds[0], pos_inds[1]].flatten()
-
-			# Compute softmax weights: w_i ∝ exp(c·φ̇_i)
-			# Detach weights to treat as constants (avoids double-gradient issues)
-			with torch.no_grad():
-				w = torch.nn.functional.softmax(c*pos_obj, dim=0)
-			attack_value = torch.dot(w.flatten(), pos_obj.flatten())
-
-			# For logging
-			x_batch = x.view(1, -1)
-			max_value = saturation_risk(x_batch)[0, 0]
-
+			attack_value, max_value = self._compute_attack_loss(X, saturation_risk)
 			objective_value = attack_value + reg_value
+			reg_grad_norm, total_grad_norm = self._learner_step(
+				attack_value, reg_value, optimizer, pos_params, phi_star_fn)
 
-			#######################################################
-			############# Now, taking the gradients ###############
-			#######################################################
-			reg_value.backward()
-
-			##### Check reg gradient #####
-			avg_grad_norm = 0
-			n_param = 0
-			for n, p in phi_star_fn.named_parameters():
-				if n not in phi_star_fn.exclude_from_gradient_param_names:
-					avg_grad_norm += torch.linalg.norm(p.grad).item()
-					n_param += 1
-			avg_grad = avg_grad_norm/n_param
-			iteration_info_dict["reg_grad_norms"] = avg_grad
-			self.logger.info(f'Reg grad norm: {avg_grad:.3f}')
-			#*****************************
-
-			attack_value.backward()
-
-			##### Check total gradient #####
-			avg_grad_norm = 0
-			n_param = 0
-			for n, p in phi_star_fn.named_parameters():
-				if n not in phi_star_fn.exclude_from_gradient_param_names:
-					avg_grad_norm += torch.linalg.norm(p.grad).item()
-					n_param += 1
-			avg_grad = avg_grad_norm/n_param
-			iteration_info_dict["grad_norms"] = avg_grad
-			self.logger.info(f'total grad norm: {avg_grad:.3f}')
-			#*****************************
-
-			optimizer.step()
-
-			with torch.no_grad():
-				for param in pos_params:
-					pos_param = torch.maximum(param, torch.zeros_like(param))
-					param.copy_(pos_param)
-
-			tnow = time.perf_counter()
-
-			#######################################################
-			############## Logging and appending data #############
-			#######################################################
-			self.logger.info('\n' + '=' * 20 + f' evaluation at iteration: {_iter} ' \
-			                 + '=' * 20)
-
-			self.logger.info(f'train total loss: {objective_value:.3f}%')
-			self.logger.info(f'train max loss: {max_value:.3f}%, reg loss: {reg_value:.3f}%')
-			t_so_far = tnow-t0
-			t_so_far_str = str(datetime.timedelta(seconds=t_so_far))
-
-			# Timing logging + saving
-			t_init = debug_dict["t_init"]
-			t_grad_step = debug_dict["t_grad_step"]
-			t_reproject = debug_dict["t_reproject"]
-			t_total_opt = debug_dict["t_total_opt"]
-
-			self.logger.info('time spent training so far: %s' % t_so_far_str)
-			self.logger.info(f'train attack total time: {t_total_opt:.3f}s')
-			self.logger.info(f'train attack init time: {t_init:.3f}s')
-			self.logger.info(f'train attack avg grad step time: {np.mean(t_grad_step):.3f}s')
-			self.logger.info(f'train attack avg reproj time: {np.mean(t_reproject):.3f}s')
-
-			iteration_info_dict["train_loop_times"] = t_so_far
-
-			# debug logging
-			self.logger.info("\n")
-			self.logger.info(f'train attack loss increase over inner max: {(debug_dict["final_best_attack_value"]-debug_dict["init_best_attack_value"]):.3f}')
-			# mem leak logging
-			self.logger.info('OOM debug. Mem allocated and reserved: %f, %f' % (torch.cuda.memory_allocated(self.args.gpu), torch.cuda.memory_reserved(self.args.gpu)))
-
-			# Losses saving
-			iteration_info_dict["train_attack_losses"] = max_value
-			iteration_info_dict["train_reg_losses"] = reg_value
-			iteration_info_dict["train_losses"] = objective_value
-
-			# Train attack saving
-			iteration_info_dict["train_attacks"] = x
-			iteration_info_dict["train_attack_X_phi_vals"] = phi_star_fn(X)
-			debug_dict = {"train_attack_" + key: value for key, value in debug_dict.items()}
-
-			iteration_info_dict.update(debug_dict)
-
-			# Misc saving
-			iteration_info_dict["ci_list"] = phi_star_fn.ci
-			iteration_info_dict["h_list"] = phi_star_fn.h
-			print(phi_star_fn.h)
-			print(phi_star_fn.ci)
-
-			# Merge into info_dict
-			# Note: detach before logging to avoid accumulating memory over iterations
-			for key, value in iteration_info_dict.items():
+			# Log and record iteration stats
+			iteration_info = self._log_iteration(
+				_iter, objective_value, max_value, reg_value,
+				reg_grad_norm, total_grad_norm, x, X, critic_debug, phi_star_fn, t0)
+			for key, value in iteration_info.items():
 				if torch.is_tensor(value):
 					value = value.detach().cpu().numpy()
 				data_dict[key].append(value)
 
-			# Rest of print output
-			self.logger.info('=' * 28 + ' end of evaluation ' + '=' * 28 + '\n')
-			#######################################################
-			##############    Saving data   #######################
-			#######################################################
+			# Checkpoint
 			if _iter % self.args.n_checkpoint_step == 0:
-				file_name = os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth')
-				save_model(phi_star_fn, file_name)
-
-				print("Saving at: ", self.data_save_fpth)
+				save_model(phi_star_fn, os.path.join(self.args.model_folder, f'checkpoint_{_iter}.pth'))
+				self.logger.info("Saving at: %s", self.data_save_fpth)
 				with open(self.data_save_fpth, 'wb') as handle:
 					pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-			#######################################################
-			##############   Compute test stats   #################
-			#######################################################
+			# Periodic test stats
 			if _iter % self.args.n_test_loss_step == 0:
-				t0_test = time.perf_counter()
-
-				samp_numpy = np.random.uniform(size=(self.test_N_volume_samples, self.x_dim)) * self.x_lim_interval_sizes + self.x_lim[:, [0]].T
-				samp_torch = torch.from_numpy(samp_numpy.astype("float32")).to(self.device)
-				M = 100
-
-				N_samples_inside = 0
-				for k in range(math.ceil(self.test_N_volume_samples/float(M))):
-					phi_vals_batch = phi_star_fn(samp_torch[k*M: min((k+1)*M, self.test_N_volume_samples)])
-					N_samples_inside += torch.sum(torch.max(phi_vals_batch, axis=1)[0] <= 0.0)
-				V_approx = N_samples_inside*100.0/float(self.test_N_volume_samples)
-				V_approx = V_approx.item()
-				data_dict["V_approx_list"].append(V_approx)
-
-				# Sample on boundary
-				t0_test_boundary = time.perf_counter()
-				boundary_samples, debug_dict = self.test_critic._sample_points_on_boundary_sequential(phi_star_fn, self.test_N_boundary_samples)
-				boundary_samples_obj_value = saturation_risk(boundary_samples)
-				boundary_samples_obj_value = boundary_samples_obj_value.detach().cpu().numpy()
-				data_dict["boundary_samples_obj_values"].append(boundary_samples_obj_value)
-
-				self.logger.info('\n' + '+' * 20 + f' computing test stats ' \
-				                 + '+' * 20)
-				self.logger.info(f'v approx: {V_approx:.3f}% of volume')
-				percent_infeas_at_boundary = np.sum(boundary_samples_obj_value > 0)*100/boundary_samples_obj_value.size
-				self.logger.info(f'percentage infeasible at boundary: {percent_infeas_at_boundary:.2f}%')
-				infeas_values = (boundary_samples_obj_value > 0)*boundary_samples_obj_value
-				average_infeas_amount = np.mean(infeas_values)
-				std_infeas_amount = np.std(infeas_values)
-				self.logger.info(f'mean, std amount infeasible at boundary: {average_infeas_amount:.2f} +/- {std_infeas_amount:.2f}')
-				self.logger.info(f'max amount infeasible at boundary: {np.max(infeas_values):.2f}')
-				self.logger.info('\n' + '+' * 80)
-
-				tf_test = time.perf_counter()
-
-				data_dict["test_t_total"].append(tf_test-t0_test)
-				data_dict["test_t_boundary"].append(tf_test-t0_test_boundary)
-
-			# if self.args.learner_stopping_condition == "early_stopping":
-			# 	early_stopping(objective_value)
-			# 	if early_stopping.early_stop:
-			# 		break
-			# elif self.args.learner_stopping_condition == "n_steps":
-			if _iter > self.args.learner_n_steps:
-				break
-
-			_iter += 1
+				test_stats = self._run_test_stats(saturation_risk, phi_star_fn)
+				for key, value in test_stats.items():
+					data_dict[key].append(value)
