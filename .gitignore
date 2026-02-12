@@ -1,6 +1,9 @@
 log/
 __pycache__/
 checkpoint/
+.vscode/
+.idea/
 rollout_results/
 *.out
 *.pdf
+.DS_store
