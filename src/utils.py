@@ -1,17 +1,25 @@
+"""Utility functions and classes."""
 import os
 import json
 import logging
 
-import numpy as np
 import torch
 from torch import nn
-import IPython
-from dotmap import DotMap
-import torch
-import pickle
-from src.argument import create_parser, print_args
 
-def create_logger(save_path='', file_type='', level='debug'):
+from src.create_arg_parser import create_arg_parser, print_args
+
+
+def create_logger(save_path: str = '', file_type: str = '', level: str = 'debug') -> logging.Logger:
+	"""Creates logger with both console and file output.
+
+	Args:
+		save_path: Directory path for log file. If empty, no file logging.
+		file_type: Prefix for log filename (e.g., 'train' creates 'train_log.txt')
+		level: Logging level ('debug' or 'info')
+
+	Returns:
+		logging.Logger: Configured logger instance
+	"""
 
 	if level == 'debug':
 		_level = logging.DEBUG
@@ -35,126 +43,95 @@ def create_logger(save_path='', file_type='', level='debug'):
 	return logger
 
 
-def save_model(model, file_name):
+def save_model(model: nn.Module, file_name: str) -> None:
+	"""Saves PyTorch model state dict to file.
+
+	Args:
+		model: PyTorch nn.Module instance
+		file_name: Path where model will be saved (.pth extension)
+	"""
 	torch.save(model.state_dict(), file_name)
 
-def load_model(model, file_name):
+
+def load_model(model: nn.Module, file_name: str) -> None:
+	"""Loads PyTorch model state dict from file.
+
+	Args:
+		model: PyTorch nn.Module instance to load weights into
+		file_name: Path to saved model checkpoint (.pth file)
+
+	Note:
+		Uses CPU mapping to enable loading GPU-trained models on CPU.
+	"""
 	model.load_state_dict(
 		torch.load(file_name, map_location=lambda storage, loc: storage))
 
-def makedirs(path):
+
+def makedirs(path: str) -> None:
+	"""Creates directory if it doesn't exist (equivalent to mkdir -p).
+
+	Args:
+		path: Directory path to create
+	"""
 	if not os.path.exists(path):
 		os.makedirs(path)
 
-def save_args(args, file_name):
+
+def save_args(args, file_name: str) -> None:
+	"""Saves command-line arguments to JSON file for reproducibility.
+
+	Args:
+		args: argparse.Namespace with parsed arguments
+		file_name: Path to JSON file where args will be saved
+	"""
 	with open(file_name, 'w') as f:
 		json.dump(args.__dict__, f, indent=2)
 
-def load_args(file_name):
-	parser = create_parser()
+
+def load_args(file_name: str):
+	"""Loads previously saved arguments from JSON file.
+
+	Args:
+		file_name: Path to JSON file containing saved arguments
+
+	Returns:
+		argparse.Namespace: Loaded arguments with defaults from parser
+		                     overridden by saved values
+	"""
+	parser = create_arg_parser()
 	args = parser.parse_known_args()[0]
-	# args = parser() # TODO
 	with open(file_name, 'r') as f:
 		args.__dict__ = json.load(f)
 	return args
 
-
-class EarlyStopping():
-	"""
-	Early stopping to stop the training when the loss does not improve after
-	certain epochs.
-	"""
-	def __init__(self, patience=3, min_delta=0):
-		"""
-		:param patience: how many epochs to wait before stopping when loss is
-			   not improving
-		:param min_delta: minimum difference between new loss and old loss for
-			   new loss to be considered as an improvement
-		"""
-		self.patience = patience
-		self.min_delta = min_delta
-		self.counter = 0
-		self.best_loss = None
-		self.early_stop = False
-
-	def __call__(self, test_loss):
-		if self.best_loss == None:
-			self.best_loss = test_loss
-		elif self.best_loss - test_loss > self.min_delta:
-			self.best_loss = test_loss
-		elif self.best_loss - test_loss < self.min_delta:
-			self.counter += 1
-			# print(f"INFO: Early stopping counter {self.counter} of {self.patience}")
-			if self.counter >= self.patience:
-				print('INFO: Early stopping')
-				self.early_stop = True
-
-
-class EarlyStoppingBatch():
-	"""
-	Like EarlyStopping, but stops when all members of batch meet the individual stopping criteria.
-	Note: this is used for attacks, so loss is being maximized
-	"""
-	def __init__(self, bs, patience=3, min_delta=1e-1):
-		"""
-		:param patience: how many epochs to wait before stopping when loss is
-			   not improving
-		:param min_delta: minimum difference between new loss and old loss for
-			   new loss to be considered as an improvement
-		"""
-		self.patience = patience
-		self.min_delta = min_delta
-
-		self.counter = torch.zeros(bs)
-		self.best_loss = None #torch.ones(bs)*float("inf")
-		self.early_stop_vec = torch.zeros(bs, dtype=torch.bool)
-		self.early_stop = False
-
-	def __call__(self, test_loss):
-		if self.best_loss == None:
-			self.best_loss = test_loss
-
-		# print("Inside EarlyStoppingBatch")
-		# IPython.embed()
-
-		# print(self.best_loss, test_loss)
-		improve_ind = torch.nonzero(test_loss - self.best_loss >= self.min_delta)
-		nonimprove_ind = torch.nonzero(test_loss - self.best_loss < self.min_delta)
-		self.best_loss[improve_ind] = test_loss[improve_ind]
-
-		self.counter[nonimprove_ind] = self.counter[nonimprove_ind] + 1
-
-		early_stop_ind = torch.nonzero(self.counter >= self.patience)
-		self.early_stop_vec[early_stop_ind] = True
-
-		# print(self.counter)
-		if torch.all(self.early_stop_vec).item():
-			print('INFO: Early stopping')
-			self.early_stop = True
-
-class IndexNNInput(nn.Module):
-	def __init__(self, which_ind):
-		"""
-		:param which_ind: flat numpy array
-		"""
-		self.which_ind = which_ind
-		self.output_dim = len(which_ind)
-
-	def forward(self, x):
-		return x[:, self.which_ind]
-
-
 class TransformEucNNInput(nn.Module):
-	# Note: this is specific to FlyingInvPend
-	def __init__(self, state_index_dict):
-		"""
-		:param which_ind: flat numpy array
+	"""Transforms spherical coordinates to Euclidean for neural network input.
+	
+	We find empirically that the nCBF does not train well unless perform a change of variables from spherical to Euclident space. 
+	"""
+	def __init__(self, state_index_dict: dict) -> None:
+		"""Initializes coordinate transform.
+
+		Args:
+			state_index_dict: Dict mapping state names (e.g., 'alpha', 'phi')
+			                 to their indices in the state vector
 		"""
 		super().__init__()
 		self.state_index_dict = state_index_dict
 		self.output_dim = 12
 
-	def forward(self, x):
+	def forward(self, x: torch.Tensor) -> torch.Tensor:
+		"""Converts spherical state to Euclidean representation.
+
+		Args:
+			x: State tensor in spherical coordinates (bs, 10)
+			   [γ, β, α, dγ, dβ, dα, φ, θ, dφ, dθ]
+
+		Returns:
+			Tensor (bs, 12) in Euclidean coordinates:
+			[x_quad, y_quad, z_quad, vx_quad, vy_quad, vz_quad,
+			 x_pend, y_pend, z_pend, vx_pend, vy_pend, vz_pend]
+		"""
 		alpha = x[:, self.state_index_dict["alpha"]]
 		beta = x[:, self.state_index_dict["beta"]]
 		gamma = x[:, self.state_index_dict["gamma"]]
@@ -169,13 +146,12 @@ class TransformEucNNInput(nn.Module):
 		dphi = x[:, self.state_index_dict["dphi"]]
 		dtheta = x[:, self.state_index_dict["dtheta"]]
 
-		# print("inside TransformEucNNInput's forward()")
-		# IPython.embed()
-
+		# Compute unit direction of quadcopter vertical body axis 
 		x_quad = torch.cos(alpha)*torch.sin(beta)*torch.cos(gamma) + torch.sin(alpha)*torch.sin(gamma)
 		y_quad = torch.sin(alpha)*torch.sin(beta)*torch.cos(gamma) - torch.cos(alpha)*torch.sin(gamma)
 		z_quad = torch.cos(beta)*torch.cos(gamma)
 
+		# Compute linear velocity of quadcopter vertical body axis 
 		d_x_quad_d_alpha = torch.sin(alpha)*torch.sin(beta)*torch.cos(gamma) - torch.cos(alpha)*torch.sin(gamma)
 		d_x_quad_d_beta = -torch.cos(alpha)*torch.cos(beta)*torch.cos(gamma)
 		d_x_quad_d_gamma = torch.cos(alpha)*torch.sin(beta)*torch.sin(gamma) - torch.sin(alpha)*torch.cos(gamma)
@@ -188,10 +164,12 @@ class TransformEucNNInput(nn.Module):
 
 		v_z_quad = dbeta*torch.sin(beta)*torch.cos(gamma) + dgamma*torch.cos(beta)*torch.sin(gamma)
 
+		# Compute unit direction of pendulum 
 		x_pend = torch.sin(theta)*torch.cos(phi)
 		y_pend = -torch.sin(phi)
 		z_pend = torch.cos(theta)*torch.cos(phi)
 
+		# Compute linear velocity of pendulum
 		v_x_pend = -dtheta*torch.cos(theta)*torch.cos(phi) + dphi*torch.sin(theta)*torch.sin(phi)
 		v_y_pend = dphi*torch.cos(phi)
 		v_z_pend = dtheta*torch.sin(theta)*torch.cos(phi) + dphi*torch.cos(theta)*torch.sin(phi)

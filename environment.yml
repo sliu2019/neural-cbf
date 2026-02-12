@@ -1,0 +1,11 @@
+name: ncbf_env
+channels:
+  - defaults
+dependencies:
+  - python=3.8.3
+  - numpy
+  - ipython
+  - matplotlib
+  - scipy
+  - opencv
+prefix: /home/siminl/miniconda3/envs/si_feas_env
