@@ -1,27 +1,21 @@
 # Safe Control under Input Limits with Neural Control Barrier Functions
 
-**Simin Liu, Sicun Gao, Koushil Sreenath, Calin Belta** | CoRL 2022
+**Simin Liu, Changliu Liu, John Dolan** | CoRL 2022
 
 [Paper](https://proceedings.mlr.press/v205/liu23e.html)
-
-<p align="center">
-  <img src="assets/teaser.png" width="80%">
-</p>
-
----
 
 ## Quickstart
 
 **Clone the repository**
 ```bash
-git clone https://github.com/liusimin/cbf_synthesis_small.git
-cd cbf_synthesis_small
+git clone https://github.com/sliu2019/neural-cbf.git
+cd neural-cbf
 ```
 
 **Create and activate the Conda environment**
 ```bash
-conda create -n cbf python=3.9
-conda activate cbf
+conda create -f environment.yml
+conda activate ncbf_env
 ```
 
 **Install dependencies**
@@ -31,7 +25,7 @@ pip install -r requirements.txt
 
 **Run training**
 ```bash
-python main.py --affix example
+python main.py --affix quad_pend_example
 ```
 
 Logs are written to `log/quad_pend_example/` and checkpoints to `checkpoint/quad_pend_example/`.
@@ -74,7 +68,7 @@ If you found this useful, please cite:
 ```bibtex
 @inproceedings{liu2022safe,
   title={Safe control under input limits with neural control barrier functions},
-  author={Liu, Simin and Zeng, Sicun and Sreenath, Koushil and Belta, Calin},
+  author={Liu, Simin and Liu, Changliu and Dolan, John},
   booktitle={Conference on Robot Learning (CoRL)},
   year={2022}
 }
